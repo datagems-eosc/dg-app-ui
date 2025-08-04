@@ -1,0 +1,90 @@
+import { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
+
+// Types for the API response
+interface VocabularyItem {
+  ordinal: number;
+  code: string;
+  name: string;
+  children?: VocabularyItem[];
+}
+
+interface VocabularyResponse {
+  hierarchy?: VocabularyItem[];
+}
+
+// Cache for vocabulary data
+let fieldsOfScienceCache: HierarchicalCategory[] | null = null;
+
+// Convert API response to HierarchicalCategory format
+function convertToHierarchicalCategories(
+  hierarchy: VocabularyItem[]
+): HierarchicalCategory[] {
+  return hierarchy
+    .filter((item) => item.children && item.children.length > 0) // Only include items with children
+    .map((item) => ({
+      name:
+        item.name.charAt(0).toUpperCase() + item.name.slice(1).toLowerCase(),
+      code: item.code,
+      options: item.children!.map((childItem) => {
+        return {
+          value: childItem.code,
+          label:
+            childItem.name.charAt(0).toUpperCase() +
+            childItem.name.slice(1).toLowerCase(),
+          code: childItem.code,
+        };
+      }),
+    }))
+    .filter((category) => category.options.length > 0); // Only include categories with valid options
+}
+
+// Fetch fields of science from API
+export async function fetchFieldsOfScience(
+  authToken?: string
+): Promise<HierarchicalCategory[]> {
+  // Return cached data if available
+  if (fieldsOfScienceCache) {
+    return fieldsOfScienceCache;
+  }
+
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+
+    const response = await fetch("/api/vocabulary/fields-of-science", {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data: VocabularyResponse = await response.json();
+
+    // Handle both formats: direct array or wrapped in hierarchy property
+    const hierarchy = Array.isArray(data) ? data : data.hierarchy;
+
+    const categories = convertToHierarchicalCategories(hierarchy);
+
+    // Cache the result
+    fieldsOfScienceCache = categories;
+
+    return categories;
+  } catch (error) {
+    console.error("Error fetching fields of science:", error);
+
+    // Return empty array as fallback
+    return [];
+  }
+}
+
+// Clear cache (useful for testing or when data needs to be refreshed)
+export function clearVocabularyCache() {
+  fieldsOfScienceCache = null;
+}

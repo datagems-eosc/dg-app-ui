@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_BASE_PATH: /ui
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - KEYCLOAK_AUTH_GRAND_TYPE=PKCE
+      - KEYCLOAK_CLIENT_ID=dg-app-ui
+      - KEYCLOAK_CLIENT_SECRET="" # (empty string, not used)
+      - KEYCLOAK_ISSUER=https://datagems-dev.scayle.es/oauth/realms/dev
+      - NEXT_PUBLIC_APP_BASE_URL=http://localhost:3000
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:3000/ui",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

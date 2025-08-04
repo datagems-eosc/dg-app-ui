@@ -1,0 +1,179 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Search, ChevronDown } from "lucide-react";
+import { Input } from "./Input";
+import { Checkbox } from "./Checkbox";
+
+export interface HierarchicalOption {
+  value: string;
+  label: string;
+  code?: string;
+}
+
+export interface HierarchicalCategory {
+  name: string;
+  code: string;
+  options: HierarchicalOption[];
+}
+
+interface HierarchicalDropdownProps {
+  value: string[];
+  onChange: (value: string[]) => void;
+  categories: HierarchicalCategory[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+  noOptionsText?: string;
+}
+
+export default function HierarchicalDropdown({
+  value,
+  onChange,
+  categories,
+  placeholder = "Search...",
+  searchPlaceholder = "Search...",
+  noOptionsText = "No options found",
+}: HierarchicalDropdownProps) {
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Ensure categories is always an array
+  const safeCategories = Array.isArray(categories) ? categories : [];
+
+  const toggleCategory = (categoryCode: string) => {
+    setExpandedCategories((prev) =>
+      prev.includes(categoryCode)
+        ? prev.filter((code) => code !== categoryCode)
+        : [...prev, categoryCode]
+    );
+  };
+
+  const handleToggleOption = (optionValue: string) => {
+    if (value.includes(optionValue)) {
+      onChange(value.filter((v) => v !== optionValue));
+    } else {
+      onChange([...value, optionValue]);
+    }
+  };
+
+  const filteredCategories = searchTerm
+    ? safeCategories
+        .map((category) => ({
+          ...category,
+          options: category.options.filter(
+            (option) =>
+              option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              (option.code &&
+                option.code.toLowerCase().includes(searchTerm.toLowerCase()))
+          ),
+        }))
+        .filter((category) => category.options.length > 0)
+    : safeCategories;
+
+  // Auto-expand categories with search results
+  useEffect(() => {
+    if (searchTerm) {
+      const categoriesWithResults = filteredCategories.map((cat) => cat.code);
+      setExpandedCategories(categoriesWithResults);
+    } else {
+      setExpandedCategories([]);
+    }
+  }, [searchTerm, filteredCategories]);
+
+  // Get selected count for a specific category
+  const getSelectedCountForCategory = (category: HierarchicalCategory) => {
+    return category.options.filter((option) => value.includes(option.value))
+      .length;
+  };
+
+  return (
+    <div className="w-full">
+      {/* Search input at the top */}
+      <div className="mb-4">
+        <Input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder={searchPlaceholder}
+          rightIcon={<Search className="w-4 h-4 icon" />}
+        />
+      </div>
+
+      {/* Categories list */}
+      <div className="space-y-2">
+        {filteredCategories.map((category) => {
+          const selectedCount = getSelectedCountForCategory(category);
+          // Ensure category.code is a valid string for the key
+          const categoryKey =
+            typeof category.code === "string"
+              ? category.code
+              : `category-${Math.random()}`;
+
+          return (
+            <div key={categoryKey}>
+              <div
+                className="flex items-center justify-between pr-6 py-1 cursor-pointer"
+                onClick={() => toggleCategory(category.code)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-850">
+                    {typeof category.name === "string"
+                      ? category.name
+                      : "Unknown Category"}
+                  </span>
+                  {selectedCount > 0 && (
+                    <span className="inline-flex items-center justify-center w-4 h-4 text-tiny font-medium text-white bg-blue-600 rounded-full">
+                      {selectedCount}
+                    </span>
+                  )}
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-500 transition-transform ${
+                    expandedCategories.includes(category.code)
+                      ? "rotate-180"
+                      : ""
+                  }`}
+                />
+              </div>
+              {expandedCategories.includes(category.code) && (
+                <div>
+                  {category.options.map((option) => {
+                    // Ensure option.value is a valid string for the key
+                    const optionKey =
+                      typeof option.value === "string"
+                        ? option.value
+                        : `option-${Math.random()}`;
+                    const optionLabel =
+                      typeof option.label === "string"
+                        ? option.label
+                        : "Unknown Option";
+
+                    return (
+                      <div
+                        key={optionKey}
+                        className="flex items-center pl-3 pr-6 py-2"
+                      >
+                        <Checkbox
+                          id={`checkbox-${optionKey}`}
+                          checked={value.includes(option.value)}
+                          onChange={() => handleToggleOption(option.value)}
+                          label={optionLabel}
+                          className="w-full"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {filteredCategories.length === 0 && (
+          <div className="px-3 py-2 text-slate-400 text-body-14-regular text-center">
+            {noOptionsText}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
