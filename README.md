@@ -111,6 +111,7 @@ The application now uses Google Maps for location display. To set up Google Maps
 ### Environment Variables
 
 Add to your `.env.local` file:
+
 ```
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 ```
@@ -158,6 +159,16 @@ KEYCLOAK_CLIENT_ID=dg-app-ui
 KEYCLOAK_CLIENT_SECRET="" # Not used for PKCE public client, but required by next-auth types
 KEYCLOAK_ISSUER=https://datagems-dev.scayle.es/oauth/realms/dev
 ```
+
+### Token Refresh Configuration
+
+The application is configured to automatically refresh access tokens before they expire:
+
+- **Session Duration**: 30 days (configured in NextAuth session maxAge)
+- **Token Refresh**: Automatic refresh 30 seconds before expiration
+- **Refresh Scope**: Includes `offline_access` scope to ensure refresh tokens are provided
+- **Error Handling**: Automatic re-authentication on refresh failures
+- **Client-side Refresh**: Session refetch every 5 minutes and on window focus
 
 ### Usage
 
