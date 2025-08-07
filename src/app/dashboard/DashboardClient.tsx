@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { convertToBackendFilters, FilterState } from "@/config/filterOptions";
 import { getLogoutUrl } from "@/lib/utils";
+import { apiClient } from "@/lib/apiClient";
 
 const API_PAYLOAD = {
   project: {
@@ -218,23 +219,7 @@ export default function DashboardClient() {
           }
         }
 
-        const response = await fetch("/api/dataset/query", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-        if (response.status === 401) {
-          window.location.href = getLogoutUrl();
-          return;
-        }
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to fetch datasets");
-        }
-        const data = await response.json();
+        const data = await apiClient.queryDatasets(payload, token);
         const items = Array.isArray(data.items) ? data.items : [];
         const mappedDatasets = items.map(mapApiDatasetToDataset);
         setAllDatasets(mappedDatasets);

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { fetchWithAuth } from '@/lib/utils';
-import { UserCollection, ApiCollection } from '@/types/collection';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { apiClient } from "@/lib/apiClient";
+import { UserCollection, ApiCollection } from "@/types/collection";
 
 interface CollectionsContextType {
   collections: UserCollection[];
@@ -15,7 +15,9 @@ interface CollectionsContextType {
   refreshApiCollections: () => Promise<void>;
 }
 
-const CollectionsContext = createContext<CollectionsContextType | undefined>(undefined);
+const CollectionsContext = createContext<CollectionsContextType | undefined>(
+  undefined
+);
 
 const COLLECTIONS_API_PAYLOAD = {
   project: {
@@ -42,7 +44,11 @@ const COLLECTIONS_API_PAYLOAD = {
   },
 };
 
-export function CollectionsProvider({ children }: { children: React.ReactNode }) {
+export function CollectionsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { data: session } = useSession();
   const [collections, setCollections] = useState<UserCollection[]>([]);
   const [apiCollections, setApiCollections] = useState<ApiCollection[]>([]);
@@ -51,20 +57,20 @@ export function CollectionsProvider({ children }: { children: React.ReactNode })
 
   // Load collections from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem('userCollections');
+    const stored = localStorage.getItem("userCollections");
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           // Convert date strings back to Date objects
-          const collectionsWithDates = parsed.map(collection => ({
+          const collectionsWithDates = parsed.map((collection) => ({
             ...collection,
-            createdAt: new Date(collection.createdAt)
+            createdAt: new Date(collection.createdAt),
           }));
           setCollections(collectionsWithDates);
         }
       } catch (error) {
-        console.error('Error loading collections:', error);
+        console.error("Error loading collections:", error);
       }
     }
     setIsLoaded(true);
@@ -79,19 +85,10 @@ export function CollectionsProvider({ children }: { children: React.ReactNode })
         if (!token) {
           return;
         }
-        const response = await fetchWithAuth("/api/collection/query", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(COLLECTIONS_API_PAYLOAD),
-        });
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to fetch collections");
-        }
-        const data = await response.json();
+        const data = await apiClient.queryCollections(
+          COLLECTIONS_API_PAYLOAD,
+          token
+        );
         const items = Array.isArray(data.items) ? data.items : [];
         setApiCollections(items);
       } catch (err: unknown) {
@@ -106,7 +103,7 @@ export function CollectionsProvider({ children }: { children: React.ReactNode })
   // Save collections to localStorage whenever they change (but not on initial load)
   useEffect(() => {
     if (!isLoaded) return;
-    localStorage.setItem('userCollections', JSON.stringify(collections));
+    localStorage.setItem("userCollections", JSON.stringify(collections));
   }, [collections, isLoaded]);
 
   const addCollection = (name: string, datasetIds: string[]) => {
@@ -115,21 +112,21 @@ export function CollectionsProvider({ children }: { children: React.ReactNode })
       name,
       datasetIds,
       createdAt: new Date(),
-      icon: '📁' // Default icon
+      icon: "📁", // Default icon
     };
-    setCollections(prev => [...prev, newCollection]);
+    setCollections((prev) => [...prev, newCollection]);
   };
 
   const removeCollection = (id: string) => {
-    setCollections(prev => prev.filter(collection => collection.id !== id));
+    setCollections((prev) => prev.filter((collection) => collection.id !== id));
   };
 
   const updateCollection = (id: string, updates: Partial<UserCollection>) => {
-    setCollections(prev => prev.map(collection => 
-      collection.id === id 
-        ? { ...collection, ...updates }
-        : collection
-    ));
+    setCollections((prev) =>
+      prev.map((collection) =>
+        collection.id === id ? { ...collection, ...updates } : collection
+      )
+    );
   };
 
   const refreshApiCollections = async () => {
@@ -139,19 +136,10 @@ export function CollectionsProvider({ children }: { children: React.ReactNode })
       if (!token) {
         return;
       }
-      const response = await fetchWithAuth("/api/collection/query", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(COLLECTIONS_API_PAYLOAD),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch collections");
-      }
-      const data = await response.json();
+      const data = await apiClient.queryCollections(
+        COLLECTIONS_API_PAYLOAD,
+        token
+      );
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
     } catch (err: unknown) {
@@ -162,15 +150,17 @@ export function CollectionsProvider({ children }: { children: React.ReactNode })
   };
 
   return (
-    <CollectionsContext.Provider value={{
-      collections,
-      apiCollections,
-      isLoadingApiCollections,
-      addCollection,
-      removeCollection,
-      updateCollection,
-      refreshApiCollections
-    }}>
+    <CollectionsContext.Provider
+      value={{
+        collections,
+        apiCollections,
+        isLoadingApiCollections,
+        addCollection,
+        removeCollection,
+        updateCollection,
+        refreshApiCollections,
+      }}
+    >
       {children}
     </CollectionsContext.Provider>
   );
@@ -179,7 +169,7 @@ export function CollectionsProvider({ children }: { children: React.ReactNode })
 export function useCollections() {
   const context = useContext(CollectionsContext);
   if (context === undefined) {
-    throw new Error('useCollections must be used within a CollectionsProvider');
+    throw new Error("useCollections must be used within a CollectionsProvider");
   }
   return context;
-} 
+}

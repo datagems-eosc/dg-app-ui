@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Search, MessageCircleMore } from "lucide-react";
-import { fetchWithAuth, formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/utils";
+import { apiClient } from "@/lib/apiClient";
 import { Input } from "../Input";
 import { NoData } from "../NoData";
 
@@ -119,16 +120,7 @@ export function ChatHistoryList({
           Order: { Items: ["-createdAt"] },
           Metadata: { CountAll: true },
         };
-        const response = await fetchWithAuth("/api/conversation/me/query", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-        if (!response.ok) throw new Error("Failed to fetch conversations");
-        const data = await response.json();
+        const data = await apiClient.queryConversations(payload, token);
         const conversations = Array.isArray(data.items)
           ? data.items.map(
               (item: {

@@ -1,4 +1,5 @@
 import { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
+import { apiClient } from "./apiClient";
 
 // Types for the API response
 interface VocabularyItem {
@@ -48,24 +49,12 @@ export async function fetchFieldsOfScience(
   }
 
   try {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (authToken) {
-      headers["Authorization"] = `Bearer ${authToken}`;
+    if (!authToken) {
+      throw new Error("Authentication token is required");
     }
 
-    const response = await fetch("/api/vocabulary/fields-of-science", {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data: VocabularyResponse = await response.json();
+    const data: VocabularyResponse =
+      await apiClient.getFieldsOfScience(authToken);
 
     // Handle both formats: direct array or wrapped in hierarchy property
     const hierarchy = Array.isArray(data) ? data : data.hierarchy;
