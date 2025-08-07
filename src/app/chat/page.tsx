@@ -8,6 +8,7 @@ import type { Dataset } from "@/data/mockDatasets";
 // import { getApiBaseUrl } from "@/lib/utils"; // No longer needed
 import ProtectedPage from "@/components/ProtectedPage";
 import { useSession } from "next-auth/react";
+import { apiClient } from "@/lib/apiClient";
 // API fetch payload (copied from dashboard)
 const API_DATASETS_PAYLOAD = {
   project: {
@@ -58,33 +59,35 @@ export interface ConversationMessage {
   kind: number;
   data: {
     kind: number;
-    payload: {
-      query?: string; // Old format (kind 0)
-      question?: string; // New format (kind 2)
-      entries?: Array<{
-        result?: {
-          table?: {
-            columns: Array<{
-              columnNumber: number;
-              name: string;
-            }>;
-            rows: Array<{
-              rowNumber: number;
-              cells: Array<{
-                column: string;
-                value: string | number;
-              }>;
-            }>;
+    payload:
+      | {
+          query?: string; // Old format (kind 0)
+          question?: string; // New format (kind 2)
+          entries?: Array<{
+            result?: {
+              table?: {
+                columns: Array<{
+                  columnNumber: number;
+                  name: string;
+                }>;
+                rows: Array<{
+                  rowNumber: number;
+                  cells: Array<{
+                    column: string;
+                    value: string | number;
+                  }>;
+                }>;
+              };
+            };
+          }>;
+        }
+      | Array<{
+          dataset?: {
+            id?: string;
+            code?: string;
+            name?: string;
           };
-        };
-      }>;
-    } | Array<{
-      dataset?: {
-        id?: string;
-        code?: string;
-        name?: string;
-      };
-    }>; // Old format (kind 1) - array of dataset items
+        }>; // Old format (kind 1) - array of dataset items
     version: string;
   };
   createdAt: string;
@@ -151,12 +154,9 @@ export default function ChatPage({
         // next-auth session type does not include accessToken by default
         const token = (session as any)?.accessToken;
         if (!token) return;
-        const url = `/api/conversation/${id}?f=id&f=isActive&f=name&f=user.id&f=user.name&f=datasets.dataset.id&f=datasets.dataset.code&f=messages.kind&f=messages.data&f=messages.createdAt`;
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) return;
-        const data = await response.json();
+        const queryParams =
+          "?f=id&f=isActive&f=name&f=user.id&f=user.name&f=datasets.dataset.id&f=datasets.dataset.code&f=messages.kind&f=messages.data&f=messages.createdAt";
+        const data = await apiClient.getConversation(id, queryParams, token);
         // Extract selected datasets from datasets field and messages
         let datasetIds: string[] = [];
         if (data.datasets && Array.isArray(data.datasets)) {
@@ -200,16 +200,7 @@ export default function ChatPage({
       // next-auth session type does not include accessToken by default
       const token = (session as any)?.accessToken;
       if (!token) return;
-      const response = await fetch("/api/dataset/query", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(API_DATASETS_PAYLOAD),
-      });
-      if (!response.ok) return;
-      const data = await response.json();
+      const data = await apiClient.queryDatasets(API_DATASETS_PAYLOAD, token);
       if (Array.isArray(data.items)) {
         setDatasets(data.items);
       }
@@ -253,16 +244,7 @@ export default function ChatPage({
           CountAll: true,
         },
       };
-      const response = await fetch("/api/dataset/query", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) return;
-      const data = await response.json();
+      const data = await apiClient.queryDatasets(payload, token);
       if (Array.isArray(data.items)) {
         setDatasets(data.items);
       }
@@ -293,16 +275,7 @@ export default function ChatPage({
         Order: { Items: ["+createdAt"] },
         Metadata: { CountAll: true },
       };
-      const response = await fetch("/api/conversation/message/me/query", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) return;
-      const data = await response.json();
+      const data = await apiClient.queryMessages(payload, token);
       if (Array.isArray(data.items)) {
         setChatInitialMessages(data.items);
       }

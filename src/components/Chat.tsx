@@ -16,6 +16,7 @@ import DatasetChangeWarning from "./ui/chat/DatasetChangeWarning";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { Collection } from "@/types/collection";
 import { getLogoutUrl, getNavigationUrl } from "@/lib/utils";
+import { apiClient } from "@/lib/apiClient";
 
 interface Message {
   id: string;
@@ -461,23 +462,7 @@ export default function Chat({
           datasetIds: selectedDatasets,
         };
 
-        const response = await fetch("/api/search/in-data-explore", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (response.status === 401) {
-          window.location.href = "/logout";
-          return;
-        }
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to fetch data");
-        }
+        const response = await apiClient.searchInDataExplore(payload, token);
 
         // Add user message immediately
         const userMessage: Message = {
@@ -523,26 +508,11 @@ export default function Chat({
         const persistPayload = {
           name: inputValue,
         };
-        const persistResponse = await fetch(
-          "/api/conversation/me/persist?f=id&f=etag",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(persistPayload),
-          }
+        const persistData = await apiClient.persistConversation(
+          persistPayload,
+          "?f=id&f=etag",
+          token
         );
-        if (persistResponse.status === 401) {
-          window.location.href = getLogoutUrl();
-          return;
-        }
-        if (!persistResponse.ok) {
-          const errorData = await persistResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to create conversation");
-        }
-        const persistData = await persistResponse.json();
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
           setError("No conversation ID returned from server.");
@@ -572,23 +542,7 @@ export default function Chat({
           query: inputValue,
           resultCount: 100,
         };
-        const response = await fetch("/api/search/cross-dataset", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-        if (response.status === 401) {
-          window.location.href = getLogoutUrl();
-          return;
-        }
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to fetch datasets");
-        }
-        const data = await response.json();
+        const data = await apiClient.searchCrossDataset(payload, token);
         if (Array.isArray(data.result)) {
           const results = data.result as CrossDatasetSearchResult[];
           newSelectedDatasets = results
@@ -636,26 +590,11 @@ export default function Chat({
             datasetId: id,
           })),
         };
-        const persistResponse = await fetch(
-          "/api/conversation/me/persist/deep?f=id&f=etag",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(persistPayload),
-          }
+        const persistData = await apiClient.persistConversationDeep(
+          persistPayload,
+          "?f=id&f=etag",
+          token
         );
-        if (persistResponse.status === 401) {
-          window.location.href = getLogoutUrl();
-          return;
-        }
-        if (!persistResponse.ok) {
-          const errorData = await persistResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to create conversation");
-        }
-        const persistData = await persistResponse.json();
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
           setError("No conversation ID returned from server.");
@@ -675,30 +614,12 @@ export default function Chat({
           resultCount: 100,
           datasetIds: selectedDatasets, // Add datasetIds for in-data-explore
         };
-        const response = await fetch("/api/search/in-data-explore", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-        if (response.status === 401) {
-          window.location.href = getLogoutUrl();
-          return;
-        }
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to fetch datasets");
-        }
-        const data = await response.json();
+        const data = await apiClient.searchInDataExplore(payload, token);
         let newSelectedDatasets = selectedDatasets;
-        if (response.status === 200) {
-          // Redirect to chat details page with conversationId
-          if (conversationIdFromPersist) {
-            router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
-            return; // Prevent further state updates after redirect
-          }
+        // Redirect to chat details page with conversationId
+        if (conversationIdFromPersist) {
+          router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
+          return; // Prevent further state updates after redirect
         }
         if (Array.isArray(data.result)) {
           const results = data.result as CrossDatasetSearchResult[];
