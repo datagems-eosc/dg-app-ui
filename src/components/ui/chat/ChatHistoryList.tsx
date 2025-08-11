@@ -122,23 +122,41 @@ export function ChatHistoryList({
         };
         const data = await apiClient.queryConversations(payload, token);
         const conversations = Array.isArray(data.items)
-          ? data.items.map(
-              (item: {
-                id: string;
-                name?: string;
-                messages?: { createdAt?: string }[];
-              }) => {
-                let createdAt = "";
-                if (Array.isArray(item.messages) && item.messages.length > 0) {
-                  createdAt = item.messages[0]?.createdAt || "";
+          ? data.items
+              .filter(
+                (item: {
+                  id: string;
+                  name?: string;
+                  messages?: { createdAt?: string }[];
+                }) => {
+                  // Only include conversations that have messages array with at least one message
+                  return (
+                    item.messages &&
+                    Array.isArray(item.messages) &&
+                    item.messages.length > 0
+                  );
                 }
-                return {
-                  id: item.id,
-                  name: item.name,
-                  createdAt,
-                };
-              }
-            )
+              )
+              .map(
+                (item: {
+                  id: string;
+                  name?: string;
+                  messages?: { createdAt?: string }[];
+                }) => {
+                  let createdAt = "";
+                  if (
+                    Array.isArray(item.messages) &&
+                    item.messages.length > 0
+                  ) {
+                    createdAt = item.messages[0]?.createdAt || "";
+                  }
+                  return {
+                    id: item.id,
+                    name: item.name,
+                    createdAt,
+                  };
+                }
+              )
           : [];
         setConversations(conversations);
       } catch {

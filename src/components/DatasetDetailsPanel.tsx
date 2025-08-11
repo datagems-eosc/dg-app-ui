@@ -50,7 +50,7 @@ export default function DatasetDetailsPanel({
 
   return (
     <>
-      <div className="fixed top-0 right-0 h-full w-96 bg-white border-l border-gray-200 shadow-lg z-40 overflow-y-auto">
+      <div className="h-full w-full bg-white border-l border-gray-200 shadow-lg z-40 overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
           <h2 className="text-H2-20-semibold text-gray-900">Dataset Details</h2>

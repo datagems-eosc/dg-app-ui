@@ -187,11 +187,10 @@ export default function ChatPage({
           });
         }
         setSelectedDatasets(datasetIds);
-        setChatInitialMessages(data.messages || []);
       };
       fetchHistory();
     }
-  }, [params]);
+  }, [params, session]);
 
   // Fetch all datasets from API if not in a conversation
   useEffect(() => {
@@ -206,7 +205,7 @@ export default function ChatPage({
       }
     };
     fetchAllDatasets();
-  }, [conversationId]);
+  }, [conversationId, session]);
 
   // Fetch detailed dataset info when selectedDatasets changes and conversationId is present
   useEffect(() => {
@@ -250,11 +249,12 @@ export default function ChatPage({
       }
     };
     fetchDatasets();
-  }, [conversationId, selectedDatasets]);
+  }, [conversationId, selectedDatasets, session]);
 
   // Fetch conversation messages when on /chat/[conversationId]
   useEffect(() => {
     if (!conversationId) return;
+    setChatInitialMessages(undefined);
     const fetchMessages = async () => {
       // next-auth session type does not include accessToken by default
       const token = (session as any)?.accessToken;
@@ -278,10 +278,12 @@ export default function ChatPage({
       const data = await apiClient.queryMessages(payload, token);
       if (Array.isArray(data.items)) {
         setChatInitialMessages(data.items);
+      } else {
+        setChatInitialMessages([]);
       }
     };
     fetchMessages();
-  }, [conversationId]);
+  }, [conversationId, session]);
 
   // Helper to normalize datasets to always have the correct id (UUID)
   function normalizeDatasets(rawDatasets: unknown[]): unknown[] {
@@ -311,7 +313,7 @@ export default function ChatPage({
           datasets={normalizeDatasets(datasets) as Dataset[]}
           onSelectedDatasetsChange={setSelectedDatasets}
           conversationId={conversationId}
-          initialMessages={chatInitialMessages}
+          initialMessages={chatInitialMessages ?? undefined}
           showConversationName={showConversationName}
           hideCollectionActions={hideCollectionActions}
         />

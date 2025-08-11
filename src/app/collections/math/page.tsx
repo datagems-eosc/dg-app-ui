@@ -1,53 +1,43 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import DashboardLayout from '@/components/DashboardLayout';
-import Browse from '@/components/Browse';
-import CreateCollectionModal from '@/components/CreateCollectionModal';
-import { mockDatasets } from '@/data/mockDatasets';
-import { useCollections } from '@/contexts/CollectionsContext';
-import { getNavigationUrl } from '@/lib/utils';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import DashboardLayout from "@/components/DashboardLayout";
+import Browse from "@/components/Browse";
+import CreateCollectionModal from "@/components/CreateCollectionModal";
+import { mockDatasets } from "@/data/mockDatasets";
+import { useCollections } from "@/contexts/CollectionsContext";
+import { getNavigationUrl } from "@/lib/utils";
 
 export default function MathPage() {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [showCreateCollectionModal, setShowCreateCollectionModal] = useState(false);
+  const [showCreateCollectionModal, setShowCreateCollectionModal] =
+    useState(false);
   const router = useRouter();
   const { addCollection } = useCollections();
 
   // Filter datasets to show only Math category
-  const mathDatasets = mockDatasets.filter(dataset => 
-    dataset.category === 'Math'
+  const mathDatasets = mockDatasets.filter(
+    (dataset) => dataset.category === "Math"
   );
 
-  // Load selected datasets from localStorage on mount
+  // On mount: clear any previous chat selection as this is not the chat page
   useEffect(() => {
-    const stored = localStorage.getItem('chatSelectedDatasets');
-    
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        
-        if (Array.isArray(parsed)) {
-          setSelectedDatasets(parsed);
-        }
-      } catch (error) {
-        console.error('Error loading selected datasets:', error);
-      }
-    }
+    localStorage.removeItem("chatSelectedDatasets");
     setIsLoaded(true); // Mark as loaded
   }, []);
 
-  // Save selected datasets to localStorage whenever they change (but not on initial load)
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('chatSelectedDatasets', JSON.stringify(selectedDatasets));
-  }, [selectedDatasets, isLoaded]);
+  // Do not persist selections by default on this page
 
   const handleChatWithData = () => {
-    router.push(getNavigationUrl('/chat'));
+    // Persist only when user explicitly opts to chat
+    localStorage.setItem(
+      "chatSelectedDatasets",
+      JSON.stringify(selectedDatasets)
+    );
+    router.push(getNavigationUrl("/chat"));
   };
 
   const handleReopenSidebar = () => {
@@ -60,7 +50,7 @@ export default function MathPage() {
 
   const handleAddToCollection = () => {
     if (selectedDatasets.length === 0) {
-      alert('Please select some datasets first');
+      alert("Please select some datasets first");
       return;
     }
     setShowCreateCollectionModal(true);
@@ -69,13 +59,15 @@ export default function MathPage() {
   const handleCreateCollection = (name: string) => {
     addCollection(name, selectedDatasets);
     // Show success message
-    alert(`Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`);
+    alert(
+      `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`
+    );
   };
 
   return (
     <DashboardLayout>
       <div className="relative p-6">
-        <Browse 
+        <Browse
           datasets={mathDatasets}
           title="Math Datasets"
           subtitle="Math dataset collection"
@@ -88,7 +80,7 @@ export default function MathPage() {
           onChatWithData={handleChatWithData}
           onAddToCollection={handleAddToCollection}
         />
-        
+
         <CreateCollectionModal
           isVisible={showCreateCollectionModal}
           onClose={() => setShowCreateCollectionModal(false)}
@@ -99,4 +91,4 @@ export default function MathPage() {
       </div>
     </DashboardLayout>
   );
-} 
+}

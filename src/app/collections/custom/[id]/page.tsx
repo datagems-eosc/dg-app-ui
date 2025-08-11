@@ -29,27 +29,12 @@ export default function CustomCollectionPage() {
   const [editedDatasetIds, setEditedDatasetIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("chatSelectedDatasets");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setSelectedDatasets(parsed);
-        }
-      } catch (error) {
-        console.error("Error loading selected datasets:", error);
-      }
-    }
+    // Non-chat page: always clear saved selection to avoid leakage
+    localStorage.removeItem("chatSelectedDatasets");
     setIsLoaded(true); // Mark as loaded
   }, []);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem(
-      "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
-    );
-  }, [selectedDatasets, isLoaded]);
+  // Do not persist selections by default on this page
 
   // Now, after all hooks, add the guard clause
   if (!params || !params.id) {
@@ -87,6 +72,11 @@ export default function CustomCollectionPage() {
   );
 
   const handleChatWithData = () => {
+    // Persist only when user explicitly opts to chat
+    localStorage.setItem(
+      "chatSelectedDatasets",
+      JSON.stringify(selectedDatasets)
+    );
     router.push(getNavigationUrl("/chat"));
   };
 

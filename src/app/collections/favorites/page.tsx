@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import DashboardLayout from '@/components/DashboardLayout';
-import Browse from '@/components/Browse';
-import CreateCollectionModal from '@/components/CreateCollectionModal';
-import { mockDatasets } from '@/data/mockDatasets';
-import { useDataset } from '@/contexts/DatasetContext';
-import { useCollections } from '@/contexts/CollectionsContext';
-import { getNavigationUrl } from '@/lib/utils';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import DashboardLayout from "@/components/DashboardLayout";
+import Browse from "@/components/Browse";
+import CreateCollectionModal from "@/components/CreateCollectionModal";
+import { mockDatasets } from "@/data/mockDatasets";
+import { useDataset } from "@/contexts/DatasetContext";
+import { useCollections } from "@/contexts/CollectionsContext";
+import { getNavigationUrl } from "@/lib/utils";
 
 export default function FavoritesPage() {
   const { favorites } = useDataset();
@@ -25,32 +25,20 @@ export default function FavoritesPage() {
     favorites.includes(dataset.id)
   );
 
-  // Load selected datasets from localStorage on mount
+  // On mount: clear any previous chat selection as this is not the chat page
   useEffect(() => {
-    const stored = localStorage.getItem("chatSelectedDatasets");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setSelectedDatasets(parsed);
-        }
-      } catch (error) {
-        console.error("Error loading selected datasets:", error);
-      }
-    }
+    localStorage.removeItem("chatSelectedDatasets");
     setIsLoaded(true); // Mark as loaded
   }, []);
 
-  // Save selected datasets to localStorage whenever they change (but not on initial load)
-  useEffect(() => {
-    if (!isLoaded) return;
+  // Do not persist selections by default on this page
+
+  const handleChatWithData = () => {
+    // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
       JSON.stringify(selectedDatasets)
     );
-  }, [selectedDatasets, isLoaded]);
-
-  const handleChatWithData = () => {
     router.push(getNavigationUrl("/chat"));
   };
 

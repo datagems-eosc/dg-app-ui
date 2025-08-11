@@ -67,12 +67,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3">
-        <div className="flex items-center justify-between">
+      <header className="fixed top-0 inset-x-0 z-50 bg-white border-b border-gray-200 h-14">
+        <div className="h-full px-6 flex items-center justify-between">
           {/* Left side - Logo */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <img src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`} alt="Logo" className="h-6 w-auto" />
+              <img
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
+                alt="Logo"
+                className="h-6 w-auto"
+              />
             </div>
           </div>
 
@@ -118,9 +122,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <div className="flex">
+      <div className="flex pt-14 min-h-[calc(100vh-56px)]">
         {/* Sidebar */}
-        <aside className="w-80 bg-white border-r border-gray-200 min-h-screen">
+        <aside className="w-80 bg-white border-r border-gray-200 min-h-full">
           <div className="p-4">
             {/* Menu Section */}
             <div className="mb-8">
@@ -210,7 +214,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 bg-white">{children}</main>
+        <main className="flex-1 bg-white min-h-full">{children}</main>
       </div>
     </div>
   );

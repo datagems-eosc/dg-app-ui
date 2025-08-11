@@ -11,6 +11,9 @@
   --color-icon: #566b88;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Custom breakpoints */
+  --breakpoint-3xl: 1650px;
 
   /* Custom color palette from colors-styleguide.md */
 

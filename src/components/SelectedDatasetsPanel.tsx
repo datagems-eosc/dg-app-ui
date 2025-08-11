@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { X, Plus, MessageSquare, Database } from "lucide-react";
-import type { Dataset as MockDataset } from "@/data/mockDatasets";
+import React from "react";
+import { X, Plus, MessageSquare, Database, Bot, ArrowUp } from "lucide-react";
 import { Button } from "./ui/Button";
 import { NoData } from "./ui/NoData";
 import SelectedDatasetItem from "./ui/datasets/SelectedDatasetItem";
@@ -20,6 +19,7 @@ interface SelectedDatasetsPanelProps {
   hideAddToCollection?: boolean;
   hideRemoveDataset?: boolean;
   customHeaderTitle?: string;
+  onDeselectAll?: () => void;
 }
 
 export default function SelectedDatasetsPanel({
@@ -33,9 +33,9 @@ export default function SelectedDatasetsPanel({
   hideAddToCollection = false,
   hideRemoveDataset = false,
   customHeaderTitle,
+  onDeselectAll,
 }: SelectedDatasetsPanelProps) {
   const [expandedDatasets, setExpandedDatasets] = React.useState<string[]>([]);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   const selectedDatasets = datasets.filter((dataset) =>
     selectedDatasetIds.includes(dataset.id)
@@ -53,33 +53,8 @@ export default function SelectedDatasetsPanel({
     );
   };
 
-  // Handle click outside to close
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(event.target as Node)
-      ) {
-        onClose?.();
-      }
-    };
-
-    if (onClose) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }
-  }, [onClose]);
-
-  console.log("selectedDatasets", selectedDatasets);
-  console.log("datasets", datasets);
-
   return (
-    <div
-      className="h-full w-full bg-white border-l border-gray-200 shadow-lg overflow-y-auto scrollbar-hide hide-scrollbar"
-      ref={panelRef}
-    >
+    <div className="h-full w-full bg-white border-l border-gray-200 shadow-lg flex flex-col">
       {/* Header */}
       <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-5.25">
         <div className="flex items-center justify-between">
@@ -100,7 +75,10 @@ export default function SelectedDatasetsPanel({
             )}
           </div>
         </div>
+      </div>
 
+      {/* Selected Datasets List (scrollable area) */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {onAddToCollection && !hideAddToCollection && (
           <Button
             variant="outline"
@@ -111,10 +89,6 @@ export default function SelectedDatasetsPanel({
             Add to collection
           </Button>
         )}
-      </div>
-
-      {/* Selected Datasets List */}
-      <div className="p-4 space-y-4">
         {selectedDatasets.length === 0 && missingDatasetIds.length === 0 ? (
           <NoData
             icon={Database}
@@ -151,17 +125,31 @@ export default function SelectedDatasetsPanel({
         )}
       </div>
 
-      {/* Chat with Data button */}
-      {onChatWithData && (
-        <div className="p-4 border-t border-gray-200">
-          <Button
-            variant="primary"
-            className="w-full flex items-center gap-2"
-            onClick={onChatWithData}
-          >
-            <MessageSquare className="w-4 h-4 text-icon" />
-            Chat with your data
-          </Button>
+      {/* Footer actions: Deselect All and Chat with Data (stays at bottom of panel) */}
+      {(onDeselectAll || onChatWithData) && (
+        <div className="p-4 bg-white flex-shrink-0">
+          <div className="flex flex-col gap-4">
+            {onChatWithData && (
+              <Button
+                variant="primary"
+                className="flex-1 flex items-center gap-2"
+                onClick={onChatWithData}
+              >
+                <Bot className="w-4 h-4 !stroke-slate-450" />
+                Chat with your data
+              </Button>
+            )}
+            {onDeselectAll && selectedDatasetIds.length > 0 && (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={onDeselectAll}
+              >
+                <ArrowUp className="w-4 h-4 !stroke-icon transform -rotate-45 mr-1" />
+                Deselect All
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>

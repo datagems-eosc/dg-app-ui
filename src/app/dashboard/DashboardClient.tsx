@@ -2,13 +2,15 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import Browse from "@/components/Browse";
+import CreateCollectionModal from "@/components/CreateCollectionModal";
 import { Dataset } from "@/data/mockDatasets";
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { convertToBackendFilters, FilterState } from "@/config/filterOptions";
-import { getLogoutUrl } from "@/lib/utils";
+import { getNavigationUrl } from "@/lib/utils";
+import { useCollections } from "@/contexts/CollectionsContext";
 import { apiClient } from "@/lib/apiClient";
 
 const API_PAYLOAD = {
@@ -140,6 +142,13 @@ export default function DashboardClient() {
     fieldsOfScience: [],
     license: [],
   });
+  // Collections & actions (parity with /browse)
+  const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
+  const [showSelectedPanel, setShowSelectedPanel] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [showCreateCollectionModal, setShowCreateCollectionModal] =
+    useState(false);
+  const { addCollection } = useCollections();
 
   /**
    * Fetch datasets from API. If searchTerm is at least 3 chars, add 'like' to payload.
@@ -271,9 +280,60 @@ export default function DashboardClient() {
     setFilters(newFilters);
   }, []);
 
+  // Mount flag for safe localStorage access
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // On non-chat pages, ensure chat selection is cleared in localStorage
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.removeItem("chatSelectedDatasets");
+    }
+  }, [isMounted]);
+
+  // Selected panel controls
+  const handleCloseSidebar = useCallback(() => {
+    setShowSelectedPanel(false);
+  }, []);
+
+  const handleReopenSidebar = useCallback(() => {
+    setShowSelectedPanel(true);
+  }, []);
+
+  // Chat navigation with selected datasets
+  const handleChatWithData = useCallback(() => {
+    if (isMounted) {
+      localStorage.setItem(
+        "chatSelectedDatasets",
+        JSON.stringify(selectedDatasets)
+      );
+    }
+    router.push(getNavigationUrl("/chat"));
+  }, [router, isMounted, selectedDatasets]);
+
+  // Create collection from selected datasets
+  const handleAddToCollection = useCallback(() => {
+    if (selectedDatasets.length === 0) {
+      alert("Please select some datasets first");
+      return;
+    }
+    setShowCreateCollectionModal(true);
+  }, [selectedDatasets]);
+
+  const handleCreateCollection = useCallback(
+    (name: string) => {
+      addCollection(name, selectedDatasets);
+      alert(
+        `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`
+      );
+    },
+    [addCollection, selectedDatasets]
+  );
+
   return (
     <DashboardLayout>
-      <div className="relative p-6">
+      <div className="relative">
         <Browse
           datasets={filteredDatasets}
           title={selectedCollection ? `Browse Datasets` : "Browse All Datasets"}
@@ -282,8 +342,8 @@ export default function DashboardClient() {
               ? `Filtered by collection`
               : "List of all datasets"
           }
-          showSelectAll={false}
-          showAddButton={false} // Hide Add button on dashboard browse page
+          showSelectAll={true}
+          showAddButton={true}
           searchTerm={pendingSearchTerm}
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}
@@ -293,6 +353,21 @@ export default function DashboardClient() {
           onSortByChange={handleSortByChange}
           filters={filters}
           onApplyFilters={handleApplyFilters}
+          selectedDatasets={selectedDatasets}
+          onSelectedDatasetsChange={setSelectedDatasets}
+          showSelectedPanel={showSelectedPanel}
+          onCloseSidebar={handleCloseSidebar}
+          onReopenSidebar={handleReopenSidebar}
+          onChatWithData={handleChatWithData}
+          onAddToCollection={handleAddToCollection}
+        />
+
+        <CreateCollectionModal
+          isVisible={showCreateCollectionModal}
+          onClose={() => setShowCreateCollectionModal(false)}
+          onCreateCollection={handleCreateCollection}
+          selectedDatasets={selectedDatasets}
+          datasets={allDatasets}
         />
       </div>
     </DashboardLayout>
