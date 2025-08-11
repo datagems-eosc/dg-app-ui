@@ -119,8 +119,9 @@ export default function ChatPage({
   }, []);
 
   // Load selected datasets from localStorage only after component mounts
+  // Only load from localStorage if we're not in a conversation (for initial chat state)
   useEffect(() => {
-    if (isMounted) {
+    if (isMounted && !conversationId) {
       const stored = localStorage.getItem("chatSelectedDatasets");
       if (stored) {
         try {
@@ -133,7 +134,7 @@ export default function ChatPage({
         }
       }
     }
-  }, [isMounted]);
+  }, [isMounted, conversationId]);
 
   // Save selected datasets to localStorage whenever they change (only when mounted)
   useEffect(() => {
@@ -146,6 +147,7 @@ export default function ChatPage({
   }, [selectedDatasets, isMounted]);
 
   // If conversationId is present in the URL, fetch conversation history
+  // If conversationId is not present (navigating to initial chat), reset selected datasets
   useEffect(() => {
     const id = params?.conversationId as string | undefined;
     if (id) {
@@ -189,6 +191,12 @@ export default function ChatPage({
         setSelectedDatasets(datasetIds);
       };
       fetchHistory();
+    } else {
+      // No conversationId means we're on the initial chat page - reset selected datasets
+      setConversationId(null);
+      setSelectedDatasets([]);
+      setChatInitialMessages([]);
+      localStorage.removeItem("chatSelectedDatasets");
     }
   }, [params, session]);
 
