@@ -16,6 +16,11 @@ import { Chip } from "../Chip";
 import { Button } from "../Button";
 import { formatFileSize } from "@/lib/utils";
 
+interface Collection {
+  id?: string;
+  name: string;
+}
+
 interface SelectedDatasetItemProps {
   dataset: DatasetUnion;
   isExpanded: boolean;
@@ -44,6 +49,19 @@ function MetadataItem({ icon, label, value }: MetadataItemProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Helper function to check if dataset has collections (matching DatasetCard logic)
+function hasCollections(
+  dataset: DatasetUnion
+): dataset is DatasetUnion & { collections: Collection[] } {
+  const maybeCollections = (dataset as { collections?: unknown }).collections;
+  return (
+    Array.isArray(maybeCollections) &&
+    maybeCollections.every(
+      (col: unknown) => col && typeof col === "object" && "name" in col
+    )
   );
 }
 
@@ -88,14 +106,23 @@ export default function SelectedDatasetItem({
     "lastUpdated" in dataset && dataset.lastUpdated ? dataset.lastUpdated : "";
   const displayTags =
     "tags" in dataset && Array.isArray(dataset.tags) ? dataset.tags : [];
-  const collections =
-    "collections" in dataset ? dataset.collections : undefined;
-  const displayCategory =
-    "category" in dataset && dataset.category
-      ? dataset.category
-      : Array.isArray(collections) && collections[0]?.name
-        ? collections[0].name
-        : "";
+  
+  // Get collections using the same logic as DatasetCard
+  const hasDatasetCollections = hasCollections(dataset);
+  
+  // Calculate display category/collection name with proper processing
+  const displayCategory = (() => {
+    if (hasDatasetCollections && dataset.collections.length > 0) {
+      // Use first collection name and remove " Collection" suffix like DatasetCard
+      const firstCollection = dataset.collections[0];
+      return typeof firstCollection.name === "string"
+        ? firstCollection.name.replace(/ Collection$/i, "")
+        : firstCollection.name;
+    }
+    // Fallback to category if no collections
+    return "category" in dataset && dataset.category ? dataset.category : "";
+  })();
+  
   const permissions =
     "permissions" in dataset ? dataset.permissions : undefined;
   const displayAccess =
