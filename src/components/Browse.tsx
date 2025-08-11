@@ -226,15 +226,6 @@ export default function Browse({
     }
   }, [showSelectedPanel]);
 
-  // Animate DatasetDetailsPanel on open
-  useEffect(() => {
-    if (selectedDataset) {
-      setIsDetailsPanelAnimating(true);
-      const t = setTimeout(() => setIsDetailsPanelAnimating(false), 50);
-      return () => clearTimeout(t);
-    }
-  }, [selectedDataset]);
-
   const handleOpenPanel = () => {
     if (!showSelectedPanel) {
       setIsPanelAnimating(true);
@@ -253,13 +244,6 @@ export default function Browse({
       }
       setIsPanelClosing(false);
     }, 500);
-  };
-
-  const handleOpenDetailsPanel = () => {
-    if (!selectedDataset) {
-      setIsDetailsPanelAnimating(true);
-      setTimeout(() => setIsDetailsPanelAnimating(false), 50);
-    }
   };
 
   const handleCloseDetailsPanel = () => {
@@ -338,7 +322,21 @@ export default function Browse({
       if (selectedDataset?.id === dataset.id) {
         handleCloseDetailsPanel();
       } else {
-        setSelectedDataset(dataset);
+        // If a different dataset is already selected, close it first then open the new one
+        if (selectedDataset) {
+          handleCloseDetailsPanel();
+          // Wait for close animation to complete, then open new panel
+          setTimeout(() => {
+            setSelectedDataset(dataset);
+            setIsDetailsPanelAnimating(true);
+            setTimeout(() => setIsDetailsPanelAnimating(false), 50);
+          }, 500);
+        } else {
+          // No dataset selected, open directly with animation
+          setSelectedDataset(dataset);
+          setIsDetailsPanelAnimating(true);
+          setTimeout(() => setIsDetailsPanelAnimating(false), 50);
+        }
       }
     }
   };
