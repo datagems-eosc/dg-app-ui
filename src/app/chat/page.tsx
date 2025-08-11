@@ -111,6 +111,8 @@ export default function ChatPage({
   >([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [isResetting, setIsResetting] = useState(false);
+  const [hasJustClearedLocalStorage, setHasJustClearedLocalStorage] = useState(false);
   const params = useParams();
 
   // Set mounted to true after first render (client-side only)
@@ -118,55 +120,40 @@ export default function ChatPage({
     setIsMounted(true);
   }, []);
 
-  // Load selected datasets from localStorage only after component mounts
-  // Only load from localStorage if we're not in a conversation (for initial chat state)
+  // Save selected datasets to localStorage whenever they change (only when mounted and not resetting)
   useEffect(() => {
-    if (isMounted && !conversationId) {
-      const stored = localStorage.getItem("chatSelectedDatasets");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setSelectedDatasets(parsed);
-          }
-        } catch (error) {
-          console.error("Error loading selected datasets:", error);
-        }
-      }
-    }
-  }, [isMounted, conversationId]);
-
-  // Save selected datasets to localStorage whenever they change (only when mounted)
-  useEffect(() => {
-    if (isMounted) {
+    if (isMounted && !isResetting) {
       localStorage.setItem(
         "chatSelectedDatasets",
         JSON.stringify(selectedDatasets)
       );
     }
-  }, [selectedDatasets, isMounted]);
+  }, [selectedDatasets, isMounted, isResetting]);
 
-  // If conversationId is present in the URL, fetch conversation history
-  // If conversationId is not present (navigating to initial chat), reset selected datasets
+  // Handle conversationId changes and initial page load
   useEffect(() => {
     const id = params?.conversationId as string | undefined;
+    const lastConversationId = sessionStorage.getItem('lastConversationId');
+    const isTransitioningFromConversation = lastConversationId !== null && !id;
+    
     if (id) {
+      sessionStorage.setItem('lastConversationId', id);
       setConversationId(id);
+      
       const fetchHistory = async () => {
-        // next-auth session type does not include accessToken by default
         const token = (session as any)?.accessToken;
         if (!token) return;
         const queryParams =
           "?f=id&f=isActive&f=name&f=user.id&f=user.name&f=datasets.dataset.id&f=datasets.dataset.code&f=messages.kind&f=messages.data&f=messages.createdAt";
         const data = await apiClient.getConversation(id, queryParams, token);
-        // Extract selected datasets from datasets field and messages
+        
         let datasetIds: string[] = [];
         if (data.datasets && Array.isArray(data.datasets)) {
           datasetIds = (data.datasets as ConversationDataset[])
             .map((d) => d.dataset?.id)
             .filter((id: string | undefined) => typeof id === "string");
         }
-        // Also scan messages for datasets
+        
         if (Array.isArray(data.messages)) {
           (data.messages as ConversationMessage[]).forEach((msg) => {
             if (msg.data && Array.isArray(msg.data.payload)) {
@@ -192,13 +179,39 @@ export default function ChatPage({
       };
       fetchHistory();
     } else {
-      // No conversationId means we're on the initial chat page - reset selected datasets
       setConversationId(null);
-      setSelectedDatasets([]);
       setChatInitialMessages([]);
-      localStorage.removeItem("chatSelectedDatasets");
+      
+      if (isTransitioningFromConversation) {
+        localStorage.removeItem("chatSelectedDatasets");
+        setSelectedDatasets([]);
+        setHasJustClearedLocalStorage(true);
+        sessionStorage.removeItem('lastConversationId');
+        setTimeout(() => setHasJustClearedLocalStorage(false), 100);
+      } else {
+        setIsResetting(true);
+        setSelectedDatasets([]);
+        setTimeout(() => setIsResetting(false), 0);
+      }
     }
   }, [params, session]);
+
+  // Load from localStorage when on initial chat page (only if not just cleared)
+  useEffect(() => {
+    if (isMounted && !conversationId && !hasJustClearedLocalStorage) {
+      const stored = localStorage.getItem("chatSelectedDatasets");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSelectedDatasets(parsed);
+          }
+        } catch (error) {
+          console.error("Error loading selected datasets:", error);
+        }
+      }
+    }
+  }, [isMounted, conversationId, hasJustClearedLocalStorage]);
 
   // Fetch all datasets from API if not in a conversation
   useEffect(() => {
