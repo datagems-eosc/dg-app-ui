@@ -229,7 +229,223 @@ export default function DashboardClient() {
   const [isMounted, setIsMounted] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
+  const [favoriteDatasetIds, setFavoriteDatasetIds] = useState<string[]>([]);
+  const [favoritesCollectionId, setFavoritesCollectionId] =
+    useState<string>("");
+  const [hasFetchedFavorites, setHasFetchedFavorites] = useState(false);
   const { addCollection } = useCollections();
+
+  /**
+   * Fetch favorites collection to get dataset IDs for favorite state
+   */
+  const fetchFavoritesCollection = useCallback(async () => {
+    console.log("fetchFavoritesCollection called");
+    try {
+      const token = session?.accessToken;
+      if (!token) {
+        console.log("No token available for fetchFavoritesCollection");
+        return;
+      }
+
+      console.log("Fetching favorites collection with token:", !!token);
+      const favoritesPayload = {
+        project: {
+          fields: ["id", "name", "userDatasetCollections.dataset.id"],
+        },
+        page: {
+          Offset: 0,
+          Size: 100,
+        },
+        Order: {
+          Items: ["+name"],
+        },
+        Metadata: {
+          CountAll: true,
+        },
+      };
+
+      const data = await apiClient.queryUserCollections(
+        favoritesPayload,
+        token
+      );
+      console.log("Favorites collection response:", data);
+      const items = Array.isArray(data.items) ? data.items : [];
+      console.log("Items from response:", items);
+
+      // Find the "Favorites" collection
+      const favoritesCollection = items.find(
+        (item) =>
+          typeof item === "object" &&
+          item !== null &&
+          "name" in item &&
+          (item.name === "Favorites" ||
+            item.name === "Favorites" ||
+            item.name === "favorites" ||
+            item.name === "FAVORITES" ||
+            item.name.toLowerCase().includes("favorite"))
+      );
+
+      console.log("Found favorites collection:", favoritesCollection);
+      console.log(
+        "All collection names:",
+        items.map((item) =>
+          typeof item === "object" && item !== null && "name" in item
+            ? item.name
+            : "unknown"
+        )
+      );
+
+      if (
+        favoritesCollection &&
+        "userDatasetCollections" in favoritesCollection
+      ) {
+        const userDatasetCollections = Array.isArray(
+          favoritesCollection.userDatasetCollections
+        )
+          ? favoritesCollection.userDatasetCollections
+          : [];
+
+        const datasetIds = userDatasetCollections
+          .map((item) => {
+            if (
+              typeof item === "object" &&
+              item !== null &&
+              "dataset" in item
+            ) {
+              const dataset = item.dataset as Record<string, unknown>;
+              return typeof dataset.id === "string" ? dataset.id : null;
+            }
+            return null;
+          })
+          .filter((id): id is string => id !== null);
+
+        console.log("Setting favorite dataset IDs:", datasetIds);
+        setFavoriteDatasetIds(datasetIds);
+        setFavoritesCollectionId(favoritesCollection.id as string);
+        setHasFetchedFavorites(true);
+        console.log("Setting favorites collection ID:", favoritesCollection.id);
+      } else if (favoritesCollection) {
+        // Favorites collection exists but is empty (no userDatasetCollections property)
+        console.log("Favorites collection exists but is empty");
+        setFavoriteDatasetIds([]);
+        setFavoritesCollectionId(favoritesCollection.id as string);
+        setHasFetchedFavorites(true);
+        console.log("Setting favorites collection ID:", favoritesCollection.id);
+      } else {
+        console.log("No favorites collection found");
+        setFavoriteDatasetIds([]);
+        setFavoritesCollectionId("");
+        setHasFetchedFavorites(true);
+      }
+    } catch (err: unknown) {
+      console.error("Failed to fetch favorites collection:", err);
+      setFavoriteDatasetIds([]);
+      setFavoritesCollectionId("");
+      setHasFetchedFavorites(true);
+    }
+  }, [session]);
+
+  /**
+   * Add dataset to favorites collection
+   */
+  const handleAddToFavorites = useCallback(
+    async (datasetId: string) => {
+      console.log("handleAddToFavorites called with datasetId:", datasetId);
+      try {
+        const token = session?.accessToken;
+        if (!token || !favoritesCollectionId) {
+          console.log("Token or favoritesCollectionId missing:", {
+            hasToken: !!token,
+            favoritesCollectionId,
+          });
+          throw new Error("No authentication token or favorites collection ID");
+        }
+
+        console.log("Adding dataset to favorites collection:", {
+          collectionId: favoritesCollectionId,
+          datasetId,
+        });
+
+        await apiClient.addDatasetToUserCollection(
+          favoritesCollectionId,
+          datasetId,
+          token
+        );
+
+        console.log("Successfully added dataset to favorites, refreshing...");
+
+        // Refresh favorites collection to update the UI
+        await fetchFavoritesCollection();
+      } catch (err: unknown) {
+        console.error("Failed to add dataset to favorites:", err);
+        throw err;
+      }
+    },
+    [session, favoritesCollectionId, fetchFavoritesCollection]
+  );
+
+  /**
+   * Remove dataset from favorites collection
+   */
+  const handleRemoveFromFavorites = useCallback(
+    async (datasetId: string) => {
+      console.log(
+        "handleRemoveFromFavorites called with datasetId:",
+        datasetId
+      );
+      try {
+        const token = session?.accessToken;
+        if (!token || !favoritesCollectionId) {
+          console.log("Token or favoritesCollectionId missing:", {
+            hasToken: !!token,
+            favoritesCollectionId,
+          });
+          throw new Error("No authentication token or favorites collection ID");
+        }
+
+        console.log("Removing dataset from favorites collection:", {
+          collectionId: favoritesCollectionId,
+          datasetId,
+        });
+
+        await apiClient.removeDatasetFromUserCollection(
+          favoritesCollectionId,
+          datasetId,
+          token
+        );
+
+        console.log(
+          "Successfully removed dataset from favorites, refreshing..."
+        );
+
+        // Refresh favorites collection to update the UI
+        await fetchFavoritesCollection();
+
+        // If we're currently viewing the favorites collection, remove the dataset from the local state
+        if (
+          selectedCollection === favoritesCollectionId &&
+          isCustomCollection
+        ) {
+          console.log(
+            "Removing dataset from local state since we're on favorites collection page"
+          );
+          setAllDatasets((prevDatasets) =>
+            prevDatasets.filter((dataset) => dataset.id !== datasetId)
+          );
+        }
+      } catch (err: unknown) {
+        console.error("Failed to remove dataset from favorites:", err);
+        throw err;
+      }
+    },
+    [
+      session,
+      favoritesCollectionId,
+      fetchFavoritesCollection,
+      selectedCollection,
+      isCustomCollection,
+    ]
+  );
 
   /**
    * Fetch datasets from API. If searchTerm is at least 3 chars, add 'like' to payload.
@@ -403,6 +619,34 @@ export default function DashboardClient() {
     setIsMounted(true);
   }, []);
 
+  // Debug: Log Browse props
+  useEffect(() => {
+    console.log("Browse props:", {
+      favoriteDatasetIds,
+      favoritesCollectionId,
+      hasOnAddToFavorites: !!handleAddToFavorites,
+    });
+  }, [favoriteDatasetIds, favoritesCollectionId, handleAddToFavorites]);
+
+  // Debug: Log session info
+  useEffect(() => {
+    console.log("Session info:", {
+      hasSession: !!session,
+      hasAccessToken: !!session?.accessToken,
+      tokenLength: session?.accessToken?.length,
+    });
+  }, [session]);
+
+  // Fetch favorites collection when session is available
+  useEffect(() => {
+    if (session?.accessToken) {
+      console.log("Session available, fetching favorites collection...");
+      fetchFavoritesCollection();
+    } else {
+      console.log("No session or access token available");
+    }
+  }, [session, fetchFavoritesCollection]);
+
   // On non-chat pages, ensure chat selection is cleared in localStorage
   useEffect(() => {
     if (isMounted) {
@@ -465,6 +709,11 @@ export default function DashboardClient() {
           showSelectAll={true}
           showAddButton={true}
           showSearchAndFilters={!selectedCollection}
+          favoriteDatasetIds={favoriteDatasetIds}
+          favoritesCollectionId={favoritesCollectionId}
+          hasFetchedFavorites={hasFetchedFavorites}
+          onAddToFavorites={handleAddToFavorites}
+          onRemoveFromFavorites={handleRemoveFromFavorites}
           searchTerm={pendingSearchTerm}
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}
