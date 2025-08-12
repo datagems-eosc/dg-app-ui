@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Star,
   X,
@@ -72,6 +72,11 @@ interface DatasetCardProps {
   viewMode?: "grid" | "list";
   onAddToCollection?: (dataset: Dataset) => void;
   showAddButton?: boolean; // NEW PROP
+  isFavorite?: boolean; // NEW PROP to override hook behavior
+  favoritesCollectionId?: string; // NEW PROP for API calls
+  onAddToFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
+  hasFetchedFavorites?: boolean; // NEW PROP
+  onRemoveFromFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
 }
 
 export default function DatasetCard({
@@ -86,14 +91,74 @@ export default function DatasetCard({
   viewMode = "grid",
   onAddToCollection,
   showAddButton = true, // default true for backward compatibility
+  isFavorite: propIsFavorite, // NEW PROP to override hook behavior
+  favoritesCollectionId = "", // NEW PROP for API calls
+  onAddToFavorites, // NEW PROP
+  hasFetchedFavorites = false, // NEW PROP
+  onRemoveFromFavorites, // NEW PROP
 }: DatasetCardProps) {
   const { toggleFavorite, isFavorite } = useDataset();
-  const isStarred = isFavorite(dataset.id);
+  const hookIsFavorite = isFavorite(dataset.id);
+  const isStarred =
+    propIsFavorite !== undefined ? propIsFavorite : hookIsFavorite;
   const isListMode = viewMode === "list";
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
 
-  const handleStarClick = (e: React.MouseEvent) => {
+  const handleStarClick = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click when starring
-    toggleFavorite(dataset.id);
+
+    console.log("Star clicked!", {
+      datasetId: dataset.id,
+      propIsFavorite,
+      favoritesCollectionId,
+      onAddToFavorites: !!onAddToFavorites,
+      onRemoveFromFavorites: !!onRemoveFromFavorites,
+      hasFetchedFavorites,
+      isStarred,
+      condition1: propIsFavorite !== undefined,
+      condition2: !!favoritesCollectionId,
+      condition3: !!onAddToFavorites && !!onRemoveFromFavorites,
+      condition4: hasFetchedFavorites,
+      allConditions:
+        propIsFavorite !== undefined &&
+        favoritesCollectionId &&
+        onAddToFavorites &&
+        onRemoveFromFavorites &&
+        hasFetchedFavorites,
+    });
+
+    // If using prop-based favorite state and we have a favorites collection ID and have fetched favorites
+    if (
+      propIsFavorite !== undefined &&
+      favoritesCollectionId &&
+      onAddToFavorites &&
+      onRemoveFromFavorites &&
+      hasFetchedFavorites
+    ) {
+      console.log("Using API-based favorites");
+      try {
+        setIsFavoriteLoading(true);
+        if (!isStarred) {
+          // Add to favorites via API
+          console.log("Adding to favorites via API...");
+          await onAddToFavorites(dataset.id);
+          console.log("Successfully added to favorites");
+        } else {
+          // Remove from favorites via API
+          console.log("Removing from favorites via API...");
+          await onRemoveFromFavorites(dataset.id);
+          console.log("Successfully removed from favorites");
+        }
+      } catch (error) {
+        console.error("Failed to modify favorites:", error);
+      } finally {
+        setIsFavoriteLoading(false);
+      }
+    } else {
+      console.log("Using local hook behavior");
+      // Fall back to local hook behavior
+      toggleFavorite(dataset.id);
+    }
   };
 
   const handleSelectClick = (e: React.MouseEvent) => {
@@ -175,13 +240,22 @@ export default function DatasetCard({
           {!isEditMode && (
             <button
               onClick={handleStarClick}
-              className="flex-shrink-0 p-1.5 hover:bg-slate-75 rounded"
+              disabled={isFavoriteLoading}
+              className={`flex-shrink-0 p-1.5 rounded transition-colors ${
+                isFavoriteLoading
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-slate-75"
+              }`}
             >
-              <Star
-                className={`w-5 h-5 ${
-                  isStarred ? "fill-amber-200 text-amber-400" : "text-icon"
-                }`}
-              />
+              {isFavoriteLoading ? (
+                <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+              ) : (
+                <Star
+                  className={`w-5 h-5 ${
+                    isStarred ? "fill-amber-200 text-amber-400" : "text-icon"
+                  }`}
+                />
+              )}
             </button>
           )}
         </div>

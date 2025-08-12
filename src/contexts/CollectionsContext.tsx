@@ -8,11 +8,14 @@ import { UserCollection, ApiCollection } from "@/types/collection";
 interface CollectionsContextType {
   collections: UserCollection[];
   apiCollections: ApiCollection[];
+  extraCollections: ApiCollection[];
   isLoadingApiCollections: boolean;
+  isLoadingExtraCollections: boolean;
   addCollection: (name: string, datasetIds: string[]) => void;
   removeCollection: (id: string) => void;
   updateCollection: (id: string, updates: Partial<UserCollection>) => void;
   refreshApiCollections: () => Promise<void>;
+  refreshExtraCollections: () => Promise<void>;
 }
 
 const CollectionsContext = createContext<CollectionsContextType | undefined>(
@@ -52,7 +55,10 @@ export function CollectionsProvider({
   const { data: session } = useSession();
   const [collections, setCollections] = useState<UserCollection[]>([]);
   const [apiCollections, setApiCollections] = useState<ApiCollection[]>([]);
+  const [extraCollections, setExtraCollections] = useState<ApiCollection[]>([]);
   const [isLoadingApiCollections, setIsLoadingApiCollections] = useState(true);
+  const [isLoadingExtraCollections, setIsLoadingExtraCollections] =
+    useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load collections from localStorage on mount
@@ -97,7 +103,42 @@ export function CollectionsProvider({
         setIsLoadingApiCollections(false);
       }
     };
+
+    const fetchExtraCollections = async () => {
+      setIsLoadingExtraCollections(true);
+      try {
+        const token = (session as any)?.accessToken;
+        if (!token) {
+          return;
+        }
+        const extraCollectionsPayload = {
+          project: { fields: ["id", "code", "name"] },
+          page: {
+            Offset: 0,
+            Size: 10,
+          },
+          Order: {
+            Items: ["-createdAt"],
+          },
+          Metadata: {
+            CountAll: true,
+          },
+        };
+        const data = await apiClient.queryUserCollections(
+          extraCollectionsPayload,
+          token
+        );
+        const items = Array.isArray(data.items) ? data.items : [];
+        setExtraCollections(items);
+      } catch (err: unknown) {
+        console.error("Failed to fetch extra collections:", err);
+      } finally {
+        setIsLoadingExtraCollections(false);
+      }
+    };
+
     fetchApiCollections();
+    fetchExtraCollections();
   }, [session]);
 
   // Save collections to localStorage whenever they change (but not on initial load)
@@ -149,16 +190,52 @@ export function CollectionsProvider({
     }
   };
 
+  const refreshExtraCollections = async () => {
+    setIsLoadingExtraCollections(true);
+    try {
+      const token = (session as any)?.accessToken;
+      if (!token) {
+        return;
+      }
+      const extraCollectionsPayload = {
+        project: { fields: ["id", "code", "name"] },
+        page: {
+          Offset: 0,
+          Size: 10,
+        },
+        Order: {
+          Items: ["-createdAt"],
+        },
+        Metadata: {
+          CountAll: true,
+        },
+      };
+      const data = await apiClient.queryUserCollections(
+        extraCollectionsPayload,
+        token
+      );
+      const items = Array.isArray(data.items) ? data.items : [];
+      setExtraCollections(items);
+    } catch (err: unknown) {
+      console.error("Failed to fetch extra collections:", err);
+    } finally {
+      setIsLoadingExtraCollections(false);
+    }
+  };
+
   return (
     <CollectionsContext.Provider
       value={{
         collections,
         apiCollections,
+        extraCollections,
         isLoadingApiCollections,
+        isLoadingExtraCollections,
         addCollection,
         removeCollection,
         updateCollection,
         refreshApiCollections,
+        refreshExtraCollections,
       }}
     >
       {children}

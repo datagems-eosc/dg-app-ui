@@ -47,6 +47,30 @@ const API_PAYLOAD = {
   },
 };
 
+const USER_COLLECTION_API_PAYLOAD = {
+  project: {
+    fields: [
+      "id",
+      "name",
+      "user.id",
+      "user.name",
+      "userDatasetCollections.id",
+      "userDatasetCollections.dataset.Id",
+      "userDatasetCollections.dataset.name",
+    ],
+  },
+  page: {
+    Offset: 0,
+    Size: 100,
+  },
+  Order: {
+    Items: ["-createdAt"],
+  },
+  Metadata: {
+    CountAll: true,
+  },
+};
+
 type Collection = { id: string; name: string; code: string };
 function mapApiDatasetToDataset(api: unknown): Dataset & {
   collections?: Collection[];
@@ -122,6 +146,62 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
   };
 }
 
+function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
+  if (typeof userCollection !== "object" || userCollection === null) {
+    return [];
+  }
+
+  const obj = userCollection as Record<string, unknown>;
+  const userDatasetCollections = Array.isArray(obj.userDatasetCollections)
+    ? obj.userDatasetCollections
+    : [];
+
+  return userDatasetCollections.map((item: unknown) => {
+    if (typeof item !== "object" || item === null) {
+      return {
+        id: "",
+        title: "Untitled",
+        category: "Math",
+        access: "Restricted",
+        description: "",
+        size: "N/A",
+        lastUpdated: "2024-01-01",
+        tags: [],
+        collections: [],
+      };
+    }
+
+    const itemObj = item as Record<string, unknown>;
+    const dataset = itemObj.dataset as Record<string, unknown> | undefined;
+
+    if (!dataset) {
+      return {
+        id: "",
+        title: "Untitled",
+        category: "Math",
+        access: "Restricted",
+        description: "",
+        size: "N/A",
+        lastUpdated: "2024-01-01",
+        tags: [],
+        collections: [],
+      };
+    }
+
+    return {
+      id: String(dataset.id ?? ""),
+      title: String(dataset.name ?? "Untitled"),
+      category: "Math",
+      access: "Restricted",
+      description: "",
+      size: "N/A",
+      lastUpdated: "2024-01-01",
+      tags: [],
+      collections: [],
+    };
+  });
+}
+
 // next-auth session type does not include accessToken by default
 export default function DashboardClient() {
   const router = useRouter();
@@ -135,6 +215,7 @@ export default function DashboardClient() {
   const [pendingSearchTerm, setPendingSearchTerm] = useState(""); // input value
   const [sortBy, setSortBy] = useState("name-asc");
   const selectedCollection = searchParams.get("collection");
+  const isCustomCollection = searchParams.get("isCustom") === "true";
   const [filters, setFilters] = useState<FilterState>({
     access: "",
     creationYear: { start: "", end: "" },
@@ -148,7 +229,223 @@ export default function DashboardClient() {
   const [isMounted, setIsMounted] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
+  const [favoriteDatasetIds, setFavoriteDatasetIds] = useState<string[]>([]);
+  const [favoritesCollectionId, setFavoritesCollectionId] =
+    useState<string>("");
+  const [hasFetchedFavorites, setHasFetchedFavorites] = useState(false);
   const { addCollection } = useCollections();
+
+  /**
+   * Fetch favorites collection to get dataset IDs for favorite state
+   */
+  const fetchFavoritesCollection = useCallback(async () => {
+    console.log("fetchFavoritesCollection called");
+    try {
+      const token = session?.accessToken;
+      if (!token) {
+        console.log("No token available for fetchFavoritesCollection");
+        return;
+      }
+
+      console.log("Fetching favorites collection with token:", !!token);
+      const favoritesPayload = {
+        project: {
+          fields: ["id", "name", "userDatasetCollections.dataset.id"],
+        },
+        page: {
+          Offset: 0,
+          Size: 100,
+        },
+        Order: {
+          Items: ["+name"],
+        },
+        Metadata: {
+          CountAll: true,
+        },
+      };
+
+      const data = await apiClient.queryUserCollections(
+        favoritesPayload,
+        token
+      );
+      console.log("Favorites collection response:", data);
+      const items = Array.isArray(data.items) ? data.items : [];
+      console.log("Items from response:", items);
+
+      // Find the "Favorites" collection
+      const favoritesCollection = items.find(
+        (item) =>
+          typeof item === "object" &&
+          item !== null &&
+          "name" in item &&
+          (item.name === "Favorites" ||
+            item.name === "Favorites" ||
+            item.name === "favorites" ||
+            item.name === "FAVORITES" ||
+            item.name.toLowerCase().includes("favorite"))
+      );
+
+      console.log("Found favorites collection:", favoritesCollection);
+      console.log(
+        "All collection names:",
+        items.map((item) =>
+          typeof item === "object" && item !== null && "name" in item
+            ? item.name
+            : "unknown"
+        )
+      );
+
+      if (
+        favoritesCollection &&
+        "userDatasetCollections" in favoritesCollection
+      ) {
+        const userDatasetCollections = Array.isArray(
+          favoritesCollection.userDatasetCollections
+        )
+          ? favoritesCollection.userDatasetCollections
+          : [];
+
+        const datasetIds = userDatasetCollections
+          .map((item) => {
+            if (
+              typeof item === "object" &&
+              item !== null &&
+              "dataset" in item
+            ) {
+              const dataset = item.dataset as Record<string, unknown>;
+              return typeof dataset.id === "string" ? dataset.id : null;
+            }
+            return null;
+          })
+          .filter((id): id is string => id !== null);
+
+        console.log("Setting favorite dataset IDs:", datasetIds);
+        setFavoriteDatasetIds(datasetIds);
+        setFavoritesCollectionId(favoritesCollection.id as string);
+        setHasFetchedFavorites(true);
+        console.log("Setting favorites collection ID:", favoritesCollection.id);
+      } else if (favoritesCollection) {
+        // Favorites collection exists but is empty (no userDatasetCollections property)
+        console.log("Favorites collection exists but is empty");
+        setFavoriteDatasetIds([]);
+        setFavoritesCollectionId(favoritesCollection.id as string);
+        setHasFetchedFavorites(true);
+        console.log("Setting favorites collection ID:", favoritesCollection.id);
+      } else {
+        console.log("No favorites collection found");
+        setFavoriteDatasetIds([]);
+        setFavoritesCollectionId("");
+        setHasFetchedFavorites(true);
+      }
+    } catch (err: unknown) {
+      console.error("Failed to fetch favorites collection:", err);
+      setFavoriteDatasetIds([]);
+      setFavoritesCollectionId("");
+      setHasFetchedFavorites(true);
+    }
+  }, [session]);
+
+  /**
+   * Add dataset to favorites collection
+   */
+  const handleAddToFavorites = useCallback(
+    async (datasetId: string) => {
+      console.log("handleAddToFavorites called with datasetId:", datasetId);
+      try {
+        const token = session?.accessToken;
+        if (!token || !favoritesCollectionId) {
+          console.log("Token or favoritesCollectionId missing:", {
+            hasToken: !!token,
+            favoritesCollectionId,
+          });
+          throw new Error("No authentication token or favorites collection ID");
+        }
+
+        console.log("Adding dataset to favorites collection:", {
+          collectionId: favoritesCollectionId,
+          datasetId,
+        });
+
+        await apiClient.addDatasetToUserCollection(
+          favoritesCollectionId,
+          datasetId,
+          token
+        );
+
+        console.log("Successfully added dataset to favorites, refreshing...");
+
+        // Refresh favorites collection to update the UI
+        await fetchFavoritesCollection();
+      } catch (err: unknown) {
+        console.error("Failed to add dataset to favorites:", err);
+        throw err;
+      }
+    },
+    [session, favoritesCollectionId, fetchFavoritesCollection]
+  );
+
+  /**
+   * Remove dataset from favorites collection
+   */
+  const handleRemoveFromFavorites = useCallback(
+    async (datasetId: string) => {
+      console.log(
+        "handleRemoveFromFavorites called with datasetId:",
+        datasetId
+      );
+      try {
+        const token = session?.accessToken;
+        if (!token || !favoritesCollectionId) {
+          console.log("Token or favoritesCollectionId missing:", {
+            hasToken: !!token,
+            favoritesCollectionId,
+          });
+          throw new Error("No authentication token or favorites collection ID");
+        }
+
+        console.log("Removing dataset from favorites collection:", {
+          collectionId: favoritesCollectionId,
+          datasetId,
+        });
+
+        await apiClient.removeDatasetFromUserCollection(
+          favoritesCollectionId,
+          datasetId,
+          token
+        );
+
+        console.log(
+          "Successfully removed dataset from favorites, refreshing..."
+        );
+
+        // Refresh favorites collection to update the UI
+        await fetchFavoritesCollection();
+
+        // If we're currently viewing the favorites collection, remove the dataset from the local state
+        if (
+          selectedCollection === favoritesCollectionId &&
+          isCustomCollection
+        ) {
+          console.log(
+            "Removing dataset from local state since we're on favorites collection page"
+          );
+          setAllDatasets((prevDatasets) =>
+            prevDatasets.filter((dataset) => dataset.id !== datasetId)
+          );
+        }
+      } catch (err: unknown) {
+        console.error("Failed to remove dataset from favorites:", err);
+        throw err;
+      }
+    },
+    [
+      session,
+      favoritesCollectionId,
+      fetchFavoritesCollection,
+      selectedCollection,
+      isCustomCollection,
+    ]
+  );
 
   /**
    * Fetch datasets from API. If searchTerm is at least 3 chars, add 'like' to payload.
@@ -166,6 +463,29 @@ export default function DashboardClient() {
           setIsLoading(false);
           return;
         }
+
+        // Check if we should fetch from user collection endpoint
+        if (selectedCollection && isCustomCollection) {
+          // Fetch from user collection endpoint
+          const payload = {
+            ...USER_COLLECTION_API_PAYLOAD,
+            ids: [selectedCollection],
+          };
+
+          const data = await apiClient.queryUserCollections(payload, token);
+          const items = Array.isArray(data.items) ? data.items : [];
+
+          if (items.length > 0) {
+            const datasets = mapUserCollectionToDatasets(items[0]);
+            setAllDatasets(datasets);
+          } else {
+            setAllDatasets([]);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // Regular dataset fetching logic
         let payload: any = { ...API_PAYLOAD };
 
         // Set order.items based on sortBy
@@ -242,27 +562,41 @@ export default function DashboardClient() {
       }
     };
     fetchDatasets();
-  }, [router, session, searchTerm, sortBy, filters]);
+  }, [
+    router,
+    session,
+    searchTerm,
+    sortBy,
+    filters,
+    selectedCollection,
+    isCustomCollection,
+  ]);
 
   // Filter datasets when selectedCollection changes (frontend filtering for collection)
   useEffect(() => {
     if (selectedCollection && allDatasets.length > 0) {
-      const filtered = allDatasets.filter(
-        (
-          dataset: Dataset & {
-            collections?: { id: string; name: string; code: string }[];
+      // For custom collections, the data is already filtered by the API
+      if (isCustomCollection) {
+        setFilteredDatasets(allDatasets);
+      } else {
+        // For regular collections, filter by collection ID
+        const filtered = allDatasets.filter(
+          (
+            dataset: Dataset & {
+              collections?: { id: string; name: string; code: string }[];
+            }
+          ) => {
+            return dataset.collections?.some(
+              (col) => col.id === selectedCollection
+            );
           }
-        ) => {
-          return dataset.collections?.some(
-            (col) => col.id === selectedCollection
-          );
-        }
-      );
-      setFilteredDatasets(filtered);
+        );
+        setFilteredDatasets(filtered);
+      }
     } else {
       setFilteredDatasets(allDatasets);
     }
-  }, [selectedCollection, allDatasets]);
+  }, [selectedCollection, allDatasets, isCustomCollection]);
 
   const handleSearchTermChange = useCallback((value: string) => {
     setPendingSearchTerm(value);
@@ -284,6 +618,34 @@ export default function DashboardClient() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Debug: Log Browse props
+  useEffect(() => {
+    console.log("Browse props:", {
+      favoriteDatasetIds,
+      favoritesCollectionId,
+      hasOnAddToFavorites: !!handleAddToFavorites,
+    });
+  }, [favoriteDatasetIds, favoritesCollectionId, handleAddToFavorites]);
+
+  // Debug: Log session info
+  useEffect(() => {
+    console.log("Session info:", {
+      hasSession: !!session,
+      hasAccessToken: !!session?.accessToken,
+      tokenLength: session?.accessToken?.length,
+    });
+  }, [session]);
+
+  // Fetch favorites collection when session is available
+  useEffect(() => {
+    if (session?.accessToken) {
+      console.log("Session available, fetching favorites collection...");
+      fetchFavoritesCollection();
+    } else {
+      console.log("No session or access token available");
+    }
+  }, [session, fetchFavoritesCollection]);
 
   // On non-chat pages, ensure chat selection is cleared in localStorage
   useEffect(() => {
@@ -339,11 +701,19 @@ export default function DashboardClient() {
           title={selectedCollection ? `Browse Datasets` : "Browse All Datasets"}
           subtitle={
             selectedCollection
-              ? `Filtered by collection`
+              ? isCustomCollection
+                ? `Custom collection: ${selectedCollection}`
+                : `Filtered by collection`
               : "List of all datasets"
           }
           showSelectAll={true}
           showAddButton={true}
+          showSearchAndFilters={!selectedCollection}
+          favoriteDatasetIds={favoriteDatasetIds}
+          favoritesCollectionId={favoritesCollectionId}
+          hasFetchedFavorites={hasFetchedFavorites}
+          onAddToFavorites={handleAddToFavorites}
+          onRemoveFromFavorites={handleRemoveFromFavorites}
           searchTerm={pendingSearchTerm}
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}

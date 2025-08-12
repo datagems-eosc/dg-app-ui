@@ -83,6 +83,77 @@ class ApiClient {
   }
 
   /**
+   * User Collections API methods
+   */
+  async queryUserCollections(payload: any, token: string): Promise<any> {
+    const response = await this.makeRequest(
+      "/user/collection/me/query",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch user collections");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Add dataset to user collection
+   */
+  async addDatasetToUserCollection(
+    collectionId: string,
+    datasetId: string,
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest(
+      `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
+      {
+        method: "POST",
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to add dataset to collection");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Remove dataset from user collection
+   */
+  async removeDatasetFromUserCollection(
+    collectionId: string,
+    datasetId: string,
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest(
+      `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
+      {
+        method: "DELETE",
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.error || "Failed to remove dataset from collection"
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
    * Search API methods
    */
   async searchInDataExplore(payload: any, token: string): Promise<any> {
