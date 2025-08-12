@@ -25,7 +25,7 @@ interface Message {
   timestamp: Date | string;
   sources?: number;
   relatedDatasetIds?: string[];
-  datasetIds?: string[]; // Add this field for user messages with datasetIds
+  datasetIds?: string[];
   tableData?: {
     columns: Array<{ columnNumber: number; name: string }>;
     rows: Array<{
@@ -40,7 +40,7 @@ interface ChatProps {
   datasets: Dataset[];
   onSelectedDatasetsChange: (selected: string[]) => void;
   conversationId?: string | null;
-  initialMessages?: ConversationMessage[];
+  initialMessages?: ConversationMessage[]; // undefined while loading, [] when loaded and empty
   showConversationName?: boolean;
   hideCollectionActions?: boolean;
 }
@@ -71,8 +71,9 @@ export default function Chat({
 }: ChatProps) {
   // Store only Message[] for UI rendering
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isMessagesLoading, setIsMessagesLoading] = useState(true);
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isGeneratingAIResponse, setIsGeneratingAIResponse] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Collections state
   const { collections, apiCollections, isLoadingApiCollections } =
@@ -85,10 +86,6 @@ export default function Chat({
   const [showDatasetChangeWarning, setShowDatasetChangeWarning] =
     useState(false);
 
-  // Add flag to track manual collection selection
-  const [isManualCollectionSelection, setIsManualCollectionSelection] =
-    useState(false);
-
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
 
@@ -98,203 +95,221 @@ export default function Chat({
   >([]);
   const [isSourcesPanel, setIsSourcesPanel] = useState(false);
 
+  // Reset initialization state when conversationId changes
+  useEffect(() => {
+    if (conversationId) {
+      setHasInitialized(false);
+      setIsMessagesLoading(true);
+    }
+  }, [conversationId]);
+
   // Sync messages with initialMessages when it changes
   useEffect(() => {
-    setIsMessagesLoading(true);
-    if (initialMessages && initialMessages.length > 0) {
-      const parsed = initialMessages
-        .filter((msg) => msg.kind >= 0 && msg.kind <= 3)
-        .map((msg, idx) => {
-          let content = "";
-          let tableData: Message["tableData"] | undefined;
+    // Set loading to true when we have a conversationId but haven't initialized yet
+    if (conversationId && !hasInitialized) {
+      setIsMessagesLoading(true);
+    }
 
-          if (msg.kind === 0) {
-            // User message (old format) - extract query
-            const payload = msg.data?.payload;
-            if (
-              payload &&
-              typeof payload === "object" &&
-              !Array.isArray(payload) &&
-              "query" in payload
-            ) {
-              content = (payload as { query?: string }).query || "";
-            } else {
-              content = "";
-            }
-          } else if (msg.kind === 1) {
-            // AI message (old format) - extract dataset names from payload array
-            let relatedDatasetIds: string[] = [];
-            if (Array.isArray(msg.data?.payload)) {
-              const names = (msg.data.payload as DatasetPayloadItem[])
-                .map((item) => item.dataset?.name)
-                .filter((n: string | undefined) => typeof n === "string");
+    // If initialMessages is provided (even as an empty array), treat loading as complete
+    if (Array.isArray(initialMessages)) {
+      if (initialMessages.length > 0) {
+        const parsed = initialMessages
+          .filter((msg) => msg.kind >= 0 && msg.kind <= 3)
+          .map((msg, idx) => {
+            let content = "";
+            let tableData: Message["tableData"] | undefined;
 
-              // Extract dataset IDs
-              relatedDatasetIds = (msg.data.payload as DatasetPayloadItem[])
-                .map((item) => item.dataset?.id)
-                .filter(
-                  (id: string | undefined) => typeof id === "string"
-                ) as string[];
+            if (msg.kind === 0) {
+              // User message (old format) - extract query
+              const payload = msg.data?.payload;
+              if (
+                payload &&
+                typeof payload === "object" &&
+                !Array.isArray(payload) &&
+                "query" in payload
+              ) {
+                content = (payload as { query?: string }).query || "";
+              } else {
+                content = "";
+              }
+            } else if (msg.kind === 1) {
+              // AI message (old format) - extract dataset names from payload array
+              let relatedDatasetIds: string[] = [];
+              if (Array.isArray(msg.data?.payload)) {
+                const names = (msg.data.payload as DatasetPayloadItem[])
+                  .map((item) => item.dataset?.name)
+                  .filter((n: string | undefined) => typeof n === "string");
 
-              if (names.length > 0) {
-                if (names.length === 1) {
-                  content = `Given your question, the following dataset might be useful: ${names[0]}`;
+                // Extract dataset IDs
+                relatedDatasetIds = (msg.data.payload as DatasetPayloadItem[])
+                  .map((item) => item.dataset?.id)
+                  .filter(
+                    (id: string | undefined) => typeof id === "string"
+                  ) as string[];
+
+                if (names.length > 0) {
+                  if (names.length === 1) {
+                    content = `Given your question, the following dataset might be useful: ${names[0]}`;
+                  } else {
+                    content = `Given your question, the following datasets might be useful:\n\n${names
+                      .map((n) => `• ${n}`)
+                      .join("\n")}`;
+                  }
                 } else {
-                  content = `Given your question, the following datasets might be useful:\n\n${names
-                    .map((n) => `• ${n}`)
-                    .join("\n")}`;
+                  content =
+                    "Given your question, some datasets might be useful, but no names were found.";
                 }
               } else {
                 content =
-                  "Given your question, some datasets might be useful, but no names were found.";
+                  typeof msg.data?.payload === "string"
+                    ? msg.data.payload
+                    : JSON.stringify(msg.data?.payload);
               }
-            } else {
-              content =
-                typeof msg.data?.payload === "string"
-                  ? msg.data.payload
-                  : JSON.stringify(msg.data?.payload);
-            }
 
-            return {
-              id: msg.id || getMessageId(msg, idx),
-              type: "ai" as MessageType,
-              content,
-              timestamp: msg.createdAt,
-              tableData,
-              sources: relatedDatasetIds.length,
-              relatedDatasetIds,
-            };
-          } else if (msg.kind === 2) {
-            // User message (new format) - extract question and datasetIds
-            const payload = msg.data?.payload;
-            let userDatasetIds: string[] = [];
-            if (
-              payload &&
-              typeof payload === "object" &&
-              !Array.isArray(payload) &&
-              "question" in payload
-            ) {
-              content = (payload as { question?: string }).question || "";
-              // Extract datasetIds if present
+              return {
+                id: msg.id || getMessageId(msg, idx),
+                type: "ai" as MessageType,
+                content,
+                timestamp: msg.createdAt,
+                tableData,
+                sources: relatedDatasetIds.length,
+                relatedDatasetIds,
+              };
+            } else if (msg.kind === 2) {
+              // User message (new format) - extract question and datasetIds
+              const payload = msg.data?.payload;
+              let userDatasetIds: string[] = [];
               if (
-                "datasetIds" in payload &&
-                Array.isArray(payload.datasetIds)
+                payload &&
+                typeof payload === "object" &&
+                !Array.isArray(payload) &&
+                "question" in payload
               ) {
-                userDatasetIds = (payload.datasetIds as unknown[]).filter(
-                  (id) => typeof id === "string"
-                ) as string[];
-              }
-            } else {
-              content = "";
-            }
-
-            return {
-              id: msg.id || getMessageId(msg, idx),
-              type: "user" as MessageType,
-              content,
-              timestamp: msg.createdAt,
-              datasetIds: userDatasetIds,
-            };
-          } else if (msg.kind === 3) {
-            // AI message (new format) - extract table data if available
-            const payload = msg.data?.payload;
-            const relatedDatasetIds: string[] = [];
-            let latitude: number | undefined;
-            let longitude: number | undefined;
-
-            // Extract coordinates from InputParams if available
-            if (
-              payload &&
-              typeof payload === "object" &&
-              !Array.isArray(payload) &&
-              "data" in payload &&
-              payload.data &&
-              typeof payload.data === "object" &&
-              "InputParams" in payload.data &&
-              Array.isArray(payload.data.InputParams)
-            ) {
-              const inputParams = payload.data.InputParams;
-              // Look for the first InputParam with lat/lon values
-              for (const param of inputParams) {
+                content = (payload as { question?: string }).question || "";
+                // Extract datasetIds if present
                 if (
-                  param &&
-                  typeof param === "object" &&
-                  "lat" in param &&
-                  "lon" in param
+                  "datasetIds" in payload &&
+                  Array.isArray(payload.datasetIds)
                 ) {
-                  latitude =
-                    typeof param.lat === "number" ? param.lat : undefined;
-                  longitude =
-                    typeof param.lon === "number" ? param.lon : undefined;
-                  break;
+                  userDatasetIds = (payload.datasetIds as unknown[]).filter(
+                    (id) => typeof id === "string"
+                  ) as string[];
+                }
+              } else {
+                content = "";
+              }
+
+              return {
+                id: msg.id || getMessageId(msg, idx),
+                type: "user" as MessageType,
+                content,
+                timestamp: msg.createdAt,
+                datasetIds: userDatasetIds,
+              };
+            } else if (msg.kind === 3) {
+              // AI message (new format) - extract table data if available
+              const payload = msg.data?.payload;
+              const relatedDatasetIds: string[] = [];
+              let latitude: number | undefined;
+              let longitude: number | undefined;
+
+              // Extract coordinates from InputParams if available
+              if (
+                payload &&
+                typeof payload === "object" &&
+                !Array.isArray(payload) &&
+                "data" in payload &&
+                payload.data &&
+                typeof payload.data === "object" &&
+                "InputParams" in payload.data &&
+                Array.isArray(payload.data.InputParams)
+              ) {
+                const inputParams = payload.data.InputParams;
+                // Look for the first InputParam with lat/lon values
+                for (const param of inputParams) {
+                  if (
+                    param &&
+                    typeof param === "object" &&
+                    "lat" in param &&
+                    "lon" in param
+                  ) {
+                    latitude =
+                      typeof param.lat === "number" ? param.lat : undefined;
+                    longitude =
+                      typeof param.lon === "number" ? param.lon : undefined;
+                    break;
+                  }
                 }
               }
-            }
 
-            if (
-              payload &&
-              typeof payload === "object" &&
-              !Array.isArray(payload) &&
-              "entries" in payload
-            ) {
-              const entries = (
-                payload as { entries?: Array<{ result?: { table?: any } }> }
-              ).entries;
-              if (entries && entries.length > 0 && entries[0].result?.table) {
-                tableData = entries[0].result.table;
-                // Create a simple text representation of the table data
-                const table = entries[0].result.table;
-                if (table.columns && table.rows) {
-                  const columnNames = table.columns
-                    .map((col) => col.name)
-                    .join(" | ");
-                  const rowData = table.rows
-                    .map((row) =>
-                      row.cells.map((cell) => cell.value).join(" | ")
-                    )
-                    .join("\n");
-                  content = `Table Results:\n`;
+              if (
+                payload &&
+                typeof payload === "object" &&
+                !Array.isArray(payload) &&
+                "entries" in payload
+              ) {
+                const entries = (
+                  payload as { entries?: Array<{ result?: { table?: any } }> }
+                ).entries;
+                if (entries && entries.length > 0 && entries[0].result?.table) {
+                  tableData = entries[0].result.table;
+                  // Create a simple text representation of the table data
+                  const table = entries[0].result.table;
+                  if (table.columns && table.rows) {
+                    const columnNames = table.columns
+                      .map((col) => col.name)
+                      .join(" | ");
+                    const rowData = table.rows
+                      .map((row) =>
+                        row.cells.map((cell) => cell.value).join(" | ")
+                      )
+                      .join("\n");
+                    content = `Table Results:\n`;
+                  } else {
+                    content = "Data analysis completed.";
+                  }
                 } else {
-                  content = "Data analysis completed.";
+                  content = "Analysis completed.";
                 }
               } else {
                 content = "Analysis completed.";
               }
-            } else {
-              content = "Analysis completed.";
+
+              return {
+                id: msg.id || getMessageId(msg, idx),
+                type: "ai" as MessageType,
+                content,
+                timestamp: msg.createdAt,
+                tableData,
+                sources: relatedDatasetIds.length,
+                relatedDatasetIds,
+                latitude,
+                longitude,
+              };
             }
 
             return {
               id: msg.id || getMessageId(msg, idx),
-              type: "ai" as MessageType,
+              type: ((msg as any)?.kind % 2 === 0
+                ? "user"
+                : "ai") as MessageType,
               content,
-              timestamp: msg.createdAt,
+              timestamp: (msg as any)?.createdAt,
               tableData,
-              sources: relatedDatasetIds.length,
-              relatedDatasetIds,
-              latitude,
-              longitude,
             };
-          }
-
-          // Handle user messages (kind 0 and 2)
-          return {
-            id: msg.id || getMessageId(msg, idx),
-            type: (msg.kind % 2 === 0 ? "user" : "ai") as MessageType,
-            content,
-            timestamp: msg.createdAt,
-            tableData,
-          };
-        });
-      setMessages(parsed);
-    } else {
-      setMessages([]);
+          });
+        setMessages(parsed);
+      } else {
+        // No messages were returned; clear any existing messages
+        setMessages([]);
+      }
+      setIsMessagesLoading(false);
+      setHasInitialized(true);
     }
-    setIsMessagesLoading(false);
-  }, [initialMessages]);
+  }, [initialMessages, conversationId, hasInitialized]);
   const [inputValue, setInputValue] = useState("");
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
-  const [showSelectedPanel, setShowSelectedPanel] = useState(false);
+  const [showSelectedPanel, setShowSelectedPanel] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDatasetNamesMap, setSelectedDatasetNamesMap] = useState<
@@ -303,21 +318,8 @@ export default function Chat({
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Automatically show sidebar when datasets are selected (only for new conversations)
-  useEffect(() => {
-    // Don't auto-show panel when opening an existing conversation
-    if (!conversationId) {
-      setShowSelectedPanel(selectedDatasets.length > 0);
-    }
-  }, [selectedDatasets.length, conversationId]);
-
   // Add effect to detect collection from messages and set it automatically
   useEffect(() => {
-    // Skip automatic collection detection during manual collection selection
-    if (isManualCollectionSelection) {
-      return;
-    }
-
     if (
       messages.length > 0 &&
       apiCollections.length > 0 &&
@@ -402,14 +404,7 @@ export default function Chat({
         }
       }
     }
-  }, [
-    messages,
-    apiCollections,
-    collections,
-    selectedDatasets,
-    conversationId,
-    isManualCollectionSelection,
-  ]);
+  }, [messages, apiCollections, collections, selectedDatasets, conversationId]);
 
   // Add effect to detect dataset changes and show warning
   useEffect(() => {
@@ -497,11 +492,15 @@ export default function Chat({
 
       // If no datasets are selected, call persist first, then cross-dataset search API
       if (selectedDatasets.length === 0) {
+        // Show generating response state while making API calls
+        setIsGeneratingAIResponse(true);
+
         // next-auth session type does not include accessToken by default
         const token = (session as any)?.accessToken;
         if (!token) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
+          setIsGeneratingAIResponse(false);
           return;
         }
         // Step 1: Create conversation
@@ -517,6 +516,7 @@ export default function Chat({
         if (!conversationIdFromPersist) {
           setError("No conversation ID returned from server.");
           setIsLoading(false);
+          setIsGeneratingAIResponse(false);
           return;
         }
         // Step 2: Call cross-dataset search with conversationId
@@ -572,15 +572,20 @@ export default function Chat({
         } else {
           setError("No datasets found for your query.");
           setIsLoading(false);
+          setIsGeneratingAIResponse(false);
           return;
         }
       } else if (!conversationId) {
         // If datasets are selected and not already in a conversation, create a new conversation and then search
+        // Show generating response state while making API calls
+        setIsGeneratingAIResponse(true);
+
         // next-auth session type does not include accessToken by default
         const token = (session as any)?.accessToken;
         if (!token) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
+          setIsGeneratingAIResponse(false);
           return;
         }
         // Step 1: Create conversation with datasets
@@ -599,6 +604,7 @@ export default function Chat({
         if (!conversationIdFromPersist) {
           setError("No conversation ID returned from server.");
           setIsLoading(false);
+          setIsGeneratingAIResponse(false);
           return;
         }
         // Step 2: Call in-data-explore search with conversationId
@@ -650,6 +656,7 @@ export default function Chat({
         } else {
           setError("No datasets found for your query.");
           setIsLoading(false);
+          setIsGeneratingAIResponse(false);
           return;
         }
       }
@@ -662,6 +669,10 @@ export default function Chat({
         timestamp: new Date(),
       };
       setMessages([userMessage]);
+
+      // Show skeleton while generating AI response
+      setIsGeneratingAIResponse(true);
+
       // If datasets were found via cross-dataset search, show a system message
       if (foundDatasetNames && foundDatasetNames.length > 0) {
         // Also update the names map for sidebar fallback
@@ -685,8 +696,6 @@ export default function Chat({
           },
         ]);
       }
-      // Show skeleton while generating AI response
-      setIsGeneratingAIResponse(true);
 
       // Simulate AI response after a short delay
       setTimeout(() => {
@@ -705,9 +714,9 @@ export default function Chat({
       if (err instanceof Error) message = err.message;
       else if (typeof err === "string") message = err;
       setError(message);
+      setIsGeneratingAIResponse(false);
     } finally {
       setIsLoading(false);
-      setIsGeneratingAIResponse(false);
     }
   };
 
@@ -774,9 +783,6 @@ export default function Chat({
   };
 
   const handleSelectCollection = (collection: Collection | null) => {
-    // Set flag to prevent automatic collection detection during manual selection
-    setIsManualCollectionSelection(true);
-
     // Store current datasets as previous before changing them
     setPreviousDatasets([...selectedDatasets]);
 
@@ -821,27 +827,15 @@ export default function Chat({
           "chatSelectedDatasets",
           JSON.stringify(datasetIds)
         );
-
-        // Show the selected datasets panel
-        setShowSelectedPanel(true);
-        setIsSourcesPanel(false);
-        setIsPanelAnimating(true);
-        setTimeout(() => setIsPanelAnimating(false), 50);
       }
     } else {
       // If no collection is selected, clear selected datasets
       onSelectedDatasetsChange([]);
       setSelectedDatasetNamesMap({});
-      setShowSelectedPanel(false);
 
       // Clear localStorage
       localStorage.removeItem("chatSelectedDatasets");
     }
-
-    // Reset the manual selection flag after a brief delay to allow the dataset change to process
-    setTimeout(() => {
-      setIsManualCollectionSelection(false);
-    }, 100);
   };
 
   const handleClosePanel = () => {
@@ -876,19 +870,11 @@ export default function Chat({
   // Scroll-to-bottom removed as per request
 
   return (
-    <div
-      className={`flex relative h-full transition-all duration-500 ease-in-out ${messages.length > 0 ? "h-full" : ""}`}
-    >
+    <div className="flex relative h-[120vh] overflow-hidden">
       {/* Main Chat Area */}
-      <div
-        className="flex-1 flex flex-col transition-all duration-500 ease-in-out min-h-0 max-w-4xl mx-auto"
-        style={{
-          position: "relative",
-          ...(messages.length > 0 ? { minHeight: "100vh" } : {}),
-        }}
-      >
+      <div className="flex-1 flex flex-col relative mx-auto">
         {/* Header */}
-        <div className="bg-white flex-shrink-0 py-6">
+        <div className="bg-white flex-shrink-0 py-6 z-10">
           {/* Conversation Name (first user message) */}
           {showConversationName &&
             conversationId &&
@@ -900,7 +886,7 @@ export default function Chat({
                 </h2>
               </div>
             )}
-          <div className="flex items-center justify-end p-4 h-10">
+          <div className="flex items-center justify-end max-w-4xl mx-auto p-4 h-10">
             {/* Sidebar toggle button */}
             {!showSelectedPanel && (
               <Button
@@ -915,83 +901,59 @@ export default function Chat({
             )}
           </div>
 
-          {messages.length === 0 && <ChatInitialView />}
+          {!conversationId &&
+            messages.length === 0 &&
+            !isMessagesLoading &&
+            !isGeneratingAIResponse && <ChatInitialView />}
         </div>
 
-        {/* Messages Area - Only show when messages exist or loading */}
-        {(messages.length > 0 || isMessagesLoading) && (
-          <>
-            <div
-              className="flex-1 bg-white overflow-y-auto min-h-0"
-              ref={messagesEndRef}
-            >
+        {/* Messages Area - Scrollable with padding for fixed input */}
+        <div className="flex-1 overflow-y-auto bg-white pb-40">
+          {(messages.length > 0 ||
+            isMessagesLoading ||
+            isGeneratingAIResponse) && (
+            <div className="min-h-0" ref={messagesEndRef}>
               <ChatMessages
                 messages={messages}
                 isMessagesLoading={isMessagesLoading}
                 isGeneratingAIResponse={isGeneratingAIResponse}
                 messagesEndRef={messagesEndRef}
                 onSourcesClick={handleSourcesClick}
+                showSelectedPanel={showSelectedPanel}
               />
             </div>
+          )}
+        </div>
+        {/* Chat Input - Fixed at bottom, outside dashboard layout */}
+        <div
+          className={`fixed bottom-0 left-80 right-0 px-6 py-4 bg-white z-20 ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
+        >
+          <div className="w-full max-w-4xl mx-auto">
+            {/* Dataset Change Warning */}
+            <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
-            {/* Chat Input - Positioned right after messages */}
-            <div className="px-6 py-4 bg-white">
-              <div className="w-full max-w-4xl mx-auto">
-                {/* Dataset Change Warning */}
-                <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
-
-                <ChatInput
-                  value={inputValue}
-                  onChange={setInputValue}
-                  onSend={handleSendMessage}
-                  onAddDatasets={() => setShowAddDatasetsModal(true)}
-                  collections={{
-                    apiCollections,
-                    collections,
-                    isLoading: isLoadingApiCollections,
-                  }}
-                  selectedCollection={selectedCollection}
-                  onSelectCollection={handleSelectCollection}
-                  isLoading={isLoading}
-                  disabled={isInputDisabled}
-                  error={error}
-                  showAddDatasetsModal={showAddDatasetsModal}
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Chat Input - Show when no messages exist */}
-        {messages.length === 0 && !isMessagesLoading && (
-          <div className="relative px-6 py-4">
-            <div className="w-full max-w-4xl mx-auto">
-              {/* Dataset Change Warning */}
-              <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
-
-              <ChatInput
-                value={inputValue}
-                onChange={setInputValue}
-                onSend={handleSendMessage}
-                onAddDatasets={() => setShowAddDatasetsModal(true)}
-                collections={{
-                  apiCollections,
-                  collections,
-                  isLoading: isLoadingApiCollections,
-                }}
-                selectedCollection={selectedCollection}
-                onSelectCollection={handleSelectCollection}
-                isLoading={isLoading}
-                disabled={isInputDisabled}
-                error={error}
-                showAddDatasetsModal={showAddDatasetsModal}
-              />
-            </div>
+            <ChatInput
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSendMessage}
+              onAddDatasets={() => setShowAddDatasetsModal(true)}
+              collections={{
+                apiCollections,
+                collections,
+                isLoading: isLoadingApiCollections,
+              }}
+              selectedCollection={selectedCollection}
+              onSelectCollection={handleSelectCollection}
+              isLoading={isLoading}
+              disabled={isInputDisabled}
+              error={error}
+              showAddDatasetsModal={showAddDatasetsModal}
+            />
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Selected Datasets Panel - Show automatically when datasets selected */}
+      {/* Selected Datasets Panel - Under header, fixed on right side */}
       {(showSelectedPanel || isPanelClosing) && (
         <div className="h-full z-40 w-full sm:w-[380px]">
           <div

@@ -14,12 +14,19 @@ interface AIMessageProps {
 export function AIMessage({ message, onSourcesClick }: AIMessageProps) {
   return (
     <div className="space-y-4 shadow-s1 border border-slate-350 rounded-2xl px-6 pt-4 pb-6">
-      <AIMessageHeader sources={message.sources} onSourcesClick={onSourcesClick} />
+      <AIMessageHeader
+        sources={message.sources}
+        onSourcesClick={onSourcesClick}
+      />
 
-      <TemperatureMap 
-        content={message.content} 
+      <TemperatureMap
+        content={message.content}
         latitude={message.latitude}
         longitude={message.longitude}
+        tableData={message.tableData}
+        baseRadius={90}
+        heatOpacity={0.55}
+        requireTableData={false}
       />
 
       <AIMessageContent

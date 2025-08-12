@@ -2,7 +2,8 @@
 
 import React from "react";
 import { Message } from "@/types/chat";
-import { LoadingSpinner } from "./LoadingSpinner";
+import { ChatMessagesSkeleton } from "./ChatMessagesSkeleton";
+import { AIResponseSkeleton } from "./AIResponseSkeleton";
 import MessageItem from "./MessageItem";
 
 interface ChatMessagesProps {
@@ -11,6 +12,7 @@ interface ChatMessagesProps {
   isGeneratingAIResponse?: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement>;
   onSourcesClick?: (messageId: string) => void;
+  showSelectedPanel?: boolean;
 }
 
 export default function ChatMessages({
@@ -19,9 +21,10 @@ export default function ChatMessages({
   isGeneratingAIResponse = false,
   messagesEndRef,
   onSourcesClick,
+  showSelectedPanel,
 }: ChatMessagesProps) {
   if (isMessagesLoading) {
-    return <LoadingSpinner />;
+    return <ChatMessagesSkeleton />;
   }
 
   // Sort messages by timestamp using ISO 8601 string comparison for microsecond precision
@@ -37,7 +40,11 @@ export default function ChatMessages({
   });
 
   return (
-    <div className="p-6 space-y-7.5">
+    <div
+      className={`p-6 3xl:px-0 3xl:py-6 ${
+        !showSelectedPanel && "px-0 py-0"
+      } space-y-7.5 max-w-4xl mx-auto`}
+    >
       {sortedMessages.map((message) => (
         <MessageItem
           key={message.id}
@@ -45,6 +52,10 @@ export default function ChatMessages({
           onSourcesClick={onSourcesClick}
         />
       ))}
+
+      {/* AI Response Skeleton */}
+      {isGeneratingAIResponse && <AIResponseSkeleton />}
+
       {/* Dummy div for scroll-to-bottom */}
       <div ref={messagesEndRef} />
     </div>

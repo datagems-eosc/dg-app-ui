@@ -19,7 +19,7 @@ export function Button({
 
   const variants = {
     primary:
-      "bg-sky-950 !text-white hover:bg-sky-900 active:bg-sky-950 hover:shadow-s1 focus-visible:ring-blue-500 disabled:bg-slate-350 disabled:shadow-none !disabled:text-slate-450 [&>svg]:stroke-white hover:[&>svg]:stroke-white active:[&>svg]:stroke-white disabled:[&>svg]:stroke-white/50",
+      "bg-sky-950 border border-sky-950 !text-white hover:bg-sky-900 active:bg-sky-950 hover:shadow-s1 focus-visible:ring-blue-500 disabled:bg-slate-350 disabled:border-slate-350 disabled:shadow-none !disabled:text-slate-450 [&>svg]:stroke-white hover:[&>svg]:stroke-white active:[&>svg]:stroke-white disabled:[&>svg]:stroke-white/50",
     outline:
       "border border-slate-350 bg-white !text-gray-750 hover:bg-slate-75 hover:!text-gray-750 active:bg-slate-100 focus-visible:!text-gray-750 disabled:!text-slate-350 disabled:border-slate-200 disabled:shadow-none [&>svg]:stroke-gray-750 hover:[&>svg]:stroke-gray-750 active:[&>svg]:stroke-gray-750 disabled:[&>svg]:stroke-slate-350",
     secondary:

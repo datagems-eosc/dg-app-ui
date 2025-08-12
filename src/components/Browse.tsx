@@ -162,6 +162,10 @@ export default function Browse({
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
+  const [isPanelAnimating, setIsPanelAnimating] = useState(false);
+  const [isPanelClosing, setIsPanelClosing] = useState(false);
+  const [isDetailsPanelAnimating, setIsDetailsPanelAnimating] = useState(false);
+  const [isDetailsPanelClosing, setIsDetailsPanelClosing] = useState(false);
 
   // Use controlled or local state for selected datasets
   const currentSelectedDatasets = onSelectedDatasetsChange
@@ -212,6 +216,43 @@ export default function Browse({
         setFieldsOfScienceCategories([]);
       });
   }, [session]);
+
+  // Animate SelectedDatasetsPanel on open
+  useEffect(() => {
+    if (showSelectedPanel) {
+      setIsPanelAnimating(true);
+      const t = setTimeout(() => setIsPanelAnimating(false), 50);
+      return () => clearTimeout(t);
+    }
+  }, [showSelectedPanel]);
+
+  const handleOpenPanel = () => {
+    if (!showSelectedPanel) {
+      setIsPanelAnimating(true);
+      if (onReopenSidebar) {
+        onReopenSidebar();
+      }
+      setTimeout(() => setIsPanelAnimating(false), 50);
+    }
+  };
+
+  const handleClosePanel = () => {
+    setIsPanelClosing(true);
+    setTimeout(() => {
+      if (onCloseSidebar) {
+        onCloseSidebar();
+      }
+      setIsPanelClosing(false);
+    }, 500);
+  };
+
+  const handleCloseDetailsPanel = () => {
+    setIsDetailsPanelClosing(true);
+    setTimeout(() => {
+      setSelectedDataset(null);
+      setIsDetailsPanelClosing(false);
+    }, 500);
+  };
 
   // Only apply access filter on frontend, all other filtering is done on backend
   const filteredDatasets = useMemo(() => {
@@ -272,22 +313,48 @@ export default function Browse({
 
   const handleDatasetClick = (dataset: DatasetWithCollections) => {
     if (!isModal) {
+      // Close selected datasets panel when opening details panel
+      if (showSelectedPanel && onCloseSidebar) {
+        onCloseSidebar();
+      }
+
       // Toggle the details panel - close if same dataset clicked, open if different
       if (selectedDataset?.id === dataset.id) {
-        setSelectedDataset(null);
+        handleCloseDetailsPanel();
       } else {
-        setSelectedDataset(dataset);
+        // If a different dataset is already selected, close it first then open the new one
+        if (selectedDataset) {
+          handleCloseDetailsPanel();
+          // Wait for close animation to complete, then open new panel
+          setTimeout(() => {
+            setSelectedDataset(dataset);
+            setIsDetailsPanelAnimating(true);
+            setTimeout(() => setIsDetailsPanelAnimating(false), 50);
+          }, 500);
+        } else {
+          // No dataset selected, open directly with animation
+          setSelectedDataset(dataset);
+          setIsDetailsPanelAnimating(true);
+          setTimeout(() => setIsDetailsPanelAnimating(false), 50);
+        }
       }
     }
   };
 
   const closeDetailsPanel = () => {
-    setSelectedDataset(null);
+    handleCloseDetailsPanel();
   };
 
   const handleDatasetSelect = (datasetId: string, isSelected: boolean) => {
+    // Close details panel when selecting datasets
+    if (selectedDataset) {
+      handleCloseDetailsPanel();
+    }
+
     if (isSelected) {
       setCurrentSelectedDatasets([...currentSelectedDatasets, datasetId]);
+      // Open the SelectedDatasetsPanel when a dataset is selected
+      handleOpenPanel();
     } else {
       setCurrentSelectedDatasets(
         currentSelectedDatasets.filter((id) => id !== datasetId)
@@ -432,89 +499,62 @@ export default function Browse({
     return tags;
   }, [filters, propFilters, fieldsOfScienceCategories]);
 
+  const isPanelVisible = showSelectedPanel || isPanelClosing;
+  const isDetailsPanelVisible = selectedDataset || isDetailsPanelClosing;
+
   return (
-    <div className="max-w-7xl mx-auto relative">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-H2-32-semibold text-gray-750">{title}</h1>
-          <p className="text-body-16-regular text-gray-650 mt-1">{subtitle}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Chat button - show when datasets selected and sidebar is closed */}
-          {currentSelectedDatasets.length > 0 &&
-            !showSelectedPanel &&
-            onChatWithData && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={onChatWithData}
-                className="flex items-center gap-2"
-              >
-                <MessageSquare className="w-4 h-4 text-icon" />
-                Chat with your data
-              </Button>
-            )}
+    <div className="flex relative min-h-screen">
+      <div
+        className={`flex-1 transition-all duration-500 ease-out ${
+          isPanelVisible
+            ? "sm:pr-[388px]"
+            : isDetailsPanelVisible
+              ? "sm:pr-[384px]"
+              : ""
+        }`}
+      >
+        <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out px-6 py-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-H2-32-semibold text-gray-750">{title}</h1>
+              <p className="text-body-16-regular text-gray-650 mt-1">
+                {subtitle}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Custom Action Buttons */}
+              {customActionButtons &&
+                customActionButtons.map((button, index) => (
+                  <Button
+                    key={index}
+                    variant={button.variant || "outline"}
+                    size="sm"
+                    onClick={button.onClick}
+                    disabled={button.disabled}
+                    className={`flex items-center gap-2 ${button.className || ""}`}
+                  >
+                    {button.icon && (
+                      <button.icon className="w-4 h-4 text-icon" />
+                    )}
+                    {button.label}
+                  </Button>
+                ))}
 
-          {/* Custom Action Buttons */}
-          {customActionButtons &&
-            customActionButtons.map((button, index) => (
+              {/* Selected datasets counter - clickable when sidebar is closed */}
               <Button
-                key={index}
-                variant={button.variant || "outline"}
-                size="sm"
-                onClick={button.onClick}
-                disabled={button.disabled}
-                className={`flex items-center gap-2 ${button.className || ""}`}
-              >
-                {button.icon && <button.icon className="w-4 h-4 text-icon" />}
-                {button.label}
-              </Button>
-            ))}
-
-          {/* Selected datasets counter - clickable when sidebar is closed */}
-          {currentSelectedDatasets.length > 0 && (
-            <>
-              <div
-                className={`flex items-center gap-2 px-4 py-2 rounded-3xl shadow-s1 transition-colors ${
-                  !showSelectedPanel && onReopenSidebar
-                    ? "bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200"
-                    : "border border-slate-350"
-                }`}
-                onClick={
-                  !showSelectedPanel && onReopenSidebar
-                    ? onReopenSidebar
-                    : undefined
-                }
-                title={
-                  !showSelectedPanel ? "Click to show selected datasets" : ""
-                }
+                variant="outline"
+                onClick={() => {
+                  if (showSelectedPanel) handleClosePanel();
+                  else handleOpenPanel();
+                }}
+                className="flex items-center gap-2 transition-all duration-200"
               >
                 <Database className="w-4 h-4 text-icon" />
-                <span className="text-body-14-medium text-gray-750">
-                  {currentSelectedDatasets.length} Selected
-                </span>
-              </div>
-              {/* Ask with selected dataset button */}
-              {!showSelectedPanel && (
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    localStorage.setItem(
-                      "chatSelectedDatasets",
-                      JSON.stringify(currentSelectedDatasets)
-                    );
-                    router.push(getNavigationUrl("/chat"));
-                  }}
-                >
-                  Ask with selected dataset
-                </Button>
-              )}
-            </>
-          )}
-
-          {/* Select All/Deselect All button - always stays in the same position */}
-          {showSelectAll && (
+                {currentSelectedDatasets.length} Selected
+              </Button>
+            </div>
+            {/* {showSelectAll && (
             <Button
               variant="outline"
               size="sm"
@@ -523,185 +563,191 @@ export default function Browse({
             >
               {allFilteredSelected ? "Deselect All" : "Select All"}
             </Button>
+          )} */}
+          </div>
+
+          {/* Search and filters */}
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-icon w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search datasets..."
+                value={searchTerm}
+                onChange={(e) =>
+                  onSearchTermChange && onSearchTermChange(e.target.value)
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && onSearchTermSubmit)
+                    onSearchTermSubmit();
+                }}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+              />
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700 rounded px-4 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                onClick={() => onSearchTermSubmit && onSearchTermSubmit()}
+                tabIndex={0}
+                aria-label="Search"
+              >
+                Search
+              </button>
+            </div>
+            <Button
+              variant="outline"
+              className="flex items-center gap-1.5"
+              onClick={() => setShowFilterModal(true)}
+            >
+              <Filter className="w-4 h-4 text-icon" />
+              Filter
+            </Button>
+            <Switch
+              leftIcon={ListChecks}
+              rightIcon={Grid2X2}
+              value={viewMode === "grid" ? "right" : "left"}
+              onChange={(value) =>
+                setViewMode(value === "right" ? "grid" : "list")
+              }
+            />
+          </div>
+
+          {/* Active Filters */}
+          {activeFilterTags.length > 0 && (
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              {activeFilterTags.map((tag) => (
+                <Chip
+                  key={tag.key}
+                  color="grey"
+                  onRemove={() => removeFilter(tag.key as keyof FilterState)}
+                >
+                  <span className="text-descriptions-12-medium text-gray-650">
+                    {tag.label}:
+                  </span>
+                  <span className="text-descriptions-12-medium ml-1 text-gray-750">
+                    {tag.value}
+                  </span>
+                </Chip>
+              ))}
+            </div>
+          )}
+
+          {/* Results count and sorting */}
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-body-14-regular text-gray-650">
+              Showing:{" "}
+              <span className="text-body-14-medium text-gray-750">
+                {filteredDatasets.length}{" "}
+                {filteredDatasets.length === 1 ? "result" : "results"}
+              </span>
+            </p>
+            <SortingDropdown
+              value={sortBy}
+              onChange={(value) => onSortByChange && onSortByChange(value)}
+              options={SORTING_OPTIONS}
+              triggerLabel="Sorting"
+            />
+          </div>
+
+          {/* Main content area - do not shift cards when modal is open */}
+          <div className="transition-all duration-300">
+            {/* Loader or error */}
+            {isLoading ? (
+              <div className="flex justify-center items-center h-96">
+                <svg
+                  className="animate-spin h-8 w-8 text-blue-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  ></path>
+                </svg>
+              </div>
+            ) : error ? (
+              <div className="text-red-600 text-center py-8">{error}</div>
+            ) : (
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                    : "grid grid-cols-1 gap-4"
+                }
+              >
+                {filteredDatasets.map((dataset) => (
+                  <DatasetCard
+                    key={dataset.id}
+                    dataset={dataset}
+                    onClick={() => handleDatasetClick(dataset)}
+                    isSelected={selectedDataset?.id === dataset.id}
+                    isMultiSelected={currentSelectedDatasets.includes(
+                      dataset.id
+                    )}
+                    onSelect={(isSelected) =>
+                      handleDatasetSelect(dataset.id, isSelected)
+                    }
+                    showSelectButton={true}
+                    isEditMode={isEditMode}
+                    onRemove={
+                      isEditMode && onRemoveDataset
+                        ? () => onRemoveDataset(dataset.id)
+                        : undefined
+                    }
+                    viewMode={viewMode}
+                    onAddToCollection={() => handleAddToCollection(dataset)}
+                    showAddButton={showAddButton}
+                  />
+                ))}
+              </div>
+            )}
+            {/* Empty state */}
+            {!isLoading && !error && filteredDatasets.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <Search className="w-12 h-12 mx-auto text-icon" />
+                </div>
+                <h3 className="text-H6-18-semibold text-gray-900 mb-2">
+                  No datasets found
+                </h3>
+                <p className="text-body-16-regular text-gray-600">
+                  Try adjusting your search or filter criteria
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Dataset Details Panel */}
+          {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (
+            <div className="fixed right-0 bottom-0 top-14 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
+              <div
+                className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
+                  isDetailsPanelAnimating
+                    ? "translate-x-full"
+                    : isDetailsPanelClosing
+                      ? "translate-x-full"
+                      : "translate-x-0"
+                }`}
+              >
+                <DatasetDetailsPanel
+                  dataset={selectedDataset}
+                  onClose={closeDetailsPanel}
+                  isVisible={!!selectedDataset}
+                />
+              </div>
+            </div>
           )}
         </div>
       </div>
-
-      {/* Search and filters */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-icon w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Search datasets..."
-            value={searchTerm}
-            onChange={(e) =>
-              onSearchTermChange && onSearchTermChange(e.target.value)
-            }
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && onSearchTermSubmit) onSearchTermSubmit();
-            }}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
-          />
-          <button
-            type="button"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700 rounded px-4 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            onClick={() => onSearchTermSubmit && onSearchTermSubmit()}
-            tabIndex={0}
-            aria-label="Search"
-          >
-            Search
-          </button>
-        </div>
-        <Button
-          variant="outline"
-          className="flex items-center gap-1.5"
-          onClick={() => setShowFilterModal(true)}
-        >
-          <Filter className="w-4 h-4 text-icon" />
-          Filter
-        </Button>
-        <Switch
-          leftIcon={ListChecks}
-          rightIcon={Grid2X2}
-          value={viewMode === "grid" ? "right" : "left"}
-          onChange={(value) => setViewMode(value === "right" ? "grid" : "list")}
-        />
-      </div>
-
-      {/* Active Filters */}
-      {activeFilterTags.length > 0 && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          {activeFilterTags.map((tag) => (
-            <Chip
-              key={tag.key}
-              color="grey"
-              onRemove={() => removeFilter(tag.key as keyof FilterState)}
-            >
-              <span className="text-descriptions-12-medium text-gray-650">
-                {tag.label}:
-              </span>
-              <span className="text-descriptions-12-medium ml-1 text-gray-750">
-                {tag.value}
-              </span>
-            </Chip>
-          ))}
-        </div>
-      )}
-
-      {/* Results count and sorting */}
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-body-14-regular text-gray-650">
-          Showing:{" "}
-          <span className="text-body-14-medium text-gray-750">
-            {filteredDatasets.length}{" "}
-            {filteredDatasets.length === 1 ? "result" : "results"}
-          </span>
-        </p>
-        <SortingDropdown
-          value={sortBy}
-          onChange={(value) => onSortByChange && onSortByChange(value)}
-          options={SORTING_OPTIONS}
-          triggerLabel="Sorting"
-        />
-      </div>
-
-      {/* Main content area - do not shift cards when modal is open */}
-      <div className="transition-all duration-300">
-        {/* Loader or error */}
-        {isLoading ? (
-          <div className="flex justify-center items-center h-96">
-            <svg
-              className="animate-spin h-8 w-8 text-blue-600"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-              ></path>
-            </svg>
-          </div>
-        ) : error ? (
-          <div className="text-red-600 text-center py-8">{error}</div>
-        ) : (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-                : "grid grid-cols-1 gap-4"
-            }
-          >
-            {filteredDatasets.map((dataset) => (
-              <DatasetCard
-                key={dataset.id}
-                dataset={dataset}
-                onClick={() => handleDatasetClick(dataset)}
-                isSelected={selectedDataset?.id === dataset.id}
-                isMultiSelected={currentSelectedDatasets.includes(dataset.id)}
-                onSelect={(isSelected) =>
-                  handleDatasetSelect(dataset.id, isSelected)
-                }
-                showSelectButton={true}
-                isEditMode={isEditMode}
-                onRemove={
-                  isEditMode && onRemoveDataset
-                    ? () => onRemoveDataset(dataset.id)
-                    : undefined
-                }
-                viewMode={viewMode}
-                onAddToCollection={() => handleAddToCollection(dataset)}
-                showAddButton={showAddButton}
-              />
-            ))}
-          </div>
-        )}
-        {/* Empty state */}
-        {!isLoading && !error && filteredDatasets.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <Search className="w-12 h-12 mx-auto text-icon" />
-            </div>
-            <h3 className="text-H6-18-semibold text-gray-900 mb-2">
-              No datasets found
-            </h3>
-            <p className="text-body-16-regular text-gray-600">
-              Try adjusting your search or filter criteria
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Dataset Details Panel */}
-      {!isModal && (
-        <DatasetDetailsPanel
-          dataset={selectedDataset}
-          onClose={closeDetailsPanel}
-          isVisible={!!selectedDataset}
-        />
-      )}
-
-      {/* Selected Datasets Panel */}
-      {showSelectedPanel && (
-        <SelectedDatasetsPanel
-          selectedDatasetIds={currentSelectedDatasets}
-          datasets={datasets}
-          onRemoveDataset={(id: string) => handleDatasetSelect(id, false)}
-          onChatWithData={onChatWithData}
-          onClose={onCloseSidebar}
-          onAddToCollection={onAddToCollection}
-        />
-      )}
 
       {/* Filter Modal */}
       <FilterModal
@@ -720,6 +766,30 @@ export default function Browse({
         }}
         dataset={datasetToAdd}
       />
+      {/* Selected Datasets Panel (right side, under header similar to Chat) */}
+      {(showSelectedPanel || isPanelClosing) && (
+        <div className="fixed right-0 bottom-0 top-14 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
+          <div
+            className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
+              isPanelAnimating
+                ? "translate-x-full"
+                : isPanelClosing
+                  ? "translate-x-full"
+                  : "translate-x-0"
+            }`}
+          >
+            <SelectedDatasetsPanel
+              selectedDatasetIds={currentSelectedDatasets}
+              datasets={datasets}
+              onRemoveDataset={(id: string) => handleDatasetSelect(id, false)}
+              onChatWithData={onChatWithData}
+              onClose={handleClosePanel}
+              onAddToCollection={onAddToCollection}
+              onDeselectAll={() => setCurrentSelectedDatasets([])}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

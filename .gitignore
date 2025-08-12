@@ -43,3 +43,5 @@ next-env.d.ts
 # memory shard (development documentation)
 memory-shard/
 ../memory-shard/
+
+.vscode

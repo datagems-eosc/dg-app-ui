@@ -121,19 +121,19 @@ export function mbToBytes(mb: number): number {
  * Format file size in human readable format
  */
 export function formatFileSize(bytes: number | string): string {
-  const size = typeof bytes === 'string' ? parseInt(bytes, 10) : bytes;
-  
-  if (isNaN(size)) return 'N/A';
-  
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const size = typeof bytes === "string" ? parseInt(bytes, 10) : bytes;
+
+  if (isNaN(size)) return "N/A";
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
   let unitIndex = 0;
   let fileSize = size;
-  
+
   while (fileSize >= 1024 && unitIndex < units.length - 1) {
     fileSize /= 1024;
     unitIndex++;
   }
-  
+
   return `${fileSize.toFixed(1)} ${units[unitIndex]}`;
 }
 
@@ -142,22 +142,22 @@ export function formatFileSize(bytes: number | string): string {
  * Handles formats like "42.6 MB", "1.2 GB", "500 KB", etc.
  */
 export function parseSizeString(sizeStr: string): number {
-  if (!sizeStr || sizeStr === 'N/A') return 0;
-  
+  if (!sizeStr || sizeStr === "N/A") return 0;
+
   const match = sizeStr.match(/^(\d+\.?\d*)\s*(B|KB|MB|GB|TB)?$/i);
   if (!match) return 0;
-  
+
   const value = parseFloat(match[1]);
-  const unit = (match[2] || 'B').toUpperCase();
-  
+  const unit = (match[2] || "B").toUpperCase();
+
   const multipliers = {
-    'B': 1,
-    'KB': 1024,
-    'MB': 1024 * 1024,
-    'GB': 1024 * 1024 * 1024,
-    'TB': 1024 * 1024 * 1024 * 1024
+    B: 1,
+    KB: 1024,
+    MB: 1024 * 1024,
+    GB: 1024 * 1024 * 1024,
+    TB: 1024 * 1024 * 1024 * 1024,
   };
-  
+
   return value * (multipliers[unit as keyof typeof multipliers] || 1);
 }
 
@@ -168,38 +168,40 @@ export function parseSizeString(sizeStr: string): number {
  */
 export function formatRelativeTime(date: string | Date): string {
   const now = new Date();
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
-  
+  const targetDate = typeof date === "string" ? new Date(date) : date;
+
   // Check if the date is valid
   if (isNaN(targetDate.getTime())) {
-    return 'Invalid date';
+    return "Invalid date";
   }
-  
-  const diffInSeconds = Math.floor((now.getTime() - targetDate.getTime()) / 1000);
-  
+
+  const diffInSeconds = Math.floor(
+    (now.getTime() - targetDate.getTime()) / 1000
+  );
+
   // Just now (less than 1 minute)
   if (diffInSeconds < 60) {
-    return 'Just now';
+    return "Just now";
   }
-  
+
   // Minutes
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) {
     return `${diffInMinutes} min ago`;
   }
-  
+
   // Hours
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) {
-    return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
+    return `${diffInHours} hour${diffInHours === 1 ? "" : "s"} ago`;
   }
-  
-  // Days (up to 3 days)
+
+  // Days (only show "1 day ago", for 2+ days show date)
   const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays <= 3) {
-    return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+  if (diffInDays === 1) {
+    return "1 day ago";
   }
-  
-  // After 3 days, return the original date format
+
+  // For 2+ days, return the original date format
   return targetDate.toLocaleString();
 }

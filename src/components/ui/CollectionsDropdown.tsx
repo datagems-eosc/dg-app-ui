@@ -140,7 +140,7 @@ export function CollectionsDropdown({
       </Button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 right-0 w-64 bg-white rounded-lg shadow-lg border border-slate-200 z-50 max-h-96 overflow-y-auto">
+        <div className="absolute bottom-full mb-2 right-0 w-64 bg-white rounded-lg shadow-lg border border-slate-200 z-50 max-h-96 overflow-y-auto">
           {/* No Collection Option */}
           <div className="p-1">
             <CollectionItem
