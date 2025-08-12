@@ -57,6 +57,7 @@ interface BrowseProps {
     className?: string;
   }>;
   showAddButton?: boolean; // NEW PROP
+  showSearchAndFilters?: boolean; // NEW PROP
   /**
    * The current value of the search input (controlled from parent).
    */
@@ -142,6 +143,7 @@ export default function Browse({
   onSortByChange,
   onApplyFilters,
   filters: propFilters,
+  showSearchAndFilters = true, // Default to true
 }: BrowseProps) {
   const router = useRouter();
   const { data: session } = useSession() as any;
@@ -567,52 +569,54 @@ export default function Browse({
           </div>
 
           {/* Search and filters */}
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-icon w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search datasets..."
-                value={searchTerm}
-                onChange={(e) =>
-                  onSearchTermChange && onSearchTermChange(e.target.value)
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && onSearchTermSubmit)
-                    onSearchTermSubmit();
-                }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
-              />
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700 rounded px-4 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                onClick={() => onSearchTermSubmit && onSearchTermSubmit()}
-                tabIndex={0}
-                aria-label="Search"
+          {showSearchAndFilters !== false && (
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-icon w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search datasets..."
+                  value={searchTerm}
+                  onChange={(e) =>
+                    onSearchTermChange && onSearchTermChange(e.target.value)
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && onSearchTermSubmit)
+                      onSearchTermSubmit();
+                  }}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700 rounded px-4 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  onClick={() => onSearchTermSubmit && onSearchTermSubmit()}
+                  tabIndex={0}
+                  aria-label="Search"
+                >
+                  Search
+                </button>
+              </div>
+              <Button
+                variant="outline"
+                className="flex items-center gap-1.5"
+                onClick={() => setShowFilterModal(true)}
               >
-                Search
-              </button>
+                <Filter className="w-4 h-4 text-icon" />
+                Filter
+              </Button>
+              <Switch
+                leftIcon={ListChecks}
+                rightIcon={Grid2X2}
+                value={viewMode === "grid" ? "right" : "left"}
+                onChange={(value) =>
+                  setViewMode(value === "right" ? "grid" : "list")
+                }
+              />
             </div>
-            <Button
-              variant="outline"
-              className="flex items-center gap-1.5"
-              onClick={() => setShowFilterModal(true)}
-            >
-              <Filter className="w-4 h-4 text-icon" />
-              Filter
-            </Button>
-            <Switch
-              leftIcon={ListChecks}
-              rightIcon={Grid2X2}
-              value={viewMode === "grid" ? "right" : "left"}
-              onChange={(value) =>
-                setViewMode(value === "right" ? "grid" : "list")
-              }
-            />
-          </div>
+          )}
 
           {/* Active Filters */}
-          {activeFilterTags.length > 0 && (
+          {showSearchAndFilters !== false && activeFilterTags.length > 0 && (
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               {activeFilterTags.map((tag) => (
                 <Chip
@@ -632,21 +636,23 @@ export default function Browse({
           )}
 
           {/* Results count and sorting */}
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-body-14-regular text-gray-650">
-              Showing:{" "}
-              <span className="text-body-14-medium text-gray-750">
-                {filteredDatasets.length}{" "}
-                {filteredDatasets.length === 1 ? "result" : "results"}
-              </span>
-            </p>
-            <SortingDropdown
-              value={sortBy}
-              onChange={(value) => onSortByChange && onSortByChange(value)}
-              options={SORTING_OPTIONS}
-              triggerLabel="Sorting"
-            />
-          </div>
+          {showSearchAndFilters !== false && (
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-body-14-regular text-gray-650">
+                Showing:{" "}
+                <span className="text-body-14-medium text-gray-750">
+                  {filteredDatasets.length}{" "}
+                  {filteredDatasets.length === 1 ? "result" : "results"}
+                </span>
+              </p>
+              <SortingDropdown
+                value={sortBy}
+                onChange={(value) => onSortByChange && onSortByChange(value)}
+                options={SORTING_OPTIONS}
+                triggerLabel="Sorting"
+              />
+            </div>
+          )}
 
           {/* Main content area - do not shift cards when modal is open */}
           <div className="transition-all duration-300">

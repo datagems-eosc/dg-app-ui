@@ -51,8 +51,13 @@ const getCollectionIcon = (code: string) => {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { collections, apiCollections, isLoadingApiCollections } =
-    useCollections();
+  const {
+    collections,
+    apiCollections,
+    extraCollections,
+    isLoadingApiCollections,
+    isLoadingExtraCollections,
+  } = useCollections();
   const { data: session } = useSession();
 
   // Extract conversation ID from pathname if we're on a chat page
@@ -155,6 +160,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 COLLECTIONS
               </h3>
               <nav className="space-y-1">
+                {/* Extra Collections - displayed at the top */}
+                {isLoadingExtraCollections ? (
+                  <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">
+                    <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+                    Loading extra collections...
+                  </div>
+                ) : (
+                  extraCollections.map((collection) => (
+                    <Link
+                      key={collection.id}
+                      href={createUrl(
+                        `/dashboard?collection=${collection.id}&isCustom=true`
+                      )}
+                      className="flex items-center px-3 py-2 text-body-16-medium text-gray-700 rounded-md hover:bg-gray-100"
+                      title={collection.name}
+                    >
+                      <span className="w-4 h-4 mr-3 text-descriptions-12-regular">
+                        ⭐
+                      </span>
+                      <span className="truncate">{collection.name}</span>
+                    </Link>
+                  ))
+                )}
+
                 {/* Default Collections */}
                 {isLoadingApiCollections ? (
                   <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">

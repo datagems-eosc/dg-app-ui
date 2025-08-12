@@ -47,6 +47,30 @@ const API_PAYLOAD = {
   },
 };
 
+const USER_COLLECTION_API_PAYLOAD = {
+  project: {
+    fields: [
+      "id",
+      "name",
+      "user.id",
+      "user.name",
+      "userDatasetCollections.id",
+      "userDatasetCollections.dataset.Id",
+      "userDatasetCollections.dataset.name",
+    ],
+  },
+  page: {
+    Offset: 0,
+    Size: 100,
+  },
+  Order: {
+    Items: ["-createdAt"],
+  },
+  Metadata: {
+    CountAll: true,
+  },
+};
+
 type Collection = { id: string; name: string; code: string };
 function mapApiDatasetToDataset(api: unknown): Dataset & {
   collections?: Collection[];
@@ -122,6 +146,62 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
   };
 }
 
+function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
+  if (typeof userCollection !== "object" || userCollection === null) {
+    return [];
+  }
+
+  const obj = userCollection as Record<string, unknown>;
+  const userDatasetCollections = Array.isArray(obj.userDatasetCollections)
+    ? obj.userDatasetCollections
+    : [];
+
+  return userDatasetCollections.map((item: unknown) => {
+    if (typeof item !== "object" || item === null) {
+      return {
+        id: "",
+        title: "Untitled",
+        category: "Math",
+        access: "Restricted",
+        description: "",
+        size: "N/A",
+        lastUpdated: "2024-01-01",
+        tags: [],
+        collections: [],
+      };
+    }
+
+    const itemObj = item as Record<string, unknown>;
+    const dataset = itemObj.dataset as Record<string, unknown> | undefined;
+
+    if (!dataset) {
+      return {
+        id: "",
+        title: "Untitled",
+        category: "Math",
+        access: "Restricted",
+        description: "",
+        size: "N/A",
+        lastUpdated: "2024-01-01",
+        tags: [],
+        collections: [],
+      };
+    }
+
+    return {
+      id: String(dataset.id ?? ""),
+      title: String(dataset.name ?? "Untitled"),
+      category: "Math",
+      access: "Restricted",
+      description: "",
+      size: "N/A",
+      lastUpdated: "2024-01-01",
+      tags: [],
+      collections: [],
+    };
+  });
+}
+
 // next-auth session type does not include accessToken by default
 export default function DashboardClient() {
   const router = useRouter();
@@ -135,6 +215,7 @@ export default function DashboardClient() {
   const [pendingSearchTerm, setPendingSearchTerm] = useState(""); // input value
   const [sortBy, setSortBy] = useState("name-asc");
   const selectedCollection = searchParams.get("collection");
+  const isCustomCollection = searchParams.get("isCustom") === "true";
   const [filters, setFilters] = useState<FilterState>({
     access: "",
     creationYear: { start: "", end: "" },
@@ -166,6 +247,29 @@ export default function DashboardClient() {
           setIsLoading(false);
           return;
         }
+
+        // Check if we should fetch from user collection endpoint
+        if (selectedCollection && isCustomCollection) {
+          // Fetch from user collection endpoint
+          const payload = {
+            ...USER_COLLECTION_API_PAYLOAD,
+            ids: [selectedCollection],
+          };
+
+          const data = await apiClient.queryUserCollections(payload, token);
+          const items = Array.isArray(data.items) ? data.items : [];
+
+          if (items.length > 0) {
+            const datasets = mapUserCollectionToDatasets(items[0]);
+            setAllDatasets(datasets);
+          } else {
+            setAllDatasets([]);
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        // Regular dataset fetching logic
         let payload: any = { ...API_PAYLOAD };
 
         // Set order.items based on sortBy
@@ -242,27 +346,41 @@ export default function DashboardClient() {
       }
     };
     fetchDatasets();
-  }, [router, session, searchTerm, sortBy, filters]);
+  }, [
+    router,
+    session,
+    searchTerm,
+    sortBy,
+    filters,
+    selectedCollection,
+    isCustomCollection,
+  ]);
 
   // Filter datasets when selectedCollection changes (frontend filtering for collection)
   useEffect(() => {
     if (selectedCollection && allDatasets.length > 0) {
-      const filtered = allDatasets.filter(
-        (
-          dataset: Dataset & {
-            collections?: { id: string; name: string; code: string }[];
+      // For custom collections, the data is already filtered by the API
+      if (isCustomCollection) {
+        setFilteredDatasets(allDatasets);
+      } else {
+        // For regular collections, filter by collection ID
+        const filtered = allDatasets.filter(
+          (
+            dataset: Dataset & {
+              collections?: { id: string; name: string; code: string }[];
+            }
+          ) => {
+            return dataset.collections?.some(
+              (col) => col.id === selectedCollection
+            );
           }
-        ) => {
-          return dataset.collections?.some(
-            (col) => col.id === selectedCollection
-          );
-        }
-      );
-      setFilteredDatasets(filtered);
+        );
+        setFilteredDatasets(filtered);
+      }
     } else {
       setFilteredDatasets(allDatasets);
     }
-  }, [selectedCollection, allDatasets]);
+  }, [selectedCollection, allDatasets, isCustomCollection]);
 
   const handleSearchTermChange = useCallback((value: string) => {
     setPendingSearchTerm(value);
@@ -339,11 +457,14 @@ export default function DashboardClient() {
           title={selectedCollection ? `Browse Datasets` : "Browse All Datasets"}
           subtitle={
             selectedCollection
-              ? `Filtered by collection`
+              ? isCustomCollection
+                ? `Custom collection: ${selectedCollection}`
+                : `Filtered by collection`
               : "List of all datasets"
           }
           showSelectAll={true}
           showAddButton={true}
+          showSearchAndFilters={!selectedCollection}
           searchTerm={pendingSearchTerm}
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}

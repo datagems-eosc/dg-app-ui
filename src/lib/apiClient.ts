@@ -83,6 +83,27 @@ class ApiClient {
   }
 
   /**
+   * User Collections API methods
+   */
+  async queryUserCollections(payload: any, token: string): Promise<any> {
+    const response = await this.makeRequest(
+      "/user/collection/me/query",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch user collections");
+    }
+
+    return response.json();
+  }
+
+  /**
    * Search API methods
    */
   async searchInDataExplore(payload: any, token: string): Promise<any> {
