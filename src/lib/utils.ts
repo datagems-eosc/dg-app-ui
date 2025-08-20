@@ -205,3 +205,22 @@ export function formatRelativeTime(date: string | Date): string {
   // For 2+ days, return the original date format
   return targetDate.toLocaleString();
 }
+
+// Helper function to format date
+export function formatDate(dateString?: string): string {
+  if (!dateString) return "-";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "-";
+    return date.toISOString().split("T")[0]; // Returns YYYY-MM-DD format
+  } catch {
+    return "-";
+  }
+}
+
+// Helper function to get MIME type name
+export function getMimeTypeName(mimeType?: string): string {
+  if (!mimeType) return "-";
+  const parts = mimeType.split("/");
+  return parts.length > 1 ? parts[1] : parts[0];
+}

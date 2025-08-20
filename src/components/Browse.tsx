@@ -763,6 +763,11 @@ export default function Browse({
                   dataset={selectedDataset}
                   onClose={closeDetailsPanel}
                   isVisible={!!selectedDataset}
+                  onAddToCollection={
+                    selectedDataset
+                      ? () => handleAddToCollection(selectedDataset)
+                      : undefined
+                  }
                 />
               </div>
             </div>

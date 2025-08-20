@@ -1,14 +1,33 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import { Dataset } from "@/data/mockDatasets";
 import DataPreviewModal from "./DataPreviewModal";
+import { Chip } from "./ui/Chip";
+import {
+  CalendarPlus,
+  RefreshCcw,
+  X,
+  Plus,
+  Share,
+  PackagePlus,
+  Pencil,
+  Info,
+  FileCheck,
+  HardDrive,
+  MonitorCheck,
+  Eye,
+  LayoutList,
+} from "lucide-react";
+import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
+import MetadataItem from "./ui/datasets/MetadataItem";
+import { Button } from "./ui/Button";
 
 interface DatasetDetailsPanelProps {
   dataset: Dataset | null;
   onClose: () => void;
   isVisible: boolean;
+  onAddToCollection?: () => void;
 }
 
 interface Collection {
@@ -31,16 +50,83 @@ export default function DatasetDetailsPanel({
   dataset,
   onClose,
   isVisible,
+  onAddToCollection,
 }: DatasetDetailsPanelProps) {
-  useEffect(() => {
-    if (isVisible) {
-      const original = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = original;
-      };
+  const hasDatasetCollections = hasCollections(dataset);
+
+  // Calculate display category/collection name with proper processing
+  const displayCategory = (() => {
+    if (hasDatasetCollections && dataset.collections.length > 0) {
+      // Use first collection name and remove " Collection" suffix like DatasetCard
+      const firstCollection = dataset.collections[0];
+      return typeof firstCollection.name === "string"
+        ? firstCollection.name.replace(/ Collection$/i, "")
+        : firstCollection.name;
     }
-  }, [isVisible]);
+    // Fallback to category if no collections
+    return "category" in dataset && dataset.category ? dataset.category : "";
+  })();
+  const permissions =
+    "permissions" in dataset ? dataset.permissions : undefined;
+  const displayAccess =
+    "access" in dataset && dataset.access
+      ? dataset.access
+      : Array.isArray(permissions) && permissions.includes("browsedataset")
+        ? "Open Access"
+        : "Restricted";
+  const displayUpdated =
+    "lastUpdated" in dataset && dataset.lastUpdated ? dataset.lastUpdated : "";
+  const sourceUrl =
+    "url" in dataset && typeof dataset.url === "string"
+      ? dataset.url
+      : undefined;
+  const displaySize = "size" in dataset && dataset.size ? dataset.size : "";
+  const displayKeywords =
+    "keywords" in dataset && dataset.keywords
+      ? (dataset.keywords as string[])
+      : undefined;
+  const displayFieldsOfScience =
+    "fieldOfScience" in dataset && dataset.fieldOfScience
+      ? (dataset.fieldOfScience as string[])
+      : undefined;
+
+  const dateMetadataItems = [
+    {
+      icon: <CalendarPlus className="w-5 h-5" />,
+      label: "Added",
+      value:
+        formatDate(
+          "datePublished" in dataset &&
+            typeof dataset.datePublished === "string"
+            ? dataset.datePublished
+            : undefined
+        ) || "-",
+    },
+    {
+      icon: <RefreshCcw className="w-5 h-5" />,
+      label: "Last updated",
+      value: formatDate(displayUpdated) || "-",
+    },
+  ];
+
+  const dataPreviewMetadataItems = [
+    {
+      icon: <HardDrive className="w-5 h-5" />,
+      label: "File Size",
+      value: displaySize ? formatFileSize(displaySize) : "-",
+    },
+    {
+      icon: <FileCheck className="w-5 h-5" />,
+      label: "File Type",
+      value: (
+        getMimeTypeName(
+          "mimeType" in dataset && typeof dataset.mimeType === "string"
+            ? dataset.mimeType
+            : undefined
+        ) || "-"
+      ).toUpperCase(),
+    },
+  ];
 
   const [showPreview, setShowPreview] = useState(false);
 
@@ -50,120 +136,207 @@ export default function DatasetDetailsPanel({
 
   return (
     <>
-      <div className="h-full w-full bg-white border-l border-gray-200 shadow-lg z-40 overflow-y-auto">
+      <div className="h-full w-full bg-white border-l border-gray-200 shadow-lg flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-          <h2 className="text-H2-20-semibold text-gray-900">Dataset Details</h2>
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-5.25 flex items-center justify-between">
+          <h2 className="text-H6-18-semibold text-slate-850">
+            Dataset Details
+          </h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+            className="p-1 hover:bg-slate-75 rounded-sm transition-colors"
           >
             <X className="w-5 h-5 text-icon" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-6">
+        <div className="flex-1 overflow-y-auto space-y-4 py-4">
           {/* Title and Tags */}
-          <div>
-            <h3 className="text-H2-20-semibold text-gray-900 mb-3">
+          <div className="px-4">
+            <h3 className="text-H2-20-semibold text-slate-850 mb-4">
               {dataset.title}
             </h3>
-            <div className="flex items-center gap-2 mb-4">
-              {hasCollections(dataset) && dataset.collections.length > 0
-                ? dataset.collections.map((col) => (
-                    <span
-                      key={col.id || col.name}
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-descriptions-12-semibold bg-blue-100 text-blue-800"
-                    >
-                      {typeof col.name === "string"
-                        ? col.name.replace(/ Collection$/i, "")
-                        : col.name}
-                    </span>
-                  ))
-                : null}
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-descriptions-12-semibold ${
-                  dataset.access === "Open Access"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-orange-100 text-orange-800"
-                }`}
+            {(displayCategory || displayAccess) && (
+              <div className="flex items-center gap-1">
+                {displayCategory && (
+                  <Chip color="info" variant="outline" size="sm">
+                    {displayCategory}
+                  </Chip>
+                )}
+                {displayAccess && (
+                  <Chip
+                    color={
+                      displayAccess === "Open Access" ? "success" : "warning"
+                    }
+                    size="sm"
+                  >
+                    {displayAccess}
+                  </Chip>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Metadata grid - 2 rows, 2 columns */}
+          <div className="grid grid-cols-2 gap-4 mb-6 pt-3 px-4">
+            {dateMetadataItems.map((item, index) => (
+              <MetadataItem
+                key={index}
+                icon={item.icon}
+                label={item.label}
+                value={item.value}
+              />
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-4 px-4">
+            {sourceUrl ? (
+              <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 w-full justify-center"
+                >
+                  <Share className="w-4 h-4" />
+                  Source
+                </Button>
+              </a>
+            ) : (
+              <div />
+            )}
+            {onAddToCollection && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full flex items-center gap-2"
+                onClick={onAddToCollection}
               >
-                {dataset.access === "Open Access"
-                  ? "Open Access"
-                  : "Restricted"}
-              </span>
-            </div>
+                <PackagePlus className="w-4 h-4 text-icon" />
+                Add to collection
+              </Button>
+            )}
           </div>
 
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-4 text-descriptions-12-regular">
-            <div>
-              <p className="text-gray-500 mb-1">Published</p>
-              <p className="text-gray-900">-</p>
-            </div>
-          </div>
-
-          {/* Add to Collection */}
-          {/* Removed Add to collection button */}
+          {/* Divider */}
+          <div className="border-t border-slate-200" />
 
           {/* Description */}
-          <div>
-            <h4 className="text-body-16-semibold text-gray-900 mb-2">
-              Description
-            </h4>
-            <p className="text-descriptions-12-regular text-gray-600">
+          <div className="space-y-4 px-4">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-icon" />
+              <h4 className="text-body-14-medium text-slate-850">
+                Description
+              </h4>
+            </div>
+
+            <p className="text-body-14-regular text-gray-650">
               {dataset.description}
             </p>
           </div>
 
+          {/* Divider */}
+          <div className="border-t border-slate-200" />
+
           {/* Data Preview */}
-          <div>
-            <h4 className="text-body-16-semibold text-gray-900 mb-3">
-              Data preview
-            </h4>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-descriptions-12-regular">
-                <span className="text-gray-500">File Size</span>
-                <span className="text-gray-900">{dataset.size}</span>
-              </div>
-              <div className="flex items-center justify-between text-descriptions-12-regular">
-                <span className="text-gray-500">File Type</span>
-                <span className="text-gray-900">{dataset.mimeType || "-"}</span>
-              </div>
-              {/* Removed Show preview button */}
+          <div className="space-y-4 px-4">
+            <div className="flex items-center gap-2">
+              <MonitorCheck className="w-4 h-4 text-icon" />
+              <h4 className="text-body-14-medium text-slate-850">
+                Data preview
+              </h4>
             </div>
+            <div className="grid grid-cols-2 gap-4 py-3">
+              {dataPreviewMetadataItems.map((item, index) => (
+                <MetadataItem
+                  key={index}
+                  icon={item.icon}
+                  label={item.label}
+                  value={item.value}
+                />
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 w-full justify-center mt-4"
+              onClick={() => setShowPreview(true)}
+            >
+              <Eye className="w-4 h-4" />
+              Show preview
+            </Button>
           </div>
+
+          {/* Divider */}
+          <div className="border-t border-slate-200" />
 
           {/* Metadata */}
-          <div>
-            <h4 className="text-body-16-semibold text-gray-900 mb-2">
-              Metadata
-            </h4>
-            <div className="text-descriptions-12-regular text-gray-600">
-              <p>Comprehensive dataset information available</p>
+          <div className="space-y-4 px-4">
+            <div className="flex items-center gap-2">
+              <LayoutList className="w-4 h-4 text-icon" />
+              <h4 className="text-body-14-medium text-slate-850">Metadata</h4>
             </div>
           </div>
 
+          {/* Divider */}
+          <div className="border-t border-slate-200 mx-4" />
+
           {/* License */}
-          <div>
-            <h4 className="text-body-16-semibold text-gray-900 mb-2">
-              License
-            </h4>
-            <p className="text-descriptions-12-regular text-gray-600">
+          <div className="flex items-center gap-2 justify-between px-4">
+            <h4 className="text-body-14-medium text-slate-850">License</h4>
+            <p className="text-body-14-regular text-gray-650">
               {dataset.license || "-"}
             </p>
           </div>
 
-          {/* Field of Science */}
-          <div>
-            <h4 className="text-body-16-semibold text-gray-900 mb-2">
-              Field of Science
+          {/* Divider */}
+          <div className="border-t border-slate-200 mx-4" />
+
+          {/* Keywords */}
+          <div className="flex items-center gap-4 justify-between px-4">
+            <h4 className="text-body-14-medium text-slate-850 shrink-0">
+              Keywords
             </h4>
-            <p className="text-descriptions-12-regular text-gray-600">
-              Computer and Information Sciences
+            <p className="text-body-14-regular text-gray-750 text-right">
+              {displayKeywords?.map((keyword, index) => {
+                return (
+                  <span
+                    key={keyword}
+                    className="text-gray-750 border-b border-gray-750 mr-1"
+                  >
+                    {keyword}
+                    {index < displayKeywords.length - 1 && ", "}
+                  </span>
+                );
+              }) || "-"}
             </p>
           </div>
+
+          {/* Divider */}
+          <div className="border-t border-slate-200 mx-4" />
+
+          {/* Field of Science */}
+          <div className="flex items-center gap-4 justify-between px-4">
+            <h4 className="text-body-14-medium text-slate-850 shrink-0">
+              Field of Science
+            </h4>
+            <p className="text-body-14-regular text-gray-650 text-right">
+              {displayFieldsOfScience?.map((field, index) => {
+                const firstLetter = field.slice(0, 1).toUpperCase();
+                const remaining = field.slice(1).toLowerCase();
+                return (
+                  <span key={field}>
+                    {firstLetter}
+                    {remaining}
+                    {index < displayFieldsOfScience.length - 1 && ", "}
+                  </span>
+                );
+              }) || "-"}
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-slate-200 mx-4" />
         </div>
       </div>
 
