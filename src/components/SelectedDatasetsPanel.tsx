@@ -1,7 +1,14 @@
 "use client";
 
 import React from "react";
-import { X, Plus, MessageSquare, Database, Bot, ArrowUp } from "lucide-react";
+import {
+  X,
+  MessageSquare,
+  Database,
+  Bot,
+  ArrowUp,
+  PackagePlus,
+} from "lucide-react";
 import { Button } from "./ui/Button";
 import { NoData } from "./ui/NoData";
 import SelectedDatasetItem from "./ui/datasets/SelectedDatasetItem";
@@ -85,7 +92,7 @@ export default function SelectedDatasetsPanel({
             className="w-full flex items-center gap-2 mb-4"
             onClick={onAddToCollection}
           >
-            <Plus className="w-4 h-4 text-icon" />
+            <PackagePlus className="w-4 h-4 text-icon" />
             Add to collection
           </Button>
         )}

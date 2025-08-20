@@ -10,6 +10,9 @@ export interface Dataset {
   license?: string;
   mimeType?: string;
   datePublished?: string;
+  fieldOfScience?: string[];
+  keywords?: string[];
+  url?: string;
 }
 
 export const mockDatasets: Dataset[] = [

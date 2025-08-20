@@ -14,7 +14,8 @@ import {
 import type { DatasetUnion } from "@/types/datasets";
 import { Chip } from "../Chip";
 import { Button } from "../Button";
-import { formatFileSize } from "@/lib/utils";
+import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
+import MetadataItem from "./MetadataItem";
 
 interface Collection {
   id?: string;
@@ -27,29 +28,6 @@ interface SelectedDatasetItemProps {
   onToggleExpanded: (datasetId: string) => void;
   onRemoveDataset: (id: string) => void;
   hideRemoveDataset?: boolean;
-}
-
-interface MetadataItemProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}
-
-// Metadata item component
-function MetadataItem({ icon, label, value }: MetadataItemProps) {
-  return (
-    <div className="flex items-center gap-3 px-4">
-      <div className="w-5 h-5 text-icon flex-shrink-0">{icon}</div>
-      <div className="min-w-0">
-        <div className="text-descriptions-12-medium tracking-1p text-slate-850">
-          {label}
-        </div>
-        <div className="text-descriptions-12-regular tracking-1p text-gray-650">
-          {value}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // Helper function to check if dataset has collections (matching DatasetCard logic)
@@ -72,25 +50,6 @@ function getDatasetName(dataset: DatasetUnion): string {
   return "Unknown Dataset";
 }
 
-// Helper function to get MIME type name
-function getMimeTypeName(mimeType?: string): string {
-  if (!mimeType) return "-";
-  const parts = mimeType.split("/");
-  return parts.length > 1 ? parts[1] : parts[0];
-}
-
-// Helper function to format date
-function formatDate(dateString?: string): string {
-  if (!dateString) return "-";
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "-";
-    return date.toISOString().split("T")[0]; // Returns YYYY-MM-DD format
-  } catch {
-    return "-";
-  }
-}
-
 export default function SelectedDatasetItem({
   dataset,
   isExpanded,
@@ -106,10 +65,10 @@ export default function SelectedDatasetItem({
     "lastUpdated" in dataset && dataset.lastUpdated ? dataset.lastUpdated : "";
   const displayTags =
     "tags" in dataset && Array.isArray(dataset.tags) ? dataset.tags : [];
-  
+
   // Get collections using the same logic as DatasetCard
   const hasDatasetCollections = hasCollections(dataset);
-  
+
   // Calculate display category/collection name with proper processing
   const displayCategory = (() => {
     if (hasDatasetCollections && dataset.collections.length > 0) {
@@ -122,7 +81,7 @@ export default function SelectedDatasetItem({
     // Fallback to category if no collections
     return "category" in dataset && dataset.category ? dataset.category : "";
   })();
-  
+
   const permissions =
     "permissions" in dataset ? dataset.permissions : undefined;
   const displayAccess =
@@ -132,7 +91,6 @@ export default function SelectedDatasetItem({
         ? "Open Access"
         : "Restricted";
 
-  // Get URL for source button (you may need to adjust this based on your dataset structure)
   const sourceUrl =
     "url" in dataset && typeof dataset.url === "string"
       ? dataset.url

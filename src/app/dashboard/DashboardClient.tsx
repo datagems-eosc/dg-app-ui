@@ -24,7 +24,8 @@ const API_PAYLOAD = {
       "mimeType",
       "url",
       "version",
-      "fieldsOfScience",
+      "fieldOfScience",
+      "keywords",
       "size",
       "datePublished",
       "collections.id",
@@ -95,6 +96,7 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
       mimeType: undefined,
       fieldsOfScience: undefined,
       datePublished: undefined,
+      keywords: undefined,
     };
   }
   const obj = api as Record<string, unknown>;
@@ -116,12 +118,21 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
     : [];
 
   // Handle fieldsOfScience - could be string or array
-  let fieldsOfScience: string[] | undefined;
-  if (obj.fieldsOfScience) {
-    if (Array.isArray(obj.fieldsOfScience)) {
-      fieldsOfScience = obj.fieldsOfScience.map(String);
-    } else if (typeof obj.fieldsOfScience === "string") {
-      fieldsOfScience = [obj.fieldsOfScience];
+  let fieldOfScience: string[] | undefined;
+  if (obj.fieldOfScience) {
+    if (Array.isArray(obj.fieldOfScience)) {
+      fieldOfScience = obj.fieldOfScience.map(String);
+    } else if (typeof obj.fieldOfScience === "string") {
+      fieldOfScience = [obj.fieldOfScience];
+    }
+  }
+
+  let keywords: string[] | undefined;
+  if (obj.keywords) {
+    if (Array.isArray(obj.keywords)) {
+      keywords = obj.keywords.map(String);
+    } else if (typeof obj.keywords === "string") {
+      keywords = [obj.keywords];
     }
   }
 
@@ -141,8 +152,10 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
     collections,
     license: obj.license ? String(obj.license) : undefined,
     mimeType: obj.mimeType ? String(obj.mimeType) : undefined,
-    fieldsOfScience,
+    fieldOfScience,
     datePublished: obj.datePublished ? String(obj.datePublished) : undefined,
+    keywords,
+    url: obj.url ? String(obj.url) : undefined,
   };
 }
 
@@ -168,6 +181,8 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
         lastUpdated: "2024-01-01",
         tags: [],
         collections: [],
+        keywords: undefined,
+        fieldsOfScience: undefined,
       };
     }
 
@@ -185,6 +200,8 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
         lastUpdated: "2024-01-01",
         tags: [],
         collections: [],
+        keywords: undefined,
+        fieldsOfScience: undefined,
       };
     }
 
@@ -198,6 +215,8 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
       lastUpdated: "2024-01-01",
       tags: [],
       collections: [],
+      keywords: undefined,
+      fieldsOfScience: undefined,
     };
   });
 }
