@@ -12,6 +12,7 @@ import { convertToBackendFilters, FilterState } from "@/config/filterOptions";
 import { getNavigationUrl } from "@/lib/utils";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { apiClient } from "@/lib/apiClient";
+import type { ApiCollection } from "@/types/collection";
 
 const API_PAYLOAD = {
   project: {
@@ -252,7 +253,31 @@ export default function DashboardClient() {
   const [favoritesCollectionId, setFavoritesCollectionId] =
     useState<string>("");
   const [hasFetchedFavorites, setHasFetchedFavorites] = useState(false);
-  const { addCollection } = useCollections();
+  const { addCollection, apiCollections, extraCollections } = useCollections();
+
+  const collectionDisplayName = React.useMemo(() => {
+    if (!selectedCollection) return null;
+    const list: ApiCollection[] = isCustomCollection
+      ? extraCollections
+      : apiCollections;
+    const found = list.find(
+      (c: ApiCollection) => String(c.id) === String(selectedCollection)
+    );
+    return found && typeof found.name === "string"
+      ? String(found.name).replace(/ Collection$/i, "")
+      : null;
+  }, [
+    selectedCollection,
+    isCustomCollection,
+    apiCollections,
+    extraCollections,
+  ]);
+
+  const collectionTitle = React.useMemo(() => {
+    if (!selectedCollection) return null;
+    const base = collectionDisplayName || "Browse";
+    return /\bdatasets$/i.test(base) ? base : `${base} Datasets`;
+  }, [selectedCollection, collectionDisplayName]);
 
   /**
    * Fetch favorites collection to get dataset IDs for favorite state
@@ -717,7 +742,11 @@ export default function DashboardClient() {
       <div className="relative">
         <Browse
           datasets={filteredDatasets}
-          title={selectedCollection ? `Browse Datasets` : "Browse All Datasets"}
+          title={
+            selectedCollection
+              ? collectionTitle || "Browse Datasets"
+              : "All datasets"
+          }
           subtitle={
             selectedCollection
               ? isCustomCollection

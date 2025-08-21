@@ -86,16 +86,18 @@ export default function SelectedDatasetsPanel({
 
       {/* Selected Datasets List (scrollable area) */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {onAddToCollection && !hideAddToCollection && (
-          <Button
-            variant="outline"
-            className="w-full flex items-center gap-2 mb-4"
-            onClick={onAddToCollection}
-          >
-            <PackagePlus className="w-4 h-4 text-icon" />
-            Add to collection
-          </Button>
-        )}
+        {onAddToCollection &&
+          !hideAddToCollection &&
+          selectedDatasetIds.length > 0 && (
+            <Button
+              variant="outline"
+              className="w-full flex items-center gap-2 mb-4"
+              onClick={onAddToCollection}
+            >
+              <PackagePlus className="w-4 h-4 text-icon" />
+              Add to collection
+            </Button>
+          )}
         {selectedDatasets.length === 0 && missingDatasetIds.length === 0 ? (
           <NoData
             icon={Database}
@@ -138,21 +140,31 @@ export default function SelectedDatasetsPanel({
           <div className="flex flex-col gap-4">
             {onChatWithData && (
               <Button
+                disabled={selectedDatasetIds.length === 0}
                 variant="primary"
                 className="flex-1 flex items-center gap-2"
                 onClick={onChatWithData}
               >
-                <Bot className="w-4 h-4 !stroke-slate-450" />
+                <Bot
+                  className={`w-4 h-4 !stroke-icon ${
+                    selectedDatasetIds.length === 0 ? "!stroke-slate-350" : ""
+                  }`}
+                />
                 Chat with your data
               </Button>
             )}
-            {onDeselectAll && selectedDatasetIds.length > 0 && (
+            {onDeselectAll && (
               <Button
+                disabled={selectedDatasetIds.length === 0}
                 variant="outline"
                 className="flex-1"
                 onClick={onDeselectAll}
               >
-                <ArrowUp className="w-4 h-4 !stroke-icon transform -rotate-45 mr-1" />
+                <ArrowUp
+                  className={`w-4 h-4 !stroke-icon transform -rotate-45 mr-1 ${
+                    selectedDatasetIds.length === 0 ? "!stroke-slate-350" : ""
+                  }`}
+                />
                 Deselect All
               </Button>
             )}

@@ -727,6 +727,10 @@ export default function Browse({
                     onAddToFavorites={onAddToFavorites}
                     hasFetchedFavorites={hasFetchedFavorites}
                     onRemoveFromFavorites={onRemoveFromFavorites}
+                    hasSidePanelOpen={
+                      (!!selectedDataset && !isDetailsPanelClosing) ||
+                      (showSelectedPanel && !isPanelClosing)
+                    }
                   />
                 ))}
               </div>
