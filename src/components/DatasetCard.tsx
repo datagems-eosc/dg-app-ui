@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Star,
   X,
@@ -78,6 +78,7 @@ interface DatasetCardProps {
   onAddToFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
   hasFetchedFavorites?: boolean; // NEW PROP
   onRemoveFromFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
+  hasSidePanelOpen?: boolean; // NEW PROP to indicate if side panels are open
 }
 
 export default function DatasetCard({
@@ -97,6 +98,7 @@ export default function DatasetCard({
   onAddToFavorites, // NEW PROP
   hasFetchedFavorites = false, // NEW PROP
   onRemoveFromFavorites, // NEW PROP
+  hasSidePanelOpen = false, // NEW PROP to indicate if side panels are open
 }: DatasetCardProps) {
   const { toggleFavorite, isFavorite } = useDataset();
   const hookIsFavorite = isFavorite(dataset.id);
@@ -104,6 +106,19 @@ export default function DatasetCard({
     propIsFavorite !== undefined ? propIsFavorite : hookIsFavorite;
   const isListMode = viewMode === "list";
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
+  const [shouldStackFooter, setShouldStackFooter] = useState(false);
+
+  // Check if we should stack the footer (side panel open + small screen)
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isSmallScreen = window.innerWidth <= 1440;
+      setShouldStackFooter(hasSidePanelOpen && isSmallScreen);
+    };
+
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, [hasSidePanelOpen]);
 
   const handleStarClick = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click when starring
@@ -269,7 +284,13 @@ export default function DatasetCard({
         />
 
         {/* Footer with action buttons and metadata */}
-        <div className="flex items-center justify-between gap-2">
+        <div
+          className={
+            shouldStackFooter
+              ? "flex flex-col gap-2"
+              : "flex items-center justify-between gap-2"
+          }
+        >
           {/* Action buttons */}
           {!isEditMode && (
             <div className="flex items-center gap-2">
@@ -292,8 +313,14 @@ export default function DatasetCard({
           )}
 
           {/* Metadata */}
-          <div className="flex items-center justify-between text-descriptions-12-regular text-gray-500">
-            <div className="flex items-center gap-4">
+          <div
+            className={
+              shouldStackFooter
+                ? "flex items-center text-descriptions-12-regular text-gray-500 mt-2 justify-end"
+                : "flex items-center justify-between text-descriptions-12-regular text-gray-500"
+            }
+          >
+            <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
                 <FileCheck className="w-3 h-3 text-icon" />
                 <span className="text-descriptions-12-regular text-gray-650 tracking-1p uppercase">
