@@ -278,11 +278,8 @@ export default function DatasetDetailsPanel({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-slate-200 mx-4" />
-
           {/* License */}
-          <div className="flex items-center gap-2 justify-between px-4">
+          <div className="flex items-center gap-2 justify-between pt-2 px-4">
             <h4 className="text-body-14-medium text-slate-850">License</h4>
             <p className="text-body-14-regular text-gray-650">
               {dataset.license || "-"}
