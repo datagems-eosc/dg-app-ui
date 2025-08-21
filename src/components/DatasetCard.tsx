@@ -12,6 +12,7 @@ import {
 import { Dataset } from "@/data/mockDatasets";
 import { useDataset } from "@/contexts/DatasetContext";
 import { Button } from "./ui/Button";
+import FormattedText from "./ui/FormattedText";
 import { Chip } from "./ui/Chip";
 import { formatFileSize } from "@/lib/utils";
 
@@ -261,9 +262,11 @@ export default function DatasetCard({
         </div>
 
         {/* Description */}
-        <p className="text-body-14-regular text-gray-650 mb-4 line-clamp-2">
-          {dataset.description}
-        </p>
+        <FormattedText
+          as="p"
+          className="text-body-14-regular text-gray-650 mb-4 line-clamp-2 break-words"
+          text={dataset.description}
+        />
 
         {/* Footer with action buttons and metadata */}
         <div className="flex items-center justify-between gap-2">

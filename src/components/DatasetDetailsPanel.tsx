@@ -22,6 +22,7 @@ import {
 import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
 import MetadataItem from "./ui/datasets/MetadataItem";
 import { Button } from "./ui/Button";
+import FormattedText from "./ui/FormattedText";
 
 interface DatasetDetailsPanelProps {
   dataset: Dataset | null;
@@ -230,9 +231,11 @@ export default function DatasetDetailsPanel({
               </h4>
             </div>
 
-            <p className="text-body-14-regular text-gray-650">
-              {dataset.description}
-            </p>
+            <FormattedText
+              as="p"
+              className="text-body-14-regular text-gray-650 break-words"
+              text={dataset.description}
+            />
           </div>
 
           {/* Divider */}
