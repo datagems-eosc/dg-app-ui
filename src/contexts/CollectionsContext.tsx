@@ -114,13 +114,24 @@ export function CollectionsProvider({
           return;
         }
         const extraCollectionsPayload = {
-          project: { fields: ["id", "code", "name"] },
+          project: {
+            fields: [
+              "id",
+              "code",
+              "name",
+              "userDatasetCollections.id",
+              "userDatasetCollections.dataset.id",
+              "userDatasetCollections.dataset.code",
+              "userDatasetCollections.dataset.name",
+              "userDatasetCollections.dataset.datasetCount",
+            ],
+          },
           page: {
             Offset: 0,
             Size: 10,
           },
           Order: {
-            Items: ["-createdAt"],
+            Items: ["+createdAt"],
           },
           Metadata: {
             CountAll: true,
@@ -130,6 +141,7 @@ export function CollectionsProvider({
           extraCollectionsPayload,
           token
         );
+        console.log("Extra collections data initial", data);
         const items = Array.isArray(data.items) ? data.items : [];
         setExtraCollections(items);
       } catch (err: unknown) {
@@ -225,7 +237,18 @@ export function CollectionsProvider({
         return;
       }
       const extraCollectionsPayload = {
-        project: { fields: ["id", "code", "name"] },
+        project: {
+          fields: [
+            "id",
+            "code",
+            "name",
+            "userDatasetCollections.id",
+            "userDatasetCollections.dataset.id",
+            "userDatasetCollections.dataset.code",
+            "userDatasetCollections.dataset.name",
+            "userDatasetCollections.dataset.datasetCount",
+          ],
+        },
         page: {
           Offset: 0,
           Size: 10,
@@ -241,6 +264,7 @@ export function CollectionsProvider({
         extraCollectionsPayload,
         token
       );
+      console.log("Extra collections data", data);
       const items = Array.isArray(data.items) ? data.items : [];
       setExtraCollections(items);
     } catch (err: unknown) {

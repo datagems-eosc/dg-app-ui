@@ -168,21 +168,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     Loading extra collections...
                   </div>
                 ) : (
-                  extraCollections.map((collection) => (
-                    <Link
-                      key={collection.id}
-                      href={createUrl(
-                        `/dashboard?collection=${collection.id}&isCustom=true`
-                      )}
-                      className="flex items-center px-3 py-2 text-body-16-medium text-gray-700 rounded-md hover:bg-gray-100"
-                      title={collection.name}
-                    >
-                      <span className="w-4 h-4 mr-3 text-descriptions-12-regular">
-                        ⭐
-                      </span>
-                      <span className="truncate">{collection.name}</span>
-                    </Link>
-                  ))
+                  extraCollections
+                    .filter(
+                      (collection) =>
+                        collection.userDatasetCollections?.length > 0
+                    )
+                    .map((collection) => (
+                      <Link
+                        key={collection.id}
+                        href={createUrl(
+                          `/dashboard?collection=${collection.id}&isCustom=true`
+                        )}
+                        className="flex items-center px-3 py-2 text-body-16-medium text-gray-700 rounded-md hover:bg-gray-100"
+                        title={`${collection.userDatasetCollections?.length || 0} datasets`}
+                      >
+                        <span className="w-4 h-4 mr-3 text-descriptions-12-regular">
+                          ⭐
+                        </span>
+                        <span className="truncate">{collection.name}</span>
+                        <span className="ml-auto text-descriptions-12-regular text-gray-400">
+                          {collection.datasetCount ||
+                            collection.userDatasetCollections?.length ||
+                            0}
+                        </span>
+                      </Link>
+                    ))
                 )}
 
                 {/* Default Collections */}
