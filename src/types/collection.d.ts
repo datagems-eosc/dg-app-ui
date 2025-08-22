@@ -15,6 +15,7 @@ export interface ApiCollection {
   code?: string;
   name: string;
   datasets?: Array<{ id: string; code: string; name: string }>;
+  userDatasetCollections?: Array<{ id: string }>;
   datasetCount?: number;
   datasetIds?: string[];
   permissions?: string[];
@@ -32,4 +33,4 @@ export interface UserCollection {
 export interface SimpleCollection {
   id?: string;
   name: string;
-} 
+}

@@ -100,7 +100,11 @@ class ApiClient {
       throw new Error(errorData.error || "Failed to fetch user collections");
     }
 
-    return response.json();
+    const res = await response.json();
+
+    console.log("queryUserCollections req", payload, "res", res);
+
+    return res;
   }
 
   /**
