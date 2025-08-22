@@ -8,6 +8,11 @@ import {
   Database,
   ListChecks,
   Grid2X2,
+  MoreHorizontal,
+  ArrowRightLeft,
+  Edit3,
+  Tag,
+  Trash2,
 } from "lucide-react";
 import { Dataset } from "@/data/mockDatasets";
 type Collection = { id: string; name: string };
@@ -23,7 +28,8 @@ import {
   fetchFieldsOfScience,
   SORTING_OPTIONS,
 } from "../config/filterOptions";
-import AddToCollectionModal from "./AddToCollectionModal";
+import CreateCollectionModal from "./CreateCollectionModal";
+import DeleteCollectionModal from "./DeleteCollectionModal";
 import { Button } from "./ui/Button";
 import Switch from "./ui/Switch";
 import { Chip } from "./ui/Chip";
@@ -32,6 +38,7 @@ import { useRouter } from "next/navigation";
 import { HierarchicalCategory } from "./ui/HierarchicalDropdown";
 import { useSession } from "next-auth/react";
 import { getNavigationUrl } from "@/lib/utils";
+import { apiClient } from "@/lib/apiClient";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -94,8 +101,28 @@ interface BrowseProps {
   /**
    * Handler for when filters are applied in the FilterModal.
    */
-  onApplyFilters?: (filters: FilterState) => void;
+  onFiltersChange?: (filters: FilterState) => void;
+  /**
+   * The current filter state (controlled from parent).
+   */
   filters?: FilterState;
+  /**
+   * Whether this is a custom collection page (not browse all datasets).
+   */
+  isCustomCollection?: boolean;
+  /**
+   * The name of the current collection (used to determine if it's "Favorites").
+   */
+  collectionName?: string;
+  /**
+   * The ID of the current collection (used for delete operations).
+   */
+  collectionId?: string;
+  onApplyFilters?: (filters: FilterState) => void;
+  /**
+   * Handler for when the collection name is updated.
+   */
+  onCollectionNameUpdate?: (newName: string) => void;
 }
 
 const defaultFilters: FilterState = getDefaultFilters();
@@ -154,6 +181,10 @@ export default function Browse({
   onSortByChange,
   onApplyFilters,
   filters: propFilters,
+  isCustomCollection = false,
+  collectionName = "",
+  collectionId = "",
+  onCollectionNameUpdate,
 }: BrowseProps) {
   const router = useRouter();
   const { data: session } = useSession() as any;
@@ -167,10 +198,11 @@ export default function Browse({
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [isMounted, setIsMounted] = useState(false);
-  const [showAddToCollectionModal, setShowAddToCollectionModal] =
+  const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
-  const [datasetToAdd, setDatasetToAdd] =
-    useState<DatasetWithCollections | null>(null);
+  const [datasetsToAdd, setDatasetsToAdd] = useState<DatasetWithCollections[]>(
+    []
+  );
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
@@ -178,6 +210,13 @@ export default function Browse({
   const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [isDetailsPanelAnimating, setIsDetailsPanelAnimating] = useState(false);
   const [isDetailsPanelClosing, setIsDetailsPanelClosing] = useState(false);
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
+    useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState("");
 
   // Use controlled or local state for selected datasets
   const currentSelectedDatasets = onSelectedDatasetsChange
@@ -186,10 +225,88 @@ export default function Browse({
   const setCurrentSelectedDatasets =
     onSelectedDatasetsChange || setLocalSelectedDatasets;
 
+  // Handle delete collection
+  const handleDeleteCollection = async () => {
+    if (!isCustomCollection || !collectionName || !collectionId) return;
+
+    setIsDeleting(true);
+    try {
+      const token = (session as any)?.accessToken;
+      if (!token) {
+        throw new Error("No access token available");
+      }
+
+      // Delete the collection via API
+      await apiClient.deleteUserCollection(collectionId, token);
+
+      // Close the modal and redirect to dashboard
+      setShowDeleteModal(false);
+      router.push(getNavigationUrl("/dashboard"));
+    } catch (error) {
+      console.error("Failed to delete collection:", error);
+      alert("Failed to delete collection. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle start editing collection name
+  const handleStartEditName = () => {
+    setIsEditingName(true);
+    // Remove "Datasets" suffix if it exists
+    const nameWithoutDatasets = collectionName.replace(/\s+Datasets?$/, "");
+    setEditingName(nameWithoutDatasets);
+    setShowTitleActionsDropdown(false);
+  };
+
+  // Handle save collection name
+  const handleSaveName = async () => {
+    if (
+      !editingName.trim() ||
+      editingName.trim() === collectionName.replace(/\s+Datasets?$/, "")
+    ) {
+      setIsEditingName(false);
+      return;
+    }
+
+    try {
+      // TODO: Implement API call to update collection name
+      // For now, just update the local state
+      console.log("Saving new collection name:", editingName.trim());
+
+      // Call parent handler to update the collection name
+      if (onCollectionNameUpdate) {
+        onCollectionNameUpdate(editingName.trim());
+      }
+
+      // Close edit mode
+      setIsEditingName(false);
+    } catch (error) {
+      console.error("Failed to update collection name:", error);
+      alert("Failed to update collection name. Please try again.");
+    }
+  };
+
+  // Handle cancel editing collection name
+  const handleCancelEditName = () => {
+    setIsEditingName(false);
+    setEditingName("");
+  };
+
   // Set mounted to true after first render (client-side only)
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Debug logging for props
+  useEffect(() => {
+    console.log("Browse component props:", {
+      isCustomCollection,
+      collectionName,
+      collectionId,
+      shouldShowEllipsis: isCustomCollection && collectionName !== "Favorites",
+    });
+  }, [isCustomCollection, collectionName, collectionId]);
 
   // Load viewMode from localStorage only after component mounts
   useEffect(() => {
@@ -237,6 +354,45 @@ export default function Browse({
       return () => clearTimeout(t);
     }
   }, [showSelectedPanel]);
+
+  // Close actions dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Check if the click target is within the dropdown containers
+      const target = event.target as Element;
+
+      // Check if click is within title actions dropdown
+      if (showTitleActionsDropdown) {
+        const titleDropdownContainer = document.querySelector(
+          "[data-title-actions-dropdown]"
+        );
+        if (
+          titleDropdownContainer &&
+          !titleDropdownContainer.contains(target)
+        ) {
+          setShowTitleActionsDropdown(false);
+        }
+      }
+
+      // Check if click is within actions dropdown
+      if (showActionsDropdown) {
+        const actionsDropdownContainer = document.querySelector(
+          "[data-actions-dropdown]"
+        );
+        if (
+          actionsDropdownContainer &&
+          !actionsDropdownContainer.contains(target)
+        ) {
+          setShowActionsDropdown(false);
+        }
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [showActionsDropdown, showTitleActionsDropdown]);
 
   const handleOpenPanel = () => {
     if (!showSelectedPanel) {
@@ -383,8 +539,8 @@ export default function Browse({
   };
 
   const handleAddToCollection = (dataset: DatasetWithCollections) => {
-    setDatasetToAdd(dataset);
-    setShowAddToCollectionModal(true);
+    setDatasetsToAdd([dataset]);
+    setShowCreateCollectionModal(true);
   };
 
   const removeFilter = (filterKey: keyof FilterState) => {
@@ -528,44 +684,253 @@ export default function Browse({
         <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out px-6 py-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-H2-32-semibold text-gray-750">{title}</h1>
-              <p className="text-body-16-regular text-gray-650 mt-1">
-                {subtitle}
-              </p>
+            <div className="flex-1">
+              {isEditingName ? (
+                // Inline editing mode
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSaveName();
+                        } else if (e.key === "Escape") {
+                          handleCancelEditName();
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-H2-32-semibold text-gray-750 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+                      placeholder="Enter collection name"
+                      autoFocus
+                    />
+                    <p className="text-body-16-regular text-gray-650 mt-1">
+                      {subtitle}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 self-start pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEditName}
+                      className="px-4 py-2"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleSaveName}
+                      disabled={
+                        !editingName.trim() ||
+                        editingName.trim() ===
+                          collectionName.replace(/\s+Datasets?$/, "")
+                      }
+                      className="px-4 py-2"
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                // Normal display mode
+                <>
+                  <h1 className="text-H2-32-semibold text-gray-750">{title}</h1>
+                  <p className="text-body-16-regular text-gray-650 mt-1">
+                    {subtitle}
+                  </p>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-3">
-              {/* Custom Action Buttons */}
-              {customActionButtons &&
-                customActionButtons.map((button, index) => (
-                  <Button
-                    key={index}
-                    variant={button.variant || "outline"}
-                    size="sm"
-                    onClick={button.onClick}
-                    disabled={button.disabled}
-                    className={`flex items-center gap-2 ${button.className || ""}`}
-                  >
-                    {button.icon && (
-                      <button.icon className="w-4 h-4 text-icon" />
-                    )}
-                    {button.label}
-                  </Button>
-                ))}
+            {/* Right side buttons - hide when editing */}
+            {!isEditingName && (
+              <div className="flex items-center gap-3">
+                {/* Actions dropdown button - only show on custom collection pages, not on Favorites */}
+                {isCustomCollection && collectionName !== "Favorites" && (
+                  <div className="relative" data-title-actions-dropdown>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setShowTitleActionsDropdown(!showTitleActionsDropdown)
+                      }
+                      className="p-2 min-w-0 w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-50"
+                    >
+                      <MoreHorizontal className="w-4 h-4 text-icon" />
+                    </Button>
 
-              {/* Selected datasets counter - clickable when sidebar is closed */}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (showSelectedPanel) handleClosePanel();
-                  else handleOpenPanel();
-                }}
-                className="flex items-center gap-2 transition-all duration-200"
-              >
-                <Database className="w-4 h-4 text-icon" />
-                {currentSelectedDatasets.length} Selected
-              </Button>
-            </div>
+                    {/* Actions dropdown menu */}
+                    {showTitleActionsDropdown && (
+                      <div
+                        data-title-actions-dropdown
+                        className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowTitleActionsDropdown(false);
+                            // Select all datasets logic
+                            console.log("Select All clicked");
+                            selectAll();
+                            // Open the selected datasets panel when selecting all
+                            handleOpenPanel();
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <ArrowRightLeft className="w-4 h-4 text-icon" />
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowTitleActionsDropdown(false);
+                            // Rename logic
+                            console.log("Rename clicked");
+                            handleStartEditName();
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Tag className="w-4 h-4 text-icon" />
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log("Delete collection clicked!");
+                            setShowTitleActionsDropdown(false);
+                            setShowDeleteModal(true);
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 text-icon" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Custom Action Buttons */}
+                {customActionButtons &&
+                  customActionButtons.map((button, index) => (
+                    <Button
+                      key={index}
+                      variant={button.variant || "outline"}
+                      size="sm"
+                      onClick={button.onClick}
+                      disabled={button.disabled}
+                      className={`flex items-center gap-2 ${button.className || ""}`}
+                    >
+                      {button.icon && (
+                        <button.icon className="w-4 h-4 text-icon" />
+                      )}
+                      {button.label}
+                    </Button>
+                  ))}
+                {/* Selected datasets counter - clickable when sidebar is closed */}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (showSelectedPanel) handleClosePanel();
+                    else handleOpenPanel();
+                  }}
+                  className="flex items-center gap-2 transition-all duration-200"
+                >
+                  <Database className="w-4 h-4 text-icon" />
+                  {currentSelectedDatasets.length} Selected
+                </Button>
+                {/* Actions dropdown button */}
+                {currentSelectedDatasets.length > 0 && (
+                  <div className="relative" data-actions-dropdown>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setShowActionsDropdown(!showActionsDropdown)
+                      }
+                      className="p-2 min-w-0 w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-50"
+                    >
+                      <MoreHorizontal className="w-4 h-4 text-icon" />
+                    </Button>
+
+                    {/* Actions dropdown menu */}
+                    {showActionsDropdown && (
+                      <div
+                        data-actions-dropdown
+                        className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowActionsDropdown(false);
+                            // Select all datasets logic
+                            console.log(
+                              "Select All clicked (selected datasets)"
+                            );
+                            selectAll();
+                            // Open the selected datasets panel when selecting all
+                            handleOpenPanel();
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <ArrowRightLeft className="w-4 h-4 text-icon" />
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowActionsDropdown(false);
+                            // Edit logic
+                            console.log("Edit clicked (selected datasets)");
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Edit3 className="w-4 h-4 text-icon" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowActionsDropdown(false);
+                            // Rename logic
+                            console.log("Rename clicked (selected datasets)");
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Tag className="w-4 h-4 text-icon" />
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowActionsDropdown(false);
+                            // Delete logic
+                            console.log("Delete clicked (selected datasets)");
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 text-icon" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             {/* {showSelectAll && (
             <Button
               variant="outline"
@@ -787,14 +1152,29 @@ export default function Browse({
         currentFilters={filters}
       />
 
-      {/* Add to Collection Modal */}
-      <AddToCollectionModal
-        isVisible={showAddToCollectionModal}
+      {/* Create Collection Modal */}
+      <CreateCollectionModal
+        isVisible={showCreateCollectionModal}
         onClose={() => {
-          setShowAddToCollectionModal(false);
-          setDatasetToAdd(null);
+          setShowCreateCollectionModal(false);
+          setDatasetsToAdd([]);
         }}
-        dataset={datasetToAdd}
+        onCreateCollection={(name: string) => {
+          // This will be handled by the modal itself
+          setShowCreateCollectionModal(false);
+          setDatasetsToAdd([]);
+        }}
+        selectedDatasets={datasetsToAdd.map((d) => d.id)}
+        datasets={datasets}
+      />
+
+      {/* Delete Collection Modal */}
+      <DeleteCollectionModal
+        isVisible={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteCollection}
+        collectionName={collectionName}
+        isLoading={isDeleting}
       />
       {/* Selected Datasets Panel (right side, under header similar to Chat) */}
       {(showSelectedPanel || isPanelClosing) && (

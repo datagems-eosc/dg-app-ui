@@ -750,7 +750,7 @@ export default function DashboardClient() {
           subtitle={
             selectedCollection
               ? isCustomCollection
-                ? `Custom collection: ${selectedCollection}`
+                ? "List of your datasets"
                 : `Filtered by collection`
               : "List of all datasets"
           }
@@ -778,6 +778,15 @@ export default function DashboardClient() {
           onReopenSidebar={handleReopenSidebar}
           onChatWithData={handleChatWithData}
           onAddToCollection={handleAddToCollection}
+          isCustomCollection={isCustomCollection || false}
+          collectionName={
+            selectedCollection && isCustomCollection
+              ? collectionTitle || ""
+              : ""
+          }
+          collectionId={
+            selectedCollection && isCustomCollection ? selectedCollection : ""
+          }
         />
 
         <CreateCollectionModal
