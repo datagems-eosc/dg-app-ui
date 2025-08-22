@@ -14,8 +14,13 @@ import { getNavigationUrl } from "@/lib/utils";
 export default function CustomCollectionPage() {
   const router = useRouter();
   const params = useParams();
-  const { collections, addCollection, updateCollection, removeCollection } =
-    useCollections();
+  const {
+    collections,
+    extraCollections,
+    addCollection,
+    updateCollection,
+    removeCollection,
+  } = useCollections();
 
   // All useState and useEffect hooks must be called before any early return
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
@@ -61,7 +66,10 @@ export default function CustomCollectionPage() {
   }
 
   const collectionId = params.id as string;
-  const collection = collections.find((c) => c.id === collectionId);
+  // Look for collection in both local collections and API collections
+  const localCollection = collections.find((c) => c.id === collectionId);
+  const apiCollection = extraCollections.find((c) => c.id === collectionId);
+  const collection = apiCollection || localCollection;
 
   // Filter datasets to show only those in this collection (or edited collection in edit mode)
   const displayDatasetIds = isEditMode
@@ -237,8 +245,10 @@ export default function CustomCollectionPage() {
             </h1>
           )}
           <p className="text-gray-600 mt-1">
-            Custom collection • {displayDatasetIds.length} datasets • Created{" "}
-            {collection.createdAt.toLocaleDateString()}
+            Custom collection • {displayDatasetIds.length} datasets
+            {"createdAt" in collection && collection.createdAt && (
+              <> • Created {collection.createdAt.toLocaleDateString()}</>
+            )}
           </p>
         </div>
 
@@ -257,6 +267,9 @@ export default function CustomCollectionPage() {
           isEditMode={isEditMode}
           onRemoveDataset={isEditMode ? handleRemoveDataset : undefined}
           customActionButtons={getCustomActionButtons()}
+          isCustomCollection={true}
+          collectionName={collection.name}
+          collectionId={collection.id}
         />
 
         <CreateCollectionModal

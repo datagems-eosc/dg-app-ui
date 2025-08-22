@@ -11,8 +11,10 @@ interface CollectionsContextType {
   extraCollections: ApiCollection[];
   isLoadingApiCollections: boolean;
   isLoadingExtraCollections: boolean;
-  addCollection: (name: string, datasetIds: string[]) => void;
+  addCollection: (name: string, datasetIds: string[], id?: string) => void;
+  addToCollection: (collectionId: string, datasetIds: string[]) => void;
   removeCollection: (id: string) => void;
+  removeTimestampCollections: () => void;
   updateCollection: (id: string, updates: Partial<UserCollection>) => void;
   refreshApiCollections: () => Promise<void>;
   refreshExtraCollections: () => Promise<void>;
@@ -147,9 +149,9 @@ export function CollectionsProvider({
     localStorage.setItem("userCollections", JSON.stringify(collections));
   }, [collections, isLoaded]);
 
-  const addCollection = (name: string, datasetIds: string[]) => {
+  const addCollection = (name: string, datasetIds: string[], id?: string) => {
     const newCollection: UserCollection = {
-      id: Date.now().toString(),
+      id: id || Date.now().toString(),
       name,
       datasetIds,
       createdAt: new Date(),
@@ -158,8 +160,33 @@ export function CollectionsProvider({
     setCollections((prev) => [...prev, newCollection]);
   };
 
+  const addToCollection = (collectionId: string, datasetIds: string[]) => {
+    setCollections((prev) =>
+      prev.map((collection) =>
+        collection.id === collectionId
+          ? {
+              ...collection,
+              datasetIds: [
+                ...new Set([...collection.datasetIds, ...datasetIds]),
+              ],
+            }
+          : collection
+      )
+    );
+  };
+
   const removeCollection = (id: string) => {
     setCollections((prev) => prev.filter((collection) => collection.id !== id));
+  };
+
+  const removeTimestampCollections = () => {
+    setCollections((prev) =>
+      prev.filter((collection) => {
+        // Remove collections with timestamp IDs (10-13 digit numbers)
+        const isTimestamp = /^\d{10,13}$/.test(collection.id);
+        return !isTimestamp;
+      })
+    );
   };
 
   const updateCollection = (id: string, updates: Partial<UserCollection>) => {
@@ -232,7 +259,9 @@ export function CollectionsProvider({
         isLoadingApiCollections,
         isLoadingExtraCollections,
         addCollection,
+        addToCollection,
         removeCollection,
+        removeTimestampCollections,
         updateCollection,
         refreshApiCollections,
         refreshExtraCollections,

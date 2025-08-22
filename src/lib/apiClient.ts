@@ -104,6 +104,27 @@ class ApiClient {
   }
 
   /**
+   * Create a new user collection
+   */
+  async createUserCollection(name: string, token: string): Promise<any> {
+    const response = await this.makeRequest(
+      "/user/collection/me/persist?f=id&f=name&f=user.id&f=user.name&f=userDatasetCollections.id&f=userDatasetCollections.dataset.Id&f=userDatasetCollections.dataset.name",
+      {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to create collection");
+    }
+
+    return response.json();
+  }
+
+  /**
    * Add dataset to user collection
    */
   async addDatasetToUserCollection(
@@ -112,7 +133,7 @@ class ApiClient {
     token: string
   ): Promise<any> {
     const response = await this.makeRequest(
-      `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
+      `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id&f=UserDatasetCollections.id&f=UserDatasetCollections.dataset.id&f=name&f=user.id&f=user.name&f=UserDatasetCollections.dataset.name`,
       {
         method: "POST",
       },
@@ -151,6 +172,29 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  /**
+   * Delete user collection
+   */
+  async deleteUserCollection(
+    collectionId: string,
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest(
+      `/user/collection/${collectionId}`,
+      {
+        method: "DELETE",
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to delete collection");
+    }
+
+    return {};
   }
 
   /**
