@@ -510,7 +510,7 @@ export default function DashboardClient() {
 
         // Check if we should fetch from user collection endpoint
         if (selectedCollection && isCustomCollection) {
-          // Fetch from user collection endpoint
+          // Fetch from user collection endpoint to get dataset IDs
           const payload = {
             ...USER_COLLECTION_API_PAYLOAD,
             ids: [selectedCollection],
@@ -520,8 +520,158 @@ export default function DashboardClient() {
           const items = Array.isArray(data.items) ? data.items : [];
 
           if (items.length > 0) {
-            const datasets = mapUserCollectionToDatasets(items[0]);
-            setAllDatasets(datasets);
+            const collection = items[0];
+            const userDatasetCollections = Array.isArray(
+              collection.userDatasetCollections
+            )
+              ? collection.userDatasetCollections
+              : [];
+
+            // Extract dataset IDs from the collection
+            const datasetIds = userDatasetCollections
+              .map((item: unknown) => {
+                if (
+                  typeof item === "object" &&
+                  item !== null &&
+                  "dataset" in item
+                ) {
+                  const dataset = item.dataset as Record<string, unknown>;
+                  return typeof dataset.id === "string" ? dataset.id : null;
+                }
+                return null;
+              })
+              .filter((id): id is string => id !== null);
+
+            if (datasetIds.length > 0) {
+              try {
+                // Fetch detailed dataset information using the IDs
+                const datasetPayload = {
+                  project: {
+                    fields: [
+                      "id",
+                      "code",
+                      "name",
+                      "description",
+                      "license",
+                      "mimeType",
+                      "url",
+                      "version",
+                      "fieldOfScience",
+                      "keywords",
+                      "size",
+                      "datePublished",
+                      "collections.id",
+                      "collections.code",
+                      "collections.name",
+                      "collections.datasetCount",
+                      "permissions.browseDataset",
+                      "permissions.editDataset",
+                    ],
+                  },
+                  ids: datasetIds,
+                  page: {
+                    Offset: 0,
+                    Size: 100,
+                  },
+                  Order: {
+                    Items: ["+code"],
+                  },
+                  Metadata: {
+                    CountAll: true,
+                  },
+                };
+
+                const datasetData = await apiClient.queryDatasets(
+                  datasetPayload,
+                  token
+                );
+                const datasets = Array.isArray(datasetData.items)
+                  ? datasetData.items
+                  : [];
+
+                // Map the detailed dataset data to our Dataset interface
+                const mappedDatasets = datasets.map((apiDataset: any) => {
+                  // Determine category based on fieldOfScience or other indicators
+                  let category:
+                    | "Weather"
+                    | "Math"
+                    | "Lifelong Learning"
+                    | "Language" = "Math";
+                  if (
+                    apiDataset.fieldOfScience &&
+                    Array.isArray(apiDataset.fieldOfScience)
+                  ) {
+                    const fields = apiDataset.fieldOfScience.map((f: any) =>
+                      String(f).toLowerCase()
+                    );
+                    if (
+                      fields.some(
+                        (field) =>
+                          field.includes("meteorology") ||
+                          field.includes("climate") ||
+                          field.includes("weather")
+                      )
+                    ) {
+                      category = "Weather";
+                    } else if (
+                      fields.some(
+                        (field) =>
+                          field.includes("language") ||
+                          field.includes("linguistics")
+                      )
+                    ) {
+                      category = "Language";
+                    } else if (
+                      fields.some(
+                        (field) =>
+                          field.includes("education") ||
+                          field.includes("learning")
+                      )
+                    ) {
+                      category = "Lifelong Learning";
+                    } else if (
+                      fields.some(
+                        (field) =>
+                          field.includes("mathematics") ||
+                          field.includes("statistics")
+                      )
+                    ) {
+                      category = "Math";
+                    }
+                  }
+
+                  return {
+                    id: String(apiDataset.id ?? ""),
+                    title: String(apiDataset.name ?? "Untitled"),
+                    category,
+                    access: "Open Access", // Custom collections always show Open Access
+                    description: String(apiDataset.description ?? ""),
+                    size: String(apiDataset.size ?? "N/A"),
+                    lastUpdated: apiDataset.datePublished
+                      ? String(apiDataset.datePublished)
+                      : "2024-01-01",
+                    tags: Array.isArray(apiDataset.keywords)
+                      ? apiDataset.keywords
+                      : [],
+                    license: apiDataset.license,
+                    mimeType: apiDataset.mimeType,
+                    datePublished: apiDataset.datePublished,
+                    fieldOfScience: Array.isArray(apiDataset.fieldOfScience)
+                      ? apiDataset.fieldOfScience
+                      : [],
+                    url: apiDataset.url,
+                  };
+                });
+
+                setAllDatasets(mappedDatasets);
+              } catch (error) {
+                console.error("Failed to fetch dataset details:", error);
+                setError("Failed to fetch dataset details. Please try again.");
+                setAllDatasets([]);
+              }
+            } else {
+              setAllDatasets([]);
+            }
           } else {
             setAllDatasets([]);
           }
@@ -755,7 +905,7 @@ export default function DashboardClient() {
           subtitle={
             selectedCollection
               ? isCustomCollection
-                ? `Custom collection: ${selectedCollection}`
+                ? "List of your datasets"
                 : `Filtered by collection`
               : "List of all datasets"
           }
@@ -783,6 +933,15 @@ export default function DashboardClient() {
           onReopenSidebar={handleReopenSidebar}
           onChatWithData={handleChatWithData}
           onAddToCollection={handleAddToCollection}
+          isCustomCollection={isCustomCollection || false}
+          collectionName={
+            selectedCollection && isCustomCollection
+              ? collectionTitle || ""
+              : ""
+          }
+          collectionId={
+            selectedCollection && isCustomCollection ? selectedCollection : ""
+          }
         />
 
         <CreateCollectionModal
