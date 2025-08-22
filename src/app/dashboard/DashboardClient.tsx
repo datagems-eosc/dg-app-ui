@@ -646,9 +646,14 @@ export default function DashboardClient() {
     setPendingSearchTerm(value);
   }, []);
 
-  const handleSearchTermSubmit = useCallback(() => {
-    setSearchTerm(pendingSearchTerm.trim());
-  }, [pendingSearchTerm]);
+  const handleSearchTermSubmit = useCallback(
+    (searchValue?: string) => {
+      const valueToSet =
+        searchValue !== undefined ? searchValue : pendingSearchTerm.trim();
+      setSearchTerm(valueToSet);
+    },
+    [pendingSearchTerm]
+  );
 
   const handleSortByChange = useCallback((value: string) => {
     setSortBy(value);

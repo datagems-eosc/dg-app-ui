@@ -2,13 +2,14 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  Search,
+  Search as SearchIcon,
   Filter,
   MessageSquare,
   Database,
   ListChecks,
   Grid2X2,
 } from "lucide-react";
+import { Search } from "./ui/Search";
 import { Dataset } from "@/data/mockDatasets";
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
@@ -74,7 +75,7 @@ interface BrowseProps {
   /**
    * Handler for when the search is submitted (Enter or button click).
    */
-  onSearchTermSubmit?: () => void;
+  onSearchTermSubmit?: (searchValue?: string) => void;
   /**
    * Loader state for async dataset fetching (from parent).
    */
@@ -581,30 +582,23 @@ export default function Browse({
           {/* Search and filters */}
           {showSearchAndFilters !== false && (
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-icon w-4 h-4" />
-                <input
-                  type="text"
+              <div className="flex-1">
+                <Search
                   placeholder="Search datasets..."
                   value={searchTerm}
-                  onChange={(e) =>
-                    onSearchTermChange && onSearchTermChange(e.target.value)
+                  onChange={onSearchTermChange}
+                  onSearch={(value) =>
+                    onSearchTermSubmit && onSearchTermSubmit(value)
                   }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && onSearchTermSubmit)
-                      onSearchTermSubmit();
+                  onClear={() => {
+                    if (onSearchTermChange) {
+                      onSearchTermChange("");
+                    }
+                    if (onSearchTermSubmit) {
+                      onSearchTermSubmit("");
+                    }
                   }}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
                 />
-                <button
-                  type="button"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 hover:border-blue-700 rounded px-4 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  onClick={() => onSearchTermSubmit && onSearchTermSubmit()}
-                  tabIndex={0}
-                  aria-label="Search"
-                >
-                  Search
-                </button>
               </div>
               <Button
                 variant="outline"
@@ -737,15 +731,13 @@ export default function Browse({
             )}
             {/* Empty state */}
             {!isLoading && !error && filteredDatasets.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <Search className="w-12 h-12 mx-auto text-icon" />
-                </div>
-                <h3 className="text-H6-18-semibold text-gray-900 mb-2">
-                  No datasets found
+              <div className="text-center py-18 space-y-2">
+                <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
+                <h3 className="text-body-16-semibold text-slate-850">
+                  No datasets found matching your search criteria.
                 </h3>
-                <p className="text-body-16-regular text-gray-600">
-                  Try adjusting your search or filter criteria
+                <p className="text-body-14-regular text-gray-650">
+                  Try rephrasing your question or using different keywords.
                 </p>
               </div>
             )}
