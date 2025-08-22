@@ -14,6 +14,7 @@ import { Dataset } from "@/data/mockDatasets";
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
 import DatasetCard from "./DatasetCard";
+import DatasetCardSkeleton from "./ui/datasets/DatasetCardSkeleton";
 import DatasetDetailsPanel from "./DatasetDetailsPanel";
 import SelectedDatasetsPanel from "./SelectedDatasetsPanel";
 import FilterModal from "./FilterModal";
@@ -662,27 +663,16 @@ export default function Browse({
           <div className="transition-all duration-300">
             {/* Loader or error */}
             {isLoading ? (
-              <div className="flex justify-center items-center h-96">
-                <svg
-                  className="animate-spin h-8 w-8 text-blue-600"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                  ></path>
-                </svg>
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                    : "grid grid-cols-1 gap-4"
+                }
+              >
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <DatasetCardSkeleton key={index} viewMode={viewMode} />
+                ))}
               </div>
             ) : error ? (
               <div className="text-red-600 text-center py-8">{error}</div>
