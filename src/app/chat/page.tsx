@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import Chat from "@/components/Chat";
 import { useParams, useSearchParams } from "next/navigation";
@@ -98,10 +98,8 @@ interface ChatPageProps {
   hideCollectionActions?: boolean;
 }
 
-export default function ChatPage({
-  showConversationName = true,
-  hideCollectionActions = false,
-}: ChatPageProps) {
+// Main chat component that uses useSearchParams
+function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPageProps) {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const { data: session } = useSession();
   const [isMounted, setIsMounted] = useState(false);
@@ -351,5 +349,19 @@ export default function ChatPage({
         />
       </DashboardLayout>
     </ProtectedPage>
+  );
+}
+
+export default function ChatPage({
+  showConversationName = true,
+  hideCollectionActions = false,
+}: ChatPageProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ChatPageContent
+        showConversationName={showConversationName}
+        hideCollectionActions={hideCollectionActions}
+      />
+    </Suspense>
   );
 }
