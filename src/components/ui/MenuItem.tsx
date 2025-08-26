@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { LucideIcon } from "lucide-react";
 import { createUrl } from "@/lib/utils";
 
@@ -20,8 +20,16 @@ export function MenuItem({
   className = "",
 }: MenuItemProps) {
   const pathname = usePathname();
-  const isActive =
-    pathname === href || (href !== "/" && pathname.startsWith(href));
+  const searchParams = useSearchParams();
+  // Active only on exact path match
+  let isActive = pathname === href;
+  // Special case: for dashboard, treat as inactive when a collection is selected via query param
+  if (href === "/dashboard" && isActive) {
+    const collectionId = searchParams?.get("collection");
+    if (collectionId) {
+      isActive = false;
+    }
+  }
 
   return (
     <div className="flex flex-start gap-4 pr-5">

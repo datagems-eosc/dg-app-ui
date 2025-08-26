@@ -32,6 +32,11 @@ import { createUrl } from "@/lib/utils";
 import { signOut } from "next-auth/react";
 import { Collection } from "@/types/collection";
 import { ChatHistoryList } from "./ui/chat/ChatHistoryList";
+import {
+  APP_ROUTES,
+  generateDashboardUrl,
+  generateChatUrl,
+} from "@/config/appUrls";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -66,13 +71,13 @@ const menuItems = [
   {
     id: "browse",
     label: "Browse",
-    href: "/dashboard",
+    href: APP_ROUTES.DASHBOARD,
     icon: FolderSearch,
   },
   {
     id: "ask-question",
     label: "Ask a question",
-    href: "/chat",
+    href: APP_ROUTES.CHAT,
     icon: Bot,
   },
 ];
@@ -122,7 +127,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const handleCollectionAskQuestion = (collectionId: string) => {
-    const url = createUrl(`/chat?collection=${collectionId}`);
+    const url = createUrl(generateChatUrl({ collection: collectionId }));
     router.push(url);
     if (isMobile) {
       setIsSidebarOpen(false);
@@ -135,18 +140,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <aside
         className={`fixed top-0 left-0 z-50 bg-white border-r border-gray-200 min-h-screen transition-all duration-300 ease-in-out ${
           isSidebarOpen ? "w-80 translate-x-0" : "w-0 -translate-x-full"
-        } ${isMobile && isSidebarOpen ? "shadow-lg" : ""} overflow-hidden`}
+        } ${isMobile && isSidebarOpen ? "shadow-lg" : ""} overflow-y-auto overflow-x-hidden`}
       >
         {/* Logo Section - only visible when sidebar is open */}
         {isSidebarOpen && (
           <div className="py-4.5 pl-5 pr-4 flex items-center gap-3">
-            <div className="flex items-center gap-2">
+            <Link
+              href={createUrl(APP_ROUTES.DASHBOARD)}
+              className="flex items-center gap-2"
+            >
               <img
                 src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
                 alt="Logo"
                 className="h-6 w-auto"
               />
-            </div>
+            </Link>
             <button
               onClick={toggleSidebar}
               className="ml-auto p-2 rounded-md hover:bg-gray-100 transition-colors"
@@ -159,9 +167,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Sidebar Content */}
         <div
-          className={`overflow-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          className={`flex-1 overflow-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         >
-          <div className="py-4">
+          <div className="h-full flex flex-col py-4">
             {/* Menu Section */}
             <div className="mb-4 pb-4 border-b border-slate-200">
               <h3 className="px-5 text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
@@ -202,7 +210,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       id={collection.id}
                       name={collection.name.replace(/ Collection$/i, "")}
                       icon={getCollectionIcon(collection.code)}
-                      href={`/dashboard?collection=${collection.id}`}
+                      href={generateDashboardUrl({ collection: collection.id })}
                       title={`${collection.datasetCount} datasets`}
                       onClick={() => isMobile && setIsSidebarOpen(false)}
                       onMessageClick={() =>
@@ -230,7 +238,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         id={collection.id}
                         name={collection.name}
                         icon={getCollectionIcon(collection.code)}
-                        href={`/dashboard?collection=${collection.id}&isCustom=true`}
+                        href={generateDashboardUrl({
+                          collection: collection.id,
+                          isCustom: true,
+                        })}
                         title={`${collection.userDatasetCollections?.length || 0} datasets`}
                         onClick={() => isMobile && setIsSidebarOpen(false)}
                       />
@@ -240,14 +251,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             {/* Recent Chats Section */}
-            <div className="px-5">
+            <div className="flex-1 flex flex-col min-h-0 px-5">
               <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
                 RECENT CHATS
               </h3>
-              <ChatHistoryList
-                session={session}
-                currentConversationId={currentConversationId}
-              />
+              <div className="flex-1 overflow-y-auto" style={{maxHeight: '420px'}}>
+                <ChatHistoryList
+                  session={session}
+                  currentConversationId={currentConversationId}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -281,13 +294,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 <PanelLeftOpen className="w-5 h-5 text-icon" />
               </button>
-              <div className="flex items-center gap-2">
+              <Link
+                href={createUrl(APP_ROUTES.DASHBOARD)}
+                className="flex items-center gap-2"
+              >
                 <img
                   src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
                   alt="Logo"
                   className="h-6 w-auto"
                 />
-              </div>
+              </Link>
             </div>
 
             {/* Right side - User info */}
@@ -316,7 +332,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }
               >
                 <DropdownItem
-                  href={createUrl("/settings")}
+                  href={createUrl(APP_ROUTES.SETTINGS)}
                   icon={<Settings className="w-4 h-4 text-icon" />}
                 >
                   Settings

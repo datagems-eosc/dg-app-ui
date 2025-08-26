@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { MessageCircleMore } from "lucide-react";
 import { createUrl } from "@/lib/utils";
 
@@ -24,8 +24,28 @@ export function CollectionItem({
   onMessageClick,
 }: CollectionItemProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Extract collection ID from href and check if it matches current collection
+  const getCollectionIdFromHref = (href: string): string | null => {
+    const url = new URL(href, window.location.origin);
+    return url.searchParams.get("collection");
+  };
+
+  const currentCollectionId = searchParams?.get("collection");
+  const hrefCollectionId = getCollectionIdFromHref(href);
+
+  // Check if this collection is active based on:
+  // 1. Current path matches href exactly
+  // 2. Current path has the same collection parameter
+  // 3. We're on a related page (dashboard/browse) with the same collection
   const isActive =
-    pathname === href || (href !== "/" && pathname.startsWith(href));
+    pathname === href ||
+    (currentCollectionId && hrefCollectionId === currentCollectionId) ||
+    (pathname.startsWith("/dashboard") &&
+      currentCollectionId === hrefCollectionId) ||
+    (pathname.startsWith("/browse") &&
+      currentCollectionId === hrefCollectionId);
 
   const handleMessageClick = (e: React.MouseEvent) => {
     e.preventDefault();

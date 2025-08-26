@@ -43,6 +43,7 @@ interface ChatProps {
   initialMessages?: ConversationMessage[]; // undefined while loading, [] when loaded and empty
   showConversationName?: boolean;
   hideCollectionActions?: boolean;
+  initialCollectionId?: string | null; // Collection ID from URL parameter
 }
 
 // Add type for cross-dataset search result
@@ -68,6 +69,7 @@ export default function Chat({
   initialMessages,
   showConversationName = true,
   hideCollectionActions = false,
+  initialCollectionId = null,
 }: ChatProps) {
   // Store only Message[] for UI rendering
   const [messages, setMessages] = useState<Message[]>([]);
@@ -317,6 +319,25 @@ export default function Chat({
   >({});
   const router = useRouter();
   const { data: session } = useSession();
+
+  // Handle initial collection selection from URL parameter
+  useEffect(() => {
+    if (initialCollectionId && apiCollections.length > 0) {
+      // Find the collection by ID in both API and extra collections
+      const allCollections = [...apiCollections, ...collections];
+      const targetCollection = allCollections.find(
+        (collection) => collection.id === initialCollectionId
+      );
+      
+      // Always set the collection if it's different from current selection
+      if (targetCollection && (!selectedCollection || selectedCollection.id !== targetCollection.id)) {
+        handleSelectCollection(targetCollection);
+      }
+    } else if (!initialCollectionId && selectedCollection) {
+      // If no collection in URL but we have a selected collection, clear it
+      handleSelectCollection(null);
+    }
+  }, [initialCollectionId, apiCollections, collections]);
 
   // Add effect to detect collection from messages and set it automatically
   useEffect(() => {

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import Chat from "@/components/Chat";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import type { Dataset } from "@/data/mockDatasets";
 // import { getApiBaseUrl } from "@/lib/utils"; // No longer needed
 import ProtectedPage from "@/components/ProtectedPage";
@@ -113,12 +113,22 @@ export default function ChatPage({
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [isResetting, setIsResetting] = useState(false);
   const [hasJustClearedLocalStorage, setHasJustClearedLocalStorage] = useState(false);
+  const [initialCollectionId, setInitialCollectionId] = useState<string | null>(null);
   const params = useParams();
+  const searchParams = useSearchParams();
 
   // Set mounted to true after first render (client-side only)
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Handle collection query parameter
+  useEffect(() => {
+    const collectionId = searchParams?.get('collection');
+    if (collectionId !== initialCollectionId) {
+      setInitialCollectionId(collectionId);
+    }
+  }, [searchParams, initialCollectionId]);
 
   // Save selected datasets to localStorage whenever they change (only when mounted and not resetting)
   useEffect(() => {
@@ -337,6 +347,7 @@ export default function ChatPage({
           initialMessages={chatInitialMessages ?? undefined}
           showConversationName={showConversationName}
           hideCollectionActions={hideCollectionActions}
+          initialCollectionId={initialCollectionId}
         />
       </DashboardLayout>
     </ProtectedPage>
