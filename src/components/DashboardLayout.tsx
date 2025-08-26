@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -77,6 +77,54 @@ const menuItems = [
     icon: Bot,
   },
 ];
+
+// Component that wraps CollectionItem in Suspense
+function CollectionItemWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<CollectionItemSkeleton />}>
+      <CollectionItem {...props} />
+    </Suspense>
+  );
+}
+
+// Component that wraps MenuItem in Suspense
+function MenuItemWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<MenuItemSkeleton />}>
+      <MenuItem {...props} />
+    </Suspense>
+  );
+}
+
+// Skeleton for collection item
+function CollectionItemSkeleton() {
+  return (
+    <div className="group relative flex flex-start gap-4 pr-5 min-h-12">
+      <div className="flex items-center justify-center">
+        <div className="bg-gray-200 w-1 h-[32px] rounded-r-[4px] animate-pulse" />
+      </div>
+      <div className="flex-1 flex items-center px-3 py-2 rounded-lg bg-gray-200 animate-pulse">
+        <div className="w-5 h-5 bg-gray-300 rounded mr-3 animate-pulse" />
+        <div className="h-4 bg-gray-300 rounded flex-1 animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+// Skeleton for menu item
+function MenuItemSkeleton() {
+  return (
+    <div className="flex flex-start gap-4 pr-5">
+      <div className="flex items-center justify-center">
+        <div className="bg-gray-200 w-1 h-[32px] rounded-r-[4px] animate-pulse" />
+      </div>
+      <div className="flex-1 flex items-center px-3 py-2 rounded-lg bg-gray-200 animate-pulse">
+        <div className="w-5 h-5 bg-gray-300 rounded mr-2 animate-pulse" />
+        <div className="h-4 bg-gray-300 rounded animate-pulse" />
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
@@ -271,7 +319,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </h3>
               <nav className="space-y-2">
                 {menuItems.map((item) => (
-                  <MenuItem
+                  <MenuItemWithSuspense
                     key={item.id}
                     href={item.href}
                     icon={item.icon}
@@ -317,7 +365,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           collection.userDatasetCollections?.length > 0;
 
                         return (
-                          <CollectionItem
+                          <CollectionItemWithSuspense
                             key={collection.id}
                             id={collection.id}
                             name={
