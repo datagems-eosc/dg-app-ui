@@ -138,9 +138,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 bg-white border-r border-gray-200 min-h-screen transition-all duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 z-50 bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300 ease-in-out ${
           isSidebarOpen ? "w-80 translate-x-0" : "w-0 -translate-x-full"
-        } ${isMobile && isSidebarOpen ? "shadow-lg" : ""} overflow-y-auto overflow-x-hidden`}
+        } ${isMobile && isSidebarOpen ? "shadow-lg" : ""} overflow-x-hidden`}
       >
         {/* Logo Section - only visible when sidebar is open */}
         {isSidebarOpen && (
@@ -167,9 +167,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Sidebar Content */}
         <div
-          className={`flex-1 overflow-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          className={`flex-1 min-h-0 overflow-y-auto transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         >
-          <div className="h-full flex flex-col py-4">
+          <div className="flex flex-col py-4">
             {/* Menu Section */}
             <div className="mb-4 pb-4 border-b border-slate-200">
               <h3 className="px-5 text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
@@ -255,7 +255,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
                 RECENT CHATS
               </h3>
-              <div className="flex-1 overflow-y-auto" style={{maxHeight: '420px'}}>
+              <div
+                className="flex-1 overflow-y-auto"
+                style={{ maxHeight: "420px" }}
+              >
                 <ChatHistoryList
                   session={session}
                   currentConversationId={currentConversationId}
@@ -280,7 +283,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-18">
-          <div className="h-full px-6 flex items-center justify-between">
+          <div className="px-6 flex items-center justify-between">
             {/* Left side - Logo and toggle when sidebar is closed */}
             <div
               className={`flex items-center gap-4 transition-all duration-300 ${
