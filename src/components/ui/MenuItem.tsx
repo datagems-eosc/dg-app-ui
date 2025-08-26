@@ -24,7 +24,7 @@ export function MenuItem({
   // Active only on exact path match
   let isActive = pathname === href;
   // Special case: for dashboard, treat as inactive when a collection is selected via query param
-  if (href === "/dashboard" && isActive) {
+  if ((href === "/dashboard" || href === "/chat") && isActive) {
     const collectionId = searchParams?.get("collection");
     if (collectionId) {
       isActive = false;

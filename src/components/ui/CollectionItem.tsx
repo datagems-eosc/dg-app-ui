@@ -56,7 +56,7 @@ export function CollectionItem({
   };
 
   return (
-    <div className="group relative flex flex-start gap-4 pr-5">
+    <div className="group relative flex flex-start gap-4 pr-5 min-h-12">
       <div className="flex items-center justify-center">
         <div
           className={`bg-blue-500 w-1 h-[32px] rounded-r-[4px] ${
@@ -76,13 +76,15 @@ export function CollectionItem({
           {icon}
         </span>
         <span className="flex-1 truncate">{name}</span>
-        <button
-          onClick={handleMessageClick}
-          className="ml-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-white"
-          title="Ask a question about this collection"
-        >
-          <MessageCircleMore className="w-5 h-5 text-icon" strokeWidth={1.25} />
-        </button>
+        {onMessageClick && (
+          <button
+            onClick={handleMessageClick}
+            className="ml-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-white"
+            title="Ask a question about this collection"
+          >
+            <MessageCircleMore className="w-5 h-5 text-icon" strokeWidth={1.25} />
+          </button>
+        )}
       </Link>
     </div>
   );

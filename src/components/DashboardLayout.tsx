@@ -5,11 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Bell,
-  Search,
-  MessageSquare,
-  Cloud,
   Calculator,
-  BookOpen,
   Languages,
   Settings,
   LogOut,
@@ -23,20 +19,20 @@ import {
 } from "lucide-react";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Avatar } from "./ui/Avatar";
-import { Button } from "./ui/Button";
 import { MenuItem } from "./ui/MenuItem";
 import { CollectionItem } from "./ui/CollectionItem";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useSession } from "next-auth/react";
 import { createUrl } from "@/lib/utils";
 import { signOut } from "next-auth/react";
-import { Collection } from "@/types/collection";
+import { ApiCollection } from "@/types/collection";
 import { ChatHistoryList } from "./ui/chat/ChatHistoryList";
 import {
   APP_ROUTES,
   generateDashboardUrl,
   generateChatUrl,
 } from "@/config/appUrls";
+import CollectionSettingsModal from "./CollectionSettingsModal";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -87,6 +83,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isCollectionSettingsOpen, setIsCollectionSettingsOpen] =
+    useState(false);
 
   const {
     apiCollections,
@@ -100,6 +98,78 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const currentConversationId = pathname?.startsWith("/chat/")
     ? pathname.split("/")[2]
     : undefined;
+
+  // Function to sort and filter collections based on localStorage settings
+  const getSortedAndFilteredCollections = (
+    collections: ApiCollection[],
+    isExtra = false
+  ) => {
+    const savedSettings = localStorage.getItem("collectionSettings");
+    let settingsData: Record<string, { isVisible: boolean; order: number }> =
+      {};
+
+    if (savedSettings) {
+      try {
+        settingsData = JSON.parse(savedSettings);
+      } catch (error) {
+        console.error("Error parsing collection settings:", error);
+      }
+    }
+
+    // Add settings data to collections
+    const collectionsWithSettings = collections.map((collection, index) => {
+      const settings = settingsData[collection.id];
+      return {
+        ...collection,
+        isVisible: settings?.isVisible ?? true,
+        order: settings?.order ?? index,
+      };
+    });
+
+    // Filter visible collections and sort by order
+    return collectionsWithSettings
+      .filter((collection) => collection.isVisible)
+      .sort((a, b) => a.order - b.order);
+  };
+
+  // Function to get collections with default ordering when localStorage is empty
+  const getCollectionsWithDefaultOrder = () => {
+    const savedSettings = localStorage.getItem("collectionSettings");
+
+    if (!savedSettings) {
+      // When localStorage is empty, return apiCollections first, then extraCollections
+      const apiCollectionsWithDefaults = apiCollections.map(
+        (collection, index) => ({
+          ...collection,
+          isVisible: true,
+          order: index,
+        })
+      );
+
+      const extraCollectionsWithDefaults = extraCollections
+        .filter((collection) => collection.userDatasetCollections?.length > 0)
+        .map((collection, index) => ({
+          ...collection,
+          isVisible: true,
+          order: apiCollections.length + index, // Start ordering after apiCollections
+        }));
+
+      return [...apiCollectionsWithDefaults, ...extraCollectionsWithDefaults];
+    }
+
+    // When localStorage has settings, use the existing logic
+    const allCollections = [
+      ...getSortedAndFilteredCollections(apiCollections),
+      ...getSortedAndFilteredCollections(
+        extraCollections.filter(
+          (collection) => collection.userDatasetCollections?.length > 0
+        )
+      ),
+    ];
+
+    // Sort all collections together by their order
+    return allCollections.sort((a, b) => a.order - b.order);
+  };
 
   // Handle mobile detection and sidebar state
   useEffect(() => {
@@ -116,6 +186,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Listen for collection settings changes
+  useEffect(() => {
+    const handleCollectionSettingsChange = () => {
+      // Force a re-render by using a dummy state update
+      setIsCollectionSettingsOpen((prev) => prev);
+    };
+
+    window.addEventListener(
+      "collectionSettingsChanged",
+      handleCollectionSettingsChange
+    );
+    return () =>
+      window.removeEventListener(
+        "collectionSettingsChanged",
+        handleCollectionSettingsChange
+      );
   }, []);
 
   const handleLogout = () => {
@@ -163,7 +251,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               className="ml-auto p-2 rounded-md hover:bg-gray-100 transition-colors"
               aria-label="Close sidebar"
             >
-              <PanelLeftClose className="w-5 h-5 text-icon" />
+              <PanelLeftClose
+                strokeWidth={1.25}
+                className="w-5 h-5 text-icon"
+              />
             </button>
           </div>
         )}
@@ -197,58 +288,71 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider">
                   COLLECTIONS
                 </h3>
-                <Settings className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-pointer" />
+                <button
+                  onClick={() => setIsCollectionSettingsOpen(true)}
+                  className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  <Settings
+                    strokeWidth={1.25}
+                    className="w-4 h-4 text-icon hover:text-gray-600"
+                  />
+                </button>
               </div>
               <nav className="space-y-1 max-h-54 overflow-y-auto">
-                {/* Default Collections */}
-                {isLoadingApiCollections ? (
+                {/* Loading States */}
+                {isLoadingApiCollections || isLoadingExtraCollections ? (
                   <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">
                     <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
                     Loading collections...
                   </div>
                 ) : (
-                  apiCollections.map((collection) => (
-                    <CollectionItem
-                      key={collection.id}
-                      id={collection.id}
-                      name={collection.name.replace(/ Collection$/i, "")}
-                      icon={getCollectionIcon(collection.code)}
-                      href={generateDashboardUrl({ collection: collection.id })}
-                      title={`${collection.datasetCount} datasets`}
-                      onClick={() => isMobile && setIsSidebarOpen(false)}
-                      onMessageClick={() =>
-                        handleCollectionAskQuestion(collection.id)
-                      }
-                    />
-                  ))
-                )}
+                  <>
+                    {/* Combine and sort all collections */}
+                    {(() => {
+                      const finalSortedCollections =
+                        getCollectionsWithDefaultOrder();
 
-                {/* Extra Collections - displayed at the top */}
-                {isLoadingExtraCollections ? (
-                  <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">
-                    <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-                    Loading extra collections...
-                  </div>
-                ) : (
-                  extraCollections
-                    .filter(
-                      (collection) =>
-                        collection.userDatasetCollections?.length > 0
-                    )
-                    .map((collection) => (
-                      <CollectionItem
-                        key={collection.id}
-                        id={collection.id}
-                        name={collection.name}
-                        icon={getCollectionIcon(collection.code)}
-                        href={generateDashboardUrl({
-                          collection: collection.id,
-                          isCustom: true,
-                        })}
-                        title={`${collection.userDatasetCollections?.length || 0} datasets`}
-                        onClick={() => isMobile && setIsSidebarOpen(false)}
-                      />
-                    ))
+                      return finalSortedCollections.map((collection) => {
+                        const isExtra =
+                          collection.userDatasetCollections?.length > 0;
+
+                        return (
+                          <CollectionItem
+                            key={collection.id}
+                            id={collection.id}
+                            name={
+                              isExtra
+                                ? collection.name
+                                : collection.name.replace(/ Collection$/i, "")
+                            }
+                            icon={getCollectionIcon(collection.code)}
+                            href={
+                              isExtra
+                                ? generateDashboardUrl({
+                                    collection: collection.id,
+                                    isCustom: true,
+                                  })
+                                : generateDashboardUrl({
+                                    collection: collection.id,
+                                  })
+                            }
+                            title={
+                              isExtra
+                                ? `${collection.userDatasetCollections?.length || 0} datasets`
+                                : `${collection.datasetCount} datasets`
+                            }
+                            onClick={() => isMobile && setIsSidebarOpen(false)}
+                            onMessageClick={
+                              !isExtra
+                                ? () =>
+                                    handleCollectionAskQuestion(collection.id)
+                                : undefined
+                            }
+                          />
+                        );
+                      });
+                    })()}
+                  </>
                 )}
               </nav>
             </div>
@@ -286,7 +390,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-18">
-          <div className="px-6 flex items-center justify-between">
+          <div className="h-full px-6 flex items-center justify-between">
             {/* Left side - Logo and toggle when sidebar is closed */}
             <div
               className={`flex items-center gap-4 transition-all duration-300 ${
@@ -298,7 +402,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="p-2 rounded-md hover:bg-gray-100 transition-colors"
                 aria-label="Open sidebar"
               >
-                <PanelLeftOpen className="w-5 h-5 text-icon" />
+                <PanelLeftOpen
+                  strokeWidth={1.25}
+                  className="w-5 h-5 text-icon"
+                />
               </button>
               <Link
                 href={createUrl(APP_ROUTES.DASHBOARD)}
@@ -357,6 +464,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Main Content */}
         <main className="bg-white min-h-[calc(100vh-56px)]">{children}</main>
       </div>
+
+      {/* Collection Settings Modal */}
+      <CollectionSettingsModal
+        isVisible={isCollectionSettingsOpen}
+        onClose={() => setIsCollectionSettingsOpen(false)}
+      />
     </div>
   );
 }
