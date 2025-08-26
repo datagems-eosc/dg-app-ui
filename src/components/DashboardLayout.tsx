@@ -15,10 +15,17 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  FolderSearch,
+  Bot,
+  CloudSun,
+  GraduationCap,
+  Package,
 } from "lucide-react";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Avatar } from "./ui/Avatar";
 import { Button } from "./ui/Button";
+import { MenuItem } from "./ui/MenuItem";
+import { CollectionItem } from "./ui/CollectionItem";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useSession } from "next-auth/react";
 import { createUrl } from "@/lib/utils";
@@ -30,26 +37,45 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const getCollectionIcon = (code: string) => {
+const getCollectionIcon = (code?: string, className?: string) => {
+  const baseClasses = "w-5 h-5 text-icon";
+  const finalClasses = className ? `${baseClasses} ${className}` : baseClasses;
+
+  if (!code) return <Package strokeWidth={1.25} className={finalClasses} />;
+
   switch (code.toLowerCase()) {
     case "weather":
     case "meteo":
-      return <Cloud className="w-4 h-4 mr-3 text-icon" />;
+      return <CloudSun strokeWidth={1.25} className={finalClasses} />;
     case "math":
     case "mathe":
-      return <Calculator className="w-4 h-4 mr-3 text-icon" />;
-    case "lifelong-learning":
+      return <Calculator strokeWidth={1.25} className={finalClasses} />;
+    case "lifelong":
     case "learning":
-      return <BookOpen className="w-4 h-4 mr-3 text-icon" />;
+      return <GraduationCap strokeWidth={1.25} className={finalClasses} />;
     case "language":
     case "languages":
-      return <Languages className="w-4 h-4 mr-3 text-icon" />;
+      return <Languages strokeWidth={1.25} className={finalClasses} />;
     default:
-      return (
-        <span className="w-4 h-4 mr-3 text-descriptions-12-regular">📁</span>
-      );
+      return <Package strokeWidth={1.25} className={finalClasses} />;
   }
 };
+
+// Menu items array
+const menuItems = [
+  {
+    id: "browse",
+    label: "Browse",
+    href: "/dashboard",
+    icon: FolderSearch,
+  },
+  {
+    id: "ask-question",
+    label: "Ask a question",
+    href: "/chat",
+    icon: Bot,
+  },
+];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
@@ -95,6 +121,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  const handleCollectionAskQuestion = (collectionId: string) => {
+    const url = createUrl(`/chat?collection=${collectionId}`);
+    router.push(url);
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
@@ -127,38 +161,57 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div
           className={`overflow-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
         >
-          <div className="p-4">
+          <div className="py-4">
             {/* Menu Section */}
-            <div className="mb-8">
-              <h3 className="text-descriptions-12-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="mb-4 pb-4 border-b border-slate-200">
+              <h3 className="px-5 text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
                 MENU
               </h3>
-              <nav className="space-y-1">
-                <Link
-                  href={createUrl("/dashboard")}
-                  className="flex items-center px-3 py-2 text-body-16-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                  onClick={() => isMobile && setIsSidebarOpen(false)}
-                >
-                  <Search className="w-4 h-4 mr-3 text-icon" />
-                  Browse
-                </Link>
-                <Link
-                  href={createUrl("/chat")}
-                  className="flex items-center px-3 py-2 text-body-16-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                  onClick={() => isMobile && setIsSidebarOpen(false)}
-                >
-                  <MessageSquare className="w-4 h-4 mr-3 text-icon" />
-                  Ask a question
-                </Link>
+              <nav className="space-y-2">
+                {menuItems.map((item) => (
+                  <MenuItem
+                    key={item.id}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    onClick={() => isMobile && setIsSidebarOpen(false)}
+                  />
+                ))}
               </nav>
             </div>
 
             {/* Collections Section */}
-            <div className="mb-8">
-              <h3 className="text-descriptions-12-semibold text-gray-500 uppercase tracking-wider mb-3">
-                COLLECTIONS
-              </h3>
-              <nav className="space-y-1">
+            <div className="mb-4 pb-4 border-b border-slate-200">
+              <div className="px-5 flex items-center justify-between mb-3">
+                <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider">
+                  COLLECTIONS
+                </h3>
+                <Settings className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-pointer" />
+              </div>
+              <nav className="space-y-1 max-h-54 overflow-y-auto">
+                {/* Default Collections */}
+                {isLoadingApiCollections ? (
+                  <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">
+                    <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+                    Loading collections...
+                  </div>
+                ) : (
+                  apiCollections.map((collection) => (
+                    <CollectionItem
+                      key={collection.id}
+                      id={collection.id}
+                      name={collection.name.replace(/ Collection$/i, "")}
+                      icon={getCollectionIcon(collection.code)}
+                      href={`/dashboard?collection=${collection.id}`}
+                      title={`${collection.datasetCount} datasets`}
+                      onClick={() => isMobile && setIsSidebarOpen(false)}
+                      onMessageClick={() =>
+                        handleCollectionAskQuestion(collection.id)
+                      }
+                    />
+                  ))
+                )}
+
                 {/* Extra Collections - displayed at the top */}
                 {isLoadingExtraCollections ? (
                   <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">
@@ -172,59 +225,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         collection.userDatasetCollections?.length > 0
                     )
                     .map((collection) => (
-                      <Link
+                      <CollectionItem
                         key={collection.id}
-                        href={createUrl(
-                          `/dashboard?collection=${collection.id}&isCustom=true`
-                        )}
-                        className="flex items-center px-3 py-2 text-body-16-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                        id={collection.id}
+                        name={collection.name}
+                        icon={getCollectionIcon(collection.code)}
+                        href={`/dashboard?collection=${collection.id}&isCustom=true`}
                         title={`${collection.userDatasetCollections?.length || 0} datasets`}
                         onClick={() => isMobile && setIsSidebarOpen(false)}
-                      >
-                        <span className="w-4 h-4 mr-3 text-descriptions-12-regular">
-                          ⭐
-                        </span>
-                        <span className="truncate">{collection.name}</span>
-                        <span className="ml-auto text-descriptions-12-regular text-gray-400">
-                          {collection.datasetCount ||
-                            collection.userDatasetCollections?.length ||
-                            0}
-                        </span>
-                      </Link>
+                      />
                     ))
-                )}
-
-                {/* Default Collections */}
-                {isLoadingApiCollections ? (
-                  <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">
-                    <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-                    Loading collections...
-                  </div>
-                ) : (
-                  apiCollections.map((collection) => (
-                    <Link
-                      key={collection.id}
-                      href={createUrl(`/dashboard?collection=${collection.id}`)}
-                      className="flex items-center px-3 py-2 text-body-16-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                      title={`${collection.datasetCount} datasets`}
-                      onClick={() => isMobile && setIsSidebarOpen(false)}
-                    >
-                      {getCollectionIcon(collection.code)}
-                      <span className="truncate">
-                        {collection.name.replace(/ Collection$/i, "")}
-                      </span>
-                      <span className="ml-auto text-descriptions-12-regular text-gray-400">
-                        {collection.datasetCount}
-                      </span>
-                    </Link>
-                  ))
                 )}
               </nav>
             </div>
 
             {/* Recent Chats Section */}
-            <div>
-              <h3 className="text-descriptions-12-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="px-5">
+              <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
                 RECENT CHATS
               </h3>
               <ChatHistoryList
