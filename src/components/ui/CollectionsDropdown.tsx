@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown,
   PackagePlus,
@@ -99,13 +100,20 @@ export function CollectionsDropdown({
 }: CollectionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const portalRef = useRef<HTMLDivElement>(null);
+  const [portalPosition, setPortalPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+      const clickedInsideTrigger = dropdownRef.current?.contains(target);
+      const clickedInsidePortal = portalRef.current?.contains(target);
+      if (!clickedInsideTrigger && !clickedInsidePortal) {
         setIsOpen(false);
       }
     }
@@ -114,6 +122,43 @@ export function CollectionsDropdown({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Recalculate dropdown position when opened and on resize/scroll
+  useEffect(() => {
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const width = 256; // w-64
+      const horizontalPadding = 8;
+      const verticalGap = 8;
+
+      // Right-align to trigger; clamp within viewport
+      let left = rect.right - width;
+      left = Math.max(
+        horizontalPadding,
+        Math.min(left, viewportWidth - width - horizontalPadding)
+      );
+
+      // Always render above the button with a fixed gap; translateY(-100%) handles height
+      const top = rect.top - verticalGap;
+
+      setPortalPosition({ top, left, width });
+    };
+
+    if (isOpen) {
+      updatePosition();
+      const id = requestAnimationFrame(updatePosition);
+      window.addEventListener("resize", updatePosition);
+      window.addEventListener("scroll", updatePosition, true);
+      return () => {
+        cancelAnimationFrame(id);
+        window.removeEventListener("resize", updatePosition);
+        window.removeEventListener("scroll", updatePosition, true);
+      };
+    }
+  }, [isOpen]);
+
   const handleSelect = (collection: Collection | null) => {
     onSelectCollection(collection);
     setIsOpen(false);
@@ -121,92 +166,107 @@ export function CollectionsDropdown({
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <Button
-        variant="outline"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        className="flex items-center gap-2"
-      >
-        {selectedCollection ? (
-          getCollectionIcon(selectedCollection.code)
-        ) : (
-          <PackagePlus className="w-4 h-4 text-icon" />
-        )}
-        <span className="truncate max-w-32">
-          {selectedCollection
-            ? selectedCollection.name.replace(/ Collection$/i, "")
-            : "Collections"}
-        </span>
-      </Button>
-
-      {isOpen && (
-        <div className="absolute bottom-full mb-2 right-0 w-64 bg-white rounded-lg shadow-lg border border-slate-200 z-50 max-h-96 overflow-y-auto">
-          {/* No Collection Option */}
-          <div className="p-1">
-            <CollectionItem
-              collection={null}
-              isSelected={!selectedCollection}
-              onClick={() => handleSelect(null)}
-            />
-          </div>
-
-          {/* Default Collections */}
-          {!collections.isLoading && collections.apiCollections.length > 0 && (
-            <div className="px-1">
-              <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider m-2">
-                Default
-              </div>
-              {collections.apiCollections.map((collection) => (
-                <CollectionItem
-                  key={collection.id}
-                  collection={collection}
-                  isSelected={selectedCollection?.id === collection.id}
-                  onClick={() => handleSelect(collection)}
-                />
-              ))}
-            </div>
+      <div ref={triggerRef} className="inline-block">
+        <Button
+          variant="outline"
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          disabled={disabled}
+          className="flex items-center gap-2"
+        >
+          {selectedCollection ? (
+            getCollectionIcon(selectedCollection.code)
+          ) : (
+            <PackagePlus className="w-4 h-4 text-icon" />
           )}
+          <span className="truncate max-w-32">
+            {selectedCollection
+              ? selectedCollection.name.replace(/ Collection$/i, "")
+              : "Collections"}
+          </span>
+        </Button>
+      </div>
 
-          {/* Custom Collections */}
-          {collections.collections.length > 0 && (
-            <div className="px-1">
-              <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider mb-2 ml-2">
-                Custom
-              </div>
-              {collections.collections.map((collection) => (
-                <CollectionItem
-                  key={collection.id}
-                  collection={collection}
-                  isSelected={selectedCollection?.id === collection.id}
-                  onClick={() => handleSelect(collection)}
-                  isCustom={true}
-                />
-              ))}
+      {isOpen &&
+        portalPosition &&
+        createPortal(
+          <div
+            ref={portalRef}
+            className="fixed bg-white rounded-lg shadow-lg border border-slate-200 z-[1000] max-h-96 overflow-y-auto will-change-transform"
+            style={{
+              top: portalPosition.top,
+              left: portalPosition.left,
+              width: portalPosition.width,
+              transform: "translateY(-100%)",
+            }}
+          >
+            {/* No Collection Option */}
+            <div className="p-1">
+              <CollectionItem
+                collection={null}
+                isSelected={!selectedCollection}
+                onClick={() => handleSelect(null)}
+              />
             </div>
-          )}
 
-          {/* Loading State */}
-          {collections.isLoading && (
-            <div className="px-3 py-2">
-              <div className="flex items-center px-3 py-2 text-gray-500">
-                <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-                Loading collections...
+            {/* Default Collections */}
+            {!collections.isLoading &&
+              collections.apiCollections.length > 0 && (
+                <div className="px-1">
+                  <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider m-2">
+                    Default
+                  </div>
+                  {collections.apiCollections.map((collection) => (
+                    <CollectionItem
+                      key={collection.id}
+                      collection={collection}
+                      isSelected={selectedCollection?.id === collection.id}
+                      onClick={() => handleSelect(collection)}
+                    />
+                  ))}
+                </div>
+              )}
+
+            {/* Custom Collections */}
+            {collections.collections.length > 0 && (
+              <div className="px-1">
+                <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider mb-2 ml-2">
+                  Custom
+                </div>
+                {collections.collections.map((collection) => (
+                  <CollectionItem
+                    key={collection.id}
+                    collection={collection}
+                    isSelected={selectedCollection?.id === collection.id}
+                    onClick={() => handleSelect(collection)}
+                    isCustom={true}
+                  />
+                ))}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Empty State */}
-          {!collections.isLoading &&
-            collections.apiCollections.length === 0 &&
-            collections.collections.length === 0 && (
+            {/* Loading State */}
+            {collections.isLoading && (
               <div className="px-3 py-2">
-                <div className="text-center text-gray-400 text-sm py-4">
-                  No collections available
+                <div className="flex items-center px-3 py-2 text-gray-500">
+                  <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+                  Loading collections...
                 </div>
               </div>
             )}
-        </div>
-      )}
+
+            {/* Empty State */}
+            {!collections.isLoading &&
+              collections.apiCollections.length === 0 &&
+              collections.collections.length === 0 && (
+                <div className="px-3 py-2">
+                  <div className="text-center text-gray-400 text-sm py-4">
+                    No collections available
+                  </div>
+                </div>
+              )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

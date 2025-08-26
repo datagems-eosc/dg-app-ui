@@ -43,6 +43,7 @@ interface ChatProps {
   initialMessages?: ConversationMessage[]; // undefined while loading, [] when loaded and empty
   showConversationName?: boolean;
   hideCollectionActions?: boolean;
+  initialCollectionId?: string | null; // Collection ID from URL parameter
 }
 
 // Add type for cross-dataset search result
@@ -68,6 +69,7 @@ export default function Chat({
   initialMessages,
   showConversationName = true,
   hideCollectionActions = false,
+  initialCollectionId = null,
 }: ChatProps) {
   // Store only Message[] for UI rendering
   const [messages, setMessages] = useState<Message[]>([]);
@@ -317,6 +319,28 @@ export default function Chat({
   >({});
   const router = useRouter();
   const { data: session } = useSession();
+
+  // Handle initial collection selection from URL parameter
+  useEffect(() => {
+    if (initialCollectionId && apiCollections.length > 0) {
+      // Find the collection by ID in both API and extra collections
+      const allCollections = [...apiCollections, ...collections];
+      const targetCollection = allCollections.find(
+        (collection) => collection.id === initialCollectionId
+      );
+
+      // Always set the collection if it's different from current selection
+      if (
+        targetCollection &&
+        (!selectedCollection || selectedCollection.id !== targetCollection.id)
+      ) {
+        handleSelectCollection(targetCollection);
+      }
+    } else if (!initialCollectionId && selectedCollection) {
+      // If no collection in URL but we have a selected collection, clear it
+      handleSelectCollection(null);
+    }
+  }, [initialCollectionId, apiCollections, collections]);
 
   // Add effect to detect collection from messages and set it automatically
   useEffect(() => {
@@ -926,7 +950,7 @@ export default function Chat({
         </div>
         {/* Chat Input - Fixed at bottom, outside dashboard layout */}
         <div
-          className={`fixed bottom-0 left-80 right-0 px-6 py-4 bg-white z-20 ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
+          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-6 py-4 bg-white z-20 ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
         >
           <div className="w-full max-w-4xl mx-auto">
             {/* Dataset Change Warning */}

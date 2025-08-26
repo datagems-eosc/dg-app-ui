@@ -1100,7 +1100,7 @@ export default function Browse({
 
           {/* Dataset Details Panel */}
           {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (
-            <div className="fixed right-0 bottom-0 top-14 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
+            <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
               <div
                 className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
                   isDetailsPanelAnimating
@@ -1160,7 +1160,7 @@ export default function Browse({
       />
       {/* Selected Datasets Panel (right side, under header similar to Chat) */}
       {(showSelectedPanel || isPanelClosing) && (
-        <div className="fixed right-0 bottom-0 top-14 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
+        <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
           <div
             className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
               isPanelAnimating
