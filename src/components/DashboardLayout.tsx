@@ -135,7 +135,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div
+      className="min-h-screen bg-gray-50 flex"
+      style={{ ["--sidebar-offset" as any]: isSidebarOpen ? "20rem" : "0" }}
+    >
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 z-50 bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300 ease-in-out ${

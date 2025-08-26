@@ -328,9 +328,12 @@ export default function Chat({
       const targetCollection = allCollections.find(
         (collection) => collection.id === initialCollectionId
       );
-      
+
       // Always set the collection if it's different from current selection
-      if (targetCollection && (!selectedCollection || selectedCollection.id !== targetCollection.id)) {
+      if (
+        targetCollection &&
+        (!selectedCollection || selectedCollection.id !== targetCollection.id)
+      ) {
         handleSelectCollection(targetCollection);
       }
     } else if (!initialCollectionId && selectedCollection) {
@@ -947,7 +950,7 @@ export default function Chat({
         </div>
         {/* Chat Input - Fixed at bottom, outside dashboard layout */}
         <div
-          className={`fixed bottom-0 left-80 right-0 px-6 py-4 bg-white z-20 ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
+          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-6 py-4 bg-white z-20 ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
         >
           <div className="w-full max-w-4xl mx-auto">
             {/* Dataset Change Warning */}
