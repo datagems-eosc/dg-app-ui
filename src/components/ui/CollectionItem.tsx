@@ -35,17 +35,11 @@ export function CollectionItem({
   const currentCollectionId = searchParams?.get("collection");
   const hrefCollectionId = getCollectionIdFromHref(href);
 
-  // Check if this collection is active based on:
-  // 1. Current path matches href exactly
-  // 2. Current path has the same collection parameter
-  // 3. We're on a related page (dashboard/browse) with the same collection
+  // Mark active ONLY on dashboard when the collection param matches
   const isActive =
-    pathname === href ||
-    (currentCollectionId && hrefCollectionId === currentCollectionId) ||
-    (pathname.startsWith("/dashboard") &&
-      currentCollectionId === hrefCollectionId) ||
-    (pathname.startsWith("/browse") &&
-      currentCollectionId === hrefCollectionId);
+    pathname.startsWith("/dashboard") &&
+    !!currentCollectionId &&
+    hrefCollectionId === currentCollectionId;
 
   const handleMessageClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -82,7 +76,10 @@ export function CollectionItem({
             className="ml-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-white"
             title="Ask a question about this collection"
           >
-            <MessageCircleMore className="w-5 h-5 text-icon" strokeWidth={1.25} />
+            <MessageCircleMore
+              className="w-5 h-5 text-icon"
+              strokeWidth={1.25}
+            />
           </button>
         )}
       </Link>

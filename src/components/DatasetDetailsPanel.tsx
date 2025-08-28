@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { Dataset } from "@/data/mockDatasets";
-import DataPreviewModal from "./DataPreviewModal";
 import { Chip } from "./ui/Chip";
 import {
   CalendarPlus,
@@ -128,8 +127,6 @@ export default function DatasetDetailsPanel({
       ).toUpperCase(),
     },
   ];
-
-  const [showPreview, setShowPreview] = useState(false);
 
   if (!isVisible || !dataset) {
     return null;
@@ -259,15 +256,6 @@ export default function DatasetDetailsPanel({
                 />
               ))}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2 w-full justify-center mt-4"
-              onClick={() => setShowPreview(true)}
-            >
-              <Eye className="w-4 h-4" />
-              Show preview
-            </Button>
           </div>
 
           {/* Divider */}
@@ -339,13 +327,6 @@ export default function DatasetDetailsPanel({
           <div className="border-t border-slate-200 mx-4" />
         </div>
       </div>
-
-      {/* Data Preview Modal */}
-      <DataPreviewModal
-        isVisible={showPreview}
-        onClose={() => setShowPreview(false)}
-        dataset={dataset}
-      />
     </>
   );
 }

@@ -390,11 +390,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 : `${collection.datasetCount} datasets`
                             }
                             onClick={() => isMobile && setIsSidebarOpen(false)}
-                            onMessageClick={
-                              !isExtra
-                                ? () =>
-                                    handleCollectionAskQuestion(collection.id)
-                                : undefined
+                            onMessageClick={() =>
+                              handleCollectionAskQuestion(collection.id)
                             }
                           />
                         );

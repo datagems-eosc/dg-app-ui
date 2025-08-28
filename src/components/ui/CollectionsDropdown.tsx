@@ -13,12 +13,13 @@ import {
 } from "lucide-react";
 import { Button } from "./Button";
 import { cn } from "@/lib/utils";
-import { Collection } from "@/types/collection";
+import { Collection, ApiCollection } from "@/types/collection";
 
 interface CollectionsDropdownProps {
   collections: {
     apiCollections: Collection[];
     collections: Collection[];
+    extraCollections: ApiCollection[];
     isLoading: boolean;
   };
   selectedCollection: Collection | null;
@@ -27,7 +28,7 @@ interface CollectionsDropdownProps {
 }
 
 interface CollectionItemProps {
-  collection: Collection | null;
+  collection: Collection | ApiCollection | null;
   isSelected: boolean;
   onClick: () => void;
   isCustom?: boolean;
@@ -63,7 +64,14 @@ const CollectionItem = ({
   onClick,
   isCustom = false,
 }: CollectionItemProps) => {
-  const getDatasetCount = (collection: Collection) => {
+  const getDatasetCount = (collection: Collection | ApiCollection) => {
+    if (
+      isCustom &&
+      "userDatasetCollections" in collection &&
+      collection.userDatasetCollections?.length
+    ) {
+      return collection.userDatasetCollections.length;
+    }
     return collection.datasetCount || collection.datasetIds?.length || 0;
   };
 
@@ -226,21 +234,28 @@ export function CollectionsDropdown({
                 </div>
               )}
 
-            {/* Custom Collections */}
-            {collections.collections.length > 0 && (
+            {/* Extra Collections (User Collections from API) */}
+            {collections.extraCollections.filter(
+              (collection) => collection.userDatasetCollections?.length > 0
+            ).length > 0 && (
               <div className="px-1">
                 <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider mb-2 ml-2">
                   Custom
                 </div>
-                {collections.collections.map((collection) => (
-                  <CollectionItem
-                    key={collection.id}
-                    collection={collection}
-                    isSelected={selectedCollection?.id === collection.id}
-                    onClick={() => handleSelect(collection)}
-                    isCustom={true}
-                  />
-                ))}
+                {collections.extraCollections
+                  .filter(
+                    (collection) =>
+                      collection.userDatasetCollections?.length > 0
+                  )
+                  .map((collection) => (
+                    <CollectionItem
+                      key={collection.id}
+                      collection={collection}
+                      isSelected={selectedCollection?.id === collection.id}
+                      onClick={() => handleSelect(collection)}
+                      isCustom={true}
+                    />
+                  ))}
               </div>
             )}
 
@@ -257,7 +272,10 @@ export function CollectionsDropdown({
             {/* Empty State */}
             {!collections.isLoading &&
               collections.apiCollections.length === 0 &&
-              collections.collections.length === 0 && (
+              collections.collections.length === 0 &&
+              collections.extraCollections.filter(
+                (collection) => collection.userDatasetCollections?.length > 0
+              ).length === 0 && (
                 <div className="px-3 py-2">
                   <div className="text-center text-gray-400 text-sm py-4">
                     No collections available
