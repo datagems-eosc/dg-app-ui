@@ -15,7 +15,14 @@ export interface ApiCollection {
   code?: string;
   name: string;
   datasets?: Array<{ id: string; code: string; name: string }>;
-  userDatasetCollections?: Array<{ id: string }>;
+  userDatasetCollections?: Array<{ 
+    id: string;
+    dataset?: {
+      id: string;
+      code: string;
+      name: string;
+    }
+  }>;
   datasetCount?: number;
   datasetIds?: string[];
   permissions?: string[];
