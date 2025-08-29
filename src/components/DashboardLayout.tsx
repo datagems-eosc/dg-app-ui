@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -52,12 +52,14 @@ const getCollectionIcon = (code: string) => {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const hasLoadedCollections = useRef(false);
 
   const {
     apiCollections,
     extraCollections,
     isLoadingApiCollections,
     isLoadingExtraCollections,
+    refreshAllCollections,
   } = useCollections();
   const { data: session } = useSession();
 
@@ -65,6 +67,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const currentConversationId = pathname?.startsWith("/chat/")
     ? pathname.split("/")[2]
     : undefined;
+
+  // Refresh collections only once when component mounts and session is available
+  useEffect(() => {
+    if (session && !hasLoadedCollections.current) {
+      hasLoadedCollections.current = true;
+      refreshAllCollections();
+    }
+  }, [session, refreshAllCollections]);
+
+  // Function to manually refresh collections when needed (e.g., after creating a collection)
+  const handleManualRefresh = () => {
+    if (session) {
+      refreshAllCollections();
+    }
+  };
 
   const handleLogout = () => {
     signOut({ callbackUrl: "/" });
