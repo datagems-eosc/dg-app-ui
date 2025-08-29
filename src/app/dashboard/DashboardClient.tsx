@@ -253,7 +253,7 @@ export default function DashboardClient() {
   const [favoritesCollectionId, setFavoritesCollectionId] =
     useState<string>("");
   const [hasFetchedFavorites, setHasFetchedFavorites] = useState(false);
-  const { addCollection, apiCollections, extraCollections } = useCollections();
+  const { apiCollections, extraCollections } = useCollections();
 
   const collectionDisplayName = React.useMemo(() => {
     if (!selectedCollection) return null;
@@ -882,16 +882,6 @@ export default function DashboardClient() {
     setShowCreateCollectionModal(true);
   }, [selectedDatasets]);
 
-  const handleCreateCollection = useCallback(
-    (name: string) => {
-      addCollection(name, selectedDatasets);
-      alert(
-        `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`
-      );
-    },
-    [addCollection, selectedDatasets]
-  );
-
   return (
     <DashboardLayout>
       <div className="relative">
@@ -947,7 +937,6 @@ export default function DashboardClient() {
         <CreateCollectionModal
           isVisible={showCreateCollectionModal}
           onClose={() => setShowCreateCollectionModal(false)}
-          onCreateCollection={handleCreateCollection}
           selectedDatasets={selectedDatasets}
           datasets={allDatasets}
         />

@@ -190,7 +190,8 @@ export default function Browse({
   onCollectionNameUpdate,
 }: BrowseProps) {
   const { data: session } = useSession() as any;
-  const { notifyCollectionModified } = useCollections();
+  const { notifyCollectionModified, refreshExtraCollections } =
+    useCollections();
   const router = useRouter();
   const [localSelectedDatasets, setLocalSelectedDatasets] =
     useState<string[]>(selectedDatasets);
@@ -242,6 +243,13 @@ export default function Browse({
 
       // Delete the collection via API
       await apiClient.deleteUserCollection(collectionId, token);
+
+      // Force immediate refresh of collections to ensure deleted collection is removed
+      // This prevents the issue where deleted collections still appear in the sidebar
+      await refreshExtraCollections();
+
+      // Also dispatch a custom event to force immediate sidebar refresh
+      window.dispatchEvent(new CustomEvent("forceCollectionsRefresh"));
 
       // Notify that collections have been modified to refresh sidebar
       notifyCollectionModified();

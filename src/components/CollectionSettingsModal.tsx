@@ -126,9 +126,7 @@ export default function CollectionSettingsModal({
 
     const allCollections: (ApiCollection & { type: "api" | "extra" })[] = [
       ...apiCollections.map((c) => ({ ...c, type: "api" as const })),
-      ...extraCollections
-        .filter((c) => c.userDatasetCollections?.length > 0)
-        .map((c) => ({ ...c, type: "extra" as const })),
+      ...extraCollections.map((c) => ({ ...c, type: "extra" as const })),
     ];
 
     // Get saved settings from localStorage

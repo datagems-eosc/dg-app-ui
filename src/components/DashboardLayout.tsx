@@ -203,13 +203,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     if (!savedSettings) {
       // When localStorage is empty, return extraCollections first, then apiCollections
-      const extraCollectionsWithDefaults = extraCollections
-        .filter((collection) => collection.userDatasetCollections?.length > 0)
-        .map((collection, index) => ({
+      const extraCollectionsWithDefaults = extraCollections.map(
+        (collection, index) => ({
           ...collection,
           isVisible: true,
           order: index, // Start ordering from 0 for custom collections
-        }));
+        })
+      );
 
       const apiCollectionsWithDefaults = apiCollections.map(
         (collection, index) => ({
@@ -223,11 +223,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     // When localStorage has settings, use the existing logic but prioritize custom collections
-    const customCollections = getSortedAndFilteredCollections(
-      extraCollections.filter(
-        (collection) => collection.userDatasetCollections?.length > 0
-      )
-    );
+    const customCollections = getSortedAndFilteredCollections(extraCollections);
 
     const sortedApiCollections =
       getSortedAndFilteredCollections(apiCollections);
@@ -260,16 +256,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setIsCollectionSettingsOpen((prev) => prev);
     };
 
+    const handleForceCollectionsRefresh = () => {
+      // Force immediate refresh of collections
+      refreshAllCollections();
+    };
+
     window.addEventListener(
       "collectionSettingsChanged",
       handleCollectionSettingsChange
     );
-    return () =>
+    window.addEventListener(
+      "forceCollectionsRefresh",
+      handleForceCollectionsRefresh
+    );
+
+    return () => {
       window.removeEventListener(
         "collectionSettingsChanged",
         handleCollectionSettingsChange
       );
-  }, []);
+      window.removeEventListener(
+        "forceCollectionsRefresh",
+        handleForceCollectionsRefresh
+      );
+    };
+  }, [refreshAllCollections]);
 
   const handleLogout = () => {
     signOut({ callbackUrl: "/" });
@@ -377,9 +388,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       const finalSortedCollections =
                         getCollectionsWithDefaultOrder();
 
+                      console.log(
+                        "Final sorted collections for sidebar:",
+                        finalSortedCollections
+                      );
+
                       return finalSortedCollections.map((collection) => {
-                        const isExtra =
-                          collection.userDatasetCollections?.length > 0;
+                        // Check if this collection is from extraCollections (custom collections)
+                        const isExtra = extraCollections.some(
+                          (ec) => ec.id === collection.id
+                        );
 
                         return (
                           <CollectionItemWithSuspense

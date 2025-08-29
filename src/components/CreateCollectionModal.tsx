@@ -12,7 +12,7 @@ import { Button } from "./ui/Button";
 interface CreateCollectionModalProps {
   isVisible: boolean;
   onClose: () => void;
-  onCreateCollection: (name: string) => void;
+  onCreateCollection?: (name: string) => void;
   selectedDatasets: string[];
   datasets: Dataset[];
 }
@@ -36,11 +36,7 @@ export default function CreateCollectionModal({
   const [isAdding, setIsAdding] = useState(false);
 
   const {
-    collections,
     extraCollections,
-    addCollection,
-    addToCollection,
-    removeTimestampCollections,
     refreshExtraCollections,
     notifyCollectionModified,
   } = useCollections();
@@ -113,7 +109,7 @@ export default function CreateCollectionModal({
         // Also notify that collections have been modified to refresh sidebar
         notifyCollectionModified();
 
-        // Call the original callback if provided
+        // Call the original callback if provided (for backward compatibility)
         if (onCreateCollection) {
           onCreateCollection(collectionName.trim());
         }

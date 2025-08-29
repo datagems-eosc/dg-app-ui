@@ -15,25 +15,17 @@ export interface ApiCollection {
   code?: string;
   name: string;
   datasets?: Array<{ id: string; code: string; name: string }>;
-  userDatasetCollections?: Array<{ 
+  userDatasetCollections?: Array<{
     id: string;
     dataset?: {
       id: string;
       code: string;
       name: string;
-    }
+    };
   }>;
   datasetCount?: number;
   datasetIds?: string[];
   permissions?: string[];
-  icon?: string;
-}
-
-export interface UserCollection {
-  id: string;
-  name: string;
-  datasetIds: string[];
-  createdAt: Date;
   icon?: string;
 }
 
