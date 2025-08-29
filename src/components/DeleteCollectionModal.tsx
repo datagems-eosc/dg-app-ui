@@ -22,8 +22,8 @@ export default function DeleteCollectionModal({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-40 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4">
           <h2 className="text-xl font-semibold text-gray-900">

@@ -20,6 +20,7 @@ export default function CustomCollectionPage() {
     addCollection,
     updateCollection,
     removeCollection,
+    notifyCollectionModified,
   } = useCollections();
 
   // All useState and useEffect hooks must be called before any early return
@@ -156,6 +157,8 @@ export default function CustomCollectionPage() {
       )
     ) {
       removeCollection(collection.id);
+      // Notify that collections have been modified to refresh sidebar
+      notifyCollectionModified();
       router.push(getNavigationUrl("/browse"));
     }
   };

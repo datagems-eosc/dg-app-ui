@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { useSession } from "next-auth/react";
 import { apiClient } from "@/lib/apiClient";
 import { UserCollection, ApiCollection } from "@/types/collection";
@@ -18,6 +24,8 @@ interface CollectionsContextType {
   updateCollection: (id: string, updates: Partial<UserCollection>) => void;
   refreshApiCollections: () => Promise<void>;
   refreshExtraCollections: () => Promise<void>;
+  refreshAllCollections: () => Promise<void>;
+  notifyCollectionModified: () => void;
 }
 
 const CollectionsContext = createContext<CollectionsContextType | undefined>(
@@ -86,130 +94,13 @@ export function CollectionsProvider({
 
   // Fetch API collections when session is available
   useEffect(() => {
-    const fetchApiCollections = async () => {
-      setIsLoadingApiCollections(true);
-      try {
-        const token = (session as any)?.accessToken;
-        if (!token) {
-          return;
-        }
-        const data = await apiClient.queryCollections(
-          COLLECTIONS_API_PAYLOAD,
-          token
-        );
-        const items = Array.isArray(data.items) ? data.items : [];
-        setApiCollections(items);
-      } catch (err: unknown) {
-        console.error("Failed to fetch collections:", err);
-      } finally {
-        setIsLoadingApiCollections(false);
-      }
-    };
-
-    const fetchExtraCollections = async () => {
-      setIsLoadingExtraCollections(true);
-      try {
-        const token = (session as any)?.accessToken;
-        if (!token) {
-          return;
-        }
-        const extraCollectionsPayload = {
-          project: {
-            fields: [
-              "id",
-              "code",
-              "name",
-              "userDatasetCollections.id",
-              "userDatasetCollections.dataset.id",
-              "userDatasetCollections.dataset.code",
-              "userDatasetCollections.dataset.name",
-              "userDatasetCollections.dataset.datasetCount",
-            ],
-          },
-          page: {
-            Offset: 0,
-            Size: 10,
-          },
-          Order: {
-            Items: ["+createdAt"],
-          },
-          Metadata: {
-            CountAll: true,
-          },
-        };
-        const data = await apiClient.queryUserCollections(
-          extraCollectionsPayload,
-          token
-        );
-        console.log("Extra collections data initial", data);
-        const items = Array.isArray(data.items) ? data.items : [];
-        setExtraCollections(items);
-      } catch (err: unknown) {
-        console.error("Failed to fetch extra collections:", err);
-      } finally {
-        setIsLoadingExtraCollections(false);
-      }
-    };
-
-    fetchApiCollections();
-    fetchExtraCollections();
+    if (session) {
+      fetchApiCollections();
+      fetchExtraCollections();
+    }
   }, [session]);
 
-  // Save collections to localStorage whenever they change (but not on initial load)
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem("userCollections", JSON.stringify(collections));
-  }, [collections, isLoaded]);
-
-  const addCollection = (name: string, datasetIds: string[], id?: string) => {
-    const newCollection: UserCollection = {
-      id: id || Date.now().toString(),
-      name,
-      datasetIds,
-      createdAt: new Date(),
-      icon: "📁", // Default icon
-    };
-    setCollections((prev) => [...prev, newCollection]);
-  };
-
-  const addToCollection = (collectionId: string, datasetIds: string[]) => {
-    setCollections((prev) =>
-      prev.map((collection) =>
-        collection.id === collectionId
-          ? {
-              ...collection,
-              datasetIds: [
-                ...new Set([...collection.datasetIds, ...datasetIds]),
-              ],
-            }
-          : collection
-      )
-    );
-  };
-
-  const removeCollection = (id: string) => {
-    setCollections((prev) => prev.filter((collection) => collection.id !== id));
-  };
-
-  const removeTimestampCollections = () => {
-    setCollections((prev) =>
-      prev.filter((collection) => {
-        // Remove collections with timestamp IDs (10-13 digit numbers)
-        const isTimestamp = /^\d{10,13}$/.test(collection.id);
-        return !isTimestamp;
-      })
-    );
-  };
-
-  const updateCollection = (id: string, updates: Partial<UserCollection>) => {
-    setCollections((prev) =>
-      prev.map((collection) =>
-        collection.id === id ? { ...collection, ...updates } : collection
-      )
-    );
-  };
-
-  const refreshApiCollections = async () => {
+  const fetchApiCollections = async () => {
     setIsLoadingApiCollections(true);
     try {
       const token = (session as any)?.accessToken;
@@ -229,7 +120,7 @@ export function CollectionsProvider({
     }
   };
 
-  const refreshExtraCollections = async () => {
+  const fetchExtraCollections = async () => {
     setIsLoadingExtraCollections(true);
     try {
       const token = (session as any)?.accessToken;
@@ -254,7 +145,7 @@ export function CollectionsProvider({
           Size: 10,
         },
         Order: {
-          Items: ["-createdAt"],
+          Items: ["+createdAt"],
         },
         Metadata: {
           CountAll: true,
@@ -264,7 +155,7 @@ export function CollectionsProvider({
         extraCollectionsPayload,
         token
       );
-      console.log("Extra collections data", data);
+      console.log("Extra collections data initial", data);
       const items = Array.isArray(data.items) ? data.items : [];
       setExtraCollections(items);
     } catch (err: unknown) {
@@ -273,6 +164,86 @@ export function CollectionsProvider({
       setIsLoadingExtraCollections(false);
     }
   };
+
+  // Save collections to localStorage whenever they change (but not on initial load)
+  useEffect(() => {
+    if (!isLoaded) return;
+    localStorage.setItem("userCollections", JSON.stringify(collections));
+  }, [collections, isLoaded]);
+
+  const addCollection = (name: string, datasetIds: string[], id?: string) => {
+    const newCollection: UserCollection = {
+      id: id || Date.now().toString(),
+      name,
+      datasetIds,
+      createdAt: new Date(),
+      icon: "📁", // Default icon
+    };
+    setCollections((prev) => [...prev, newCollection]);
+    // Notify that collections have been modified to refresh sidebar
+    notifyCollectionModified();
+  };
+
+  const addToCollection = (collectionId: string, datasetIds: string[]) => {
+    setCollections((prev) =>
+      prev.map((collection) =>
+        collection.id === collectionId
+          ? {
+              ...collection,
+              datasetIds: [
+                ...new Set([...collection.datasetIds, ...datasetIds]),
+              ],
+            }
+          : collection
+      )
+    );
+    // Notify that collections have been modified to refresh sidebar
+    notifyCollectionModified();
+  };
+
+  const removeCollection = (id: string) => {
+    setCollections((prev) => prev.filter((collection) => collection.id !== id));
+    // Notify that collections have been modified to refresh sidebar
+    notifyCollectionModified();
+  };
+
+  const removeTimestampCollections = () => {
+    setCollections((prev) =>
+      prev.filter((collection) => {
+        // Remove collections with timestamp IDs (10-13 digit numbers)
+        const isTimestamp = /^\d{10,13}$/.test(collection.id);
+        return !isTimestamp;
+      })
+    );
+  };
+
+  const updateCollection = (id: string, updates: Partial<UserCollection>) => {
+    setCollections((prev) =>
+      prev.map((collection) =>
+        collection.id === id ? { ...collection, ...updates } : collection
+      )
+    );
+    // Notify that collections have been modified to refresh sidebar
+    notifyCollectionModified();
+  };
+
+  const refreshApiCollections = useCallback(async () => {
+    await fetchApiCollections();
+  }, [session]);
+
+  const refreshExtraCollections = useCallback(async () => {
+    await fetchExtraCollections();
+  }, [session]);
+
+  const refreshAllCollections = useCallback(async () => {
+    await Promise.all([fetchApiCollections(), fetchExtraCollections()]);
+  }, [session]);
+
+  const notifyCollectionModified = useCallback(() => {
+    // This function can be called by components to notify that collections have been modified
+    // It will trigger a refresh of all collections
+    refreshAllCollections();
+  }, [refreshAllCollections]);
 
   return (
     <CollectionsContext.Provider
@@ -289,6 +260,8 @@ export function CollectionsProvider({
         updateCollection,
         refreshApiCollections,
         refreshExtraCollections,
+        refreshAllCollections,
+        notifyCollectionModified,
       }}
     >
       {children}

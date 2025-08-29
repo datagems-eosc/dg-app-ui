@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Plus, FileText, Loader2 } from "lucide-react";
 import { Dataset } from "@/data/mockDatasets";
 import { useCollections } from "@/contexts/CollectionsContext";
@@ -26,7 +26,7 @@ export default function CreateCollectionModal({
   selectedDatasets,
   datasets,
 }: CreateCollectionModalProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("create");
+  const [activeTab, setActiveTab] = useState<TabType>("add");
   const [collectionName, setCollectionName] = useState("Custom Collection");
   const [description, setDescription] = useState("");
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>(
@@ -42,6 +42,7 @@ export default function CreateCollectionModal({
     addToCollection,
     removeTimestampCollections,
     refreshExtraCollections,
+    notifyCollectionModified,
   } = useCollections();
   const { data: session } = useSession();
   const router = useRouter();
@@ -54,6 +55,23 @@ export default function CreateCollectionModal({
   const customCollections = (extraCollections || []).filter(
     (collection) => collection.name !== "Favorites"
   );
+
+  // Refresh collections when modal opens or session changes to ensure fresh data
+  useEffect(() => {
+    if (isVisible && session) {
+      // Always refresh collections when modal opens or session changes to ensure fresh data
+      refreshExtraCollections();
+    }
+  }, [isVisible, session, refreshExtraCollections]);
+
+  // Handle tab switching with collection refresh
+  const handleTabSwitch = (tab: TabType) => {
+    setActiveTab(tab);
+    // If switching to "Add to existing" tab, refresh collections to ensure fresh data
+    if (tab === "add" && session) {
+      refreshExtraCollections();
+    }
+  };
 
   const handleCreate = async () => {
     if (!collectionName.trim()) return;
@@ -92,6 +110,8 @@ export default function CreateCollectionModal({
 
         // Refresh the sidebar to show the newly created collection
         await refreshExtraCollections();
+        // Also notify that collections have been modified to refresh sidebar
+        notifyCollectionModified();
 
         // Call the original callback if provided
         if (onCreateCollection) {
@@ -150,6 +170,8 @@ export default function CreateCollectionModal({
 
       // Then refresh custom collections in sidebar from API
       await refreshExtraCollections();
+      // Also notify that collections have been modified to refresh sidebar
+      notifyCollectionModified();
     } catch (error) {
       console.error("Failed to add datasets to collections:", error);
       alert("Failed to add datasets to collections. Please try again.");
@@ -162,7 +184,7 @@ export default function CreateCollectionModal({
     setCollectionName("Custom Collection");
     setDescription("");
     setSelectedCollectionIds([]);
-    setActiveTab("create");
+    // Don't reset the activeTab - keep user's preference
     onClose();
   };
 
@@ -205,7 +227,7 @@ export default function CreateCollectionModal({
         <div className="px-6 pt-4">
           <div className="flex bg-gray-100 rounded-2xl p-1">
             <button
-              onClick={() => setActiveTab("create")}
+              onClick={() => handleTabSwitch("create")}
               className={`flex-1 py-2 px-4 rounded-2xl text-sm font-medium transition-colors ${
                 activeTab === "create"
                   ? "bg-white text-gray-900 shadow-sm"
@@ -215,7 +237,7 @@ export default function CreateCollectionModal({
               Create New
             </button>
             <button
-              onClick={() => setActiveTab("add")}
+              onClick={() => handleTabSwitch("add")}
               className={`flex-1 py-2 px-4 rounded-2xl text-sm font-medium transition-colors ${
                 activeTab === "add"
                   ? "bg-white text-gray-900 shadow-sm"
@@ -309,16 +331,10 @@ export default function CreateCollectionModal({
                         />
                         <div className="ml-3 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-body-16-medium">
-                              {collection.icon || "📁"}
-                            </span>
                             <span className="text-body-16-semibold text-gray-900">
                               {collection.name}
                             </span>
                           </div>
-                          <p className="text-descriptions-12-regular text-gray-500 mt-1">
-                            {collection.datasetCount || 0} items
-                          </p>
                         </div>
                       </label>
                     ))}

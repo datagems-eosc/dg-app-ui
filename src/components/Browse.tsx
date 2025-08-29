@@ -41,6 +41,7 @@ import { HierarchicalCategory } from "./ui/HierarchicalDropdown";
 import { useSession } from "next-auth/react";
 import { getNavigationUrl } from "@/lib/utils";
 import { apiClient } from "@/lib/apiClient";
+import { useCollections } from "@/contexts/CollectionsContext";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -188,8 +189,9 @@ export default function Browse({
   collectionId = "",
   onCollectionNameUpdate,
 }: BrowseProps) {
-  const router = useRouter();
   const { data: session } = useSession() as any;
+  const { notifyCollectionModified } = useCollections();
+  const router = useRouter();
   const [localSelectedDatasets, setLocalSelectedDatasets] =
     useState<string[]>(selectedDatasets);
   const [selectedDataset, setSelectedDataset] =
@@ -240,6 +242,9 @@ export default function Browse({
 
       // Delete the collection via API
       await apiClient.deleteUserCollection(collectionId, token);
+
+      // Notify that collections have been modified to refresh sidebar
+      notifyCollectionModified();
 
       // Close the modal and redirect to dashboard
       setShowDeleteModal(false);

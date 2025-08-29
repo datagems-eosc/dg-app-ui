@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -129,6 +129,7 @@ function MenuItemSkeleton() {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const hasLoadedCollections = useRef(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isCollectionSettingsOpen, setIsCollectionSettingsOpen] =
@@ -139,6 +140,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     extraCollections,
     isLoadingApiCollections,
     isLoadingExtraCollections,
+    refreshAllCollections,
   } = useCollections();
   const { data: session } = useSession();
 
@@ -146,6 +148,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const currentConversationId = pathname?.startsWith("/chat/")
     ? pathname.split("/")[2]
     : undefined;
+
+  // Refresh collections only once when component mounts and session is available
+  useEffect(() => {
+    if (session && !hasLoadedCollections.current) {
+      hasLoadedCollections.current = true;
+      refreshAllCollections();
+    }
+  }, [session, refreshAllCollections]);
+
+  // Function to manually refresh collections when needed (e.g., after creating a collection)
+  const handleManualRefresh = () => {
+    if (session) {
+      refreshAllCollections();
+    }
+  };
 
   // Function to sort and filter collections based on localStorage settings
   const getSortedAndFilteredCollections = (
@@ -185,38 +202,38 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const savedSettings = localStorage.getItem("collectionSettings");
 
     if (!savedSettings) {
-      // When localStorage is empty, return apiCollections first, then extraCollections
-      const apiCollectionsWithDefaults = apiCollections.map(
-        (collection, index) => ({
-          ...collection,
-          isVisible: true,
-          order: index,
-        })
-      );
-
+      // When localStorage is empty, return extraCollections first, then apiCollections
       const extraCollectionsWithDefaults = extraCollections
         .filter((collection) => collection.userDatasetCollections?.length > 0)
         .map((collection, index) => ({
           ...collection,
           isVisible: true,
-          order: apiCollections.length + index, // Start ordering after apiCollections
+          order: index, // Start ordering from 0 for custom collections
         }));
 
-      return [...apiCollectionsWithDefaults, ...extraCollectionsWithDefaults];
+      const apiCollectionsWithDefaults = apiCollections.map(
+        (collection, index) => ({
+          ...collection,
+          isVisible: true,
+          order: extraCollectionsWithDefaults.length + index, // Start ordering after custom collections
+        })
+      );
+
+      return [...extraCollectionsWithDefaults, ...apiCollectionsWithDefaults];
     }
 
-    // When localStorage has settings, use the existing logic
-    const allCollections = [
-      ...getSortedAndFilteredCollections(apiCollections),
-      ...getSortedAndFilteredCollections(
-        extraCollections.filter(
-          (collection) => collection.userDatasetCollections?.length > 0
-        )
-      ),
-    ];
+    // When localStorage has settings, use the existing logic but prioritize custom collections
+    const customCollections = getSortedAndFilteredCollections(
+      extraCollections.filter(
+        (collection) => collection.userDatasetCollections?.length > 0
+      )
+    );
 
-    // Sort all collections together by their order
-    return allCollections.sort((a, b) => a.order - b.order);
+    const sortedApiCollections =
+      getSortedAndFilteredCollections(apiCollections);
+
+    // Combine collections with custom collections first, then API collections
+    return [...customCollections, ...sortedApiCollections];
   };
 
   // Handle mobile detection and sidebar state
