@@ -81,14 +81,30 @@ export default function DatasetDetailsPanel({
       ? dataset.url
       : undefined;
   const displaySize = "size" in dataset && dataset.size ? dataset.size : "";
-  const displayKeywords =
-    "keywords" in dataset && dataset.keywords
-      ? (dataset.keywords as string[])
-      : undefined;
-  const displayFieldsOfScience =
-    "fieldOfScience" in dataset && dataset.fieldOfScience
-      ? (dataset.fieldOfScience as string[])
-      : undefined;
+  const displayKeywords = (() => {
+    if ("keywords" in dataset && dataset.keywords) {
+      // Handle both array and single string cases
+      if (Array.isArray(dataset.keywords)) {
+        return dataset.keywords.length > 0 ? dataset.keywords : undefined;
+      } else if (typeof dataset.keywords === "string") {
+        return [dataset.keywords];
+      }
+    }
+    return undefined;
+  })();
+  const displayFieldsOfScience = (() => {
+    if ("fieldOfScience" in dataset && dataset.fieldOfScience) {
+      // Handle both array and single string cases
+      if (Array.isArray(dataset.fieldOfScience)) {
+        return dataset.fieldOfScience.length > 0
+          ? dataset.fieldOfScience
+          : undefined;
+      } else if (typeof dataset.fieldOfScience === "string") {
+        return [dataset.fieldOfScience];
+      }
+    }
+    return undefined;
+  })();
 
   const dateMetadataItems = [
     {

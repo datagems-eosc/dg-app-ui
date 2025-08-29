@@ -57,8 +57,24 @@ const USER_COLLECTION_API_PAYLOAD = {
       "user.id",
       "user.name",
       "userDatasetCollections.id",
-      "userDatasetCollections.dataset.Id",
+      "userDatasetCollections.dataset.id",
+      "userDatasetCollections.dataset.code",
       "userDatasetCollections.dataset.name",
+      "userDatasetCollections.dataset.description",
+      "userDatasetCollections.dataset.license",
+      "userDatasetCollections.dataset.mimeType",
+      "userDatasetCollections.dataset.url",
+      "userDatasetCollections.dataset.version",
+      "userDatasetCollections.dataset.fieldOfScience",
+      "userDatasetCollections.dataset.keywords",
+      "userDatasetCollections.dataset.size",
+      "userDatasetCollections.dataset.datePublished",
+      "userDatasetCollections.dataset.collections.id",
+      "userDatasetCollections.dataset.collections.code",
+      "userDatasetCollections.dataset.collections.name",
+      "userDatasetCollections.dataset.collections.datasetCount",
+      "userDatasetCollections.dataset.permissions.browseDataset",
+      "userDatasetCollections.dataset.permissions.editDataset",
     ],
   },
   page: {
@@ -206,18 +222,51 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
       };
     }
 
+    // Extract all available dataset fields
+    const collections = Array.isArray(dataset.collections)
+      ? dataset.collections
+          .map((c: unknown) => {
+            if (c && typeof c === "object" && "name" in c) {
+              return {
+                id: String((c as Record<string, unknown>).id ?? ""),
+                name: String((c as Record<string, unknown>).name ?? ""),
+                code: String((c as Record<string, unknown>).code ?? ""),
+              };
+            }
+            return null;
+          })
+          .filter(
+            (c): c is { id: string; name: string; code: string } => c !== null
+          )
+      : [];
+
+    const permissions = Array.isArray(dataset.permissions)
+      ? dataset.permissions
+      : [];
+    const access = permissions.includes("browsedataset")
+      ? "Open Access"
+      : "Restricted";
+
     return {
       id: String(dataset.id ?? ""),
-      title: String(dataset.name ?? "Untitled"),
-      category: "Math",
-      access: "Restricted",
-      description: "",
-      size: "N/A",
-      lastUpdated: "2024-01-01",
+      title: String(dataset.name ?? dataset.code ?? "Untitled"),
+      category: "Math", // Default fallback
+      access,
+      description: String(dataset.description ?? ""),
+      size: String(dataset.size ?? "N/A"),
+      lastUpdated: String(dataset.datePublished ?? "2024-01-01"),
       tags: [],
-      collections: [],
-      keywords: undefined,
-      fieldsOfScience: undefined,
+      collections,
+      keywords: Array.isArray(dataset.keywords)
+        ? dataset.keywords.map(String)
+        : undefined,
+      fieldsOfScience: Array.isArray(dataset.fieldOfScience)
+        ? dataset.fieldOfScience.map(String)
+        : undefined,
+      license: String(dataset.license ?? ""),
+      mimeType: String(dataset.mimeType ?? ""),
+      url: String(dataset.url ?? ""),
+      version: String(dataset.version ?? ""),
     };
   });
 }
@@ -653,12 +702,15 @@ export default function DashboardClient() {
                     tags: Array.isArray(apiDataset.keywords)
                       ? apiDataset.keywords
                       : [],
+                    keywords: Array.isArray(apiDataset.keywords)
+                      ? apiDataset.keywords
+                      : undefined,
                     license: apiDataset.license,
                     mimeType: apiDataset.mimeType,
                     datePublished: apiDataset.datePublished,
                     fieldOfScience: Array.isArray(apiDataset.fieldOfScience)
                       ? apiDataset.fieldOfScience
-                      : [],
+                      : undefined,
                     url: apiDataset.url,
                   };
                 });
