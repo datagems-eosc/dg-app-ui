@@ -9,19 +9,13 @@ import React, {
 } from "react";
 import { useSession } from "next-auth/react";
 import { apiClient } from "@/lib/apiClient";
-import { UserCollection, ApiCollection } from "@/types/collection";
+import { ApiCollection } from "@/types/collection";
 
 interface CollectionsContextType {
-  collections: UserCollection[];
   apiCollections: ApiCollection[];
   extraCollections: ApiCollection[];
   isLoadingApiCollections: boolean;
   isLoadingExtraCollections: boolean;
-  addCollection: (name: string, datasetIds: string[], id?: string) => void;
-  addToCollection: (collectionId: string, datasetIds: string[]) => void;
-  removeCollection: (id: string) => void;
-  removeTimestampCollections: () => void;
-  updateCollection: (id: string, updates: Partial<UserCollection>) => void;
   refreshApiCollections: () => Promise<void>;
   refreshExtraCollections: () => Promise<void>;
   refreshAllCollections: () => Promise<void>;
@@ -63,34 +57,11 @@ export function CollectionsProvider({
   children: React.ReactNode;
 }) {
   const { data: session } = useSession();
-  const [collections, setCollections] = useState<UserCollection[]>([]);
   const [apiCollections, setApiCollections] = useState<ApiCollection[]>([]);
   const [extraCollections, setExtraCollections] = useState<ApiCollection[]>([]);
   const [isLoadingApiCollections, setIsLoadingApiCollections] = useState(true);
   const [isLoadingExtraCollections, setIsLoadingExtraCollections] =
     useState(true);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  // Load collections from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("userCollections");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          // Convert date strings back to Date objects
-          const collectionsWithDates = parsed.map((collection) => ({
-            ...collection,
-            createdAt: new Date(collection.createdAt),
-          }));
-          setCollections(collectionsWithDates);
-        }
-      } catch (error) {
-        console.error("Error loading collections:", error);
-      }
-    }
-    setIsLoaded(true);
-  }, []);
 
   // Fetch API collections when session is available
   useEffect(() => {
@@ -142,7 +113,7 @@ export function CollectionsProvider({
         },
         page: {
           Offset: 0,
-          Size: 10,
+          Size: 100, // Increased from 10 to 100 to ensure all collections are fetched
         },
         Order: {
           Items: ["+createdAt"],
@@ -150,81 +121,24 @@ export function CollectionsProvider({
         Metadata: {
           CountAll: true,
         },
+        // Add cache-busting timestamp to ensure fresh data
+        _timestamp: Date.now(),
+        // Add random cache-busting parameter
+        _cacheBust: Math.random().toString(36).substring(7),
       };
       const data = await apiClient.queryUserCollections(
         extraCollectionsPayload,
         token
       );
-      console.log("Extra collections data initial", data);
+      console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];
+      console.log("Setting extraCollections to:", items);
       setExtraCollections(items);
     } catch (err: unknown) {
       console.error("Failed to fetch extra collections:", err);
     } finally {
       setIsLoadingExtraCollections(false);
     }
-  };
-
-  // Save collections to localStorage whenever they change (but not on initial load)
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem("userCollections", JSON.stringify(collections));
-  }, [collections, isLoaded]);
-
-  const addCollection = (name: string, datasetIds: string[], id?: string) => {
-    const newCollection: UserCollection = {
-      id: id || Date.now().toString(),
-      name,
-      datasetIds,
-      createdAt: new Date(),
-      icon: "📁", // Default icon
-    };
-    setCollections((prev) => [...prev, newCollection]);
-    // Notify that collections have been modified to refresh sidebar
-    notifyCollectionModified();
-  };
-
-  const addToCollection = (collectionId: string, datasetIds: string[]) => {
-    setCollections((prev) =>
-      prev.map((collection) =>
-        collection.id === collectionId
-          ? {
-              ...collection,
-              datasetIds: [
-                ...new Set([...collection.datasetIds, ...datasetIds]),
-              ],
-            }
-          : collection
-      )
-    );
-    // Notify that collections have been modified to refresh sidebar
-    notifyCollectionModified();
-  };
-
-  const removeCollection = (id: string) => {
-    setCollections((prev) => prev.filter((collection) => collection.id !== id));
-    // Notify that collections have been modified to refresh sidebar
-    notifyCollectionModified();
-  };
-
-  const removeTimestampCollections = () => {
-    setCollections((prev) =>
-      prev.filter((collection) => {
-        // Remove collections with timestamp IDs (10-13 digit numbers)
-        const isTimestamp = /^\d{10,13}$/.test(collection.id);
-        return !isTimestamp;
-      })
-    );
-  };
-
-  const updateCollection = (id: string, updates: Partial<UserCollection>) => {
-    setCollections((prev) =>
-      prev.map((collection) =>
-        collection.id === id ? { ...collection, ...updates } : collection
-      )
-    );
-    // Notify that collections have been modified to refresh sidebar
-    notifyCollectionModified();
   };
 
   const refreshApiCollections = useCallback(async () => {
@@ -242,22 +156,19 @@ export function CollectionsProvider({
   const notifyCollectionModified = useCallback(() => {
     // This function can be called by components to notify that collections have been modified
     // It will trigger a refresh of all collections
-    refreshAllCollections();
+    // Force immediate refresh to ensure deleted collections are removed from UI
+    setTimeout(() => {
+      refreshAllCollections();
+    }, 100); // Small delay to ensure API operation completes
   }, [refreshAllCollections]);
 
   return (
     <CollectionsContext.Provider
       value={{
-        collections,
         apiCollections,
         extraCollections,
         isLoadingApiCollections,
         isLoadingExtraCollections,
-        addCollection,
-        addToCollection,
-        removeCollection,
-        removeTimestampCollections,
-        updateCollection,
         refreshApiCollections,
         refreshExtraCollections,
         refreshAllCollections,

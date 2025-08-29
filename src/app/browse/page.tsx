@@ -16,7 +16,7 @@ export default function BrowsePage() {
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-  const { addCollection } = useCollections();
+  const { notifyCollectionModified } = useCollections();
 
   // Set mounted to true after first render (client-side only)
   useEffect(() => {
@@ -59,11 +59,9 @@ export default function BrowsePage() {
   };
 
   const handleCreateCollection = (name: string) => {
-    addCollection(name, selectedDatasets);
-    // Show success message
-    alert(
-      `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`
-    );
+    // Collections are now created via API in the CreateCollectionModal
+    // This function is kept for backward compatibility but doesn't do anything
+    console.log("Collection creation handled by CreateCollectionModal");
   };
 
   return (

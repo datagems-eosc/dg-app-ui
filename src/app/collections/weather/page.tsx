@@ -16,7 +16,7 @@ export default function WeatherPage() {
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-  const { addCollection } = useCollections();
+  const { notifyCollectionModified } = useCollections();
 
   // Filter datasets to show only Weather category
   const weatherDatasets = mockDatasets.filter(
@@ -57,11 +57,9 @@ export default function WeatherPage() {
   };
 
   const handleCreateCollection = (name: string) => {
-    addCollection(name, selectedDatasets);
-    // Show success message
-    alert(
-      `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`
-    );
+    // Collections are now created via API in the CreateCollectionModal
+    // This function is kept for backward compatibility but doesn't do anything
+    console.log("Collection creation handled by CreateCollectionModal");
   };
 
   return (
