@@ -112,13 +112,13 @@ export default function DatasetCard({
   useEffect(() => {
     const checkScreenSize = () => {
       const isSmallScreen = window.innerWidth <= 1440;
-      setShouldStackFooter(hasSidePanelOpen && isSmallScreen);
+      setShouldStackFooter(!isListMode && hasSidePanelOpen && isSmallScreen);
     };
 
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
-  }, [hasSidePanelOpen]);
+  }, [hasSidePanelOpen, isListMode]);
 
   const handleStarClick = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click when starring

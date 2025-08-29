@@ -184,7 +184,7 @@ export default function CreateCollectionModal({
     setCollectionName("Custom Collection");
     setDescription("");
     setSelectedCollectionIds([]);
-    setActiveTab("create");
+    // Don't reset the activeTab - keep user's preference
     onClose();
   };
 

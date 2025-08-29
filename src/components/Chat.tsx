@@ -14,7 +14,7 @@ import ChatInitialView from "./ui/chat/ChatInitialView";
 import ChatMessages from "./ui/chat/ChatMessages";
 import DatasetChangeWarning from "./ui/chat/DatasetChangeWarning";
 import { useCollections } from "@/contexts/CollectionsContext";
-import { Collection } from "@/types/collection";
+import { Collection, ApiCollection } from "@/types/collection";
 import { getLogoutUrl, getNavigationUrl } from "@/lib/utils";
 import { apiClient } from "@/lib/apiClient";
 
@@ -43,6 +43,7 @@ interface ChatProps {
   initialMessages?: ConversationMessage[]; // undefined while loading, [] when loaded and empty
   showConversationName?: boolean;
   hideCollectionActions?: boolean;
+  initialCollectionId?: string | null; // Collection ID from URL parameter
 }
 
 // Add type for cross-dataset search result
@@ -68,6 +69,7 @@ export default function Chat({
   initialMessages,
   showConversationName = true,
   hideCollectionActions = false,
+  initialCollectionId = null,
 }: ChatProps) {
   // Store only Message[] for UI rendering
   const [messages, setMessages] = useState<Message[]>([]);
@@ -76,8 +78,12 @@ export default function Chat({
   const [hasInitialized, setHasInitialized] = useState(false);
 
   // Collections state
-  const { collections, apiCollections, isLoadingApiCollections } =
-    useCollections();
+  const {
+    collections,
+    apiCollections,
+    extraCollections,
+    isLoadingApiCollections,
+  } = useCollections();
   const [selectedCollection, setSelectedCollection] =
     useState<Collection | null>(null);
 
@@ -318,11 +324,40 @@ export default function Chat({
   const router = useRouter();
   const { data: session } = useSession();
 
+  // Handle initial collection selection from URL parameter
+  useEffect(() => {
+    if (
+      initialCollectionId &&
+      (apiCollections.length > 0 || extraCollections.length > 0)
+    ) {
+      // Find the collection by ID in API, extra, and local collections
+      const allCollections = [
+        ...apiCollections,
+        ...extraCollections,
+        ...collections,
+      ];
+      const targetCollection = allCollections.find(
+        (collection) => collection.id === initialCollectionId
+      );
+
+      // Always set the collection if it's different from current selection
+      if (
+        targetCollection &&
+        (!selectedCollection || selectedCollection.id !== targetCollection.id)
+      ) {
+        handleSelectCollection(targetCollection);
+      }
+    } else if (!initialCollectionId && selectedCollection) {
+      // If no collection in URL but we have a selected collection, clear it
+      handleSelectCollection(null);
+    }
+  }, [initialCollectionId, apiCollections, extraCollections, collections]);
+
   // Add effect to detect collection from messages and set it automatically
   useEffect(() => {
     if (
       messages.length > 0 &&
-      apiCollections.length > 0 &&
+      (apiCollections.length > 0 || extraCollections.length > 0) &&
       collections.length >= 0
     ) {
       // Find the last message with dataset information (either AI with relatedDatasetIds or user with datasetIds)
@@ -355,12 +390,28 @@ export default function Chat({
           }
 
           // Try to find a matching collection
-          const allCollections = [...apiCollections, ...collections];
+          const allCollections = [
+            ...apiCollections,
+            ...extraCollections,
+            ...collections,
+          ];
           const matchingCollection = allCollections.find((collection) => {
             let collectionDatasetIds: string[] = [];
 
-            // Handle API collections with datasets array
+            // Handle custom collections with userDatasetCollections array
             if (
+              "userDatasetCollections" in collection &&
+              collection.userDatasetCollections &&
+              Array.isArray(collection.userDatasetCollections) &&
+              collection.userDatasetCollections.length > 0
+            ) {
+              const apiCollection = collection as ApiCollection;
+              collectionDatasetIds = apiCollection
+                .userDatasetCollections!.map((item) => item.dataset?.id)
+                .filter((id): id is string => !!id);
+            }
+            // Handle API collections with datasets array
+            else if (
               "datasets" in collection &&
               collection.datasets &&
               collection.datasets.length > 0
@@ -404,7 +455,14 @@ export default function Chat({
         }
       }
     }
-  }, [messages, apiCollections, collections, selectedDatasets, conversationId]);
+  }, [
+    messages,
+    apiCollections,
+    extraCollections,
+    collections,
+    selectedDatasets,
+    conversationId,
+  ]);
 
   // Add effect to detect dataset changes and show warning
   useEffect(() => {
@@ -792,8 +850,20 @@ export default function Chat({
     if (collection) {
       let datasetIds: string[] = [];
 
-      // Check if collection has datasets array (API collections)
+      // Check if collection has userDatasetCollections array (custom collections from API)
       if (
+        "userDatasetCollections" in collection &&
+        collection.userDatasetCollections &&
+        Array.isArray(collection.userDatasetCollections) &&
+        collection.userDatasetCollections.length > 0
+      ) {
+        const apiCollection = collection as ApiCollection;
+        datasetIds = apiCollection
+          .userDatasetCollections!.map((item) => item.dataset?.id)
+          .filter((id): id is string => !!id); // Filter out any undefined values
+      }
+      // Check if collection has datasets array (API collections)
+      else if (
         "datasets" in collection &&
         collection.datasets &&
         collection.datasets.length > 0
@@ -816,8 +886,24 @@ export default function Chat({
           if (dataset) {
             namesMap[id] = dataset.title;
           } else {
-            // Fallback: use collection name if dataset not found
-            namesMap[id] = `${collection.name} Dataset`;
+            // Try to find name from collection's userDatasetCollections
+            if (
+              "userDatasetCollections" in collection &&
+              collection.userDatasetCollections
+            ) {
+              const apiCollection = collection as ApiCollection;
+              const userDataset = apiCollection.userDatasetCollections!.find(
+                (item) => item.dataset?.id === id
+              );
+              if (userDataset?.dataset?.name) {
+                namesMap[id] = userDataset.dataset.name;
+              } else {
+                namesMap[id] = `${collection.name} Dataset`;
+              }
+            } else {
+              // Fallback: use collection name if dataset not found
+              namesMap[id] = `${collection.name} Dataset`;
+            }
           }
         });
         setSelectedDatasetNamesMap(namesMap);
@@ -926,7 +1012,7 @@ export default function Chat({
         </div>
         {/* Chat Input - Fixed at bottom, outside dashboard layout */}
         <div
-          className={`fixed bottom-0 left-80 right-0 px-6 py-4 bg-white z-20 ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
+          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-6 py-4 bg-white z-20 ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
         >
           <div className="w-full max-w-4xl mx-auto">
             {/* Dataset Change Warning */}
@@ -940,6 +1026,7 @@ export default function Chat({
               collections={{
                 apiCollections,
                 collections,
+                extraCollections,
                 isLoading: isLoadingApiCollections,
               }}
               selectedCollection={selectedCollection}

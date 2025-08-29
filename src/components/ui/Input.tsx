@@ -3,7 +3,9 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface InputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
+  size?: "medium" | "large";
   label?: string;
   error?: string;
   icon?: React.ReactNode;
@@ -11,6 +13,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function Input({
+  size = "medium",
   className,
   name,
   label,
@@ -47,7 +50,9 @@ export function Input({
           id={name}
           disabled={disabled}
           className={cn(
-            "w-full px-3 py-1.75 border rounded-4xl text-sm font-normal transition-colors",
+            "w-full px-3 border rounded-4xl text-sm font-normal transition-colors",
+            // Size-based padding
+            size === "large" ? "py-2.25" : "py-1.75",
             // Base styles
             "border-slate-350 text-gray-850 placeholder-slate-400",
             // Icon padding
@@ -70,7 +75,11 @@ export function Input({
           {...props}
         />
         {rightIcon && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+          <div
+            className={`absolute flex right-3 top-1/2 transform -translate-y-1/2 ${
+              size === "large" ? "top-1/2" : "top-1/2"
+            }`}
+          >
             {rightIcon}
           </div>
         )}

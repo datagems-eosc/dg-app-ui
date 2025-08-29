@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import Chat from "@/components/Chat";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import type { Dataset } from "@/data/mockDatasets";
 // import { getApiBaseUrl } from "@/lib/utils"; // No longer needed
 import ProtectedPage from "@/components/ProtectedPage";
@@ -98,10 +98,8 @@ interface ChatPageProps {
   hideCollectionActions?: boolean;
 }
 
-export default function ChatPage({
-  showConversationName = true,
-  hideCollectionActions = false,
-}: ChatPageProps) {
+// Main chat component that uses useSearchParams
+function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPageProps) {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const { data: session } = useSession();
   const [isMounted, setIsMounted] = useState(false);
@@ -113,12 +111,22 @@ export default function ChatPage({
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [isResetting, setIsResetting] = useState(false);
   const [hasJustClearedLocalStorage, setHasJustClearedLocalStorage] = useState(false);
+  const [initialCollectionId, setInitialCollectionId] = useState<string | null>(null);
   const params = useParams();
+  const searchParams = useSearchParams();
 
   // Set mounted to true after first render (client-side only)
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Handle collection query parameter
+  useEffect(() => {
+    const collectionId = searchParams?.get('collection');
+    if (collectionId !== initialCollectionId) {
+      setInitialCollectionId(collectionId);
+    }
+  }, [searchParams, initialCollectionId]);
 
   // Save selected datasets to localStorage whenever they change (only when mounted and not resetting)
   useEffect(() => {
@@ -337,8 +345,23 @@ export default function ChatPage({
           initialMessages={chatInitialMessages ?? undefined}
           showConversationName={showConversationName}
           hideCollectionActions={hideCollectionActions}
+          initialCollectionId={initialCollectionId}
         />
       </DashboardLayout>
     </ProtectedPage>
+  );
+}
+
+export default function ChatPage({
+  showConversationName = true,
+  hideCollectionActions = false,
+}: ChatPageProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ChatPageContent
+        showConversationName={showConversationName}
+        hideCollectionActions={hideCollectionActions}
+      />
+    </Suspense>
   );
 }

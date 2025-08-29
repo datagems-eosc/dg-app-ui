@@ -5,7 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Button } from "../Button";
 import { CollectionsDropdown } from "../CollectionsDropdown";
 import { cn } from "@/lib/utils";
-import { Collection } from "@/types/collection";
+import { Collection, ApiCollection } from "@/types/collection";
 
 interface ChatInputProps {
   value: string;
@@ -15,6 +15,7 @@ interface ChatInputProps {
   collections?: {
     apiCollections: Collection[];
     collections: Collection[];
+    extraCollections: ApiCollection[];
     isLoading: boolean;
   };
   selectedCollection?: Collection | null;
@@ -152,7 +153,9 @@ export function ChatInput({
                   disabled={disabled}
                 >
                   <span className="w-4 h-4 mr-2">📁</span>
-                  Collections
+                  {selectedCollection
+                    ? selectedCollection.name.replace(/ Collection$/i, "")
+                    : "Collections"}
                 </Button>
               )}
               <Button
