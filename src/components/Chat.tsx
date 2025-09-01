@@ -79,7 +79,6 @@ export default function Chat({
 
   // Collections state
   const {
-    collections,
     apiCollections,
     extraCollections,
     isLoadingApiCollections,
@@ -330,11 +329,10 @@ export default function Chat({
       initialCollectionId &&
       (apiCollections.length > 0 || extraCollections.length > 0)
     ) {
-      // Find the collection by ID in API, extra, and local collections
+      // Find the collection by ID in API and extra collections
       const allCollections = [
         ...apiCollections,
         ...extraCollections,
-        ...collections,
       ];
       const targetCollection = allCollections.find(
         (collection) => collection.id === initialCollectionId
@@ -351,14 +349,13 @@ export default function Chat({
       // If no collection in URL but we have a selected collection, clear it
       handleSelectCollection(null);
     }
-  }, [initialCollectionId, apiCollections, extraCollections, collections]);
+  }, [initialCollectionId, apiCollections, extraCollections]);
 
   // Add effect to detect collection from messages and set it automatically
   useEffect(() => {
     if (
       messages.length > 0 &&
-      (apiCollections.length > 0 || extraCollections.length > 0) &&
-      collections.length >= 0
+      (apiCollections.length > 0 || extraCollections.length > 0)
     ) {
       // Find the last message with dataset information (either AI with relatedDatasetIds or user with datasetIds)
       const lastMessageWithDatasets = [...messages].reverse().find((msg) => {
@@ -393,7 +390,6 @@ export default function Chat({
           const allCollections = [
             ...apiCollections,
             ...extraCollections,
-            ...collections,
           ];
           const matchingCollection = allCollections.find((collection) => {
             let collectionDatasetIds: string[] = [];
@@ -459,7 +455,6 @@ export default function Chat({
     messages,
     apiCollections,
     extraCollections,
-    collections,
     selectedDatasets,
     conversationId,
   ]);
@@ -1025,7 +1020,7 @@ export default function Chat({
               onAddDatasets={() => setShowAddDatasetsModal(true)}
               collections={{
                 apiCollections,
-                collections,
+                collections: [],
                 extraCollections,
                 isLoading: isLoadingApiCollections,
               }}
