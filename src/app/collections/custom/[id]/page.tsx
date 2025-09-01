@@ -250,7 +250,7 @@ export default function CustomCollectionPage() {
           <p className="text-gray-600 mt-1">
             Custom collection • {displayDatasetIds.length} datasets
             {"createdAt" in collection && collection.createdAt && (
-              <> • Created {collection.createdAt.toLocaleDateString()}</>
+              <> • Created {(collection.createdAt as Date).toLocaleDateString()}</>
             )}
           </p>
         </div>
