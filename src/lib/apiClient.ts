@@ -415,6 +415,24 @@ class ApiClient {
 
     return response.json();
   }
+
+  async getLicenses(token: string): Promise<any> {
+    const response = await this.makeRequest(
+      "/vocabulary/license",
+      {
+        method: "GET",
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch licenses");
+    }
+
+    const responseData = await response.json();
+    return responseData;
+  }
 }
 
 // Export a singleton instance

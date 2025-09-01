@@ -15,6 +15,7 @@ interface VocabularyResponse {
 
 // Cache for vocabulary data
 let fieldsOfScienceCache: HierarchicalCategory[] | null = null;
+let licensesCache: { value: string; label: string }[] | null = null;
 
 // Convert API response to HierarchicalCategory format
 function convertToHierarchicalCategories(
@@ -73,7 +74,75 @@ export async function fetchFieldsOfScience(
   }
 }
 
+// Fetch licenses from API
+export async function fetchLicenses(
+  authToken?: string
+): Promise<{ value: string; label: string }[]> {
+  // Return cached data if available
+  if (licensesCache) {
+    return licensesCache;
+  }
+
+  try {
+    if (!authToken) {
+      throw new Error("Authentication token is required");
+    }
+
+    const data = await apiClient.getLicenses(authToken);
+
+    // Transform the API response to the expected format
+    // Handle different possible response formats
+    let licenses: { value: string; label: string }[] = [];
+
+    if (Array.isArray(data)) {
+      // Direct array format
+      licenses = data.map((license: any) => ({
+        value: license.code || license.value || license.id || license,
+        label: license.name || license.label || license.description || license,
+      }));
+    } else if (data && typeof data === "object") {
+      // Check if it's wrapped in a property (like data.items, data.licenses, etc.)
+      const possibleArrayProps = [
+        "items",
+        "licenses",
+        "data",
+        "results",
+        "content",
+      ];
+      for (const prop of possibleArrayProps) {
+        if (Array.isArray(data[prop])) {
+          licenses = data[prop].map((license: any) => ({
+            value: license.code || license.value || license.id || license,
+            label:
+              license.name || license.label || license.description || license,
+          }));
+          break;
+        }
+      }
+
+      // If still no array found, try to convert the object itself
+      if (licenses.length === 0 && Object.keys(data).length > 0) {
+        licenses = Object.entries(data).map(([key, value]) => ({
+          value: key,
+          label: typeof value === "string" ? value : key,
+        }));
+      }
+    }
+
+    // Cache the result
+    licensesCache = licenses;
+
+    return licenses;
+  } catch (error) {
+    console.error("Error fetching licenses:", error);
+
+    // Return empty array as fallback
+    return [];
+  }
+}
+
 // Clear cache (useful for testing or when data needs to be refreshed)
 export function clearVocabularyCache() {
   fieldsOfScienceCache = null;
+  licensesCache = null;
 }

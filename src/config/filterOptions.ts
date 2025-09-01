@@ -1,18 +1,5 @@
 import { mbToBytes } from "@/lib/utils";
-import { fetchFieldsOfScience } from "@/lib/vocabularyService";
-
-// Keep hardcoded LICENSE_OPTIONS since there's no backend endpoint yet
-export const LICENSE_OPTIONS = [
-  { value: "CC BY 4.0", label: "CC BY 4.0 (Creative Commons Attribution 4.0)" },
-  { value: "CC0 1.0", label: "CC0 1.0 (Creative Commons Zero 1.0)" },
-  {
-    value: "CC-BY-SA 4.0",
-    label: "CC-BY-SA 4.0 (Creative Commons Attribution-ShareAlike 4.0)",
-  },
-  { value: "MIT", label: "MIT License" },
-  { value: "Apache-2.0", label: "Apache License 2.0" },
-  { value: "GPL-3.0", label: "GNU General Public License v3.0" },
-];
+import { fetchFieldsOfScience, fetchLicenses } from "@/lib/vocabularyService";
 
 export const ACCESS_OPTIONS = [
   { value: "open", label: "Open" },
@@ -119,5 +106,5 @@ export const VALIDATION_CONFIG = {
   },
 } as const;
 
-// Export only the fields of science fetch function
-export { fetchFieldsOfScience };
+// Export both fetch functions
+export { fetchFieldsOfScience, fetchLicenses };

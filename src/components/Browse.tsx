@@ -26,8 +26,8 @@ import FilterModal from "./FilterModal";
 import {
   FilterState,
   getDefaultFilters,
-  LICENSE_OPTIONS,
   fetchFieldsOfScience,
+  fetchLicenses,
   SORTING_OPTIONS,
 } from "../config/filterOptions";
 import CreateCollectionModal from "./CreateCollectionModal";
@@ -211,6 +211,9 @@ export default function Browse({
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
+  const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
+    []
+  );
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [isDetailsPanelAnimating, setIsDetailsPanelAnimating] = useState(false);
@@ -347,7 +350,7 @@ export default function Browse({
     }
   }, [propFilters]);
 
-  // Fetch fields of science on component mount
+  // Fetch fields of science and licenses on component mount
   useEffect(() => {
     const token = session?.accessToken;
 
@@ -358,6 +361,15 @@ export default function Browse({
       .catch((error) => {
         console.error("Error fetching fields of science:", error);
         setFieldsOfScienceCategories([]);
+      });
+
+    fetchLicenses(token)
+      .then((licenseOptions) => {
+        setLicenses(licenseOptions);
+      })
+      .catch((error) => {
+        console.error("Error fetching licenses:", error);
+        setLicenses([]);
       });
   }, [session]);
 
@@ -655,9 +667,7 @@ export default function Browse({
     if (filters.license.length > 0) {
       // Get the exact names of selected licenses
       const selectedLicenseNames = filters.license.map((licenseCode) => {
-        const licenseOption = LICENSE_OPTIONS.find(
-          (opt) => opt.value === licenseCode
-        );
+        const licenseOption = licenses.find((opt) => opt.value === licenseCode);
         return licenseOption ? licenseOption.label : licenseCode; // fallback to code if not found
       });
 
@@ -680,7 +690,7 @@ export default function Browse({
     }
 
     return tags;
-  }, [filters, propFilters, fieldsOfScienceCategories]);
+  }, [filters, propFilters, fieldsOfScienceCategories, licenses]);
 
   const isPanelVisible = showSelectedPanel || isPanelClosing;
   const isDetailsPanelVisible = selectedDataset || isDetailsPanelClosing;

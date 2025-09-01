@@ -8,11 +8,11 @@ import { MultiSelect } from "./ui/MultiSelect";
 import HierarchicalDropdown from "./ui/HierarchicalDropdown";
 import {
   ACCESS_OPTIONS,
-  LICENSE_OPTIONS,
   FilterState,
   getDefaultFilters,
   VALIDATION_CONFIG,
   fetchFieldsOfScience,
+  fetchLicenses,
 } from "../config/filterOptions";
 import { HierarchicalCategory } from "./ui/HierarchicalDropdown";
 import { useSession } from "next-auth/react";
@@ -35,7 +35,11 @@ export default function FilterModal({
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
+  const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
+    []
+  );
   const [isLoadingFields, setIsLoadingFields] = useState(true);
+  const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -60,7 +64,7 @@ export default function FilterModal({
     setFilters(currentFilters);
   }, [currentFilters]);
 
-  // Fetch fields of science when modal becomes visible
+  // Fetch fields of science and licenses when modal becomes visible
   useEffect(() => {
     if (isVisible) {
       const token = session?.accessToken;
@@ -77,6 +81,20 @@ export default function FilterModal({
         })
         .finally(() => {
           setIsLoadingFields(false);
+        });
+
+      // Fetch licenses
+      setIsLoadingLicenses(true);
+      fetchLicenses(token)
+        .then((licenseOptions) => {
+          setLicenses(licenseOptions);
+        })
+        .catch((error) => {
+          console.error("Error fetching licenses:", error);
+          setLicenses([]);
+        })
+        .finally(() => {
+          setIsLoadingLicenses(false);
         });
     }
   }, [isVisible, session]);
@@ -335,15 +353,21 @@ export default function FilterModal({
                 <h4 className="text-body-16-medium mb-4 text-slate-850">
                   License
                 </h4>
-                <MultiSelect
-                  options={LICENSE_OPTIONS}
-                  value={filters.license}
-                  onChange={(value) =>
-                    setFilters({ ...filters, license: value })
-                  }
-                  placeholder="Select licenses..."
-                  searchable={false}
-                />
+                {isLoadingLicenses ? (
+                  <div className="flex justify-center items-center h-20">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : (
+                  <MultiSelect
+                    options={licenses}
+                    value={filters.license}
+                    onChange={(value) =>
+                      setFilters({ ...filters, license: value })
+                    }
+                    placeholder="Select licenses..."
+                    searchable={false}
+                  />
+                )}
               </div>
             </div>
           </div>
