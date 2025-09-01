@@ -12,10 +12,14 @@ import { apiClient } from "@/lib/apiClient";
 import { ApiCollection } from "@/types/collection";
 
 interface CollectionsContextType {
+  collections: ApiCollection[]; // Combined collections for backward compatibility
   apiCollections: ApiCollection[];
   extraCollections: ApiCollection[];
   isLoadingApiCollections: boolean;
   isLoadingExtraCollections: boolean;
+  addCollection: (name: string, datasetIds: string[]) => Promise<void>;
+  updateCollection: (id: string, updates: any) => Promise<void>;
+  removeCollection: (id: string) => Promise<void>;
   refreshApiCollections: () => Promise<void>;
   refreshExtraCollections: () => Promise<void>;
   refreshAllCollections: () => Promise<void>;
@@ -179,10 +183,14 @@ export function CollectionsProvider({
   return (
     <CollectionsContext.Provider
       value={{
+        collections: [...apiCollections, ...extraCollections], // Combined collections for backward compatibility
         apiCollections,
         extraCollections,
         isLoadingApiCollections,
         isLoadingExtraCollections,
+        addCollection: async (name, datasetIds) => {},
+        updateCollection: async (id, updates) => {},
+        removeCollection: async (id) => {},
         refreshApiCollections,
         refreshExtraCollections,
         refreshAllCollections,
