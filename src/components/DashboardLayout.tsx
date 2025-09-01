@@ -15,8 +15,8 @@ import {
   Bot,
   CloudSun,
   GraduationCap,
-  Package,
   Trash,
+  Star,
 } from "lucide-react";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Avatar } from "./ui/Avatar";
@@ -45,7 +45,7 @@ const getCollectionIcon = (code?: string, className?: string) => {
   const baseClasses = "w-5 h-5 text-icon";
   const finalClasses = className ? `${baseClasses} ${className}` : baseClasses;
 
-  if (!code) return <Package strokeWidth={1.25} className={finalClasses} />;
+  if (!code) return <Star strokeWidth={1.25} className={finalClasses} />;
 
   switch (code.toLowerCase()) {
     case "weather":
@@ -61,7 +61,7 @@ const getCollectionIcon = (code?: string, className?: string) => {
     case "languages":
       return <Languages strokeWidth={1.25} className={finalClasses} />;
     default:
-      return <Package strokeWidth={1.25} className={finalClasses} />;
+      return <Star strokeWidth={1.25} className={finalClasses} />;
   }
 };
 

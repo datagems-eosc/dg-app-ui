@@ -9,7 +9,7 @@ import {
   Calculator,
   GraduationCap,
   Languages,
-  Package,
+  Star,
 } from "lucide-react";
 import { Button } from "./Button";
 import { cn } from "@/lib/utils";
@@ -38,23 +38,23 @@ const getCollectionIcon = (code?: string, className?: string) => {
   const baseClasses = "w-4 h-4 text-icon";
   const finalClasses = className ? `${baseClasses} ${className}` : baseClasses;
 
-  if (!code) return <Package className={finalClasses} />;
+  if (!code) return <Star strokeWidth={1.25} className={finalClasses} />;
 
   switch (code.toLowerCase()) {
     case "weather":
     case "meteo":
-      return <CloudSun className={finalClasses} />;
+      return <CloudSun strokeWidth={1.25} className={finalClasses} />;
     case "math":
     case "mathe":
-      return <Calculator className={finalClasses} />;
+      return <Calculator strokeWidth={1.25} className={finalClasses} />;
     case "lifelong":
     case "learning":
-      return <GraduationCap className={finalClasses} />;
+      return <GraduationCap strokeWidth={1.25} className={finalClasses} />;
     case "language":
     case "languages":
-      return <Languages className={finalClasses} />;
+      return <Languages strokeWidth={1.25} className={finalClasses} />;
     default:
-      return <Package className={finalClasses} />;
+      return <Star strokeWidth={1.25} className={finalClasses} />;
   }
 };
 
@@ -184,7 +184,7 @@ export function CollectionsDropdown({
           {selectedCollection ? (
             getCollectionIcon(selectedCollection.code)
           ) : (
-            <PackagePlus className="w-4 h-4 text-icon" />
+            <PackagePlus strokeWidth={1.25} className="w-4 h-4 text-icon" />
           )}
           <span className="truncate max-w-32">
             {selectedCollection
@@ -238,7 +238,7 @@ export function CollectionsDropdown({
             {collections.extraCollections.filter(
               (collection) => collection.userDatasetCollections?.length > 0
             ).length > 0 && (
-              <div className="px-1">
+              <div className="px-1 pt-2">
                 <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider mb-2 ml-2">
                   Custom
                 </div>
