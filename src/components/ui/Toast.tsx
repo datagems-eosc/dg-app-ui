@@ -1,16 +1,23 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import { CheckCircle, X } from 'lucide-react';
+import React, { useEffect } from "react";
+import { CheckCircle, X, AlertCircle } from "lucide-react";
 
 interface ToastProps {
   message: string;
   isVisible: boolean;
   onClose: () => void;
   duration?: number;
+  type?: "success" | "error";
 }
 
-export function Toast({ message, isVisible, onClose, duration = 3000 }: ToastProps) {
+export function Toast({
+  message,
+  isVisible,
+  onClose,
+  duration = 3000,
+  type = "success",
+}: ToastProps) {
   useEffect(() => {
     if (isVisible && duration > 0) {
       const timer = setTimeout(() => {
@@ -22,14 +29,26 @@ export function Toast({ message, isVisible, onClose, duration = 3000 }: ToastPro
 
   if (!isVisible) return null;
 
+  const isSuccess = type === "success";
+  const icon = isSuccess ? CheckCircle : AlertCircle;
+  const iconColor = isSuccess ? "text-green-500" : "text-red-500";
+  const title = isSuccess ? "Success" : "Error";
+  const titleColor = isSuccess ? "text-gray-900" : "text-red-900";
+
   return (
     <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
       <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm w-full">
         <div className="flex items-start gap-3">
-          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+          <div className={`w-5 h-5 ${iconColor} flex-shrink-0 mt-0.5`}>
+            {React.createElement(icon, { className: "w-5 h-5" })}
+          </div>
           <div className="flex-1">
-            <h4 className="text-body-16-semibold text-gray-900 mb-1">Changes saved</h4>
-            <p className="text-descriptions-12-regular text-gray-600">{message}</p>
+            <h4 className={`text-body-16-semibold ${titleColor} mb-1`}>
+              {title}
+            </h4>
+            <p className="text-descriptions-12-regular text-gray-600">
+              {message}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -41,4 +60,4 @@ export function Toast({ message, isVisible, onClose, duration = 3000 }: ToastPro
       </div>
     </div>
   );
-} 
+}

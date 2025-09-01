@@ -15,7 +15,8 @@ import {
   Bot,
   CloudSun,
   GraduationCap,
-  Package,
+  Trash,
+  Star,
 } from "lucide-react";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Avatar } from "./ui/Avatar";
@@ -33,6 +34,8 @@ import {
   generateChatUrl,
 } from "@/config/appUrls";
 import CollectionSettingsModal from "./CollectionSettingsModal";
+import { ConfirmationModal } from "./ui/ConfirmationModal";
+import { Toast } from "./ui/Toast";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -42,7 +45,7 @@ const getCollectionIcon = (code?: string, className?: string) => {
   const baseClasses = "w-5 h-5 text-icon";
   const finalClasses = className ? `${baseClasses} ${className}` : baseClasses;
 
-  if (!code) return <Package strokeWidth={1.25} className={finalClasses} />;
+  if (!code) return <Star strokeWidth={1.25} className={finalClasses} />;
 
   switch (code.toLowerCase()) {
     case "weather":
@@ -58,7 +61,7 @@ const getCollectionIcon = (code?: string, className?: string) => {
     case "languages":
       return <Languages strokeWidth={1.25} className={finalClasses} />;
     default:
-      return <Package strokeWidth={1.25} className={finalClasses} />;
+      return <Star strokeWidth={1.25} className={finalClasses} />;
   }
 };
 
@@ -134,6 +137,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isCollectionSettingsOpen, setIsCollectionSettingsOpen] =
     useState(false);
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isVisible: boolean;
+    conversationId: string;
+    conversationName: string;
+  }>({
+    isVisible: false,
+    conversationId: "",
+    conversationName: "",
+  });
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   const {
     apiCollections,
@@ -298,6 +314,65 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  const handleDeleteConversation = (
+    conversationId: string,
+    conversationName: string
+  ) => {
+    setDeleteModalState({
+      isVisible: true,
+      conversationId,
+      conversationName,
+    });
+  };
+
+  const handleConfirmDeleteConversation = async () => {
+    const token = (session as any)?.accessToken;
+    if (deleteModalState.conversationId && token) {
+      try {
+        const { apiClient } = await import("@/lib/apiClient");
+        await apiClient.deleteConversation(
+          deleteModalState.conversationId,
+          token
+        );
+        // Remove the conversation from local state immediately
+        setConversations((prevConversations) =>
+          prevConversations.filter(
+            (conv) => conv.id !== deleteModalState.conversationId
+          )
+        );
+        // Show success toast
+        setToastType("success");
+        setToastMessage("Conversation deleted successfully!");
+        setShowToast(true);
+      } catch (error) {
+        console.error("Failed to delete conversation:", error);
+        // Show error toast
+        setToastType("error");
+        setToastMessage("Failed to delete conversation");
+        setShowToast(true);
+      }
+    }
+    setDeleteModalState({
+      isVisible: false,
+      conversationId: "",
+      conversationName: "",
+    });
+  };
+
+  const handleConversationUpdate = (
+    id: string,
+    newName: string,
+    newETag?: string
+  ) => {
+    setConversations((prevConversations) =>
+      prevConversations.map((conv) =>
+        conv.id === id
+          ? { ...conv, name: newName, eTag: newETag || conv.eTag }
+          : conv
+      )
+    );
+  };
+
   return (
     <div
       className="min-h-screen bg-gray-50 flex"
@@ -442,13 +517,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
                 RECENT CHATS
               </h3>
-              <div
-                className="flex-1 overflow-y-auto"
-                style={{ maxHeight: "420px" }}
-              >
+              <div className="flex-1 overflow-y-auto">
                 <ChatHistoryList
                   session={session}
                   currentConversationId={currentConversationId}
+                  onDeleteConversation={handleDeleteConversation}
+                  onConversationUpdate={handleConversationUpdate}
+                  conversations={conversations}
+                  setConversations={setConversations}
                 />
               </div>
             </div>
@@ -549,6 +625,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <CollectionSettingsModal
         isVisible={isCollectionSettingsOpen}
         onClose={() => setIsCollectionSettingsOpen(false)}
+      />
+
+      {/* Delete Conversation Modal */}
+      <ConfirmationModal
+        isVisible={deleteModalState.isVisible}
+        onClose={() =>
+          setDeleteModalState({
+            isVisible: false,
+            conversationId: "",
+            conversationName: "",
+          })
+        }
+        onConfirm={handleConfirmDeleteConversation}
+        title="Delete Chat"
+        message1={`Are you sure you want to delete "${deleteModalState.conversationName}"?`}
+        message2="This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        icon={<Trash strokeWidth={2.5} className="w-8 h-8 text-red-550" />}
+        isLoading={false}
+      />
+
+      {/* Toast for notifications */}
+      <Toast
+        message={toastMessage}
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
       />
     </div>
   );

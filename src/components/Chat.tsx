@@ -78,12 +78,8 @@ export default function Chat({
   const [hasInitialized, setHasInitialized] = useState(false);
 
   // Collections state
-  const {
-    collections,
-    apiCollections,
-    extraCollections,
-    isLoadingApiCollections,
-  } = useCollections();
+  const { apiCollections, extraCollections, isLoadingApiCollections } =
+    useCollections();
   const [selectedCollection, setSelectedCollection] =
     useState<Collection | null>(null);
 
@@ -330,12 +326,8 @@ export default function Chat({
       initialCollectionId &&
       (apiCollections.length > 0 || extraCollections.length > 0)
     ) {
-      // Find the collection by ID in API, extra, and local collections
-      const allCollections = [
-        ...apiCollections,
-        ...extraCollections,
-        ...collections,
-      ];
+      // Find the collection by ID in API and extra collections
+      const allCollections = [...apiCollections, ...extraCollections];
       const targetCollection = allCollections.find(
         (collection) => collection.id === initialCollectionId
       );
@@ -351,14 +343,13 @@ export default function Chat({
       // If no collection in URL but we have a selected collection, clear it
       handleSelectCollection(null);
     }
-  }, [initialCollectionId, apiCollections, extraCollections, collections]);
+  }, [initialCollectionId, apiCollections, extraCollections]);
 
   // Add effect to detect collection from messages and set it automatically
   useEffect(() => {
     if (
       messages.length > 0 &&
-      (apiCollections.length > 0 || extraCollections.length > 0) &&
-      collections.length >= 0
+      (apiCollections.length > 0 || extraCollections.length > 0)
     ) {
       // Find the last message with dataset information (either AI with relatedDatasetIds or user with datasetIds)
       const lastMessageWithDatasets = [...messages].reverse().find((msg) => {
@@ -390,11 +381,7 @@ export default function Chat({
           }
 
           // Try to find a matching collection
-          const allCollections = [
-            ...apiCollections,
-            ...extraCollections,
-            ...collections,
-          ];
+          const allCollections = [...apiCollections, ...extraCollections];
           const matchingCollection = allCollections.find((collection) => {
             let collectionDatasetIds: string[] = [];
 
@@ -459,7 +446,6 @@ export default function Chat({
     messages,
     apiCollections,
     extraCollections,
-    collections,
     selectedDatasets,
     conversationId,
   ]);
@@ -956,9 +942,11 @@ export default function Chat({
   // Scroll-to-bottom removed as per request
 
   return (
-    <div className="flex relative h-[120vh] overflow-hidden">
+    <div className="relative">
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative mx-auto">
+      <div
+        className={`flex-1 flex flex-col relative transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[380px] max-w-[1120px] 2xl:max-w-[1400px] mx-auto" : ""}`}
+      >
         {/* Header */}
         <div className="bg-white flex-shrink-0 py-6 z-10">
           {/* Conversation Name (first user message) */}
@@ -994,7 +982,7 @@ export default function Chat({
         </div>
 
         {/* Messages Area - Scrollable with padding for fixed input */}
-        <div className="flex-1 overflow-y-auto bg-white pb-40">
+        <div className="flex-1 bg-white pb-40">
           {(messages.length > 0 ||
             isMessagesLoading ||
             isGeneratingAIResponse) && (
@@ -1012,7 +1000,7 @@ export default function Chat({
         </div>
         {/* Chat Input - Fixed at bottom, outside dashboard layout */}
         <div
-          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-6 py-4 bg-white z-20 ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
+          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
         >
           <div className="w-full max-w-4xl mx-auto">
             {/* Dataset Change Warning */}
@@ -1025,7 +1013,7 @@ export default function Chat({
               onAddDatasets={() => setShowAddDatasetsModal(true)}
               collections={{
                 apiCollections,
-                collections,
+                collections: [],
                 extraCollections,
                 isLoading: isLoadingApiCollections,
               }}
@@ -1042,7 +1030,7 @@ export default function Chat({
 
       {/* Selected Datasets Panel - Under header, fixed on right side */}
       {(showSelectedPanel || isPanelClosing) && (
-        <div className="h-full z-40 w-full sm:w-[380px]">
+        <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px]">
           <div
             className={`h-full transition-transform duration-500 ease-out ${
               isPanelAnimating
