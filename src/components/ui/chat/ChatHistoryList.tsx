@@ -11,9 +11,8 @@ interface ConversationListItem {
   id: string;
   name?: string;
   createdAt?: string;
+  eTag: string;
 }
-
-
 
 function ChatHistorySkeleton() {
   return (
@@ -43,13 +42,26 @@ function ChatHistorySkeleton() {
 interface ChatHistoryListProps {
   session: any;
   currentConversationId?: string;
-  onDeleteConversation?: (conversationId: string, conversationName: string) => void;
+  onDeleteConversation?: (
+    conversationId: string,
+    conversationName: string
+  ) => void;
+  onConversationUpdate?: (
+    id: string,
+    newName: string,
+    newETag?: string
+  ) => void;
+  conversations?: any[];
+  setConversations?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export function ChatHistoryList({
   session,
   currentConversationId,
   onDeleteConversation,
+  onConversationUpdate,
+  conversations: externalConversations,
+  setConversations: setExternalConversations,
 }: ChatHistoryListProps) {
   const [conversations, setConversations] = useState<ConversationListItem[]>(
     []
@@ -58,12 +70,24 @@ export function ChatHistoryList({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const handleConversationUpdate = (id: string, newName: string) => {
-    setConversations(prevConversations =>
-      prevConversations.map(conv =>
-        conv.id === id ? { ...conv, name: newName } : conv
+  // Use external conversations if provided, otherwise use local state
+  const currentConversations = externalConversations || conversations;
+  const setCurrentConversations = setExternalConversations || setConversations;
+
+  const handleConversationUpdate = (
+    id: string,
+    newName: string,
+    newETag?: string
+  ) => {
+    setCurrentConversations((prevConversations: any[]) =>
+      prevConversations.map((conv: any) =>
+        conv.id === id
+          ? { ...conv, name: newName, eTag: newETag || conv.eTag }
+          : conv
       )
     );
+    // Also call the external handler if provided
+    onConversationUpdate?.(id, newName, newETag);
   };
 
   useEffect(() => {
@@ -78,7 +102,7 @@ export function ChatHistoryList({
             fields: [
               "id",
               "name",
-              "etag",
+              "eTag",
               "user.id",
               "user.name",
               "datasets.dataset.id",
@@ -113,7 +137,7 @@ export function ChatHistoryList({
                 (item: {
                   id: string;
                   name?: string;
-                  etag?: string;
+                  eTag?: string;
                   messages?: { createdAt?: string }[];
                 }) => {
                   let createdAt = "";
@@ -126,13 +150,13 @@ export function ChatHistoryList({
                   return {
                     id: item.id,
                     name: item.name,
-                    eTag: item.etag,
+                    eTag: item.eTag,
                     createdAt,
                   };
                 }
               )
           : [];
-        setConversations(conversations);
+        setCurrentConversations(conversations);
       } catch {
         setError("Failed to load chat history");
         setIsLoading(false);
@@ -151,8 +175,8 @@ export function ChatHistoryList({
   }
   const filtered =
     search.trim().length === 0
-      ? conversations
-      : conversations.filter((c) =>
+      ? currentConversations
+      : currentConversations.filter((c) =>
           (c.name || "Untitled Conversation")
             .toLowerCase()
             .includes(search.toLowerCase())
@@ -173,7 +197,10 @@ export function ChatHistoryList({
           description="Ask a question first"
         />
       ) : (
-        <div className="flex flex-col gap-1 overflow-y-auto pr-1 hide-scrollbar" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+        <div
+          className="flex flex-col gap-1 overflow-y-auto pr-1 hide-scrollbar"
+          style={{ maxHeight: "calc(100vh - 400px)" }}
+        >
           {filtered.map((conv) => (
             <ChatItem
               key={conv.id}

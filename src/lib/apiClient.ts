@@ -352,7 +352,7 @@ class ApiClient {
    */
   async updateConversation(
     id: string,
-    payload: { name: string; eTag?: string },
+    payload: { name: string; eTag: string },
     token: string
   ): Promise<any> {
     const response = await this.makeRequest(
@@ -362,7 +362,7 @@ class ApiClient {
         body: JSON.stringify({
           id: id,
           name: payload.name,
-          ...(payload.eTag && { eTag: payload.eTag }),
+          eTag: payload.eTag,
         }),
       },
       token

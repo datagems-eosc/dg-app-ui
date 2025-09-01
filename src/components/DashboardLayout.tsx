@@ -35,6 +35,7 @@ import {
 } from "@/config/appUrls";
 import CollectionSettingsModal from "./CollectionSettingsModal";
 import { ConfirmationModal } from "./ui/ConfirmationModal";
+import { Toast } from "./ui/Toast";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -145,6 +146,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     conversationId: "",
     conversationName: "",
   });
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   const {
     apiCollections,
@@ -329,10 +334,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           deleteModalState.conversationId,
           token
         );
-        // The conversation will be automatically removed from the list
-        // when the user navigates away or refreshes the page
+        // Remove the conversation from local state immediately
+        setConversations((prevConversations) =>
+          prevConversations.filter(
+            (conv) => conv.id !== deleteModalState.conversationId
+          )
+        );
+        // Show success toast
+        setToastType("success");
+        setToastMessage("Conversation deleted successfully!");
+        setShowToast(true);
       } catch (error) {
         console.error("Failed to delete conversation:", error);
+        // Show error toast
+        setToastType("error");
+        setToastMessage("Failed to delete conversation");
+        setShowToast(true);
       }
     }
     setDeleteModalState({
@@ -340,6 +357,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       conversationId: "",
       conversationName: "",
     });
+  };
+
+  const handleConversationUpdate = (
+    id: string,
+    newName: string,
+    newETag?: string
+  ) => {
+    setConversations((prevConversations) =>
+      prevConversations.map((conv) =>
+        conv.id === id
+          ? { ...conv, name: newName, eTag: newETag || conv.eTag }
+          : conv
+      )
+    );
   };
 
   return (
@@ -491,6 +522,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   session={session}
                   currentConversationId={currentConversationId}
                   onDeleteConversation={handleDeleteConversation}
+                  onConversationUpdate={handleConversationUpdate}
+                  conversations={conversations}
+                  setConversations={setConversations}
                 />
               </div>
             </div>
@@ -612,6 +646,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         confirmVariant="danger"
         icon={<Trash strokeWidth={2.5} className="w-8 h-8 text-red-550" />}
         isLoading={false}
+      />
+
+      {/* Toast for notifications */}
+      <Toast
+        message={toastMessage}
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
       />
     </div>
   );

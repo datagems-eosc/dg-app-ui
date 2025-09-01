@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import { Tooltip } from "../Tooltip";
+import { Toast } from "../Toast";
 import { apiClient } from "@/lib/apiClient";
 import { useSession } from "next-auth/react";
 
@@ -17,13 +18,17 @@ interface ConversationListItem {
   id: string;
   name?: string;
   createdAt?: string;
-  eTag?: string;
+  eTag: string;
 }
 
 interface ChatItemProps {
   conversation: ConversationListItem;
   isActive?: boolean;
-  onConversationUpdate?: (id: string, newName: string) => void;
+  onConversationUpdate?: (
+    id: string,
+    newName: string,
+    newETag?: string
+  ) => void;
   onDeleteConversation?: (
     conversationId: string,
     conversationName: string
@@ -41,6 +46,9 @@ export function ChatItem({
   const [editName, setEditName] = useState(conversation.name || "");
   const [showDropdown, setShowDropdown] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -93,24 +101,37 @@ export function ChatItem({
       return;
     }
 
+    // Check if ETag is available - it's required by the backend
+    if (!conversation.eTag) {
+      console.error("ETag is required to update conversation");
+      setEditName(conversation.name || "");
+      setIsEditing(false);
+      return;
+    }
+
     setIsUpdating(true);
     try {
       const result = await apiClient.updateConversation(
         conversation.id,
         {
           name: trimmedName,
-          eTag: conversation.eTag || "",
+          eTag: conversation.eTag,
         },
         token
       );
-
-      // Update the conversation with new name
-      onConversationUpdate?.(conversation.id, trimmedName);
+      // Update the conversation with new name and eTag
+      onConversationUpdate?.(conversation.id, trimmedName, result.eTag);
       setIsEditing(false);
+      setToastType("success");
+      setToastMessage("Conversation name updated successfully!");
+      setShowToast(true);
     } catch (error) {
       console.error("Failed to update conversation:", error);
       setEditName(conversation.name || "");
       setIsEditing(false); // Always exit edit mode on error
+      setToastType("error");
+      setToastMessage("Failed to update conversation name");
+      setShowToast(true);
     } finally {
       setIsUpdating(false);
     }
@@ -228,23 +249,39 @@ export function ChatItem({
 
   if (isActive || isEditing) {
     return (
-      <div
-        className={containerClasses}
-        onClick={(e) => {
-          if (isEditing) {
-            e.preventDefault();
-            e.stopPropagation();
-          }
-        }}
-      >
-        {content}
-      </div>
+      <>
+        <div
+          className={containerClasses}
+          onClick={(e) => {
+            if (isEditing) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+        >
+          {content}
+        </div>
+        <Toast
+          message={toastMessage}
+          isVisible={showToast}
+          onClose={() => setShowToast(false)}
+          type={toastType}
+        />
+      </>
     );
   }
 
   return (
-    <Link href={`/chat/${conversation.id}`} className={containerClasses}>
-      {content}
-    </Link>
+    <>
+      <Link href={`/chat/${conversation.id}`} className={containerClasses}>
+        {content}
+      </Link>
+      <Toast
+        message={toastMessage}
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
+      />
+    </>
   );
 }
