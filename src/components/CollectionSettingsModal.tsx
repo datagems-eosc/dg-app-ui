@@ -244,7 +244,7 @@ export default function CollectionSettingsModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col"
+        className="bg-white rounded-lg w-full max-w-[95%] md:max-w-[550px] shadow-2xl max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
