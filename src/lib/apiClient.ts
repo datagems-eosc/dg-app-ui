@@ -348,6 +348,55 @@ class ApiClient {
   }
 
   /**
+   * Update conversation name
+   */
+  async updateConversation(
+    id: string,
+    payload: { name: string; eTag?: string },
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest(
+      `/conversation/me/persist?f=id&f=etag&f=name`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          id: id,
+          name: payload.name,
+          ...(payload.eTag && { eTag: payload.eTag }),
+        }),
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to update conversation");
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete conversation
+   */
+  async deleteConversation(id: string, token: string): Promise<any> {
+    const response = await this.makeRequest(
+      `/conversation/${id}`,
+      {
+        method: "DELETE",
+      },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to delete conversation");
+    }
+
+    return {};
+  }
+
+  /**
    * Vocabulary API methods
    */
   async getFieldsOfScience(token: string): Promise<any> {

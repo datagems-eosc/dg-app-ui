@@ -16,6 +16,7 @@ import {
   CloudSun,
   GraduationCap,
   Package,
+  Trash,
 } from "lucide-react";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Avatar } from "./ui/Avatar";
@@ -33,6 +34,7 @@ import {
   generateChatUrl,
 } from "@/config/appUrls";
 import CollectionSettingsModal from "./CollectionSettingsModal";
+import { ConfirmationModal } from "./ui/ConfirmationModal";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -134,6 +136,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isCollectionSettingsOpen, setIsCollectionSettingsOpen] =
     useState(false);
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isVisible: boolean;
+    conversationId: string;
+    conversationName: string;
+  }>({
+    isVisible: false,
+    conversationId: "",
+    conversationName: "",
+  });
 
   const {
     apiCollections,
@@ -298,6 +309,39 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
+  const handleDeleteConversation = (
+    conversationId: string,
+    conversationName: string
+  ) => {
+    setDeleteModalState({
+      isVisible: true,
+      conversationId,
+      conversationName,
+    });
+  };
+
+  const handleConfirmDeleteConversation = async () => {
+    const token = (session as any)?.accessToken;
+    if (deleteModalState.conversationId && token) {
+      try {
+        const { apiClient } = await import("@/lib/apiClient");
+        await apiClient.deleteConversation(
+          deleteModalState.conversationId,
+          token
+        );
+        // The conversation will be automatically removed from the list
+        // when the user navigates away or refreshes the page
+      } catch (error) {
+        console.error("Failed to delete conversation:", error);
+      }
+    }
+    setDeleteModalState({
+      isVisible: false,
+      conversationId: "",
+      conversationName: "",
+    });
+  };
+
   return (
     <div
       className="min-h-screen bg-gray-50 flex"
@@ -442,13 +486,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
                 RECENT CHATS
               </h3>
-              <div
-                className="flex-1 overflow-y-auto"
-                style={{ maxHeight: "420px" }}
-              >
+              <div className="flex-1 overflow-y-auto">
                 <ChatHistoryList
                   session={session}
                   currentConversationId={currentConversationId}
+                  onDeleteConversation={handleDeleteConversation}
                 />
               </div>
             </div>
@@ -549,6 +591,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <CollectionSettingsModal
         isVisible={isCollectionSettingsOpen}
         onClose={() => setIsCollectionSettingsOpen(false)}
+      />
+
+      {/* Delete Conversation Modal */}
+      <ConfirmationModal
+        isVisible={deleteModalState.isVisible}
+        onClose={() =>
+          setDeleteModalState({
+            isVisible: false,
+            conversationId: "",
+            conversationName: "",
+          })
+        }
+        onConfirm={handleConfirmDeleteConversation}
+        title="Delete Chat"
+        message1={`Are you sure you want to delete "${deleteModalState.conversationName}"?`}
+        message2="This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        icon={<Trash strokeWidth={2.5} className="w-8 h-8 text-red-550" />}
+        isLoading={false}
       />
     </div>
   );

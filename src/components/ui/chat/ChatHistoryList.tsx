@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import { Search, MessageCircleMore } from "lucide-react";
-import { formatRelativeTime } from "@/lib/utils";
 import { apiClient } from "@/lib/apiClient";
 import { Input } from "../Input";
 import { NoData } from "../NoData";
+import { ChatItem } from "./ChatItem";
 
 interface ConversationListItem {
   id: string;
@@ -14,45 +13,7 @@ interface ConversationListItem {
   createdAt?: string;
 }
 
-interface ChatItemProps {
-  conversation: ConversationListItem;
-  isActive?: boolean;
-}
 
-function ChatItem({ conversation, isActive = false }: ChatItemProps) {
-  const content = (
-    <>
-      <div className="flex flex-start items-center gap-2 flex-1 w-full">
-        <MessageCircleMore className="w-4 h-4 flex-shrink-0 text-blue-850 group-hover:text-blue-600" />
-        <span className="text-body-14-medium truncate max-w-[230px] text-gray-750">
-          {conversation.name || "Untitled Conversation"}
-        </span>
-      </div>
-      <span className="text-descriptions-12-regular tracking-1p text-gray-650">
-        {conversation.createdAt
-          ? formatRelativeTime(conversation.createdAt)
-          : ""}
-      </span>
-    </>
-  );
-
-  if (isActive) {
-    return (
-      <div className="flex flex-col gap-1 p-3 rounded-lg border border-blue-300 cursor-default">
-        {content}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={`/chat/${conversation.id}`}
-      className="flex flex-col gap-1 p-3 rounded-lg bg-blue-75 hover:bg-blue-100 transition-colors group"
-    >
-      {content}
-    </Link>
-  );
-}
 
 function ChatHistorySkeleton() {
   return (
@@ -82,11 +43,13 @@ function ChatHistorySkeleton() {
 interface ChatHistoryListProps {
   session: any;
   currentConversationId?: string;
+  onDeleteConversation?: (conversationId: string, conversationName: string) => void;
 }
 
 export function ChatHistoryList({
   session,
   currentConversationId,
+  onDeleteConversation,
 }: ChatHistoryListProps) {
   const [conversations, setConversations] = useState<ConversationListItem[]>(
     []
@@ -95,18 +58,27 @@ export function ChatHistoryList({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  const handleConversationUpdate = (id: string, newName: string) => {
+    setConversations(prevConversations =>
+      prevConversations.map(conv =>
+        conv.id === id ? { ...conv, name: newName } : conv
+      )
+    );
+  };
+
   useEffect(() => {
     const fetchConversations = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const token = session?.accessToken;
+        const token = (session as any)?.accessToken;
         if (!token) return;
         const payload = {
           project: {
             fields: [
               "id",
               "name",
+              "etag",
               "user.id",
               "user.name",
               "datasets.dataset.id",
@@ -141,6 +113,7 @@ export function ChatHistoryList({
                 (item: {
                   id: string;
                   name?: string;
+                  etag?: string;
                   messages?: { createdAt?: string }[];
                 }) => {
                   let createdAt = "";
@@ -153,6 +126,7 @@ export function ChatHistoryList({
                   return {
                     id: item.id,
                     name: item.name,
+                    eTag: item.etag,
                     createdAt,
                   };
                 }
@@ -167,7 +141,7 @@ export function ChatHistoryList({
       }
     };
     fetchConversations();
-  }, []);
+  }, [session]);
 
   if (isLoading) {
     return <ChatHistorySkeleton />;
@@ -199,12 +173,14 @@ export function ChatHistoryList({
           description="Ask a question first"
         />
       ) : (
-        <div className="flex flex-col gap-1 overflow-y-auto max-h-[40vh] pr-1 hide-scrollbar">
+        <div className="flex flex-col gap-1 overflow-y-auto pr-1 hide-scrollbar" style={{ maxHeight: 'calc(100vh - 400px)' }}>
           {filtered.map((conv) => (
             <ChatItem
               key={conv.id}
               conversation={conv}
               isActive={currentConversationId === conv.id}
+              onConversationUpdate={handleConversationUpdate}
+              onDeleteConversation={onDeleteConversation}
             />
           ))}
         </div>
