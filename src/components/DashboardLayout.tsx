@@ -17,6 +17,7 @@ import {
   GraduationCap,
   Trash,
   Star,
+  Menu,
 } from "lucide-react";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Avatar } from "./ui/Avatar";
@@ -546,7 +547,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-18">
-          <div className="h-full px-6 flex items-center justify-between">
+          <div className="h-full px-4 md:px-6 flex items-center justify-between">
             {/* Left side - Logo and toggle when sidebar is closed */}
             <div
               className={`flex items-center gap-4 transition-all duration-300 ${
@@ -555,20 +556,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <button
                 onClick={toggleSidebar}
-                className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+                className={`hover:bg-gray-100 transition-colors ${isMobile ? "rounded-lg border border-gray-300 p-1" : "p-2 rounded-md"}`}
                 aria-label="Open sidebar"
               >
-                <PanelLeftOpen
-                  strokeWidth={1.25}
-                  className="w-5 h-5 text-icon"
-                />
+                {isMobile ? (
+                  <Menu strokeWidth={1.25} className="w-5 h-5 text-icon" />
+                ) : (
+                  <PanelLeftOpen
+                    strokeWidth={1.25}
+                    className="w-5 h-5 text-icon"
+                  />
+                )}
               </button>
               <Link
                 href={createUrl(APP_ROUTES.DASHBOARD)}
                 className="flex items-center gap-2"
               >
                 <img
-                  src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
+                  src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/${
+                    isMobile ? "mobile-logo.svg" : "logo.svg"
+                  }`}
                   alt="Logo"
                   className="h-6 w-auto"
                 />
@@ -588,15 +595,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       name={session?.user?.name || ""}
                       email={session?.user?.email || ""}
                       size="sm"
+                      className={isMobile ? "w-9 h-9 flex-shrink-0" : ""}
                     />
-                    <div className="text-descriptions-12-regular">
-                      <div className="text-body-16-medium text-gray-900">
-                        {session?.user?.name}
+                    {!isMobile && (
+                      <div className="text-descriptions-12-regular">
+                        <div className="text-body-16-medium text-gray-900">
+                          {session?.user?.name}
+                        </div>
+                        <div className="text-descriptions-12-regular text-gray-500">
+                          {session?.user?.email}
+                        </div>
                       </div>
-                      <div className="text-descriptions-12-regular text-gray-500">
-                        {session?.user?.email}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 }
               >
