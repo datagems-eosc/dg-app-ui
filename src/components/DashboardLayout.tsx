@@ -18,6 +18,7 @@ import {
   Trash,
   Star,
   Menu,
+  X,
 } from "lucide-react";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Avatar } from "./ui/Avatar";
@@ -382,33 +383,105 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 z-50 bg-white border-r border-gray-200 h-screen flex flex-col transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? "w-80 translate-x-0" : "w-0 -translate-x-full"
+          isSidebarOpen
+            ? isMobile
+              ? "w-full translate-x-0"
+              : "w-80 translate-x-0"
+            : "w-0 -translate-x-full"
         } ${isMobile && isSidebarOpen ? "shadow-lg" : ""} overflow-x-hidden`}
       >
         {/* Logo Section - only visible when sidebar is open */}
         {isSidebarOpen && (
-          <div className="py-4.5 pl-5 pr-4 flex items-center gap-3">
-            <Link
-              href={createUrl(APP_ROUTES.DASHBOARD)}
-              className="flex items-center gap-2"
-            >
-              <img
-                src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
-                alt="Logo"
-                className="h-6 w-auto"
-              />
-            </Link>
-            <button
-              onClick={toggleSidebar}
-              className="ml-auto p-2 rounded-md hover:bg-gray-100 transition-colors"
-              aria-label="Close sidebar"
-            >
-              <PanelLeftClose
-                strokeWidth={1.25}
-                className="w-5 h-5 text-icon"
-              />
-            </button>
-          </div>
+          <>
+            {isMobile ? (
+              <div className="py-2.5 px-4 flex items-center justify-between w-full transition-all duration-300 border-b border-gray-200">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={toggleSidebar}
+                    className={`hover:bg-gray-100 transition-colors ${isMobile ? "rounded-lg border border-gray-300 p-1" : "p-2 rounded-md"}`}
+                    aria-label="Open sidebar"
+                  >
+                    <X strokeWidth={1.25} className="w-5 h-5 text-icon" />
+                  </button>
+                  <Link
+                    href={createUrl(APP_ROUTES.DASHBOARD)}
+                    className="flex items-center gap-2"
+                  >
+                    <img
+                      src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/mobile-logo.svg`}
+                      alt="Logo"
+                      className="h-6 w-auto"
+                    />
+                  </Link>
+                </div>
+                {/* Right side - User info */}
+                <div className="flex items-center gap-3">
+                  <Bell className="w-5 h-5 text-icon" />
+
+                  {/* Profile Dropdown */}
+                  <Dropdown
+                    trigger={
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          src={undefined}
+                          name={session?.user?.name || ""}
+                          email={session?.user?.email || ""}
+                          size="sm"
+                          className={isMobile ? "w-9 h-9 flex-shrink-0" : ""}
+                        />
+                        {!isMobile && (
+                          <div className="text-descriptions-12-regular">
+                            <div className="text-body-16-medium text-gray-900">
+                              {session?.user?.name}
+                            </div>
+                            <div className="text-descriptions-12-regular text-gray-500">
+                              {session?.user?.email}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    }
+                  >
+                    <DropdownItem
+                      href={createUrl(APP_ROUTES.SETTINGS)}
+                      icon={<Settings className="w-4 h-4 text-icon" />}
+                    >
+                      Settings
+                    </DropdownItem>
+                    <DropdownItem
+                      onClick={handleLogout}
+                      icon={<LogOut className="w-4 h-4 text-icon" />}
+                    >
+                      Logout
+                    </DropdownItem>
+                  </Dropdown>
+                </div>
+              </div>
+            ) : (
+              <div className="py-4.5 pl-5 pr-4 flex items-center gap-3">
+                <Link
+                  href={createUrl(APP_ROUTES.DASHBOARD)}
+                  className="flex items-center gap-2"
+                >
+                  <img
+                    src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
+                    alt="Logo"
+                    className="h-6 w-auto"
+                  />
+                </Link>
+                <button
+                  onClick={toggleSidebar}
+                  className="ml-auto p-2 rounded-md hover:bg-gray-100 transition-colors"
+                  aria-label="Close sidebar"
+                >
+                  <PanelLeftClose
+                    strokeWidth={1.25}
+                    className="w-5 h-5 text-icon"
+                  />
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Sidebar Content */}
@@ -533,17 +606,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </aside>
 
-      {/* Mobile overlay */}
-      {isMobile && isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      {/* Mobile overlay removed for full-width sidebar without backdrop */}
 
       {/* Main content area */}
       <div
-        className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "ml-80" : "ml-0"}`}
+        className={`flex-1 transition-all duration-300 ${
+          isSidebarOpen && !isMobile ? "ml-80" : "ml-0"
+        }`}
       >
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-18">

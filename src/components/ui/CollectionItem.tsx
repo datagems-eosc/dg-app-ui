@@ -49,6 +49,12 @@ export function CollectionItem({
     }
   };
 
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (onClick) {
+      onClick();
+    }
+  };
+
   return (
     <div className="group relative flex flex-start gap-4 pr-5 min-h-12">
       <div className="flex items-center justify-center">
@@ -64,7 +70,7 @@ export function CollectionItem({
           isActive ? "bg-blue-75" : "text-gray-700 hover:bg-slate-75"
         }`}
         title={title}
-        onClick={onClick}
+        onClick={handleLinkClick}
       >
         <span className={`mr-3 ${isActive ? "text-blue-850" : "text-icon"}`}>
           {icon}
@@ -73,7 +79,7 @@ export function CollectionItem({
         {onMessageClick && (
           <button
             onClick={handleMessageClick}
-            className="ml-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-white"
+            className="ml-2 p-2 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-white"
             title="Ask a question about this collection"
           >
             <MessageCircleMore
