@@ -252,7 +252,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Handle mobile detection and sidebar state
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 768;
+      const mobile = window.innerWidth < 640;
       setIsMobile(mobile);
       if (mobile) {
         setIsSidebarOpen(false);
