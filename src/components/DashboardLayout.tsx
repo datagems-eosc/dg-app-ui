@@ -1,135 +1,26 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import {
-  Bell,
-  Calculator,
-  Languages,
-  Settings,
-  LogOut,
-  PanelLeftClose,
-  PanelLeftOpen,
-  FolderSearch,
-  Bot,
-  CloudSun,
-  GraduationCap,
-  Trash,
-  Star,
-  Menu,
-  X,
-} from "lucide-react";
-import { Dropdown, DropdownItem } from "./ui/Dropdown";
-import { Avatar } from "./ui/Avatar";
-import { MenuItem } from "./ui/MenuItem";
-import { CollectionItem } from "./ui/CollectionItem";
+import { Trash } from "lucide-react";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useSession } from "next-auth/react";
 import { createUrl } from "@/lib/utils";
 import { signOut } from "next-auth/react";
 import { ApiCollection } from "@/types/collection";
-import { ChatHistoryList } from "./ui/chat/ChatHistoryList";
-import {
-  APP_ROUTES,
-  generateDashboardUrl,
-  generateChatUrl,
-} from "@/config/appUrls";
+import { generateChatUrl } from "@/config/appUrls";
 import CollectionSettingsModal from "./CollectionSettingsModal";
 import { ConfirmationModal } from "./ui/ConfirmationModal";
 import { Toast } from "./ui/Toast";
+import { SidebarHeader } from "./ui/SidebarHeader";
+import { MainHeader } from "./ui/MainHeader";
+import { SidebarContent } from "./ui/SidebarContent";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const getCollectionIcon = (code?: string, className?: string) => {
-  const baseClasses = "w-5 h-5 text-icon";
-  const finalClasses = className ? `${baseClasses} ${className}` : baseClasses;
 
-  if (!code) return <Star strokeWidth={1.25} className={finalClasses} />;
-
-  switch (code.toLowerCase()) {
-    case "weather":
-    case "meteo":
-      return <CloudSun strokeWidth={1.25} className={finalClasses} />;
-    case "math":
-    case "mathe":
-      return <Calculator strokeWidth={1.25} className={finalClasses} />;
-    case "lifelong":
-    case "learning":
-      return <GraduationCap strokeWidth={1.25} className={finalClasses} />;
-    case "language":
-    case "languages":
-      return <Languages strokeWidth={1.25} className={finalClasses} />;
-    default:
-      return <Star strokeWidth={1.25} className={finalClasses} />;
-  }
-};
-
-// Menu items array
-const menuItems = [
-  {
-    id: "browse",
-    label: "Browse",
-    href: APP_ROUTES.DASHBOARD,
-    icon: FolderSearch,
-  },
-  {
-    id: "ask-question",
-    label: "Ask a question",
-    href: APP_ROUTES.CHAT,
-    icon: Bot,
-  },
-];
-
-// Component that wraps CollectionItem in Suspense
-function CollectionItemWithSuspense(props: any) {
-  return (
-    <Suspense fallback={<CollectionItemSkeleton />}>
-      <CollectionItem {...props} />
-    </Suspense>
-  );
-}
-
-// Component that wraps MenuItem in Suspense
-function MenuItemWithSuspense(props: any) {
-  return (
-    <Suspense fallback={<MenuItemSkeleton />}>
-      <MenuItem {...props} />
-    </Suspense>
-  );
-}
-
-// Skeleton for collection item
-function CollectionItemSkeleton() {
-  return (
-    <div className="group relative flex flex-start gap-4 pr-5 min-h-12">
-      <div className="flex items-center justify-center">
-        <div className="bg-gray-200 w-1 h-[32px] rounded-r-[4px] animate-pulse" />
-      </div>
-      <div className="flex-1 flex items-center px-3 py-2 rounded-lg bg-gray-200 animate-pulse">
-        <div className="w-5 h-5 bg-gray-300 rounded mr-3 animate-pulse" />
-        <div className="h-4 bg-gray-300 rounded flex-1 animate-pulse" />
-      </div>
-    </div>
-  );
-}
-
-// Skeleton for menu item
-function MenuItemSkeleton() {
-  return (
-    <div className="flex flex-start gap-4 pr-5">
-      <div className="flex items-center justify-center">
-        <div className="bg-gray-200 w-1 h-[32px] rounded-r-[4px] animate-pulse" />
-      </div>
-      <div className="flex-1 flex items-center px-3 py-2 rounded-lg bg-gray-200 animate-pulse">
-        <div className="w-5 h-5 bg-gray-300 rounded mr-2 animate-pulse" />
-        <div className="h-4 bg-gray-300 rounded animate-pulse" />
-      </div>
-    </div>
-  );
-}
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
@@ -390,220 +281,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             : "w-0 -translate-x-full"
         } ${isMobile && isSidebarOpen ? "shadow-lg" : ""} overflow-x-hidden`}
       >
-        {/* Logo Section - only visible when sidebar is open */}
-        {isSidebarOpen && (
-          <>
-            {isMobile ? (
-              <div className="py-2.5 px-4 flex items-center justify-between w-full transition-all duration-300 border-b border-gray-200">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={toggleSidebar}
-                    className={`hover:bg-gray-100 transition-colors ${isMobile ? "rounded-lg border border-gray-300 p-1" : "p-2 rounded-md"}`}
-                    aria-label="Open sidebar"
-                  >
-                    <X strokeWidth={1.25} className="w-5 h-5 text-icon" />
-                  </button>
-                  <Link
-                    href={createUrl(APP_ROUTES.DASHBOARD)}
-                    className="flex items-center gap-2"
-                  >
-                    <img
-                      src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/mobile-logo.svg`}
-                      alt="Logo"
-                      className="h-6 w-auto"
-                    />
-                  </Link>
-                </div>
-                {/* Right side - User info */}
-                <div className="flex items-center gap-3">
-                  <Bell className="w-5 h-5 text-icon" />
-
-                  {/* Profile Dropdown */}
-                  <Dropdown
-                    trigger={
-                      <div className="flex items-center gap-3">
-                        <Avatar
-                          src={undefined}
-                          name={session?.user?.name || ""}
-                          email={session?.user?.email || ""}
-                          size="sm"
-                          className={isMobile ? "w-9 h-9 flex-shrink-0" : ""}
-                        />
-                        {!isMobile && (
-                          <div className="text-descriptions-12-regular">
-                            <div className="text-body-16-medium text-gray-900">
-                              {session?.user?.name}
-                            </div>
-                            <div className="text-descriptions-12-regular text-gray-500">
-                              {session?.user?.email}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    }
-                  >
-                    <DropdownItem
-                      href={createUrl(APP_ROUTES.SETTINGS)}
-                      icon={<Settings className="w-4 h-4 text-icon" />}
-                    >
-                      Settings
-                    </DropdownItem>
-                    <DropdownItem
-                      onClick={handleLogout}
-                      icon={<LogOut className="w-4 h-4 text-icon" />}
-                    >
-                      Logout
-                    </DropdownItem>
-                  </Dropdown>
-                </div>
-              </div>
-            ) : (
-              <div className="py-4.5 pl-5 pr-4 flex items-center gap-3">
-                <Link
-                  href={createUrl(APP_ROUTES.DASHBOARD)}
-                  className="flex items-center gap-2"
-                >
-                  <img
-                    src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
-                    alt="Logo"
-                    className="h-6 w-auto"
-                  />
-                </Link>
-                <button
-                  onClick={toggleSidebar}
-                  className="ml-auto p-2 rounded-md hover:bg-gray-100 transition-colors"
-                  aria-label="Close sidebar"
-                >
-                  <PanelLeftClose
-                    strokeWidth={1.25}
-                    className="w-5 h-5 text-icon"
-                  />
-                </button>
-              </div>
-            )}
-          </>
-        )}
+        {/* Sidebar Header */}
+        <SidebarHeader
+          isMobile={isMobile}
+          isSidebarOpen={isSidebarOpen}
+          session={session as any}
+          onToggleSidebar={toggleSidebar}
+          onLogout={handleLogout}
+        />
 
         {/* Sidebar Content */}
-        <div
-          className={`flex-1 min-h-0 overflow-y-auto transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-        >
-          <div className="flex flex-col py-4">
-            {/* Menu Section */}
-            <div className="mb-4 pb-4 border-b border-slate-200">
-              <h3 className="px-5 text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
-                MENU
-              </h3>
-              <nav className="space-y-2">
-                {menuItems.map((item) => (
-                  <MenuItemWithSuspense
-                    key={item.id}
-                    href={item.href}
-                    icon={item.icon}
-                    label={item.label}
-                    onClick={() => isMobile && setIsSidebarOpen(false)}
-                  />
-                ))}
-              </nav>
-            </div>
-
-            {/* Collections Section */}
-            <div className="mb-4 pb-4 border-b border-slate-200">
-              <div className="px-5 flex items-center justify-between mb-3">
-                <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider">
-                  COLLECTIONS
-                </h3>
-                <button
-                  onClick={() => setIsCollectionSettingsOpen(true)}
-                  className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-                >
-                  <Settings
-                    strokeWidth={1.25}
-                    className="w-4 h-4 text-icon hover:text-gray-600"
-                  />
-                </button>
-              </div>
-              <nav className="space-y-1 max-h-54 overflow-y-auto">
-                {/* Loading States */}
-                {isLoadingApiCollections || isLoadingExtraCollections ? (
-                  <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">
-                    <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-                    Loading collections...
-                  </div>
-                ) : (
-                  <>
-                    {/* Combine and sort all collections */}
-                    {(() => {
-                      const finalSortedCollections =
-                        getCollectionsWithDefaultOrder();
-
-                      console.log(
-                        "Final sorted collections for sidebar:",
-                        finalSortedCollections
-                      );
-
-                      return finalSortedCollections.map((collection) => {
-                        // Check if this collection is from extraCollections (custom collections)
-                        const isExtra = extraCollections.some(
-                          (ec) => ec.id === collection.id
-                        );
-
-                        return (
-                          <CollectionItemWithSuspense
-                            key={collection.id}
-                            id={collection.id}
-                            name={
-                              isExtra
-                                ? collection.name
-                                : collection.name.replace(/ Collection$/i, "")
-                            }
-                            icon={getCollectionIcon(collection.code)}
-                            href={
-                              isExtra
-                                ? generateDashboardUrl({
-                                    collection: collection.id,
-                                    isCustom: true,
-                                  })
-                                : generateDashboardUrl({
-                                    collection: collection.id,
-                                  })
-                            }
-                            title={
-                              isExtra
-                                ? `${collection.userDatasetCollections?.length || 0} datasets`
-                                : `${collection.datasetCount} datasets`
-                            }
-                            onClick={() => isMobile && setIsSidebarOpen(false)}
-                            onMessageClick={() =>
-                              handleCollectionAskQuestion(collection.id)
-                            }
-                          />
-                        );
-                      });
-                    })()}
-                  </>
-                )}
-              </nav>
-            </div>
-
-            {/* Recent Chats Section */}
-            <div className="flex-1 flex flex-col min-h-0 px-5">
-              <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
-                RECENT CHATS
-              </h3>
-              <div className="flex-1 overflow-y-auto">
-                <ChatHistoryList
-                  session={session}
-                  currentConversationId={currentConversationId}
-                  onDeleteConversation={handleDeleteConversation}
-                  onConversationUpdate={handleConversationUpdate}
-                  conversations={conversations}
-                  setConversations={setConversations}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <SidebarContent
+          isSidebarOpen={isSidebarOpen}
+          isMobile={isMobile}
+          isLoadingApiCollections={isLoadingApiCollections}
+          isLoadingExtraCollections={isLoadingExtraCollections}
+          finalSortedCollections={getCollectionsWithDefaultOrder()}
+          extraCollections={extraCollections}
+          session={session}
+          currentConversationId={currentConversationId}
+          conversations={conversations}
+          onCollectionSettingsOpen={() => setIsCollectionSettingsOpen(true)}
+          onMobileSidebarClose={() => isMobile && setIsSidebarOpen(false)}
+          onCollectionAskQuestion={handleCollectionAskQuestion}
+          onDeleteConversation={handleDeleteConversation}
+          onConversationUpdate={handleConversationUpdate}
+          setConversations={setConversations}
+        />
       </aside>
 
       {/* Mobile overlay removed for full-width sidebar without backdrop */}
@@ -615,86 +319,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }`}
       >
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-18">
-          <div className="h-full px-4 md:px-6 flex items-center justify-between">
-            {/* Left side - Logo and toggle when sidebar is closed */}
-            <div
-              className={`flex items-center gap-4 transition-all duration-300 ${
-                isSidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"
-              }`}
-            >
-              <button
-                onClick={toggleSidebar}
-                className={`hover:bg-gray-100 transition-colors ${isMobile ? "rounded-lg border border-gray-300 p-1" : "p-2 rounded-md"}`}
-                aria-label="Open sidebar"
-              >
-                {isMobile ? (
-                  <Menu strokeWidth={1.25} className="w-5 h-5 text-icon" />
-                ) : (
-                  <PanelLeftOpen
-                    strokeWidth={1.25}
-                    className="w-5 h-5 text-icon"
-                  />
-                )}
-              </button>
-              <Link
-                href={createUrl(APP_ROUTES.DASHBOARD)}
-                className="flex items-center gap-2"
-              >
-                <img
-                  src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/${
-                    isMobile ? "mobile-logo.svg" : "logo.svg"
-                  }`}
-                  alt="Logo"
-                  className="h-6 w-auto"
-                />
-              </Link>
-            </div>
-
-            {/* Right side - User info */}
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-icon" />
-
-              {/* Profile Dropdown */}
-              <Dropdown
-                trigger={
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      src={undefined}
-                      name={session?.user?.name || ""}
-                      email={session?.user?.email || ""}
-                      size="sm"
-                      className={isMobile ? "w-9 h-9 flex-shrink-0" : ""}
-                    />
-                    {!isMobile && (
-                      <div className="text-descriptions-12-regular">
-                        <div className="text-body-16-medium text-gray-900">
-                          {session?.user?.name}
-                        </div>
-                        <div className="text-descriptions-12-regular text-gray-500">
-                          {session?.user?.email}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                }
-              >
-                <DropdownItem
-                  href={createUrl(APP_ROUTES.SETTINGS)}
-                  icon={<Settings className="w-4 h-4 text-icon" />}
-                >
-                  Settings
-                </DropdownItem>
-                <DropdownItem
-                  onClick={handleLogout}
-                  icon={<LogOut className="w-4 h-4 text-icon" />}
-                >
-                  Logout
-                </DropdownItem>
-              </Dropdown>
-            </div>
-          </div>
-        </header>
+        <MainHeader
+          isMobile={isMobile}
+          isSidebarOpen={isSidebarOpen}
+          session={session as any}
+          onToggleSidebar={toggleSidebar}
+          onLogout={handleLogout}
+        />
 
         {/* Main Content */}
         <main className="bg-white min-h-[calc(100vh-56px)]">{children}</main>
