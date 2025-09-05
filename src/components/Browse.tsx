@@ -225,6 +225,21 @@ export default function Browse({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Handle mobile detection and sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+    };
+
+    // Set initial state
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Use controlled or local state for selected datasets
   const currentSelectedDatasets = onSelectedDatasetsChange
@@ -706,9 +721,9 @@ export default function Browse({
               : ""
         }`}
       >
-        <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out px-6 py-6">
+        <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out py-4 sm:py-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-start sm:items-center justify-between mb-4 px-4 sm:px-6">
             <div className="flex-1">
               {isEditingName ? (
                 // Inline editing mode
@@ -760,7 +775,9 @@ export default function Browse({
               ) : (
                 // Normal display mode
                 <>
-                  <h1 className="text-H2-32-semibold text-gray-750">{title}</h1>
+                  <h1 className="text-H2-32-semibold sm:text-H2-24-semibold text-gray-750">
+                    {title}
+                  </h1>
                   <p className="text-body-16-regular text-gray-650 mt-1">
                     {subtitle}
                   </p>
@@ -970,8 +987,8 @@ export default function Browse({
 
           {/* Search and filters */}
           {showSearchAndFilters !== false && (
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1">
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 mb-4 px-4 sm:px-6">
+              <div className="flex-1 w-full">
                 <Search
                   placeholder="Search datasets..."
                   value={searchTerm}
@@ -997,23 +1014,26 @@ export default function Browse({
                 <Filter className="w-4 h-4 text-icon" />
                 Filter
               </Button>
-              <Switch
-                leftIcon={ListChecks}
-                rightIcon={Grid2X2}
-                value={viewMode === "grid" ? "right" : "left"}
-                onChange={(value) =>
-                  setViewMode(value === "right" ? "grid" : "list")
-                }
-              />
+              {!isMobile && (
+                <Switch
+                  leftIcon={ListChecks}
+                  rightIcon={Grid2X2}
+                  value={viewMode === "grid" ? "right" : "left"}
+                  onChange={(value) =>
+                    setViewMode(value === "right" ? "grid" : "list")
+                  }
+                />
+              )}
             </div>
           )}
 
           {/* Active Filters */}
           {showSearchAndFilters !== false && activeFilterTags.length > 0 && (
-            <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="flex gap-2 mb-4 flex-nowrap sm:flex-wrap overflow-x-auto pl-4 sm:px-6">
               {activeFilterTags.map((tag) => (
                 <Chip
                   key={tag.key}
+                  className="flex-none"
                   color="grey"
                   onRemove={() => removeFilter(tag.key as keyof FilterState)}
                 >
@@ -1030,7 +1050,7 @@ export default function Browse({
 
           {/* Results count and sorting */}
           {showSearchAndFilters !== false && (
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
               <p className="text-body-14-regular text-gray-650">
                 Showing:{" "}
                 <span className="text-body-14-medium text-gray-750">
@@ -1048,7 +1068,7 @@ export default function Browse({
           )}
 
           {/* Main content area - do not shift cards when modal is open */}
-          <div className="transition-all duration-300">
+          <div className="transition-all duration-300 px-4 sm:px-6">
             {/* Loader or error */}
             {isLoading ? (
               <div
