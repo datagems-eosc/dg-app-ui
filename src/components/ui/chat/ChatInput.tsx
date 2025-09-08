@@ -91,7 +91,7 @@ export function ChatInput({
       )}
       style={{ width: "100%", maxWidth: "100%" }}
     >
-      <div className="p-4 relative">
+      <div className="p-3 sm:p-4 relative">
         <div className="relative">
           <textarea
             name="chat-input"
@@ -104,13 +104,14 @@ export function ChatInput({
             onBlur={() => setIsFocused(false)}
             placeholder="Ask me anything..."
             className={cn(
-              "w-full border-none text-body-16-regular transition-all resize-none bg-transparent",
+              "w-full border-none transition-all resize-none bg-transparent",
+              "text-descriptions-14-regular sm:text-body-16-regular",
               "text-gray-750 placeholder-slate-450",
               "focus:outline-none focus:ring-0",
               error && "text-gray-750",
               disabled && "text-slate-450 cursor-not-allowed"
             )}
-            style={{ minHeight: "60px", maxHeight: "150px" }}
+            style={{ minHeight: "52px", maxHeight: "140px" }}
             disabled={disabled}
           />
 
@@ -131,7 +132,7 @@ export function ChatInput({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 mt-4">
+        <div className="flex items-center justify-between gap-2 mt-3 sm:mt-4">
           {isLoading ? (
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin" />

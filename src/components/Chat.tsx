@@ -311,7 +311,8 @@ export default function Chat({
   }, [initialMessages, conversationId, hasInitialized]);
   const [inputValue, setInputValue] = useState("");
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
-  const [showSelectedPanel, setShowSelectedPanel] = useState(true);
+  // On mobile, do not show SelectedDatasetsPanel by default
+  const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDatasetNamesMap, setSelectedDatasetNamesMap] = useState<
@@ -319,6 +320,24 @@ export default function Chat({
   >({});
   const router = useRouter();
   const { data: session } = useSession();
+
+  // Determine initial visibility of the right panel responsively (show on >= sm)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const mq = window.matchMedia("(min-width: 640px)");
+      setShowSelectedPanel(mq.matches);
+      const handler = (e: MediaQueryListEvent) =>
+        setShowSelectedPanel(e.matches);
+      try {
+        mq.addEventListener("change", handler);
+        return () => mq.removeEventListener("change", handler);
+      } catch {
+        // Safari fallback
+        mq.addListener(handler as any);
+        return () => mq.removeListener(handler as any);
+      }
+    }
+  }, []);
 
   // Handle initial collection selection from URL parameter
   useEffect(() => {
@@ -982,7 +1001,9 @@ export default function Chat({
         </div>
 
         {/* Messages Area - Scrollable with padding for fixed input */}
-        <div className="flex-1 bg-white pb-40">
+        <div
+          className={`flex-1 bg-white ${showDatasetChangeWarning ? "pb-55 sm:pb-40" : "pb-35 sm:pb-40"}`}
+        >
           {(messages.length > 0 ||
             isMessagesLoading ||
             isGeneratingAIResponse) && (
@@ -1000,9 +1021,9 @@ export default function Chat({
         </div>
         {/* Chat Input - Fixed at bottom, outside dashboard layout */}
         <div
-          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
+          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
         >
-          <div className="w-full max-w-4xl mx-auto">
+          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
             {/* Dataset Change Warning */}
             <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 

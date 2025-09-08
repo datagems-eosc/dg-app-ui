@@ -41,8 +41,8 @@ export default function ChatMessages({
 
   return (
     <div
-      className={`p-6 3xl:px-0 3xl:py-6 ${
-        !showSelectedPanel && "px-0 py-0"
+      className={`px-4 py-4 sm:p-6 3xl:px-0 3xl:py-6 ${
+        !showSelectedPanel && "px-0 sm:px-0 py-0 sm:py-0"
       } space-y-7.5 max-w-4xl mx-auto`}
     >
       {sortedMessages.map((message) => (
