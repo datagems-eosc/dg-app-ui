@@ -90,6 +90,7 @@ export default function Chat({
 
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
 
   // State for sources panel
   const [messageRelatedDatasets, setMessageRelatedDatasets] = useState<
@@ -311,7 +312,8 @@ export default function Chat({
   }, [initialMessages, conversationId, hasInitialized]);
   const [inputValue, setInputValue] = useState("");
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
-  const [showSelectedPanel, setShowSelectedPanel] = useState(true);
+  // On mobile, do not show SelectedDatasetsPanel by default
+  const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDatasetNamesMap, setSelectedDatasetNamesMap] = useState<
@@ -319,6 +321,61 @@ export default function Chat({
   >({});
   const router = useRouter();
   const { data: session } = useSession();
+
+  // Determine initial visibility of the right panel responsively (show on >= sm)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const mq = window.matchMedia("(min-width: 640px)");
+      // For tablets (>=640 and <1024) do NOT open by default; only open by default on >=1024
+      setShowSelectedPanel(window.innerWidth >= 1024);
+      setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      const handler = (e: MediaQueryListEvent) => {
+        // Re-evaluate based on current width
+        setShowSelectedPanel(window.innerWidth >= 1024);
+        setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      };
+      try {
+        mq.addEventListener("change", handler);
+        return () => mq.removeEventListener("change", handler);
+      } catch {
+        // Safari fallback
+        mq.addListener(handler as any);
+        return () => mq.removeListener(handler as any);
+      }
+    }
+  }, []);
+
+  // Keep isTablet updated on resize
+  useEffect(() => {
+    const onResize = () => {
+      setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      // Keep default auto-open only for >=1024
+      setShowSelectedPanel(window.innerWidth >= 1024);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Close right-side panel when sidebar opens on tablets
+  useEffect(() => {
+    const handleSidebarOpenedForTablet = () => {
+      if (isTablet) {
+        if (showSelectedPanel) {
+          handleClosePanel();
+        }
+      }
+    };
+    window.addEventListener(
+      "sidebarOpenedForTablet",
+      handleSidebarOpenedForTablet
+    );
+    return () => {
+      window.removeEventListener(
+        "sidebarOpenedForTablet",
+        handleSidebarOpenedForTablet
+      );
+    };
+  }, [isTablet, showSelectedPanel]);
 
   // Handle initial collection selection from URL parameter
   useEffect(() => {
@@ -815,6 +872,10 @@ export default function Chat({
       // Start panel off-screen, then animate in
       setIsPanelAnimating(true);
       setTimeout(() => setIsPanelAnimating(false), 50);
+      // On tablets, request closing the sidebar when opening the right panel
+      if (isTablet) {
+        window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
+      }
     } else {
       // Animate panel closing
       setIsPanelClosing(true);
@@ -931,6 +992,9 @@ export default function Chat({
       // Start panel off-screen, then animate in
       setIsPanelAnimating(true);
       setTimeout(() => setIsPanelAnimating(false), 50);
+      if (isTablet) {
+        window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
+      }
     }
   };
 
@@ -982,7 +1046,9 @@ export default function Chat({
         </div>
 
         {/* Messages Area - Scrollable with padding for fixed input */}
-        <div className="flex-1 bg-white pb-40">
+        <div
+          className={`flex-1 bg-white ${showDatasetChangeWarning ? "pb-55 md:pb-40" : "pb-35 md:pb-40"}`}
+        >
           {(messages.length > 0 ||
             isMessagesLoading ||
             isGeneratingAIResponse) && (
@@ -1000,9 +1066,9 @@ export default function Chat({
         </div>
         {/* Chat Input - Fixed at bottom, outside dashboard layout */}
         <div
-          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "pr-[404px]" : "pr-6"}`}
+          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
         >
-          <div className="w-full max-w-4xl mx-auto">
+          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
             {/* Dataset Change Warning */}
             <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 

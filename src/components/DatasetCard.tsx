@@ -288,7 +288,7 @@ export default function DatasetCard({
           className={
             shouldStackFooter
               ? "flex flex-col gap-2"
-              : "flex items-center justify-between gap-2"
+              : "flex flex-col-reverse sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-2"
           }
         >
           {/* Action buttons */}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Radio } from "./ui/Radio";
 import { Input } from "./ui/Input";
@@ -9,7 +10,6 @@ import HierarchicalDropdown from "./ui/HierarchicalDropdown";
 import {
   ACCESS_OPTIONS,
   FilterState,
-  getDefaultFilters,
   VALIDATION_CONFIG,
   fetchFieldsOfScience,
   fetchLicenses,
@@ -248,7 +248,7 @@ export default function FilterModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-hidden p-4">
       <div
         className="absolute inset-0 bg-black/30"
         onClick={handleBackdropClick}
@@ -256,14 +256,21 @@ export default function FilterModal({
 
       <div className="relative z-10 flex items-center justify-center transform-none w-full top-0 left-0 md:w-min md:-translate-x-1/2 md:-translate-y-1/2 md:top-1/2 md:left-1/2">
         <div
-          className="bg-white rounded-lg shadow-xl overflow-hidden flex flex-col w-full h-screen md:w-[500px] md:h-[473px]"
+          className="bg-white rounded-lg shadow-xl overflow-hidden flex flex-col w-full max-h-[95vh] md:w-[500px] md:h-[473px]"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center px-6 py-4 border-b border-slate-200">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
             <h2 className="text-H6-18-semibold text-slate-850">Filters</h2>
+            <button
+              onClick={handleCancel}
+              className="p-2 hover:bg-slate-100 rounded-md transition-colors"
+              aria-label="Close filters"
+            >
+              <X strokeWidth={1.25} className="w-5 h-5 text-icon" />
+            </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-6">
+          <div className="flex-1 overflow-y-auto py-6 pb-28 overscroll-contain">
             <div className="space-y-6">
               <div className="pb-6 px-6 border-b border-slate-200">
                 <h4 className="text-body-16-medium mb-4 text-slate-850">

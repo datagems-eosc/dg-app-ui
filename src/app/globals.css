@@ -11,7 +11,7 @@
   --color-icon: #566b88;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  
+
   /* Custom breakpoints */
   --breakpoint-3xl: 1650px;
 
@@ -278,13 +278,13 @@
   --color-rose-700: #be123c;
   --color-rose-800: #9f1239;
   --color-rose-900: #881337;
-  --color-rose-950: #4C0519;
+  --color-rose-950: #4c0519;
   --color-rose-950: #4c0519;
 
-   /* Custom shadows */
-  --shadow-s1: 0px 1px 1px 0px rgba(213, 218, 227, 0.30);
-  --shadow-s2: 0px 2px 2px 0px rgba(213, 218, 227, 0.40);
-  --shadow-s3: 0px 4px 10px 0px rgba(29, 41, 61, 0.10);
+  /* Custom shadows */
+  --shadow-s1: 0px 1px 1px 0px rgba(213, 218, 227, 0.3);
+  --shadow-s2: 0px 2px 2px 0px rgba(213, 218, 227, 0.4);
+  --shadow-s3: 0px 4px 10px 0px rgba(29, 41, 61, 0.1);
 
   /* Text sizes */
   --text-tiny: 0.625rem; /* 10px */
@@ -301,6 +301,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
 /* Typography styles based on SCSS design system - ALL 16 classes */
@@ -319,10 +320,16 @@ body {
 .text-H2-32-semibold {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-weight: 600;
-  font-size: 32px;
+  font-size: 24px;
   line-height: 140%;
   text-decoration: none;
   letter-spacing: normal;
+}
+
+@media (min-width: 640px) {
+  .text-H2-32-semibold {
+    font-size: 32px;
+  }
 }
 
 /* H2 24 Semibold */
@@ -349,10 +356,16 @@ body {
 .text-H2-20-regular {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 140%;
   text-decoration: none;
   letter-spacing: normal;
+}
+
+@media (min-width: 640px) {
+  .text-H2-20-regular {
+    font-size: 20px;
+  }
 }
 
 /* H6 16 Semibold */
@@ -399,10 +412,16 @@ body {
 .text-body-16-regular {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 150%;
   text-decoration: none;
   letter-spacing: normal;
+}
+
+@media (min-width: 640px) {
+  .text-body-16-regular {
+    font-size: 16px;
+  }
 }
 
 /* Body 14 Medium */

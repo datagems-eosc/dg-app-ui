@@ -207,7 +207,7 @@ export function ChatItem({
               e.stopPropagation();
               setShowDropdown(!showDropdown);
             }}
-            className={`opacity-0 group-hover:opacity-100 p-1 hover:bg-white rounded-[3px] transition-all duration-200 ${showDropdown ? "opacity-100" : ""}`}
+            className={`opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 hover:bg-white rounded-[3px] transition-all duration-200 ${showDropdown ? "opacity-100" : ""}`}
           >
             <MoreVertical className="w-4 h-4 text-gray-500" />
           </button>
