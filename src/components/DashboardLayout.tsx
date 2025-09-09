@@ -79,7 +79,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     collections: ApiCollection[],
     isExtra = false
   ) => {
-    const savedSettings = localStorage.getItem("collectionSettings");
+    const savedSettings =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("collectionSettings")
+        : null;
     let settingsData: Record<string, { isVisible: boolean; order: number }> =
       {};
 
@@ -109,7 +112,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Function to get collections with default ordering when localStorage is empty
   const getCollectionsWithDefaultOrder = () => {
-    const savedSettings = localStorage.getItem("collectionSettings");
+    const savedSettings =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("collectionSettings")
+        : null;
 
     if (!savedSettings) {
       // When localStorage is empty, return extraCollections first, then apiCollections
