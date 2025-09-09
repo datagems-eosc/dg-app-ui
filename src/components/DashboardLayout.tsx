@@ -28,6 +28,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const hasLoadedCollections = useRef(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
   const [isCollectionSettingsOpen, setIsCollectionSettingsOpen] =
     useState(false);
   const [deleteModalState, setDeleteModalState] = useState<{
@@ -145,7 +146,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 640;
+      const tablet = window.innerWidth >= 640 && window.innerWidth < 1024;
       setIsMobile(mobile);
+      setIsTablet(tablet);
       if (mobile) {
         setIsSidebarOpen(false);
       }
@@ -157,6 +160,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Listen for tablet-only requests from pages to close the sidebar when opening right panels
+  useEffect(() => {
+    const handleRequestCloseSidebarForTablet = () => {
+      if (isTablet) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener(
+      "requestCloseSidebarForTablet",
+      handleRequestCloseSidebarForTablet
+    );
+    return () => {
+      window.removeEventListener(
+        "requestCloseSidebarForTablet",
+        handleRequestCloseSidebarForTablet
+      );
+    };
+  }, [isTablet]);
 
   // Listen for collection settings changes
   useEffect(() => {
@@ -196,7 +219,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    const nextOpen = !isSidebarOpen;
+    setIsSidebarOpen(nextOpen);
+    // When opening the sidebar on tablets, notify pages to close their right panels
+    if (nextOpen && isTablet) {
+      window.dispatchEvent(new CustomEvent("sidebarOpenedForTablet"));
+    }
   };
 
   const handleCollectionAskQuestion = (collectionId: string) => {

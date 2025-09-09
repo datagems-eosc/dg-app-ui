@@ -90,6 +90,7 @@ export default function Chat({
 
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
 
   // State for sources panel
   const [messageRelatedDatasets, setMessageRelatedDatasets] = useState<
@@ -325,9 +326,14 @@ export default function Chat({
   useEffect(() => {
     if (typeof window !== "undefined") {
       const mq = window.matchMedia("(min-width: 640px)");
-      setShowSelectedPanel(mq.matches);
-      const handler = (e: MediaQueryListEvent) =>
-        setShowSelectedPanel(e.matches);
+      // For tablets (>=640 and <1024) do NOT open by default; only open by default on >=1024
+      setShowSelectedPanel(window.innerWidth >= 1024);
+      setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      const handler = (e: MediaQueryListEvent) => {
+        // Re-evaluate based on current width
+        setShowSelectedPanel(window.innerWidth >= 1024);
+        setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      };
       try {
         mq.addEventListener("change", handler);
         return () => mq.removeEventListener("change", handler);
@@ -338,6 +344,38 @@ export default function Chat({
       }
     }
   }, []);
+
+  // Keep isTablet updated on resize
+  useEffect(() => {
+    const onResize = () => {
+      setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      // Keep default auto-open only for >=1024
+      setShowSelectedPanel(window.innerWidth >= 1024);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Close right-side panel when sidebar opens on tablets
+  useEffect(() => {
+    const handleSidebarOpenedForTablet = () => {
+      if (isTablet) {
+        if (showSelectedPanel) {
+          handleClosePanel();
+        }
+      }
+    };
+    window.addEventListener(
+      "sidebarOpenedForTablet",
+      handleSidebarOpenedForTablet
+    );
+    return () => {
+      window.removeEventListener(
+        "sidebarOpenedForTablet",
+        handleSidebarOpenedForTablet
+      );
+    };
+  }, [isTablet, showSelectedPanel]);
 
   // Handle initial collection selection from URL parameter
   useEffect(() => {
@@ -834,6 +872,10 @@ export default function Chat({
       // Start panel off-screen, then animate in
       setIsPanelAnimating(true);
       setTimeout(() => setIsPanelAnimating(false), 50);
+      // On tablets, request closing the sidebar when opening the right panel
+      if (isTablet) {
+        window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
+      }
     } else {
       // Animate panel closing
       setIsPanelClosing(true);
@@ -950,6 +992,9 @@ export default function Chat({
       // Start panel off-screen, then animate in
       setIsPanelAnimating(true);
       setTimeout(() => setIsPanelAnimating(false), 50);
+      if (isTablet) {
+        window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
+      }
     }
   };
 
@@ -1002,7 +1047,7 @@ export default function Chat({
 
         {/* Messages Area - Scrollable with padding for fixed input */}
         <div
-          className={`flex-1 bg-white ${showDatasetChangeWarning ? "pb-55 sm:pb-40" : "pb-35 sm:pb-40"}`}
+          className={`flex-1 bg-white ${showDatasetChangeWarning ? "pb-55 md:pb-40" : "pb-35 md:pb-40"}`}
         >
           {(messages.length > 0 ||
             isMessagesLoading ||

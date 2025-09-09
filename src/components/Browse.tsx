@@ -226,12 +226,15 @@ export default function Browse({
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
 
   // Handle mobile detection and sidebar state
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 640;
+      const tablet = window.innerWidth >= 640 && window.innerWidth < 1024;
       setIsMobile(mobile);
+      setIsTablet(tablet);
     };
 
     // Set initial state
@@ -240,6 +243,29 @@ export default function Browse({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Close right-side panels when sidebar opens on tablets
+  useEffect(() => {
+    const handleSidebarOpenedForTablet = () => {
+      if (isTablet) {
+        // Close both details and selected datasets panels
+        if (selectedDataset) {
+          setSelectedDataset(null);
+        }
+        if (showSelectedPanel) {
+          handleClosePanel();
+        }
+      }
+    };
+
+    window.addEventListener("sidebarOpenedForTablet", handleSidebarOpenedForTablet);
+    return () => {
+      window.removeEventListener(
+        "sidebarOpenedForTablet",
+        handleSidebarOpenedForTablet
+      );
+    };
+  }, [isTablet, selectedDataset, showSelectedPanel]);
 
   // Use controlled or local state for selected datasets
   const currentSelectedDatasets = onSelectedDatasetsChange
@@ -444,6 +470,10 @@ export default function Browse({
       }
       setTimeout(() => setIsPanelAnimating(false), 50);
     }
+    // On tablets, request sidebar to close to ensure only one panel is visible
+    if (isTablet) {
+      window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
+    }
   };
 
   const handleClosePanel = () => {
@@ -546,6 +576,10 @@ export default function Browse({
           setSelectedDataset(dataset);
           setIsDetailsPanelAnimating(true);
           setTimeout(() => setIsDetailsPanelAnimating(false), 50);
+        }
+        // On tablets, request sidebar to close when opening details panel
+        if (isTablet) {
+          window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
         }
       }
     }
