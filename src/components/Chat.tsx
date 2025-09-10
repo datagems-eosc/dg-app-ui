@@ -1029,7 +1029,7 @@ export default function Chat({
             {!showSelectedPanel && (
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 onClick={toggleSidebar}
                 className="flex items-center gap-2 transition-all duration-200"
               >
