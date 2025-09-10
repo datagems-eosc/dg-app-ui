@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle, X, AlertCircle } from "lucide-react";
 
 interface ToastProps {
@@ -35,7 +36,7 @@ export function Toast({
   const title = isSuccess ? "Success" : "Error";
   const titleColor = isSuccess ? "text-gray-900" : "text-red-900";
 
-  return (
+  const toastContent = (
     <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
       <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm w-full">
         <div className="flex items-start gap-3">
@@ -60,4 +61,6 @@ export function Toast({
       </div>
     </div>
   );
+
+  return createPortal(toastContent, document.body);
 }
