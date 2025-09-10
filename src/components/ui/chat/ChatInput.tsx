@@ -81,15 +81,19 @@ export function ChatInput({
     <div
       className={cn(
         "w-full bg-white border rounded-2xl transition-all duration-300",
-        "border-slate-350",
-        "hover:border-slate-450",
-        "focus-within:ring-2 focus-within:ring-[#2B7FFF33] focus-within:border-blue-850",
-        error &&
-          "border-red-550 focus-within:ring-red-550 focus-within:border-red-550",
+        "border-slate-200",
+        "hover:border-slate-350",
+        "focus-within:border-slate-350",
+        error && "border-red-550 focus-within:border-red-550",
         disabled &&
           "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-within:ring-0 focus-within:border-slate-200"
       )}
-      style={{ width: "100%", maxWidth: "100%" }}
+      style={{
+        width: "100%",
+        maxWidth: "100%",
+        outline: "4px solid rgba(202, 213, 226, 0.25)",
+        outlineOffset: 0,
+      }}
     >
       <div className="p-3 sm:p-4 relative">
         <div className="relative">
