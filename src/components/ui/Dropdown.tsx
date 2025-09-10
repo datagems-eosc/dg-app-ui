@@ -27,7 +27,7 @@ export function Dropdown({ trigger, children, align = 'right' }: DropdownProps) 
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 hover:bg-gray-100 rounded-md p-2 transition-colors"
+        className="flex items-center gap-2 hover:bg-slate-100 rounded-3xl py-1.25 pl-2.5 pr-6.5 transition-colors cursor-pointer"
       >
         {trigger}
       </button>

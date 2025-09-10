@@ -27,7 +27,7 @@ export function UserProfileDropdown({
               src={undefined}
               name={session?.user?.name || ""}
               email={session?.user?.email || ""}
-              size="sm"
+              size="smPlus"
               className={isMobile ? "w-9 h-9 flex-shrink-0" : ""}
             />
             {!isMobile && (

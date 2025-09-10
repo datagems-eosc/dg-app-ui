@@ -7,12 +7,13 @@ interface AvatarProps {
   src?: string | null;
   name?: string;
   email?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "smPlus" | "md" | "lg" | "xl";
   className?: string;
 }
 
 const sizeClasses = {
   sm: "w-8 h-8 text-descriptions-12-regular",
+  smPlus: "w-9 h-9 text-body-16-regular",
   md: "w-10 h-10 sm:w-12 sm:h-12 text-body-16-regular",
   lg: "w-14 h-14 sm:w-16 sm:h-16 text-body-16-regular",
   xl: "w-20 h-20 sm:w-24 sm:h-24 text-H6-18-semibold",
@@ -99,7 +100,7 @@ interface AvatarUploadProps {
   name?: string;
   email?: string;
   onImageSelect: (file: File) => void;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "smPlus" | "md" | "lg" | "xl";
   disabled?: boolean;
 }
 
