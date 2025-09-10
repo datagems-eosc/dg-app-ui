@@ -27,7 +27,7 @@ export function Chip({
   };
 
   const variants = {
-    outline: "border border-slate-350 bg-white text-gray-750",
+    outline: "border border-slate-350 bg-white",
     regular: "border",
   };
 
@@ -38,11 +38,11 @@ export function Chip({
     },
     info: {
       regular: "border-blue-50 bg-blue-50 text-blue-700",
-      outline: "border-slate-200 bg-white text-gray-650",
+      outline: "border-slate-200 bg-white text-slate-850",
     },
     success: {
-      regular: "border-green-50 bg-green-50 text-green-700",
-      outline: "border-green-200 bg-green-50 text-green-700",
+      regular: "border-green-50 bg-green-50 text-emerald-800",
+      outline: "border-green-200 bg-green-50 text-emerald-800",
     },
     error: {
       regular: "border-red-50 bg-red-50 text-red-700",
@@ -63,10 +63,13 @@ export function Chip({
       className={cn(
         baseStyles,
         sizes[size],
+        // Allow external overrides for spacing/etc.
+        className,
+        // Component-provided visual styles
         variants[variant],
         colors[color][variant],
-        "text-descriptions-12-medium",
-        className
+        // Typography (explicit Tailwind utilities to avoid twMerge dropping custom class)
+        "font-medium text-[12px] leading-[150%]"
       )}
     >
       {children}

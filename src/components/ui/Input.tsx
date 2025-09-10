@@ -61,15 +61,17 @@ export function Input({
             // Hover state
             "hover:border-slate-450",
             // Focus state
-            "focus-visible:ring-2 focus-visible:ring-[#2B7FFF33] focus-visible:border-blue-850 focus-visible:text-gray-750",
+            // Cross-browser consistent focus: outer 2px blue ring, 1px offset gap, keep inner border slate
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1 focus-visible:ring-offset-white focus-visible:text-gray-750",
             // Filled state (when input has value)
             "peer",
             // Error state
             error &&
-              "border-red-550 text-gray-750 focus:ring-red-550 focus:border-red-550",
+              // Keep red border and use red ring with same geometry
+              "border-red-550 text-gray-750 focus-visible:ring-red-550",
             // Disabled state
             disabled &&
-              "border-slate-200 text-slate-450 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus:ring-0 focus:border-slate-200",
+              "border-slate-200 text-slate-450 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-slate-200",
             className
           )}
           {...props}

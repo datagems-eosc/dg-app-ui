@@ -42,8 +42,8 @@ export function MenuItem({
       </div>
       <Link
         href={createUrl(href)}
-        className={`flex-1 flex items-center px-3 py-2 text-body-16-medium rounded-lg transition-colors relative ${
-          isActive ? "bg-blue-75" : "text-gray-750 hover:bg-slate-75"
+        className={`flex-1 flex items-center px-3 py-2 text-body-16-medium rounded-lg transition-colors relative text-gray-750 ${
+          isActive ? "bg-blue-75" : "hover:bg-slate-75"
         } ${className}`}
         onClick={onClick}
       >
