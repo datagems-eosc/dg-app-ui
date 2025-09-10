@@ -15,7 +15,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center justify-center rounded-3xl shadow-s1 transition-all duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-offset-blue-850 disabled:pointer-events-none group relative overflow-hidden";
+    "inline-flex items-center justify-center rounded-3xl shadow-s1 transition-all duration-200 ease-in-out cursor-pointer disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-offset-4 focus-visible:ring-offset-blue-850 disabled:pointer-events-none group relative overflow-hidden";
 
   const variants = {
     primary:
