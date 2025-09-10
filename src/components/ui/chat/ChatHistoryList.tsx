@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Search, MessageCircleMore } from "lucide-react";
+import { Search, SearchX, MessageCircleMore } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 import { Input } from "../Input";
 import { NoData } from "../NoData";
@@ -190,11 +190,17 @@ export function ChatHistoryList({
         placeholder="Search chat history..."
         rightIcon={<Search className="w-4 h-4 text-icon" />}
       />
-      {filtered.length === 0 ? (
+      {currentConversations.length === 0 ? (
         <NoData
           icon={MessageCircleMore}
           title="Your Chat history will appear here"
           description="Ask a question first"
+        />
+      ) : search.trim().length > 0 && filtered.length === 0 ? (
+        <NoData
+          icon={SearchX}
+          title="No results found"
+          description="Please try different search"
         />
       ) : (
         <div
