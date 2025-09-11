@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Move, Eye, EyeOff, Info, GripVertical } from "lucide-react";
+import { X, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "./ui/Button";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { ApiCollection } from "@/types/collection";
@@ -28,6 +28,8 @@ interface CollectionSettingsItemProps {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, index: number) => void;
   onVisibilityToggle: (index: number) => void;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
 }
 
 const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
@@ -38,6 +40,8 @@ const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
   onDragOver,
   onDrop,
   onVisibilityToggle,
+  onMoveUp,
+  onMoveDown,
 }) => {
   const isVisible = setting.isVisible;
 
@@ -53,7 +57,7 @@ const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
     >
       {/* Drag Handle */}
       <GripVertical
-        className={`w-5 h-5 text-icon cursor-move transition-all duration-600 ${
+        className={`hidden md:block w-5 h-5 text-icon cursor-move transition-all duration-600 ${
           isVisible ? "text-icon" : "text-slate-450"
         } hover:opacity-100`}
         onMouseEnter={(e) => {
@@ -95,6 +99,24 @@ const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
       </div>
 
       {/* Visibility Toggle */}
+      {/* Mobile Reorder Controls */}
+      <div className="flex items-center gap-1 md:hidden">
+        <button
+          onClick={() => onMoveUp(index)}
+          className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+          aria-label="Move up"
+        >
+          <ChevronUp strokeWidth={1.25} className="w-5 h-5 text-icon" />
+        </button>
+        <button
+          onClick={() => onMoveDown(index)}
+          className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+          aria-label="Move down"
+        >
+          <ChevronDown strokeWidth={1.25} className="w-5 h-5 text-icon" />
+        </button>
+      </div>
+
       <button
         onClick={() => onVisibilityToggle(index)}
         className="p-2 hover:bg-gray-100 rounded-md transition-colors"
@@ -210,6 +232,25 @@ export default function CollectionSettingsModal({
     setCollectionSettings(newSettings);
   };
 
+  const updateOrderValues = (settings: CollectionSettings[]) =>
+    settings.map((setting, index) => ({ ...setting, order: index }));
+
+  const handleMoveUp = (index: number) => {
+    if (index <= 0) return;
+    const newSettings = [...collectionSettings];
+    const [moved] = newSettings.splice(index, 1);
+    newSettings.splice(index - 1, 0, moved);
+    setCollectionSettings(updateOrderValues(newSettings));
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index >= collectionSettings.length - 1) return;
+    const newSettings = [...collectionSettings];
+    const [moved] = newSettings.splice(index, 1);
+    newSettings.splice(index + 1, 0, moved);
+    setCollectionSettings(updateOrderValues(newSettings));
+  };
+
   const handleSave = () => {
     // Save to localStorage
     const settingsData = collectionSettings.reduce(
@@ -298,6 +339,8 @@ export default function CollectionSettingsModal({
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     onVisibilityToggle={handleVisibilityToggle}
+                    onMoveUp={handleMoveUp}
+                    onMoveDown={handleMoveDown}
                   />
                 ))}
               </div>
