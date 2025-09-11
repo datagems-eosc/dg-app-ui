@@ -1,3 +1,4 @@
+"use client";
 import React, { Suspense } from "react";
 import {
   Settings,
@@ -144,7 +145,7 @@ export function SidebarContent({
 }: SidebarContentProps) {
   return (
     <div
-      className={`flex-1 min-h-0 overflow-y-auto transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      className={`flex-1 min-h-0 overflow-y-auto 3xl:overflow-y-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
     >
       <div className="flex flex-col py-4">
         {/* Menu Section */}
