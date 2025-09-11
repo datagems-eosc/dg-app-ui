@@ -192,6 +192,9 @@ export function ChatHistoryList({
           onFocus={() => setIsSearchFocused(true)}
           onBlur={() => setIsSearchFocused(false)}
           placeholder="Search chat history..."
+          className="text-base sm:text-sm"
+          enterKeyHint="search"
+          inputMode="search"
           rightIcon={<Search className="w-4 h-4 text-icon" />}
         />
       </div>

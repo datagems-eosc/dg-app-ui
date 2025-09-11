@@ -91,10 +91,20 @@ export function Search({
     }
   };
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (currentValue.length < 3) {
+      setShowTooltip(true);
+      setTimeout(() => setShowTooltip(false), 10000);
+      return;
+    }
+    onSearch?.(currentValue);
+  };
+
   const showClearButton = currentValue.length > 0;
 
   return (
-    <div className="relative">
+    <form onSubmit={handleSubmit} className="relative">
       <Input
         type="text"
         name="search"
@@ -103,6 +113,9 @@ export function Search({
         value={currentValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        autoComplete="off"
+        enterKeyHint="search"
+        inputMode="search"
         icon={<SearchIcon className="w-4 h-4 text-icon" />}
         rightIcon={
           showClearButton ? (
@@ -117,7 +130,7 @@ export function Search({
             </button>
           ) : undefined
         }
-        className={className}
+        className={`text-base sm:text-sm ${className || ""}`}
         disabled={disabled}
       />
 
@@ -141,6 +154,6 @@ export function Search({
           <div className="absolute bottom-full left-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-800"></div>
         </div>
       )}
-    </div>
+    </form>
   );
 }
