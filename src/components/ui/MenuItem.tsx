@@ -51,7 +51,7 @@ export function MenuItem({
           className={`w-5 h-5 mr-2 ${isActive ? "text-blue-850" : "text-icon"}`}
           strokeWidth={1.25}
         />
-        {label}
+        <span className="truncate max-w-[165px]">{label}</span>
       </Link>
     </div>
   );

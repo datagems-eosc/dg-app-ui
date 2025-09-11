@@ -75,7 +75,7 @@ export function CollectionItem({
         <span className={`mr-3 ${isActive ? "text-blue-850" : "text-icon"}`}>
           {icon}
         </span>
-        <span className="flex-1 truncate">{name}</span>
+        <span className="flex-1 truncate max-w-[165px]">{name}</span>
         {onMessageClick && (
           <button
             onClick={handleMessageClick}
