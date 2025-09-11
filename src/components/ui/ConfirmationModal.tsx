@@ -92,7 +92,7 @@ export function ConfirmationModal({
           {/* Message */}
           <div className="text-center mb-4">
             <p className="text-slate-850 text-body-16-medium">{message1}</p>
-            <p className="pt-2 text-grey-750 text-body-14-regular">
+            <p className="pt-2 text-body-14-regular text-gray-750">
               {message2}
             </p>
           </div>

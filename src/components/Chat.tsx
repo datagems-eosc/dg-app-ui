@@ -1024,12 +1024,12 @@ export default function Chat({
                 </h2>
               </div>
             )}
-          <div className="flex items-center justify-end max-w-4xl mx-auto p-4 h-10">
+          <div className="flex items-center justify-end mx-auto p-4 sm:p-8 h-10">
             {/* Sidebar toggle button */}
             {!showSelectedPanel && (
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 onClick={toggleSidebar}
                 className="flex items-center gap-2 transition-all duration-200"
               >
@@ -1038,11 +1038,6 @@ export default function Chat({
               </Button>
             )}
           </div>
-
-          {!conversationId &&
-            messages.length === 0 &&
-            !isMessagesLoading &&
-            !isGeneratingAIResponse && <ChatInitialView />}
         </div>
 
         {/* Messages Area - Scrollable with padding for fixed input */}
@@ -1064,34 +1059,94 @@ export default function Chat({
             </div>
           )}
         </div>
-        {/* Chat Input - Fixed at bottom, outside dashboard layout */}
-        <div
-          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
-        >
-          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
-            {/* Dataset Change Warning */}
-            <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
-            <ChatInput
-              value={inputValue}
-              onChange={setInputValue}
-              onSend={handleSendMessage}
-              onAddDatasets={() => setShowAddDatasetsModal(true)}
-              collections={{
-                apiCollections,
-                collections: [],
-                extraCollections,
-                isLoading: isLoadingApiCollections,
+        {/* Centered ChatInitialView for default state */}
+        {!conversationId &&
+          messages.length === 0 &&
+          !isMessagesLoading &&
+          !isGeneratingAIResponse && (
+            <div
+              className={`fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+              style={{
+                left: "var(--sidebar-offset)",
+                top: "100px",
+                bottom: "200px",
               }}
-              selectedCollection={selectedCollection}
-              onSelectCollection={handleSelectCollection}
-              isLoading={isLoading}
-              disabled={isInputDisabled}
-              error={error}
-              showAddDatasetsModal={showAddDatasetsModal}
-            />
+            >
+              <div className="pointer-events-auto">
+                <ChatInitialView />
+              </div>
+            </div>
+          )}
+
+        {/* Centered ChatInput for default state */}
+        {!conversationId &&
+          messages.length === 0 &&
+          !isMessagesLoading &&
+          !isGeneratingAIResponse && (
+            <div
+              className={`fixed left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+              style={{ top: "50%", transform: "translateY(50px)" }}
+            >
+              <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+                {/* Dataset Change Warning */}
+                <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
+
+                <ChatInput
+                  value={inputValue}
+                  onChange={setInputValue}
+                  onSend={handleSendMessage}
+                  onAddDatasets={() => setShowAddDatasetsModal(true)}
+                  collections={{
+                    apiCollections,
+                    collections: [],
+                    extraCollections,
+                    isLoading: isLoadingApiCollections,
+                  }}
+                  selectedCollection={selectedCollection}
+                  onSelectCollection={handleSelectCollection}
+                  isLoading={isLoading}
+                  disabled={isInputDisabled}
+                  error={error}
+                  showAddDatasetsModal={showAddDatasetsModal}
+                />
+              </div>
+            </div>
+          )}
+
+        {/* Chat Input - Fixed at bottom for when messages exist */}
+        {(conversationId ||
+          messages.length > 0 ||
+          isMessagesLoading ||
+          isGeneratingAIResponse) && (
+          <div
+            className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+          >
+            <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+              {/* Dataset Change Warning */}
+              <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
+
+              <ChatInput
+                value={inputValue}
+                onChange={setInputValue}
+                onSend={handleSendMessage}
+                onAddDatasets={() => setShowAddDatasetsModal(true)}
+                collections={{
+                  apiCollections,
+                  collections: [],
+                  extraCollections,
+                  isLoading: isLoadingApiCollections,
+                }}
+                selectedCollection={selectedCollection}
+                onSelectCollection={handleSelectCollection}
+                isLoading={isLoading}
+                disabled={isInputDisabled}
+                error={error}
+                showAddDatasetsModal={showAddDatasetsModal}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Selected Datasets Panel - Under header, fixed on right side */}

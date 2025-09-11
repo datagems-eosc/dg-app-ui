@@ -66,7 +66,7 @@ export function CollectionItem({
       </div>
       <Link
         href={createUrl(href)}
-        className={`flex-1 flex items-center px-3 py-2 text-body-16-medium rounded-lg transition-colors relative ${
+        className={`w-full flex-1 flex items-center px-3 py-2 text-body-16-medium rounded-lg transition-colors relative min-w-0 ${
           isActive ? "bg-blue-75" : "text-gray-700 hover:bg-slate-75"
         }`}
         title={title}
@@ -75,7 +75,7 @@ export function CollectionItem({
         <span className={`mr-3 ${isActive ? "text-blue-850" : "text-icon"}`}>
           {icon}
         </span>
-        <span className="flex-1 truncate">{name}</span>
+        <span className="flex-1 truncate sm:max-w-[165px]">{name}</span>
         {onMessageClick && (
           <button
             onClick={handleMessageClick}

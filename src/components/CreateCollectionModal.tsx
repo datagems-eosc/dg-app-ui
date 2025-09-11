@@ -8,6 +8,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
 import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { Checkbox } from "./ui/Checkbox";
 
 interface CreateCollectionModalProps {
   isVisible: boolean;
@@ -206,38 +208,44 @@ export default function CreateCollectionModal({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+    <div
+      className="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg w-full max-w-[95%] md:max-w-[550px] shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-H2-20-semibold text-gray-900">Collections</h2>
+        <div className="flex items-center justify-between px-6 py-4.25 border-b border-slate-200">
+          <h2 className="text-H6-18-semibold text-slate-850">Collections</h2>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+            className="p-2 hover:bg-slate-100 rounded-md transition-colors"
           >
-            <X className="w-5 h-5 text-icon" />
+            <X strokeWidth={1.25} className="w-5 h-5 text-icon" />
           </button>
         </div>
 
         {/* Tab Toggle */}
         <div className="px-6 pt-4">
-          <div className="flex bg-gray-100 rounded-2xl p-1">
+          <div className="flex bg-slate-100 rounded-[40px] p-1">
             <button
               onClick={() => handleTabSwitch("create")}
-              className={`flex-1 py-2 px-4 rounded-2xl text-sm font-medium transition-colors ${
+              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${
                 activeTab === "create"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-gray-750"
+                  : "text-gray-650 hover:text-gray-950 cursor-pointer"
               }`}
             >
               Create New
             </button>
             <button
               onClick={() => handleTabSwitch("add")}
-              className={`flex-1 py-2 px-4 rounded-2xl text-sm font-medium transition-colors ${
+              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${
                 activeTab === "add"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-gray-750"
+                  : "text-gray-650 hover:text-gray-950 cursor-pointer"
               }`}
             >
               Add to existing
@@ -246,53 +254,41 @@ export default function CreateCollectionModal({
         </div>
 
         {/* Modal Content */}
-        <div className="p-6">
+        <div
+          className={`flex-1 min-h-0 px-6 pt-6 ${activeTab === "create" ? "pb-25" : "pb-3.75"}`}
+        >
           {activeTab === "create" ? (
             // Create New Tab
             <>
               {/* Collection Name Input */}
               <div className="mb-6">
-                <label
-                  htmlFor="collection-name"
-                  className="block text-body-14-medium text-gray-700 mb-2"
-                >
-                  Collection name
-                </label>
-                <input
-                  id="collection-name"
-                  type="text"
+                <Input
+                  name="collection-name"
+                  label="Collection name"
+                  size="large"
                   value={collectionName}
                   onChange={(e) => setCollectionName(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   autoFocus
                 />
               </div>
 
               {/* Description Input */}
-              <div className="mb-6">
-                <label
-                  htmlFor="collection-description"
-                  className="block text-body-14-medium text-gray-700 mb-2"
-                >
-                  Description (Optional)
-                </label>
-                <input
-                  id="collection-description"
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Enter description"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
-                />
-              </div>
+              <Input
+                name="collection-description"
+                label="Description (Optional)"
+                size="large"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter description"
+              />
             </>
           ) : (
             // Add to existing Tab
             <>
               {/* Collection Selection */}
               <div className="mb-6">
-                <h3 className="text-body-16-medium text-gray-700 mb-3">
+                <h3 className="text-body-14-medium text-gray-750 mb-1">
                   Select Collections
                 </h3>
 
@@ -307,33 +303,46 @@ export default function CreateCollectionModal({
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {customCollections.map((collection) => (
-                      <label
-                        key={collection.id}
-                        className={`flex items-center p-3 rounded-xl border cursor-pointer transition-colors ${
-                          selectedCollectionIds.includes(collection.id)
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:bg-gray-50"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedCollectionIds.includes(
-                            collection.id
-                          )}
-                          onChange={() => handleCollectionToggle(collection.id)}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <div className="ml-3 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-body-16-semibold text-gray-900">
-                              {collection.name}
-                            </span>
+                  <div className="p-2 border border-slate-350 rounded-lg overflow-auto max-h-[188px]">
+                    <div className="flex flex-col gap-1">
+                      {customCollections.map((collection) => {
+                        const isSelected = selectedCollectionIds.includes(
+                          collection.id
+                        );
+                        const itemCount =
+                          (collection as any)?.datasetCount ??
+                          (collection as any)?.userDatasetCollections?.length ??
+                          0;
+                        return (
+                          <div
+                            key={collection.id}
+                            onClick={() =>
+                              handleCollectionToggle(collection.id)
+                            }
+                            className={`px-4 py-2.75 flex items-start gap-2 rounded-lg transition-all duration-200 group cursor-pointer ${
+                              isSelected ? "bg-white" : "hover:bg-slate-100"
+                            }`}
+                          >
+                            <Checkbox
+                              id={`collection-${collection.id}`}
+                              checked={isSelected}
+                              onChange={() =>
+                                handleCollectionToggle(collection.id)
+                              }
+                              className="shrink-0 pt-1"
+                            />
+                            <div className="flex flex-col items-start flex-1">
+                              <div
+                                className={`text-body-16-semibold ${isSelected ? "text-gray-750" : "text-gray-750"}`}
+                              >
+                                {collection.name}
+                              </div>
+                              <div className="text-descriptions-12-regular text-icon">{`${itemCount} ${itemCount === 1 ? "item" : "items"}`}</div>
+                            </div>
                           </div>
-                        </div>
-                      </label>
-                    ))}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -342,7 +351,7 @@ export default function CreateCollectionModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-2 px-6 py-3.75 border-t border-slate-200">
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>

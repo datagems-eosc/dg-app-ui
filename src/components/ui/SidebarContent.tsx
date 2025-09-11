@@ -1,13 +1,14 @@
+"use client";
 import React, { Suspense } from "react";
-import { 
-  Settings, 
-  Star, 
-  CloudSun, 
-  Calculator, 
-  GraduationCap, 
+import {
+  Settings,
+  Star,
+  CloudSun,
+  Calculator,
+  GraduationCap,
   Languages,
   FolderSearch,
-  Bot
+  Bot,
 } from "lucide-react";
 import { MenuItem } from "./MenuItem";
 import { CollectionItem } from "./CollectionItem";
@@ -117,7 +118,10 @@ interface SidebarContentProps {
   onCollectionSettingsOpen: () => void;
   onMobileSidebarClose: () => void;
   onCollectionAskQuestion: (collectionId: string) => void;
-  onDeleteConversation: (conversationId: string, conversationName: string) => void;
+  onDeleteConversation: (
+    conversationId: string,
+    conversationName: string
+  ) => void;
   onConversationUpdate: (id: string, newName: string, newETag?: string) => void;
   setConversations: React.Dispatch<React.SetStateAction<any[]>>;
 }
@@ -141,7 +145,7 @@ export function SidebarContent({
 }: SidebarContentProps) {
   return (
     <div
-      className={`flex-1 min-h-0 overflow-y-auto transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      className={`flex-1 min-h-0 overflow-y-auto 3xl:overflow-y-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
     >
       <div className="flex flex-col py-4">
         {/* Menu Section */}
@@ -232,8 +236,8 @@ export function SidebarContent({
         </div>
 
         {/* Recent Chats Section */}
-        <div className="flex-1 flex flex-col min-h-0 px-5">
-          <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
+        <div className="flex-1 flex flex-col min-h-0">
+          <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3 px-5">
             RECENT CHATS
           </h3>
           <div className="flex-1 overflow-y-auto">

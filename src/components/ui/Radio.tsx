@@ -68,11 +68,7 @@ export function Radio({
           <span
             className={cn(
               "ml-2 text-body-14-regular transition-colors",
-              disabled
-                ? "!text-slate-450"
-                : value === option.value
-                  ? "!text-gray-750"
-                  : "!text-gray-750 group-hover:!text-slate-450"
+              disabled ? "!text-slate-450" : "!text-gray-750"
             )}
           >
             {option.label}

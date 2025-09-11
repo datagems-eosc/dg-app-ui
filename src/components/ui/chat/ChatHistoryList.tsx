@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Search, MessageCircleMore } from "lucide-react";
+import { Search, SearchX, MessageCircleMore } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 import { Input } from "../Input";
 import { NoData } from "../NoData";
@@ -16,7 +16,7 @@ interface ConversationListItem {
 
 function ChatHistorySkeleton() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 px-5">
       {/* Search input skeleton */}
       <div className="h-10 bg-gray-200 rounded-lg animate-pulse"></div>
 
@@ -69,6 +69,7 @@ export function ChatHistoryList({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // Use external conversations if provided, otherwise use local state
   const currentConversations = externalConversations || conversations;
@@ -183,22 +184,37 @@ export function ChatHistoryList({
         );
   return (
     <div className="flex flex-col gap-4">
-      <Input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search chat history..."
-        rightIcon={<Search className="w-4 h-4 text-icon" />}
-      />
-      {filtered.length === 0 ? (
+      <div className="pt-0.75 px-5">
+        <Input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => setIsSearchFocused(false)}
+          placeholder="Search chat history..."
+          className="text-base sm:text-sm"
+          enterKeyHint="search"
+          inputMode="search"
+          rightIcon={<Search className="w-4 h-4 text-icon" />}
+        />
+      </div>
+      {currentConversations.length === 0 ? (
         <NoData
           icon={MessageCircleMore}
           title="Your Chat history will appear here"
           description="Ask a question first"
+          className="px-5"
+        />
+      ) : search.trim().length > 0 && filtered.length === 0 ? (
+        <NoData
+          icon={SearchX}
+          title="No results found"
+          description="Please try different search"
+          className="px-5"
         />
       ) : (
         <div
-          className="flex flex-col gap-1 overflow-y-auto pr-1 hide-scrollbar"
+          className="flex flex-col gap-1 overflow-y-auto pl-5 pr-6 hide-scrollbar"
           style={{ maxHeight: "calc(100vh - 400px)" }}
         >
           {filtered.map((conv) => (
