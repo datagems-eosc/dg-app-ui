@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Search, SearchX, MessageCircleMore } from "lucide-react";
+import { SearchX, MessageCircleMore } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
-import { Input } from "../Input";
+import { Search as SearchInput } from "../Search";
 import { NoData } from "../NoData";
 import { ChatItem } from "./ChatItem";
 
@@ -68,8 +68,8 @@ export function ChatHistoryList({
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Use external conversations if provided, otherwise use local state
   const currentConversations = externalConversations || conversations;
@@ -175,27 +175,28 @@ export function ChatHistoryList({
     return <div className="text-red-600 text-center py-4">{error}</div>;
   }
   const filtered =
-    search.trim().length === 0
+    searchQuery.trim().length === 0
       ? currentConversations
       : currentConversations.filter((c) =>
           (c.name || "Untitled Conversation")
             .toLowerCase()
-            .includes(search.toLowerCase())
+            .includes(searchQuery.toLowerCase())
         );
   return (
     <div className="flex flex-col gap-4">
       <div className="pt-0.75 px-5">
-        <Input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onFocus={() => setIsSearchFocused(true)}
-          onBlur={() => setIsSearchFocused(false)}
+        <SearchInput
           placeholder="Search chat history..."
+          value={searchInput}
+          onChange={(v) => setSearchInput(v)}
+          onSearch={(v) => setSearchQuery(v ?? searchInput)}
+          onClear={() => {
+            setSearchInput("");
+            setSearchQuery("");
+          }}
           className="text-base sm:text-sm"
-          enterKeyHint="search"
-          inputMode="search"
-          rightIcon={<Search className="w-4 h-4 text-icon" />}
+          disabled={false}
+          size="medium"
         />
       </div>
       {currentConversations.length === 0 ? (
@@ -205,7 +206,7 @@ export function ChatHistoryList({
           description="Ask a question first"
           className="px-5"
         />
-      ) : search.trim().length > 0 && filtered.length === 0 ? (
+      ) : searchQuery.trim().length > 0 && filtered.length === 0 ? (
         <NoData
           icon={SearchX}
           title="No results found"
