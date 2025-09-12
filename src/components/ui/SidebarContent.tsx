@@ -145,9 +145,9 @@ export function SidebarContent({
 }: SidebarContentProps) {
   return (
     <div
-      className={`flex-1 min-h-0 overflow-y-auto 3xl:overflow-y-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+      className={`flex-1 min-h-0 overflow-y-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
     >
-      <div className="flex flex-col py-4">
+      <div className="flex flex-col h-full py-4">
         {/* Menu Section */}
         <div className="mb-4 pb-4 border-b border-slate-200">
           <h3 className="px-5 text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
@@ -182,7 +182,7 @@ export function SidebarContent({
               />
             </button>
           </div>
-          <nav className="space-y-1 max-h-54 overflow-y-auto">
+          <nav className="space-y-1 max-h-54 overflow-y-auto scrollbar-hover">
             {/* Loading States */}
             {isLoadingApiCollections || isLoadingExtraCollections ? (
               <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">

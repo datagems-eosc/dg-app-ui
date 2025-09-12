@@ -183,8 +183,8 @@ export function ChatHistoryList({
             .includes(searchQuery.toLowerCase())
         );
   return (
-    <div className="flex flex-col gap-4">
-      <div className="pt-0.75 px-5">
+    <div className="flex flex-col gap-4 h-full">
+      <div className="pt-0.75 px-5 flex-shrink-0">
         <SearchInput
           placeholder="Search chat history..."
           value={searchInput}
@@ -214,10 +214,7 @@ export function ChatHistoryList({
           className="px-5"
         />
       ) : (
-        <div
-          className="flex flex-col gap-1 overflow-y-auto pl-5 pr-6 hide-scrollbar"
-          style={{ maxHeight: "calc(100vh - 400px)" }}
-        >
+        <div className="flex flex-col gap-1 overflow-y-auto pl-5 pr-4 scrollbar-hover flex-1 min-h-0">
           {filtered.map((conv) => (
             <ChatItem
               key={conv.id}

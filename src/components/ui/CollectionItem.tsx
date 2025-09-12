@@ -56,7 +56,7 @@ export function CollectionItem({
   };
 
   return (
-    <div className="group relative flex flex-start gap-4 pr-5 min-h-12">
+    <div className="group relative flex flex-start gap-4 pr-4 min-h-12">
       <div className="flex items-center justify-center">
         <div
           className={`bg-blue-500 w-1 h-[32px] rounded-r-[4px] ${
