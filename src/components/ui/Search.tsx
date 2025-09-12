@@ -12,6 +12,7 @@ interface SearchProps {
   onClear?: () => void;
   className?: string;
   disabled?: boolean;
+  size?: "medium" | "large";
 }
 
 export function Search({
@@ -22,6 +23,7 @@ export function Search({
   onClear,
   className,
   disabled = false,
+  size = "large",
 }: SearchProps) {
   const [internalValue, setInternalValue] = useState("");
   const [showTooltip, setShowTooltip] = useState(false);
@@ -108,7 +110,7 @@ export function Search({
       <Input
         type="text"
         name="search"
-        size="large"
+        size={size}
         placeholder={placeholder}
         value={currentValue}
         onChange={handleChange}
@@ -116,19 +118,28 @@ export function Search({
         autoComplete="off"
         enterKeyHint="search"
         inputMode="search"
-        icon={<SearchIcon className="w-4 h-4 text-icon" />}
         rightIcon={
-          showClearButton ? (
+          <div className="flex items-center gap-1">
+            {showClearButton && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="flex-shrink-0 p-1.5 hover:bg-slate-75 rounded transition-colors"
+                aria-label="Clear search"
+                disabled={disabled}
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            )}
             <button
-              type="button"
-              onClick={handleClear}
-              className="flex-shrink-0 p-1.5 hover:bg-slate-75 rounded transition-colors"
-              aria-label="Clear search"
+              type="submit"
+              className="flex-shrink-0 p-1.5 hover:bg-slate-75 rounded transition-colors disabled:opacity-50"
+              aria-label="Search"
               disabled={disabled}
             >
-              <X className="w-4 h-4 text-slate-400" />
+              <SearchIcon className="w-4 h-4 text-icon" />
             </button>
-          ) : undefined
+          </div>
         }
         className={`text-base sm:text-sm ${className || ""}`}
         disabled={disabled}

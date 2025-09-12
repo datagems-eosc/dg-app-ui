@@ -56,7 +56,7 @@ export function CollectionItem({
   };
 
   return (
-    <div className="group relative flex flex-start gap-4 pr-5 min-h-12">
+    <div className="group relative flex flex-start gap-4 pr-4 min-h-12">
       <div className="flex items-center justify-center">
         <div
           className={`bg-blue-500 w-1 h-[32px] rounded-r-[4px] ${
@@ -66,8 +66,8 @@ export function CollectionItem({
       </div>
       <Link
         href={createUrl(href)}
-        className={`w-full flex-1 flex items-center px-3 py-2 text-body-16-medium rounded-lg transition-colors relative min-w-0 ${
-          isActive ? "bg-blue-75" : "text-gray-700 hover:bg-slate-75"
+        className={`w-full flex-1 flex items-center px-3 py-2 text-body-16-medium rounded-lg transition-colors relative min-w-0 text-gray-750 ${
+          isActive ? "bg-blue-75" : "hover:bg-slate-75"
         }`}
         title={title}
         onClick={handleLinkClick}

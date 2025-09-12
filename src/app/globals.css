@@ -568,3 +568,65 @@ body {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
+
+/* Scrollbar that shows only on hover and prevents content jumping */
+.scrollbar-hover {
+  /* No space reserved for scrollbar - true overlay */
+  scrollbar-gutter: auto;
+  /* Webkit scrollbar styles */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+/* Specific styling for sidebar scrollbar on smaller screens */
+@media (max-width: 1649px) {
+  .scrollbar-hover {
+    /* Force overlay scrollbar on smaller screens - no space reserved */
+    scrollbar-gutter: auto;
+  }
+  
+  /* Override scrollbar gutter for webkit browsers on smaller screens */
+  .scrollbar-hover::-webkit-scrollbar {
+    width: 0px; /* Hide scrollbar by default */
+    background: transparent;
+  }
+  
+  .scrollbar-hover:hover::-webkit-scrollbar {
+    width: 8px; /* Show scrollbar on hover */
+  }
+}
+
+.scrollbar-hover::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.scrollbar-hover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-hover::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+/* Show scrollbar on hover */
+.scrollbar-hover:hover::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+}
+
+.scrollbar-hover:hover {
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .scrollbar-hover:hover::-webkit-scrollbar-thumb {
+    background: #475569; /* slate-600 */
+  }
+  
+  .scrollbar-hover:hover {
+    scrollbar-color: #475569 transparent;
+  }
+}
