@@ -326,6 +326,15 @@ body {
   letter-spacing: normal;
 }
 
+.text-H2-32-regular {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 140%;
+  text-decoration: none;
+  letter-spacing: normal;
+}
+
 @media (min-width: 640px) {
   .text-H2-32-semibold {
     font-size: 32px;

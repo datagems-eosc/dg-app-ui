@@ -1,0 +1,117 @@
+"use client";
+
+import React from "react";
+import { X } from "lucide-react";
+import { Avatar, AvatarUpload } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
+import { Chip } from "../Chip";
+
+type UserData = {
+  name: string;
+  surname: string;
+  email: string;
+  profilePicture?: string | null;
+};
+
+interface Props {
+  isEditing: boolean;
+  isLoading: boolean;
+  userData: UserData;
+  onImageSelect: (file: File) => Promise<void>;
+  onRemoveProfilePicture: () => Promise<void>;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+}
+
+export default function UserHeader({
+  isEditing,
+  isLoading,
+  userData,
+  onImageSelect,
+  onRemoveProfilePicture,
+  onEdit,
+  onCancel,
+  onSave,
+}: Props) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-8 mb-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-2">
+            {isEditing ? (
+              <AvatarUpload
+                currentSrc={userData.profilePicture}
+                name={`${userData.name} ${userData.surname}`.trim()}
+                email={userData.email}
+                onImageSelect={onImageSelect}
+                size="lg"
+                disabled={isLoading}
+                isLoading={isLoading}
+              />
+            ) : (
+              <Avatar
+                src={userData.profilePicture}
+                name={`${userData.name} ${userData.surname}`.trim()}
+                email={userData.email}
+                size="lPlus"
+                isLoading={isLoading}
+              />
+            )}
+
+            {isEditing && userData.profilePicture && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRemoveProfilePicture}
+                disabled={isLoading}
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-H2-24-semibold text-gray-750">
+                {userData.name} {userData.surname}
+              </h1>
+              <Chip color="success" size="sm">
+                User
+              </Chip>
+            </div>
+            <p className="text-H2-20-regular text-gray-650">{userData.email}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!isEditing || isLoading}
+            onClick={onSave}
+          >
+            Save Changes
+          </Button>
+        </div>
+
+        {/* <div className="flex items-center gap-3">
+          {!isEditing ? (
+            <Button onClick={onEdit}>Edit</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={onCancel}>
+                <X className="w-4 h-4 mr-2 text-icon" />
+                Cancel
+              </Button>
+              <Button onClick={onSave}>Save Changes</Button>
+            </>
+          )}
+        </div> */}
+      </div>
+    </div>
+  );
+}

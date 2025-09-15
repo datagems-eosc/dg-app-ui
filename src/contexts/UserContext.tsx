@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { getUserFromToken } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 
 interface UserData {
   name: string;
@@ -18,9 +18,9 @@ interface UserContextType {
 }
 
 const defaultUserData: UserData = {
-  name: "John",
-  surname: "Doe",
-  email: "john.doe@example.com",
+  name: "",
+  surname: "",
+  email: "",
   profilePicture: undefined,
 };
 
@@ -30,6 +30,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userData, setUserData] = useState<UserData>(defaultUserData);
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const { data: session } = useSession();
 
   // Hydration-safe localStorage access
   useEffect(() => {
@@ -38,38 +39,34 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isMounted) {
-      // Load user data from localStorage on mount
-      const savedUserData = localStorage.getItem("userData");
-      if (savedUserData) {
+      // Load profile picture from localStorage on mount
+      const savedProfilePicture = localStorage.getItem("profilePicture");
+      if (savedProfilePicture) {
         try {
-          const parsed = JSON.parse(savedUserData);
-          setUserData((prev) => ({ ...prev, ...parsed }));
+          setUserData((prev) => ({ ...prev, profilePicture: savedProfilePicture }));
         } catch (error) {
-          console.error("Error parsing user data from localStorage:", error);
+          console.error("Error reading profile picture from localStorage:", error);
         }
       }
     }
   }, [isMounted]);
 
+  // Derive user info from NextAuth session (same logic as header)
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      const userInfo = getUserFromToken(token);
-      if (userInfo) {
-        // Split name into first and last name
-        const nameParts = userInfo.name.split(" ");
-        const firstName = nameParts[0] || "";
-        const lastName = nameParts.slice(1).join(" ") || "";
+    const fullName = session?.user?.name || "";
+    const email = session?.user?.email || "";
 
-        setUserData({
-          name: firstName,
-          surname: lastName,
-          email: userInfo.email,
-          profilePicture: undefined,
-        });
-      }
-    }
-  }, []);
+    const nameParts = fullName.split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
+
+    setUserData((prev) => ({
+      ...prev,
+      name: firstName,
+      surname: lastName,
+      email,
+    }));
+  }, [session?.user?.name, session?.user?.email]);
 
   const updateUserData = (data: Partial<UserData>) => {
     setUserData((prev) => ({ ...prev, ...data }));
@@ -82,6 +79,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!file) {
         // Remove profile picture
         updateUserData({ profilePicture: null });
+        try {
+          localStorage.removeItem("profilePicture");
+        } catch (e) {
+          // noop
+        }
         return;
       }
 
@@ -92,6 +94,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         reader.onload = () => {
           const result = reader.result as string;
           updateUserData({ profilePicture: result });
+          try {
+            localStorage.setItem("profilePicture", result);
+          } catch (e) {
+            // noop
+          }
           resolve();
         };
 
