@@ -140,29 +140,32 @@ export default function UserProfile() {
           onSave={handleSaveChanges}
         />
 
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+        {/* Body with left Tabs and right Content */}
+        <div className="grid grid-cols-1 md:grid-cols-10 gap-4">
+          <div className="md:col-span-3 lg:col-span-3">
+            <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+          </div>
 
-          {/* Tab Content */}
-          <div className="p-6">
-            {activeTab === "personal" && (
-              <PersonalSettingsSection
-                userData={userData}
-                isEditing={isEditing}
-                updateUserData={updateUserData}
-              />
-            )}
+          <div className="md:col-span-7 lg:col-span-7">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              {activeTab === "personal" && (
+                <PersonalSettingsSection
+                  userData={userData}
+                  isEditing={isEditing}
+                  updateUserData={updateUserData}
+                />
+              )}
 
-            {activeTab === "preferences" && (
-              <PreferencesSection
-                isEditing={isEditing}
-                notifications={notifications}
-                onEnableAll={handleEnableAll}
-                onDisableAll={handleDisableAll}
-                updateNotification={updateNotification}
-              />
-            )}
+              {activeTab === "preferences" && (
+                <PreferencesSection
+                  isEditing={isEditing}
+                  notifications={notifications}
+                  onEnableAll={handleEnableAll}
+                  onDisableAll={handleDisableAll}
+                  updateNotification={updateNotification}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
