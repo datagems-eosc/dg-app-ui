@@ -7,8 +7,9 @@ interface AvatarProps {
   src?: string | null;
   name?: string;
   email?: string;
-  size?: "sm" | "smPlus" | "md" | "lg" | "xl";
+  size?: "sm" | "smPlus" | "md" | "lg" | "lPlus" | "xl";
   className?: string;
+  isLoading?: boolean;
 }
 
 const sizeClasses = {
@@ -16,6 +17,7 @@ const sizeClasses = {
   smPlus: "w-9 h-9 text-body-16-regular",
   md: "w-10 h-10 sm:w-12 sm:h-12 text-body-16-regular",
   lg: "w-14 h-14 sm:w-16 sm:h-16 text-body-16-regular",
+  lPlus: "w-18 h-18 sm:w-20 sm:h-20 text-H2-32-regular",
   xl: "w-20 h-20 sm:w-24 sm:h-24 text-H6-18-semibold",
 };
 
@@ -52,8 +54,9 @@ function getAvatarColor(name?: string, email?: string): string {
     "bg-teal-500",
   ];
 
+  // Use email as the primary stable key so color doesn't change when editing name
   const str =
-    (name && name.trim()) || (email && email.trim()) || "Marry Johnson";
+    (email && email.trim()) || (name && name.trim()) || "Marry Johnson";
   const hash = str.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 }
@@ -64,10 +67,21 @@ export function Avatar({
   email,
   size = "md",
   className = "",
+  isLoading = false,
 }: AvatarProps) {
   const initials = getInitials(name, email);
   const bgColor = getAvatarColor(name, email);
   const sizeClass = sizeClasses[size];
+
+  const isEmptyIdentity = (!src || src === undefined) && !name && !email;
+
+  if (isLoading || isEmptyIdentity) {
+    return (
+      <div
+        className={`${sizeClass} rounded-full overflow-hidden shrink-0 bg-gray-200 animate-pulse ${className}`}
+      />
+    );
+  }
 
   // Only show image if we have a valid data URL (starts with data:image)
   const hasValidImage = src && src.startsWith("data:image");
@@ -88,7 +102,7 @@ export function Avatar({
 
   return (
     <div
-      className={`${sizeClass} rounded-full flex items-center justify-center text-white text-body-16-semibold ${bgColor} shrink-0 ${className}`}
+      className={`${sizeClass} rounded-full flex items-center justify-center text-white ${bgColor} shrink-0 ${className}`}
     >
       {initials}
     </div>
@@ -102,6 +116,7 @@ interface AvatarUploadProps {
   onImageSelect: (file: File) => void;
   size?: "sm" | "smPlus" | "md" | "lg" | "xl";
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 export function AvatarUpload({
@@ -111,6 +126,7 @@ export function AvatarUpload({
   onImageSelect,
   size = "lg",
   disabled = false,
+  isLoading = false,
 }: AvatarUploadProps) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -146,7 +162,13 @@ export function AvatarUpload({
         onClick={handleClick}
         className={`relative ${disabled ? "" : "cursor-pointer group"}`}
       >
-        <Avatar src={currentSrc} name={name} email={email} size={size} />
+        <Avatar
+          src={currentSrc}
+          name={name}
+          email={email}
+          size={size}
+          isLoading={isLoading}
+        />
 
         {!disabled && (
           <div className="absolute inset-0 rounded-full transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:bg-black group-hover:bg-opacity-50">
