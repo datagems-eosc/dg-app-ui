@@ -40,12 +40,15 @@ const TABS: TabItem[] = [
 
 export default function TabsHeader({ activeTab, setActiveTab }: Props) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-2 sm:pr-4 sm:py-4">
+    <div className="bg-white rounded-2xl border border-slate-200 p-2 sm:pr-4 sm:py-4 sm:pl-0">
       <nav className="flex sm:flex-col gap-2 sm:gap-4 overflow-x-auto sm:overflow-visible">
         {TABS.map(({ key, icon: Icon, title, description }) => {
           const isActive = activeTab === key;
           return (
-            <div key={key} className="flex items-stretch sm:items-center gap-2 sm:gap-4 min-w-[260px] sm:min-w-0">
+            <div
+              key={key}
+              className="flex items-stretch sm:items-center gap-2 sm:gap-4 min-w-[260px] sm:min-w-0"
+            >
               <div className="flex items-center justify-center">
                 <div
                   className={`bg-blue-500 w-1 h-[48px] rounded-r-[4px] hidden sm:block ${
@@ -67,10 +70,10 @@ export default function TabsHeader({ activeTab, setActiveTab }: Props) {
                     strokeWidth={1.25}
                   />
                   <div className="flex flex-col">
-                    <span className="text-body-14-semibold sm:text-H6-18-semibold text-gray-750">
+                    <span className="text-[14px] sm:text-[18px] font-semibold leading-[150%] sm:leading-[140%] text-gray-750">
                       {title}
                     </span>
-                    <span className="text-descriptions-12-regular sm:text-body-14-regular text-slate-450">
+                    <span className="text-[12px] 3xl:text-[14px] font-normal leading-[150%] text-slate-450">
                       {description}
                     </span>
                   </div>
