@@ -54,7 +54,7 @@ export function Input({
             // Size-based padding
             size === "large" ? "py-2.25" : "py-1.75",
             // Base styles
-            "border-slate-350 text-gray-850 placeholder-slate-400",
+            "border-slate-350 text-gray-750 placeholder-slate-400",
             // Icon padding
             icon && "pl-10",
             rightIcon && "pr-10",
