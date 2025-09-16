@@ -54,8 +54,9 @@ function getAvatarColor(name?: string, email?: string): string {
     "bg-teal-500",
   ];
 
+  // Use email as the primary stable key so color doesn't change when editing name
   const str =
-    (name && name.trim()) || (email && email.trim()) || "Marry Johnson";
+    (email && email.trim()) || (name && name.trim()) || "Marry Johnson";
   const hash = str.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 }

@@ -5,19 +5,19 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Trash } from "lucide-react";
 
-type UserData = {
+type FormData = {
   name: string;
   surname: string;
 };
 
 interface Props {
-  userData: UserData;
-  updateUserData: (data: Partial<UserData>) => void;
+  formData: FormData;
+  updateFormData: (data: Partial<FormData>) => void;
 }
 
 export default function PersonalSettingsSection({
-  userData,
-  updateUserData,
+  formData,
+  updateFormData,
 }: Props) {
   return (
     <div className="space-y-8">
@@ -37,15 +37,15 @@ export default function PersonalSettingsSection({
               name="name"
               label="Name"
               size="large"
-              value={userData.name}
-              onChange={(e) => updateUserData({ name: e.target.value })}
+              value={formData.name}
+              onChange={(e) => updateFormData({ name: e.target.value })}
             />
             <Input
               name="surname"
               label="Surname"
               size="large"
-              value={userData.surname}
-              onChange={(e) => updateUserData({ surname: e.target.value })}
+              value={formData.surname}
+              onChange={(e) => updateFormData({ surname: e.target.value })}
             />
           </div>
         </div>

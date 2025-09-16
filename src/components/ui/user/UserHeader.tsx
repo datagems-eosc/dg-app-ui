@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { X } from "lucide-react";
 import { Avatar, AvatarUpload } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { Chip } from "../Chip";
 
 type UserData = {
@@ -75,28 +75,17 @@ export default function UserHeader({
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            disabled={!hasChanges || isLoading}
-            onClick={onSave}
+          <Tooltip
+            content="Saving is temporarily disabled while backend integration is in progress."
+            position="top"
           >
-            Save Changes
-          </Button>
-        </div>
-
-        {/* <div className="flex items-center gap-3">
-          {!isEditing ? (
-            <Button onClick={onEdit}>Edit</Button>
-          ) : (
-            <>
-              <Button variant="outline" onClick={onCancel}>
-                <X className="w-4 h-4 mr-2 text-icon" />
-                Cancel
+            <div>
+              <Button variant="primary" disabled onClick={onSave}>
+                Save Changes
               </Button>
-              <Button onClick={onSave}>Save Changes</Button>
-            </>
-          )}
-        </div> */}
+            </div>
+          </Tooltip>
+        </div>
       </div>
     </div>
   );

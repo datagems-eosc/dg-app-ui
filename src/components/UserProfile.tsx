@@ -40,6 +40,7 @@ export default function UserProfile() {
     "personal"
   );
   const [showToast, setShowToast] = useState(false);
+  const [formData, setFormData] = useState({ name: userData.name, surname: userData.surname });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newFeatures: { email: false, inApp: false },
@@ -57,10 +58,12 @@ export default function UserProfile() {
 
   useEffect(() => {
     setBackupUserData(userData);
+    setFormData({ name: userData.name, surname: userData.surname });
   }, [userData.name, userData.surname]);
 
   const handleSaveChanges = () => {
-    setBackupUserData(userData);
+    updateUserData({ name: formData.name, surname: formData.surname });
+    setBackupUserData({ ...userData, name: formData.name, surname: formData.surname });
     setBackupNotifications(notifications);
     setShowToast(true);
   };
@@ -99,10 +102,10 @@ export default function UserProfile() {
 
   const hasUserDataChanges = useMemo(() => {
     return (
-      (backupUserData?.name || "") !== (userData?.name || "") ||
-      (backupUserData?.surname || "") !== (userData?.surname || "")
+      (backupUserData?.name || "") !== (formData?.name || "") ||
+      (backupUserData?.surname || "") !== (formData?.surname || "")
     );
-  }, [backupUserData, userData]);
+  }, [backupUserData, formData]);
 
   const hasNotificationChanges = useMemo(() => {
     return (
@@ -159,8 +162,8 @@ export default function UserProfile() {
             <div className="bg-white rounded-2xl border border-slate-200 p-6">
               {activeTab === "personal" && (
                 <PersonalSettingsSection
-                  userData={userData}
-                  updateUserData={updateUserData}
+                  formData={formData}
+                  updateFormData={(data) => setFormData((prev) => ({ ...prev, ...data }))}
                 />
               )}
 
