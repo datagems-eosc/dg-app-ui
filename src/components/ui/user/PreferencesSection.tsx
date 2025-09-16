@@ -15,14 +15,13 @@ type NotificationSettings = {
 type NotificationCategory = 'newFeatures' | 'datasetLibraryChanges' | 'newDatasets' | 'systemMaintenance' | 'systemErrors';
 
 interface Props {
-  isEditing: boolean;
   notifications: NotificationSettings;
   onEnableAll: () => void;
   onDisableAll: () => void;
   updateNotification: (category: NotificationCategory, type: 'email' | 'inApp', value: boolean) => void;
 }
 
-export default function PreferencesSection({ isEditing, notifications, onEnableAll, onDisableAll, updateNotification }: Props) {
+export default function PreferencesSection({ notifications, onEnableAll, onDisableAll, updateNotification }: Props) {
   return (
     <div className="space-y-8">
       <div>
@@ -32,10 +31,10 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
             <p className="text-body-16-regular text-gray-600">Choose how you want to be notified about updates and changes</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onEnableAll} disabled={!isEditing}>
+            <Button variant="outline" size="sm" onClick={onEnableAll}>
               Enable All
             </Button>
-            <Button variant="outline" size="sm" onClick={onDisableAll} disabled={!isEditing}>
+            <Button variant="outline" size="sm" onClick={onDisableAll}>
               Disable All
             </Button>
           </div>
@@ -56,7 +55,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="new-features-email"
                   checked={notifications.newFeatures.email}
                   onChange={(checked) => updateNotification('newFeatures', 'email', checked)}
-                  disabled={!isEditing}
                 />
               </div>
               <div className="text-center">
@@ -65,7 +63,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="new-features-app"
                   checked={notifications.newFeatures.inApp}
                   onChange={(checked) => updateNotification('newFeatures', 'inApp', checked)}
-                  disabled={!isEditing}
                 />
               </div>
             </div>
@@ -85,7 +82,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="library-changes-email"
                   checked={notifications.datasetLibraryChanges.email}
                   onChange={(checked) => updateNotification('datasetLibraryChanges', 'email', checked)}
-                  disabled={!isEditing}
                 />
               </div>
               <div className="text-center">
@@ -94,7 +90,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="library-changes-app"
                   checked={notifications.datasetLibraryChanges.inApp}
                   onChange={(checked) => updateNotification('datasetLibraryChanges', 'inApp', checked)}
-                  disabled={!isEditing}
                 />
               </div>
             </div>
@@ -114,7 +109,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="new-datasets-email"
                   checked={notifications.newDatasets.email}
                   onChange={(checked) => updateNotification('newDatasets', 'email', checked)}
-                  disabled={!isEditing}
                 />
               </div>
               <div className="text-center">
@@ -123,7 +117,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="new-datasets-app"
                   checked={notifications.newDatasets.inApp}
                   onChange={(checked) => updateNotification('newDatasets', 'inApp', checked)}
-                  disabled={!isEditing}
                 />
               </div>
             </div>
@@ -143,7 +136,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="maintenance-email"
                   checked={notifications.systemMaintenance.email}
                   onChange={(checked) => updateNotification('systemMaintenance', 'email', checked)}
-                  disabled={!isEditing}
                 />
               </div>
               <div className="text-center">
@@ -152,7 +144,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="maintenance-app"
                   checked={notifications.systemMaintenance.inApp}
                   onChange={(checked) => updateNotification('systemMaintenance', 'inApp', checked)}
-                  disabled={!isEditing}
                 />
               </div>
             </div>
@@ -172,7 +163,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="errors-email"
                   checked={notifications.systemErrors.email}
                   onChange={(checked) => updateNotification('systemErrors', 'email', checked)}
-                  disabled={!isEditing}
                 />
               </div>
               <div className="text-center">
@@ -181,7 +171,6 @@ export default function PreferencesSection({ isEditing, notifications, onEnableA
                   id="errors-app"
                   checked={notifications.systemErrors.inApp}
                   onChange={(checked) => updateNotification('systemErrors', 'inApp', checked)}
-                  disabled={!isEditing}
                 />
               </div>
             </div>

@@ -58,10 +58,10 @@
   --color-red-100: #fee2e2;
   --color-red-200: #fecaca;
   --color-red-300: #fca5a5;
-  --color-red-400: #f87171;
+  --color-red-400: #ff5362;
   --color-red-500: #ef4444;
   --color-red-550: #fb2c36;
-  --color-red-600: #dc2626;
+  --color-red-600: #e7000b;
   --color-red-700: #b91c1c;
   --color-red-800: #991b1b;
   --color-red-900: #7f1d1d;
@@ -593,13 +593,13 @@ body {
     /* Force overlay scrollbar on smaller screens - no space reserved */
     scrollbar-gutter: auto;
   }
-  
+
   /* Override scrollbar gutter for webkit browsers on smaller screens */
   .scrollbar-hover::-webkit-scrollbar {
     width: 0px; /* Hide scrollbar by default */
     background: transparent;
   }
-  
+
   .scrollbar-hover:hover::-webkit-scrollbar {
     width: 8px; /* Show scrollbar on hover */
   }
@@ -634,7 +634,7 @@ body {
   .scrollbar-hover:hover::-webkit-scrollbar-thumb {
     background: #475569; /* slate-600 */
   }
-  
+
   .scrollbar-hover:hover {
     scrollbar-color: #475569 transparent;
   }

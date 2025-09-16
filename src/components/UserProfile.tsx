@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Toast } from "./ui/Toast";
 import { useUser } from "@/contexts/UserContext";
 import UserHeader from "@/components/ui/user/UserHeader";
@@ -37,10 +37,9 @@ export default function UserProfile() {
   const { userData, updateUserData, setProfilePicture, isLoading } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"personal" | "preferences">(
-    "preferences"
+    "personal"
   );
   const [showToast, setShowToast] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newFeatures: { email: false, inApp: false },
@@ -56,22 +55,18 @@ export default function UserProfile() {
   const [backupNotifications, setBackupNotifications] =
     useState<NotificationSettings>(notifications);
 
-  const handleEdit = () => {
+  useEffect(() => {
     setBackupUserData(userData);
-    setBackupNotifications(notifications);
-    setIsEditing(true);
-  };
+  }, [userData.name, userData.surname]);
 
   const handleSaveChanges = () => {
+    setBackupUserData(userData);
+    setBackupNotifications(notifications);
     setShowToast(true);
-    setIsEditing(false);
   };
 
   const handleCancel = () => {
-    if (!isEditing) router.push(APP_ROUTES.DASHBOARD);
-    updateUserData(backupUserData);
-    setNotifications(backupNotifications);
-    setIsEditing(false);
+    router.push(APP_ROUTES.DASHBOARD);
   };
 
   const handleImageSelect = async (file: File) => {
@@ -102,6 +97,21 @@ export default function UserProfile() {
     });
   };
 
+  const hasUserDataChanges = useMemo(() => {
+    return (
+      (backupUserData?.name || "") !== (userData?.name || "") ||
+      (backupUserData?.surname || "") !== (userData?.surname || "")
+    );
+  }, [backupUserData, userData]);
+
+  const hasNotificationChanges = useMemo(() => {
+    return (
+      JSON.stringify(backupNotifications) !== JSON.stringify(notifications)
+    );
+  }, [backupNotifications, notifications]);
+
+  const hasChanges = hasUserDataChanges || hasNotificationChanges;
+
   const handleDisableAll = () => {
     setNotifications({
       newFeatures: { email: false, inApp: false },
@@ -130,14 +140,13 @@ export default function UserProfile() {
     <>
       <div className="max-w-7xl mx-auto p-6">
         <UserHeader
-          isEditing={isEditing}
           isLoading={isLoading}
           userData={userData}
           onImageSelect={handleImageSelect}
           onRemoveProfilePicture={handleRemoveProfilePicture}
-          onEdit={handleEdit}
           onCancel={handleCancel}
           onSave={handleSaveChanges}
+          hasChanges={hasChanges}
         />
 
         {/* Body with left Tabs and right Content */}
@@ -151,14 +160,12 @@ export default function UserProfile() {
               {activeTab === "personal" && (
                 <PersonalSettingsSection
                   userData={userData}
-                  isEditing={isEditing}
                   updateUserData={updateUserData}
                 />
               )}
 
               {activeTab === "preferences" && (
                 <PreferencesSection
-                  isEditing={isEditing}
                   notifications={notifications}
                   onEnableAll={handleEnableAll}
                   onDisableAll={handleDisableAll}

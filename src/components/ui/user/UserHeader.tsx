@@ -14,52 +14,38 @@ type UserData = {
 };
 
 interface Props {
-  isEditing: boolean;
   isLoading: boolean;
   userData: UserData;
   onImageSelect: (file: File) => Promise<void>;
   onRemoveProfilePicture: () => Promise<void>;
-  onEdit: () => void;
   onCancel: () => void;
   onSave: () => void;
+  hasChanges: boolean;
 }
 
 export default function UserHeader({
-  isEditing,
   isLoading,
   userData,
   onImageSelect,
   onRemoveProfilePicture,
-  onEdit,
   onCancel,
   onSave,
+  hasChanges,
 }: Props) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-8 mb-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-center gap-2">
-            {isEditing ? (
-              <AvatarUpload
-                currentSrc={userData.profilePicture}
-                name={`${userData.name} ${userData.surname}`.trim()}
-                email={userData.email}
-                onImageSelect={onImageSelect}
-                size="lg"
-                disabled={isLoading}
-                isLoading={isLoading}
-              />
-            ) : (
-              <Avatar
-                src={userData.profilePicture}
-                name={`${userData.name} ${userData.surname}`.trim()}
-                email={userData.email}
-                size="lPlus"
-                isLoading={isLoading}
-              />
-            )}
+            <Avatar
+              src={userData.profilePicture}
+              name={`${userData.name} ${userData.surname}`.trim()}
+              email={userData.email}
+              size="lPlus"
+              isLoading={isLoading}
+            />
 
-            {isEditing && userData.profilePicture && (
+            {userData.profilePicture && (
               <Button
                 variant="outline"
                 size="sm"
@@ -91,7 +77,7 @@ export default function UserHeader({
           </Button>
           <Button
             variant="primary"
-            disabled={!isEditing || isLoading}
+            disabled={!hasChanges || isLoading}
             onClick={onSave}
           >
             Save Changes
