@@ -32,7 +32,7 @@ export default function PersonalSettingsSection({
           <h3 className="text-body-16-medium text-gray-750 mb-4">
             Basic information
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               name="name"
               label="Name"

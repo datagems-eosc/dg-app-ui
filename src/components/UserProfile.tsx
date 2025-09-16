@@ -141,7 +141,7 @@ export default function UserProfile() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <UserHeader
           isLoading={isLoading}
           userData={userData}
@@ -153,13 +153,13 @@ export default function UserProfile() {
         />
 
         {/* Body with left Tabs and right Content */}
-        <div className="grid grid-cols-1 md:grid-cols-10 gap-4">
-          <div className="md:col-span-3 lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
+          <div className="lg:col-span-3 order-1">
             <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
 
-          <div className="md:col-span-7 lg:col-span-7">
-            <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <div className="lg:col-span-7 order-2">
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
               {activeTab === "personal" && (
                 <PersonalSettingsSection
                   formData={formData}

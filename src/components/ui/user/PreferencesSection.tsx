@@ -72,7 +72,7 @@ export default function PreferencesSection({
   return (
     <div className="space-y-8">
       <div>
-        <div className="flex items-center justify-between border-b border-slate-200 pb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-6 sm:pb-8">
           <div className="flex flex-col gap-1 items-start justify-start">
             <h2 className="text-H2-20-semibold text-gray-750">
               Notification Preferences
@@ -81,7 +81,7 @@ export default function PreferencesSection({
               Choose how you want to be notified about updates and changes
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 self-end sm:self-auto sm:ml-auto">
             <Button variant="outline" size="sm" onClick={onEnableAll}>
               Enable All
             </Button>
@@ -95,7 +95,7 @@ export default function PreferencesSection({
           {NOTIFICATION_ITEMS.map((item, index, arr) => (
             <div
               key={item.key}
-              className={`grid grid-cols-[38%_31%_31%] items-center justify-items-center py-8 ${index < arr.length - 1 ? "border-b border-slate-200" : "pb-0"}`}
+              className={`grid grid-cols-1 sm:grid-cols-[38%_31%_31%] gap-4 items-start sm:items-center justify-items-start sm:justify-items-center py-6 sm:py-8 ${index < arr.length - 1 ? "border-b border-slate-200" : "pb-0"}`}
             >
               <div className="space-y-1 justify-self-start text-left">
                 <h3 className="text-body-16-medium text-gray-750">
@@ -105,7 +105,7 @@ export default function PreferencesSection({
                   {item.description}
                 </p>
               </div>
-              <div className="justify-self-center">
+              <div className="justify-self-start sm:justify-self-center">
                 <Checkbox
                   id={`${item.key}-email`}
                   label="E-mail"
@@ -115,7 +115,7 @@ export default function PreferencesSection({
                   }
                 />
               </div>
-              <div className="justify-self-center">
+              <div className="justify-self-start sm:justify-self-center">
                 <Checkbox
                   id={`${item.key}-app`}
                   label="In App"

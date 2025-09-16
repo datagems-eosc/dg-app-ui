@@ -33,10 +33,10 @@ export default function UserHeader({
   hasChanges,
 }: Props) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-8 mb-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-center gap-2">
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 md:p-8 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex flex-col items-center sm:items-center gap-2">
             <Avatar
               src={userData.profilePicture}
               name={`${userData.name} ${userData.surname}`.trim()}
@@ -58,33 +58,47 @@ export default function UserHeader({
             )}
           </div>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-H2-24-semibold text-gray-750">
+          <div className="text-center sm:text-left">
+            <div className="flex items-center gap-2 justify-center sm:justify-start">
+              <h1 className="text-H2-20-semibold sm:text-H2-24-semibold text-gray-750">
                 {userData.name} {userData.surname}
               </h1>
               <Chip color="success" size="sm">
                 User
               </Chip>
             </div>
-            <p className="text-H2-20-regular text-gray-650">{userData.email}</p>
+            <p className="text-body-14-regular sm:text-H2-20-regular text-gray-650">
+              {userData.email}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Tooltip
-            content="Saving is temporarily disabled while backend integration is in progress."
-            position="top"
-          >
-            <div>
-              <Button variant="primary" disabled onClick={onSave}>
+        <div className="flex items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="w-full sm:w-[150px]">
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              className="w-full sm:w-[150px]"
+            >
+              Cancel
+            </Button>
+          </div>
+          <div className="w-full sm:w-[150px]">
+            <Tooltip
+              content="Saving is temporarily disabled while backend integration is in progress."
+              position="top"
+              className="w-full sm:w-[150px]"
+            >
+              <Button
+                variant="primary"
+                disabled
+                onClick={onSave}
+                className="w-full sm:w-[150px]"
+              >
                 Save Changes
               </Button>
-            </div>
-          </Tooltip>
+            </Tooltip>
+          </div>
         </div>
       </div>
     </div>
