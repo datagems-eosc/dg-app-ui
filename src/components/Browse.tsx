@@ -34,6 +34,7 @@ import CreateCollectionModal from "./CreateCollectionModal";
 import DeleteCollectionModal from "./DeleteCollectionModal";
 import { Button } from "./ui/Button";
 import Switch from "./ui/Switch";
+import SmartSearch from "./ui/SmartSearch";
 import { Chip } from "./ui/Chip";
 import SortingDropdown from "./SortingDropdown";
 import { useRouter } from "next/navigation";
@@ -227,6 +228,7 @@ export default function Browse({
   const [editingName, setEditingName] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
+  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
 
   // Handle mobile detection and sidebar state
   useEffect(() => {
@@ -258,7 +260,10 @@ export default function Browse({
       }
     };
 
-    window.addEventListener("sidebarOpenedForTablet", handleSidebarOpenedForTablet);
+    window.addEventListener(
+      "sidebarOpenedForTablet",
+      handleSidebarOpenedForTablet
+    );
     return () => {
       window.removeEventListener(
         "sidebarOpenedForTablet",
@@ -1018,6 +1023,15 @@ export default function Browse({
             </Button>
           )} */}
           </div>
+          {/* Smart Search banner */}
+          {showSearchAndFilters !== false && (
+            <div className="px-4 sm:px-6">
+              <SmartSearch
+                enabled={isSmartSearchEnabled}
+                onToggle={setIsSmartSearchEnabled}
+              />
+            </div>
+          )}
 
           {/* Search and filters */}
           {showSearchAndFilters !== false && (
@@ -1060,7 +1074,6 @@ export default function Browse({
               )}
             </div>
           )}
-
           {/* Active Filters */}
           {showSearchAndFilters !== false && activeFilterTags.length > 0 && (
             <div className="flex gap-2 mb-4 flex-nowrap sm:flex-wrap overflow-x-auto pl-4 sm:px-6">
@@ -1081,7 +1094,6 @@ export default function Browse({
               ))}
             </div>
           )}
-
           {/* Results count and sorting */}
           {showSearchAndFilters !== false && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
@@ -1100,7 +1112,6 @@ export default function Browse({
               />
             </div>
           )}
-
           {/* Main content area - do not shift cards when modal is open */}
           <div className="transition-all duration-300 px-4 sm:px-6">
             {/* Loader or error */}
@@ -1174,7 +1185,6 @@ export default function Browse({
               </div>
             )}
           </div>
-
           {/* Dataset Details Panel */}
           {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (
             <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
