@@ -35,6 +35,7 @@ import DeleteCollectionModal from "./DeleteCollectionModal";
 import { Button } from "./ui/Button";
 import Switch from "./ui/Switch";
 import SmartSearch from "./ui/SmartSearch";
+import SmartSearchExamples from "./ui/SmartSearchExamples";
 import { Chip } from "./ui/Chip";
 import SortingDropdown from "./SortingDropdown";
 import { useRouter } from "next/navigation";
@@ -624,6 +625,17 @@ export default function Browse({
     setShowCreateCollectionModal(true);
   };
 
+  // When picking a smart search example, populate and submit the search
+  const handlePickSmartExample = (value: string) => {
+    if (onSearchTermChange) onSearchTermChange(value);
+    if (onSearchTermSubmit) onSearchTermSubmit(value);
+  };
+
+  const showSmartExamples =
+    showSearchAndFilters !== false &&
+    isSmartSearchEnabled &&
+    (!searchTerm || searchTerm.trim() === "");
+
   const removeFilter = (filterKey: keyof FilterState) => {
     const newFilters = { ...filters };
 
@@ -1074,6 +1086,13 @@ export default function Browse({
               )}
             </div>
           )}
+
+          {/* Smart Search Examples - visible when smart search enabled and search is empty */}
+          {showSmartExamples && (
+            <div className="px-4 sm:px-6 py-22.5">
+              <SmartSearchExamples onPickExample={handlePickSmartExample} />
+            </div>
+          )}
           {/* Active Filters */}
           {showSearchAndFilters !== false && activeFilterTags.length > 0 && (
             <div className="flex gap-2 mb-4 flex-nowrap sm:flex-wrap overflow-x-auto pl-4 sm:px-6">
@@ -1095,7 +1114,7 @@ export default function Browse({
             </div>
           )}
           {/* Results count and sorting */}
-          {showSearchAndFilters !== false && (
+          {showSearchAndFilters !== false && !showSmartExamples && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
               <p className="text-body-14-regular text-gray-650">
                 Showing:{" "}
@@ -1115,75 +1134,89 @@ export default function Browse({
           {/* Main content area - do not shift cards when modal is open */}
           <div className="transition-all duration-300 px-4 sm:px-6">
             {/* Loader or error */}
-            {isLoading ? (
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-                    : "grid grid-cols-1 gap-4"
-                }
-              >
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <DatasetCardSkeleton key={index} viewMode={viewMode} />
-                ))}
-              </div>
-            ) : error ? (
-              <div className="text-red-600 text-center py-8">{error}</div>
-            ) : (
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-                    : "grid grid-cols-1 gap-4"
-                }
-              >
-                {filteredDatasets.map((dataset) => (
-                  <DatasetCard
-                    key={dataset.id}
-                    dataset={dataset}
-                    onClick={() => handleDatasetClick(dataset)}
-                    isSelected={selectedDataset?.id === dataset.id}
-                    isMultiSelected={currentSelectedDatasets.includes(
-                      dataset.id
-                    )}
-                    onSelect={(isSelected) =>
-                      handleDatasetSelect(dataset.id, isSelected)
-                    }
-                    showSelectButton={true}
-                    isEditMode={isEditMode}
-                    onRemove={
-                      isEditMode && onRemoveDataset
-                        ? () => onRemoveDataset(dataset.id)
-                        : undefined
-                    }
-                    viewMode={viewMode}
-                    onAddToCollection={() => handleAddToCollection(dataset)}
-                    showAddButton={showAddButton}
-                    isFavorite={favoriteDatasetIds.includes(dataset.id)}
-                    favoritesCollectionId={favoritesCollectionId}
-                    onAddToFavorites={onAddToFavorites}
-                    hasFetchedFavorites={hasFetchedFavorites}
-                    onRemoveFromFavorites={onRemoveFromFavorites}
-                    hasSidePanelOpen={
-                      (!!selectedDataset && !isDetailsPanelClosing) ||
-                      (showSelectedPanel && !isPanelClosing)
-                    }
-                  />
-                ))}
-              </div>
-            )}
+            {!showSmartExamples &&
+              (isLoading ? (
+                <div
+                  className={
+                    viewMode === "grid"
+                      ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                      : "grid grid-cols-1 gap-4"
+                  }
+                >
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <DatasetCardSkeleton key={index} viewMode={viewMode} />
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="text-red-600 text-center py-8">{error}</div>
+              ) : (
+                <div
+                  className={
+                    viewMode === "grid"
+                      ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                      : "grid grid-cols-1 gap-4"
+                  }
+                >
+                  {filteredDatasets.map((dataset) => (
+                    <DatasetCard
+                      key={dataset.id}
+                      dataset={dataset}
+                      onClick={() => handleDatasetClick(dataset)}
+                      isSelected={selectedDataset?.id === dataset.id}
+                      isMultiSelected={currentSelectedDatasets.includes(
+                        dataset.id
+                      )}
+                      onSelect={(isSelected) =>
+                        handleDatasetSelect(dataset.id, isSelected)
+                      }
+                      showSelectButton={true}
+                      isEditMode={isEditMode}
+                      onRemove={
+                        isEditMode && onRemoveDataset
+                          ? () => onRemoveDataset(dataset.id)
+                          : undefined
+                      }
+                      viewMode={viewMode}
+                      onAddToCollection={() => handleAddToCollection(dataset)}
+                      showAddButton={showAddButton}
+                      isFavorite={favoriteDatasetIds.includes(dataset.id)}
+                      favoritesCollectionId={favoritesCollectionId}
+                      onAddToFavorites={onAddToFavorites}
+                      hasFetchedFavorites={hasFetchedFavorites}
+                      onRemoveFromFavorites={onRemoveFromFavorites}
+                      hasSidePanelOpen={
+                        (!!selectedDataset && !isDetailsPanelClosing) ||
+                        (showSelectedPanel && !isPanelClosing)
+                      }
+                    />
+                  ))}
+                </div>
+              ))}
             {/* Empty state */}
-            {!isLoading && !error && filteredDatasets.length === 0 && (
-              <div className="text-center py-18 space-y-2">
-                <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
-                <h3 className="text-body-16-semibold text-slate-850">
-                  No datasets found matching your search criteria.
-                </h3>
-                <p className="text-body-14-regular text-gray-650">
-                  Try rephrasing your question or using different keywords.
-                </p>
-              </div>
-            )}
+            {!showSmartExamples &&
+              !isLoading &&
+              !error &&
+              filteredDatasets.length === 0 && (
+                <div className="text-center py-18 space-y-2">
+                  <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
+                  <h3 className="text-body-16-semibold text-slate-850">
+                    No datasets found matching your search criteria.
+                  </h3>
+                  <p className="text-body-14-regular text-gray-650">
+                    Try rephrasing your question or using different keywords.
+                  </p>
+                  {isSmartSearchEnabled &&
+                    searchTerm &&
+                    searchTerm.trim() !== "" && (
+                      <div className="mt-4">
+                        <SmartSearchExamples
+                          showHeader={false}
+                          onPickExample={handlePickSmartExample}
+                        />
+                      </div>
+                    )}
+                </div>
+              )}
           </div>
           {/* Dataset Details Panel */}
           {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (

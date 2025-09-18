@@ -2,8 +2,8 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "outline" | "secondary" | "ghost";
-  size?: "icon" | "sm" | "md" | "lg";
+  variant?: "primary" | "outline" | "secondary" | "ghost" | "tertiary";
+  size?: "icon" | "sm" | "smPlus" | "md" | "lg";
   children: React.ReactNode;
 }
 
@@ -26,17 +26,21 @@ export function Button({
       "bg-gray-100 !text-black hover:bg-gray-200 hover:!text-black active:bg-gray-300 active:!text-black hover:shadow-md focus-visible:ring-gray-500 disabled:opacity-50 [&>svg]:stroke-black hover:[&>svg]:stroke-black active:[&>svg]:stroke-black disabled:[&>svg]:stroke-black/50",
     ghost:
       "bg-transparent !text-black hover:bg-gray-100 hover:!text-black active:bg-gray-200 active:!text-black hover:shadow-sm focus-visible:ring-gray-500 disabled:opacity-50 [&>svg]:stroke-black hover:[&>svg]:stroke-black active:[&>svg]:stroke-black disabled:[&>svg]:stroke-black/50",
+    tertiary:
+      "bg-slate-100 border border-transparent !text-gray-650 hover:bg-slate-200 hover:!text-gray-650 active:bg-slate-200 focus-visible:ring-gray-500 disabled:opacity-50 [&>svg]:stroke-gray-650 hover:[&>svg]:stroke-gray-650 active:[&>svg]:stroke-gray-650 rounded-sm",
   };
 
   const sizes = {
     icon: "h-8 w-8 p-1",
     sm: "h-8 px-4 py-2",
+    smPlus: "h-8 px-4 py-2",
     md: "h-10 px-4 py-2",
     lg: "h-12 px-6",
   };
 
   const typography = {
     sm: "text-descriptions-12-medium",
+    smPlus: "text-body-14-regular",
     md: "text-body-14-medium",
     lg: "text-body-14-medium",
   };
