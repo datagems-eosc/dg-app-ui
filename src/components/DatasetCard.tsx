@@ -240,7 +240,9 @@ export default function DatasetCard({
 
   return (
     <div
-      className={`rounded-2xl border-1 hover:shadow-md transition-all cursor-pointer relative p-5 ${
+      className={`rounded-2xl border-1 hover:shadow-md transition-all cursor-pointer relative p-5 h-fit ${
+        isSmartSearchEnabled ? "min-h-[280px]" : ""
+      } ${
         isSelected
           ? "border-blue-650 shadow-s2 bg-blue-75"
           : isMultiSelected
@@ -266,7 +268,7 @@ export default function DatasetCard({
             <h2 className="text-H6-18-semibold text-slate-850 mb-3 line-clamp-1">
               {getDatasetName(dataset)}
             </h2>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               {hasCollections(dataset) && dataset.collections.length > 0 ? (
                 dataset.collections.map((col) => (
                   <Chip
@@ -291,11 +293,23 @@ export default function DatasetCard({
               >
                 {dataset.access}
               </Chip>
+              {/* Smart search match chip - only show in chips row for grid layout */}
+              {isSmartSearchEnabled && !isListMode && (
+                <Chip
+                  color="smart-search"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-descriptions-12-medium tracking-1p flex-shrink-0"
+                >
+                  <Check className="w-3 h-3 mr-1" />
+                  100% Match
+                </Chip>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Smart search match chip - moved to right side */}
-            {isSmartSearchEnabled && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Smart search match chip - show on right side for list layout */}
+            {isSmartSearchEnabled && isListMode && (
               <Chip
                 color="smart-search"
                 variant="outline"
@@ -306,7 +320,6 @@ export default function DatasetCard({
                 100% Match
               </Chip>
             )}
-
             {!isEditMode && (
               <button
                 onClick={handleStarClick}
@@ -353,7 +366,7 @@ export default function DatasetCard({
 
         {/* Smart search expanded content */}
         {isSmartSearchEnabled && isExpanded && (
-          <div className="mb-4">
+          <div className="mb-4 max-h-48 overflow-y-auto">
             {smartSearchMatches.map((match, index) => (
               <SmartSearchMatchItem
                 key={match.number}

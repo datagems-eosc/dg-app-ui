@@ -1168,8 +1168,7 @@ export default function Browse({
                       (!!selectedDataset && !isDetailsPanelClosing) ||
                       (showSelectedPanel && !isPanelClosing)
                     }
-                    isSmartSearchEnabled
-                    // isSmartSearchEnabled={isSmartSearchEnabled}
+                    isSmartSearchEnabled={isSmartSearchEnabled}
                   />
                 ))}
               </div>
