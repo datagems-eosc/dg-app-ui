@@ -8,17 +8,27 @@ import {
   FileCheck,
   HardDrive,
   CalendarCheck2,
+  ChevronDown,
+  ChevronUp,
+  Check,
 } from "lucide-react";
 import { Dataset } from "@/data/mockDatasets";
 import { useDataset } from "@/contexts/DatasetContext";
 import { Button } from "./ui/Button";
 import FormattedText from "./ui/FormattedText";
 import { Chip } from "./ui/Chip";
+import { SmartSearchMatchItem } from "./ui/SmartSearchMatchItem";
 import { formatFileSize } from "@/lib/utils";
 
 interface Collection {
   id?: string;
   name: string;
+}
+
+interface SmartSearchMatch {
+  number: number;
+  description: string;
+  matchPercentage: number;
 }
 
 function hasCollections(
@@ -79,6 +89,8 @@ interface DatasetCardProps {
   hasFetchedFavorites?: boolean; // NEW PROP
   onRemoveFromFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
   hasSidePanelOpen?: boolean; // NEW PROP to indicate if side panels are open
+  isSmartSearchEnabled?: boolean; // NEW PROP for smart search functionality
+  defaultExpanded?: boolean; // TEMP: opens card by default in smart test mode
 }
 
 export default function DatasetCard({
@@ -99,6 +111,8 @@ export default function DatasetCard({
   hasFetchedFavorites = false, // NEW PROP
   onRemoveFromFavorites, // NEW PROP
   hasSidePanelOpen = false, // NEW PROP to indicate if side panels are open
+  isSmartSearchEnabled = false, // NEW PROP for smart search functionality
+  defaultExpanded = false,
 }: DatasetCardProps) {
   const { toggleFavorite, isFavorite } = useDataset();
   const hookIsFavorite = isFavorite(dataset.id);
@@ -107,6 +121,27 @@ export default function DatasetCard({
   const isListMode = viewMode === "list";
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const [shouldStackFooter, setShouldStackFooter] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  // Mock data for smart search matches - TODO: Replace with real backend data
+  const smartSearchMatches: SmartSearchMatch[] = [
+    {
+      number: 1,
+      description:
+        "The fundamental theorem of calculus states that differentiation and integration are inverse operations... It can also be interpreted as a precise statement of the fact that differentiation is the inverse of integration.",
+      matchPercentage: 95,
+    },
+    {
+      number: 2,
+      description: "Includes precipitation measurements and humidity levels",
+      matchPercentage: 87,
+    },
+    {
+      number: 3,
+      description: "Geographic data covering multiple regions and time periods",
+      matchPercentage: 78,
+    },
+  ];
 
   // Check if we should stack the footer (side panel open + small screen)
   useEffect(() => {
@@ -198,6 +233,11 @@ export default function DatasetCard({
     }
   };
 
+  const handleExpandClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click when expanding
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <div
       className={`rounded-2xl border-1 hover:shadow-md transition-all cursor-pointer relative p-5 ${
@@ -253,27 +293,55 @@ export default function DatasetCard({
               </Chip>
             </div>
           </div>
-          {!isEditMode && (
-            <button
-              onClick={handleStarClick}
-              disabled={isFavoriteLoading}
-              className={`flex-shrink-0 p-1.5 rounded transition-colors ${
-                isFavoriteLoading
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-slate-75"
-              }`}
-            >
-              {isFavoriteLoading ? (
-                <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-              ) : (
-                <Star
-                  className={`w-5 h-5 ${
-                    isStarred ? "fill-amber-200 text-amber-400" : "text-icon"
-                  }`}
-                />
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Smart search match chip - moved to right side */}
+            {isSmartSearchEnabled && (
+              <Chip
+                color="smart-search"
+                variant="outline"
+                size="sm"
+                className="h-6 text-descriptions-12-medium tracking-1p"
+              >
+                <Check className="w-3 h-3 mr-1" />
+                100% Match
+              </Chip>
+            )}
+
+            {!isEditMode && (
+              <button
+                onClick={handleStarClick}
+                disabled={isFavoriteLoading}
+                className={`flex-shrink-0 p-1.5 rounded transition-colors ${
+                  isFavoriteLoading
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-slate-75"
+                }`}
+              >
+                {isFavoriteLoading ? (
+                  <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+                ) : (
+                  <Star
+                    className={`w-5 h-5 ${
+                      isStarred ? "fill-amber-200 text-amber-400" : "text-icon"
+                    }`}
+                  />
+                )}
+              </button>
+            )}
+            {/* Expand arrow for smart search */}
+            {isSmartSearchEnabled && (
+              <button
+                onClick={handleExpandClick}
+                className="flex-shrink-0 p-1.5 rounded transition-colors hover:bg-slate-75 cursor-pointer"
+              >
+                {isExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-icon" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-icon" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Description */}
@@ -282,6 +350,21 @@ export default function DatasetCard({
           className="text-body-14-regular text-gray-650 mb-4 line-clamp-2 break-words"
           text={dataset.description}
         />
+
+        {/* Smart search expanded content */}
+        {isSmartSearchEnabled && isExpanded && (
+          <div className="mb-4">
+            {smartSearchMatches.map((match, index) => (
+              <SmartSearchMatchItem
+                key={match.number}
+                number={match.number}
+                description={match.description}
+                matchPercentage={match.matchPercentage}
+                isLast={index === smartSearchMatches.length - 1}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Footer with action buttons and metadata */}
         <div

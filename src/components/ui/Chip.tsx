@@ -5,8 +5,8 @@ import { X } from "lucide-react";
 interface ChipProps {
   children: React.ReactNode;
   variant?: "outline" | "regular";
-  color?: "warning" | "info" | "success" | "error" | "default" | "grey";
-  size?: "sm" | "md";
+  color?: "warning" | "info" | "success" | "error" | "default" | "grey" | "smart-search";
+  size?: "xs" | "sm" | "md";
   className?: string;
   onRemove?: () => void;
 }
@@ -22,6 +22,7 @@ export function Chip({
   const baseStyles = "inline-flex items-center rounded-full tracking-1p";
 
   const sizes = {
+    xs: "px-2 py-0.5",
     sm: "px-3 py-0.5",
     md: "px-3 py-1.5",
   };
@@ -55,6 +56,10 @@ export function Chip({
     grey: {
       regular: "border-gray-100 bg-gray-100 text-gray-650",
       outline: "border-gray-300 bg-gray-100 text-gray-650",
+    },
+    "smart-search": {
+      regular: "border-emerald-400 bg-white text-emerald-800",
+      outline: "border-emerald-400 bg-white text-emerald-800",
     },
   };
 
