@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle, X, AlertCircle } from "lucide-react";
+import { CheckCircle2, X, AlertCircle } from "lucide-react";
 
 interface ToastProps {
   message: string;
@@ -31,31 +31,35 @@ export function Toast({
   if (!isVisible) return null;
 
   const isSuccess = type === "success";
-  const icon = isSuccess ? CheckCircle : AlertCircle;
-  const iconColor = isSuccess ? "text-green-500" : "text-red-500";
+  const icon = isSuccess ? CheckCircle2 : AlertCircle;
+  const iconColor = isSuccess ? "text-emerald-500" : "text-red-500";
   const title = isSuccess ? "Success" : "Error";
-  const titleColor = isSuccess ? "text-gray-900" : "text-red-900";
+  const titleColor = isSuccess ? "text-emerald-800" : "text-red-900";
 
   const toastContent = (
-    <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm w-full">
+    <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-2">
+      <div
+        className={`${isSuccess ? "bg-emerald-50 border-emerald-200" : "bg-white border-gray-200"} rounded-lg shadow-s1 border p-4 max-w-md w-full`}
+      >
         <div className="flex items-start gap-3">
-          <div className={`w-5 h-5 ${iconColor} flex-shrink-0 mt-0.5`}>
-            {React.createElement(icon, { className: "w-5 h-5" })}
+          <div className={`w-6 h-6 ${iconColor} flex-shrink-0 mt-0.5`}>
+            {React.createElement(icon, { className: "w-6 h-6" })}
           </div>
           <div className="flex-1">
             <h4 className={`text-body-16-semibold ${titleColor} mb-1`}>
               {title}
             </h4>
-            <p className="text-descriptions-12-regular text-gray-600">
+            <p
+              className={`text-body-14-regular ${isSuccess ? "text-emerald-700" : "text-gray-600"}`}
+            >
               {message}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+            className={`${isSuccess ? "text-emerald-800 hover:text-emerald-900" : "text-gray-400 hover:text-gray-600"} flex-shrink-0 cursor-pointer`}
           >
-            <X className="w-4 h-4 text-icon" />
+            <X className="w-4 h-4" strokeWidth={1.25} />
           </button>
         </div>
       </div>
