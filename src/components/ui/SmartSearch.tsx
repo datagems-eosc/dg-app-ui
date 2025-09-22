@@ -2,7 +2,6 @@
 
 import React from "react";
 import SmartSwitch from "./SmartSwitch";
-import SmartWandIcon from "./SmartWandIcon";
 
 type SmartSearchProps = {
   enabled?: boolean;
@@ -43,7 +42,11 @@ export default function SmartSearch({
           </div>
         </div>
         <div className="shrink-0">
-          <SmartWandIcon className="w-6 h-6" />
+          <img
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/wand-sparkles.svg`}
+            alt="Smart search"
+            className="w-6 h-6"
+          />
         </div>
       </div>
     </div>
