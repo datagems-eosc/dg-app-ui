@@ -241,7 +241,9 @@ export default function DatasetCard({
   return (
     <div
       className={`rounded-2xl border-1 hover:shadow-md transition-all cursor-pointer relative p-5 h-fit ${
-        isSmartSearchEnabled ? "min-h-[280px]" : ""
+        isSmartSearchEnabled && !isListMode && hasSidePanelOpen
+          ? "min-h-[280px]"
+          : ""
       } ${
         isSelected
           ? "border-blue-650 shadow-s2 bg-blue-75"
@@ -366,7 +368,7 @@ export default function DatasetCard({
 
         {/* Smart search expanded content */}
         {isSmartSearchEnabled && isExpanded && (
-          <div className="mb-4 max-h-48 overflow-y-auto">
+          <div className="mb-4">
             {smartSearchMatches.map((match, index) => (
               <SmartSearchMatchItem
                 key={match.number}
