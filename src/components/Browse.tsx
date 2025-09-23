@@ -760,7 +760,7 @@ export default function Browse({
               : ""
         }`}
       >
-        <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out py-4 sm:py-6">
+        <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out py-4 sm:py-10">
           {/* Header */}
           <div className="flex items-start sm:items-center justify-between mb-4 px-4 sm:px-6">
             <div className="flex-1">
@@ -817,7 +817,7 @@ export default function Browse({
                   <h1 className="text-H2-32-semibold sm:text-H2-24-semibold text-gray-750">
                     {title}
                   </h1>
-                  <p className="text-body-16-regular text-gray-650 mt-1">
+                  <p className="text-H2-20-regular text-gray-650">
                     {subtitle}
                   </p>
                 </>

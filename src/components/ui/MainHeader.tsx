@@ -1,6 +1,8 @@
-import { Menu, PanelLeftOpen } from "lucide-react";
+import { Menu, PanelLeftOpen, Plus } from "lucide-react";
+import Link from "next/link";
 import { Logo } from "./Logo";
 import { UserProfileDropdown } from "./UserProfileDropdown";
+import { Button } from "./Button";
 
 interface MainHeaderProps {
   isMobile: boolean;
@@ -49,12 +51,25 @@ export function MainHeader({
           </div>
         )}
 
-        {/* Right side - User info */}
-        <UserProfileDropdown
-          session={session}
-          isMobile={isMobile}
-          onLogout={onLogout}
-        />
+        {/* Right side - Add Dataset button and User info */}
+        <div className="flex items-center gap-4">
+          <Link href="/datasets/add">
+            <Button
+              variant="primary"
+              size="md"
+              className="flex items-center gap-2"
+            >
+              <Plus strokeWidth={1.25} className="w-4 h-4 !stroke-slate-450" />
+              {!isMobile && <span>Add Dataset</span>}
+            </Button>
+          </Link>
+
+          <UserProfileDropdown
+            session={session}
+            isMobile={isMobile}
+            onLogout={onLogout}
+          />
+        </div>
       </div>
     </header>
   );
