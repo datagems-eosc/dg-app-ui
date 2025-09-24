@@ -36,7 +36,13 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
           />
         );
       case "error":
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return (
+          <img
+            src="/circle-x.svg"
+            alt="Upload failed"
+            className="w-4 h-4"
+          />
+        );
       default:
         return <Upload className="w-4 h-4 text-slate-600" />;
     }
@@ -102,7 +108,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
           </div>
 
           <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-2">
+            <div className="w-full bg-slate-200 rounded-full h-2">
               <div
                 className="h-2 rounded-full transition-all duration-300 bg-blue-850"
                 style={{ width: `${file.progress}%` }}
