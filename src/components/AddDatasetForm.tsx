@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
 import { DatasetUpload } from "./ui/datasets/DatasetUpload";
 import { BasicInformation } from "./ui/datasets/BasicInformation";
 import { Classification } from "./ui/datasets/Classification";
 import { AdditionalInformation } from "./ui/datasets/AdditionalInformation";
 import { FormSectionLayout } from "./ui/FormSectionLayout";
+import { APP_ROUTES } from "@/config/appUrls";
 
 interface UploadedFile {
   id: string;
@@ -85,6 +87,7 @@ const initialErrors: FormErrors = {
 };
 
 export default function AddDatasetForm() {
+  const router = useRouter();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<FormErrors>(initialErrors);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -227,71 +230,80 @@ export default function AddDatasetForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-8">
-      {[
-        {
-          key: "upload",
-          title: "Dataset upload",
-          description: "Upload the files of your dataset",
-          content: (
-            <DatasetUpload
-              files={formData.files}
-              onFilesChange={handleFilesChange}
-            />
-          ),
-          errorText: errors.files,
-        },
-        {
-          key: "basic",
-          title: "Basic information",
-          description: "Provide the essential details about your dataset",
-          content: (
-            <BasicInformation
-              data={formData.basicInfo}
-              onChange={handleBasicInfoChange}
-              errors={errors.basicInfo}
-            />
-          ),
-        },
-        {
-          key: "classification",
-          title: "Classification",
-          description: "Categorize your dataset for better discoverability",
-          content: (
-            <Classification
-              data={formData.classification}
-              onChange={handleClassificationChange}
-              errors={errors.classification}
-            />
-          ),
-        },
-        {
-          key: "additional",
-          title: "Additional Information",
-          description: "Dataset citation",
-          content: (
-            <AdditionalInformation
-              data={formData.additionalInfo}
-              onChange={handleAdditionalInfoChange}
-              errors={errors.additionalInfo}
-            />
-          ),
-        },
-      ].map((section) => (
-        <FormSectionLayout
-          key={section.key}
-          title={section.title}
-          description={section.description}
-          errorText={section.errorText}
-        >
-          {section.content}
-        </FormSectionLayout>
-      ))}
+    <form onSubmit={handleSubmit} noValidate>
+      <div className="space-y-8">
+        {[
+          {
+            key: "upload",
+            title: "Dataset upload",
+            description: "Upload the files of your dataset",
+            content: (
+              <DatasetUpload
+                files={formData.files}
+                onFilesChange={handleFilesChange}
+              />
+            ),
+            errorText: errors.files,
+          },
+          {
+            key: "basic",
+            title: "Basic information",
+            description: "Provide the essential details about your dataset",
+            content: (
+              <BasicInformation
+                data={formData.basicInfo}
+                onChange={handleBasicInfoChange}
+                errors={errors.basicInfo}
+              />
+            ),
+          },
+          {
+            key: "classification",
+            title: "Classification",
+            description: "Categorize your dataset for better discoverability",
+            content: (
+              <Classification
+                data={formData.classification}
+                onChange={handleClassificationChange}
+                errors={errors.classification}
+              />
+            ),
+          },
+          {
+            key: "additional",
+            title: "Additional Information",
+            description: "Dataset citation",
+            content: (
+              <AdditionalInformation
+                data={formData.additionalInfo}
+                onChange={handleAdditionalInfoChange}
+                errors={errors.additionalInfo}
+              />
+            ),
+          },
+        ].map((section) => (
+          <FormSectionLayout
+            key={section.key}
+            title={section.title}
+            description={section.description}
+            errorText={section.errorText}
+          >
+            {section.content}
+          </FormSectionLayout>
+        ))}
+      </div>
 
-      {/* Submit Button */}
-      <div className="flex justify-end pt-4">
+      {/* Action Buttons */}
+      <div className="mt-5 flex justify-end gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push(APP_ROUTES.DASHBOARD)}
+        >
+          Cancel
+        </Button>
         <Button type="submit" disabled={isSubmitting} className="px-8">
-          {isSubmitting ? "Submitting..." : "Submit Dataset"}
+          {isSubmitting ? "Submitting..." : "Publish Dataset"}
         </Button>
       </div>
     </form>
