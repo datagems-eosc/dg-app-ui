@@ -58,9 +58,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
   return (
     <div className="rounded-lg p-4 bg-slate-75">
       <div className="flex items-center justify-between gap-4">
-        {/* Left content */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
-          {/* First line: file name (red when error) */}
           <p
             className={cn(
               "text-body-16-medium truncate",
@@ -71,7 +69,6 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
             {file.name}
           </p>
 
-          {/* Second line: hard-drive icon, size, dot, status icon + text */}
           <div className="mt-1 flex items-center gap-2 text-xs">
             <HardDrive
               className={`w-4 h-4 ${file.status === "error" ? "text-slate-450" : "text-icon"}`}
@@ -104,7 +101,6 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
             </div>
           </div>
 
-          {/* Third line: progress bar */}
           <div className="mt-2">
             <div className="w-full bg-slate-100 rounded-full h-2">
               <div
@@ -115,7 +111,6 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
           </div>
         </div>
 
-        {/* Right: remove button centered */}
         <button
           onClick={onRemove}
           className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors flex-shrink-0"
