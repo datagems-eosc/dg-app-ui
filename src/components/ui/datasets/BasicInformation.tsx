@@ -23,7 +23,11 @@ interface BasicInformationProps {
   };
 }
 
-export function BasicInformation({ data, onChange, errors }: BasicInformationProps) {
+export function BasicInformation({
+  data,
+  onChange,
+  errors,
+}: BasicInformationProps) {
   const handleFieldChange = (field: keyof BasicInformationData, value: any) => {
     onChange({
       ...data,
@@ -32,13 +36,14 @@ export function BasicInformation({ data, onChange, errors }: BasicInformationPro
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       <Input
         label="Title *"
         value={data.title}
         onChange={(e) => handleFieldChange("title", e.target.value)}
         placeholder="Enter dataset title"
         error={errors.title}
+        className="mb-6"
       />
 
       <div>
@@ -50,7 +55,7 @@ export function BasicInformation({ data, onChange, errors }: BasicInformationPro
           error={errors.headline}
           maxLength={150}
         />
-        <div className="mt-1 text-xs text-slate-400 text-right">
+        <div className="mt-1 text-xs text-gray-650 text-right">
           {data.headline.length}/150
         </div>
       </div>
@@ -65,7 +70,7 @@ export function BasicInformation({ data, onChange, errors }: BasicInformationPro
           error={errors.description}
           maxLength={3000}
         />
-        <div className="mt-1 text-xs text-slate-400 text-right">
+        <div className="mt-1 text-xs text-gray-650 text-right">
           {data.description.length}/3000
         </div>
       </div>
@@ -76,6 +81,8 @@ export function BasicInformation({ data, onChange, errors }: BasicInformationPro
         onChange={(keywords) => handleFieldChange("keywords", keywords)}
         placeholder="Separate with commas e.g. encyclopedia, historical texts, knowledge graph"
         error={errors.keywords}
+        required={true}
+        maxLength={250}
       />
     </div>
   );

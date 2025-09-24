@@ -48,7 +48,7 @@ export function Textarea({
           maxLength={maxLength}
           value={value}
           className={cn(
-            "w-full px-3 py-2 border rounded-lg text-sm font-normal transition-colors resize-none",
+            "w-full px-3 py-2 border rounded-2xl text-sm font-normal transition-colors resize-none",
             // Base styles
             "border-slate-350 text-gray-750 placeholder-slate-400",
             // Hover state
@@ -66,13 +66,13 @@ export function Textarea({
           {...props}
         />
         {characterCount && maxLength && (
-          <div className="absolute bottom-2 right-3 text-xs text-slate-400">
+          <div className="absolute bottom-2 right-3 text-xs text-gray-650">
             {currentLength}/{maxLength}
           </div>
         )}
       </div>
       {characterCount && !maxLength && (
-        <div className="mt-1 text-xs text-slate-400 text-right">
+        <div className="mt-1 text-xs text-gray-650 text-right">
           {currentLength}/3000
         </div>
       )}

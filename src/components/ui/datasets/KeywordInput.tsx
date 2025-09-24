@@ -11,6 +11,8 @@ interface KeywordInputProps {
   label?: string;
   error?: string;
   disabled?: boolean;
+  required?: boolean;
+  maxLength?: number;
 }
 
 export function KeywordInput({
@@ -20,6 +22,8 @@ export function KeywordInput({
   label,
   error,
   disabled = false,
+  required = true,
+  maxLength = 250,
 }: KeywordInputProps) {
   const [inputValue, setInputValue] = useState("");
 
@@ -50,25 +54,33 @@ export function KeywordInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    
+
     // Check if user typed a comma
     if (newValue.includes(",")) {
-      const keywords = newValue.split(",").map(k => k.trim()).filter(k => k);
+      const keywords = newValue
+        .split(",")
+        .map((k) => k.trim())
+        .filter((k) => k);
       const lastKeyword = keywords.pop() || "";
-      
+
       // Add all complete keywords
       const newKeywords = [...value];
-      keywords.forEach(keyword => {
+      keywords.forEach((keyword) => {
         if (keyword && !newKeywords.includes(keyword)) {
           newKeywords.push(keyword);
         }
       });
-      
+
       onChange(newKeywords);
       setInputValue(lastKeyword);
     } else {
       setInputValue(newValue);
     }
+  };
+
+  const getCurrentLength = () => {
+    const combined = [...value, inputValue].filter(Boolean).join(", ");
+    return combined.length;
   };
 
   return (
@@ -85,33 +97,37 @@ export function KeywordInput({
           )}
         >
           {label}
+          {required && <span className="ml-0.5 text-red-550">*</span>}
         </label>
       )}
-      
+
       <div
         className={cn(
-          "min-h-[42px] px-3 py-1.75 border rounded-4xl transition-colors",
+          "min-h-[40px] px-3 pt-2 pb-1.75 border transition-colors",
+          getCurrentLength() > 90 ? "rounded-[20px]" : "rounded-4xl",
+          value.length > 0 && "p-0.75",
           "border-slate-350 hover:border-slate-450",
           "focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-850 focus-within:ring-offset-1 focus-within:ring-offset-white",
           error && "border-red-550 focus-within:ring-red-550",
-          disabled && "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200"
+          disabled &&
+            "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200"
         )}
       >
         <div className="flex flex-wrap gap-1 items-center">
           {value.map((keyword, index) => (
             <span
               key={index}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+              className="inline-flex items-center gap-1 px-3 py-1.75 bg-slate-100 text-descriptions-12-medium tracking-1p text-gray-750 rounded-full"
             >
               {keyword}
               {!disabled && (
                 <button
                   type="button"
                   onClick={() => removeKeyword(index)}
-                  className="hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                  className="cursor-pointer rounded-full p-0.5 transition-colors"
                   aria-label={`Remove ${keyword}`}
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3 h-3 text-slate-450" />
                 </button>
               )}
             </span>
@@ -124,11 +140,16 @@ export function KeywordInput({
             onBlur={addKeyword}
             placeholder={value.length === 0 ? placeholder : ""}
             disabled={disabled}
+            aria-required={required}
             className="flex-1 min-w-[120px] outline-none bg-transparent text-sm font-normal text-gray-750 placeholder-slate-400 disabled:cursor-not-allowed"
+            style={{ alignSelf: "center" }}
           />
         </div>
       </div>
-      
+      <div className="mt-1 text-xs text-gray-650 text-right">
+        {getCurrentLength()}/{maxLength}
+      </div>
+
       {error && (
         <p className="mt-1 text-descriptions-12-regular text-red-500">
           {error}

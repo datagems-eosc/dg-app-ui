@@ -117,6 +117,16 @@ export default function AddDatasetForm() {
         "Description must be 3000 characters or less";
     }
 
+    // Validate keywords: required and max combined length 250
+    const combinedKeywords = formData.basicInfo.keywords
+      .filter(Boolean)
+      .join(", ");
+    if (formData.basicInfo.keywords.length === 0) {
+      newErrors.basicInfo.keywords = "Keywords are required";
+    } else if (combinedKeywords.length > 250) {
+      newErrors.basicInfo.keywords = "Keywords must be 250 characters or less";
+    }
+
     // Validate classification
     if (formData.classification.fieldsOfScience.length === 0) {
       newErrors.classification.fieldsOfScience =
@@ -217,7 +227,7 @@ export default function AddDatasetForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} noValidate className="space-y-8">
       {[
         {
           key: "upload",
