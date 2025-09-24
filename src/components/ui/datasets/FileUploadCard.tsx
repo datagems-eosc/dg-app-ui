@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, FileText, CheckCircle, XCircle } from "lucide-react";
+import { X, HardDrive, XCircle, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileUploadCardProps {
@@ -25,18 +25,20 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const getFileIcon = () => {
-    return <FileText className="w-4 h-4 text-slate-500" />;
-  };
-
   const getStatusIcon = () => {
     switch (file.status) {
       case "success":
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return (
+          <img
+            src="/circle-check.svg"
+            alt="Upload successful"
+            className="w-4 h-4"
+          />
+        );
       case "error":
         return <XCircle className="w-4 h-4 text-red-600" />;
       default:
-        return null;
+        return <Upload className="w-4 h-4 text-slate-600" />;
     }
   };
 
@@ -45,7 +47,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
       case "success":
         return "File uploaded";
       case "error":
-        return "Upload failed";
+        return `Upload Failed${file.error ? `. ${file.error}` : "."}`;
       case "uploading":
         return "Uploading...";
       default:
@@ -54,71 +56,74 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
   };
 
   return (
-    <div className="border border-slate-200 rounded-lg p-4 bg-white">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-start gap-3 flex-1">
-          {getFileIcon()}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-sm font-medium text-slate-850 truncate">
-                {file.name}
-              </p>
-              {getStatusIcon()}
-            </div>
-            <p className="text-xs text-slate-500">
+    <div className="rounded-lg p-4 bg-slate-75">
+      <div className="flex items-center justify-between gap-4">
+        {/* Left content */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          {/* First line: file name (red when error) */}
+          <p
+            className={cn(
+              "text-body-16-medium truncate",
+              file.status === "error" ? "text-slate-450" : "text-gray-750"
+            )}
+            title={file.name}
+          >
+            {file.name}
+          </p>
+
+          {/* Second line: hard-drive icon, size, dot, status icon + text */}
+          <div className="mt-1 flex items-center gap-2 text-xs">
+            <HardDrive
+              className={`w-4 h-4 ${file.status === "error" ? "text-slate-450" : "text-icon"}`}
+            />
+            <span
+              className={cn(
+                "text-body-14-regular",
+                file.status === "error" ? "text-slate-450" : "text-gray-650"
+              )}
+            >
               {formatFileSize(file.size)}
-            </p>
+            </span>
+            <span className="w-1 h-1 rounded-full bg-slate-450" />
+            <div className="flex items-center gap-1.5 min-w-0">
+              {getStatusIcon()}
+              <span
+                className={cn(
+                  "truncate",
+                  "text-body-14-regular",
+                  file.status === "success"
+                    ? "text-emerald-600"
+                    : file.status === "error"
+                      ? "text-red-550"
+                      : "text-gray-650"
+                )}
+                title={getStatusText()}
+              >
+                {getStatusText()}
+              </span>
+            </div>
+          </div>
+
+          {/* Third line: progress bar */}
+          <div className="mt-2">
+            <div className="w-full bg-slate-100 rounded-full h-2">
+              <div
+                className="h-2 rounded-full transition-all duration-300 bg-blue-850"
+                style={{ width: `${file.progress}%` }}
+              />
+            </div>
           </div>
         </div>
+
+        {/* Right: remove button centered */}
         <button
           onClick={onRemove}
-          className="p-1 hover:bg-slate-100 rounded-md transition-colors flex-shrink-0"
+          className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors flex-shrink-0"
           aria-label="Remove file"
         >
-          <X className="w-4 h-4 text-slate-400" />
+          <X className="w-5 h-5 text-icon" />
         </button>
       </div>
-
-      {/* Progress bar */}
-      <div className="mb-2">
-        <div className="w-full bg-slate-100 rounded-full h-2">
-          <div
-            className={cn(
-              "h-2 rounded-full transition-all duration-300",
-              file.status === "success"
-                ? "bg-green-600"
-                : file.status === "error"
-                  ? "bg-red-600"
-                  : "bg-blue-600"
-            )}
-            style={{ width: `${file.progress}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Status text */}
-      <div className="flex items-center justify-between">
-        <span
-          className={cn(
-            "text-xs",
-            file.status === "success"
-              ? "text-green-600"
-              : file.status === "error"
-                ? "text-red-600"
-                : "text-slate-600"
-          )}
-        >
-          {getStatusText()}
-        </span>
-        {file.status === "uploading" && (
-          <span className="text-xs text-slate-500">{file.progress}%</span>
-        )}
-      </div>
-
-      {/* Error message */}
-      {file.status === "error" && file.error && (
-        <p className="text-xs text-red-600 mt-1">{file.error}</p>
-      )}
     </div>
   );
 }
