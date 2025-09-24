@@ -18,8 +18,15 @@ interface AdditionalInformationProps {
   };
 }
 
-export function AdditionalInformation({ data, onChange, errors }: AdditionalInformationProps) {
-  const handleFieldChange = (field: keyof AdditionalInformationData, value: string) => {
+export function AdditionalInformation({
+  data,
+  onChange,
+  errors,
+}: AdditionalInformationProps) {
+  const handleFieldChange = (
+    field: keyof AdditionalInformationData,
+    value: string
+  ) => {
     onChange({
       ...data,
       [field]: value,
@@ -27,7 +34,7 @@ export function AdditionalInformation({ data, onChange, errors }: AdditionalInfo
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       <div>
         <Textarea
           label="Reference String"
@@ -38,7 +45,7 @@ export function AdditionalInformation({ data, onChange, errors }: AdditionalInfo
           error={errors.referenceString}
           maxLength={3000}
         />
-        <div className="mt-1 text-xs text-slate-400 text-right">
+        <div className="mt-1 text-xs text-gray-650 text-right">
           {data.referenceString.length}/3000
         </div>
       </div>
