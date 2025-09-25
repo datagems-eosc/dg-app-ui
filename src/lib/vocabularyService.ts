@@ -15,7 +15,9 @@ interface VocabularyResponse {
 
 // Cache for vocabulary data
 let fieldsOfScienceCache: HierarchicalCategory[] | null = null;
-let licensesCache: { value: string; label: string }[] | null = null;
+let licensesCache:
+  | { value: string; label: string; description?: string; urls?: string[] }[]
+  | null = null;
 
 // Convert API response to HierarchicalCategory format
 function convertToHierarchicalCategories(
@@ -77,7 +79,9 @@ export async function fetchFieldsOfScience(
 // Fetch licenses from API
 export async function fetchLicenses(
   authToken?: string
-): Promise<{ value: string; label: string }[]> {
+): Promise<
+  { value: string; label: string; description?: string; urls?: string[] }[]
+> {
   // Return cached data if available
   if (licensesCache) {
     return licensesCache;
@@ -92,13 +96,27 @@ export async function fetchLicenses(
 
     // Transform the API response to the expected format
     // Handle different possible response formats
-    let licenses: { value: string; label: string }[] = [];
+    let licenses: {
+      value: string;
+      label: string;
+      description?: string;
+      urls?: string[];
+    }[] = [];
 
     if (Array.isArray(data)) {
       // Direct array format
       licenses = data.map((license: any) => ({
         value: license.code || license.value || license.id || license,
         label: license.name || license.label || license.description || license,
+        description:
+          typeof license.description === "string"
+            ? license.description
+            : undefined,
+        urls: Array.isArray(license.url)
+          ? license.url
+          : license.url
+            ? [license.url]
+            : undefined,
       }));
     } else if (data && typeof data === "object") {
       // Check if it's wrapped in a property (like data.items, data.licenses, etc.)
@@ -115,6 +133,15 @@ export async function fetchLicenses(
             value: license.code || license.value || license.id || license,
             label:
               license.name || license.label || license.description || license,
+            description:
+              typeof license.description === "string"
+                ? license.description
+                : undefined,
+            urls: Array.isArray(license.url)
+              ? license.url
+              : license.url
+                ? [license.url]
+                : undefined,
           }));
           break;
         }

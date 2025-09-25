@@ -11,8 +11,14 @@ interface SelectOption {
   icon?: React.ReactNode;
 }
 
-interface SelectProps {
+interface SelectOptionGroup {
+  label: string;
   options: SelectOption[];
+}
+
+interface SelectProps {
+  options?: SelectOption[];
+  groupedOptions?: SelectOptionGroup[];
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -23,7 +29,8 @@ interface SelectProps {
 }
 
 export function Select({
-  options,
+  options = [],
+  groupedOptions,
   value,
   onChange,
   placeholder = "Select an option",
@@ -35,7 +42,11 @@ export function Select({
   const [isOpen, setIsOpen] = useState(false);
   const selectRef = useRef<HTMLDivElement>(null);
 
-  const selectedOption = options.find((option) => option.value === value);
+  const flatOptions = groupedOptions
+    ? groupedOptions.flatMap((group) => group.options)
+    : options;
+
+  const selectedOption = flatOptions.find((option) => option.value === value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -110,9 +121,45 @@ export function Select({
 
         {isOpen && !disabled && (
           <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-md max-h-60 overflow-y-auto p-1">
-            {options.length === 0 ? (
+            {(
+              groupedOptions ? flatOptions.length === 0 : options.length === 0
+            ) ? (
               <div className="px-3 py-2 text-sm text-slate-400">
                 No options available
+              </div>
+            ) : groupedOptions ? (
+              <div>
+                {groupedOptions.map((group, gi) => (
+                  <div key={`group-${gi}`} className={cn(gi > 0 && "pt-2")}>
+                    <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider m-2">
+                      {group.label}
+                    </div>
+                    {group.options.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleSelect(option)}
+                        className={cn(
+                          "w-full text-left text-sm transition-colors rounded-md group mb-1 last:mb-0",
+                          value === option.value
+                            ? "bg-slate-200"
+                            : "hover:bg-slate-100"
+                        )}
+                      >
+                        <div className="flex items-center pl-4 pr-3 py-2">
+                          {option.icon && (
+                            <span className="mr-3 w-4 h-4 text-icon inline-flex items-center justify-center">
+                              {option.icon}
+                            </span>
+                          )}
+                          <span className="flex-1 truncate text-body-14-regular text-slate-950">
+                            {option.label}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ))}
               </div>
             ) : (
               options.map((option) => (

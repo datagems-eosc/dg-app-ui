@@ -14,6 +14,7 @@ import HierarchicalDropdown, {
   HierarchicalCategory,
 } from "../HierarchicalDropdown";
 import { Select } from "../Select";
+import { Input } from "../Input";
 import { VisibilityCard } from "./VisibilityCard";
 import { LicenseCard } from "./LicenseCard";
 import { fetchFieldsOfScience, fetchLicenses } from "@/config/filterOptions";
@@ -86,12 +87,15 @@ export function Classification({
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
-  const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
+  const [licenses, setLicenses] = useState<
+    { value: string; label: string; description?: string; urls?: string[] }[]
+  >(
     []
   );
   const [isLoadingFields, setIsLoadingFields] = useState(true);
   const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
   const [selectedLicense, setSelectedLicense] = useState<any>(null);
+  const [customLicenseName, setCustomLicenseName] = useState<string>("");
 
   // Fetch fields of science and licenses
   useEffect(() => {
@@ -139,10 +143,17 @@ export function Classification({
 
   const handleLicenseChange = (licenseValue: string) => {
     handleFieldChange("license", licenseValue);
-    const license = mockLicensesWithDescriptions.find(
-      (l) => l.value === licenseValue
-    );
-    setSelectedLicense(license);
+    if (licenseValue === "custom") {
+      setSelectedLicense(null);
+      // Keep previously typed custom name; do not clear automatically
+    } else {
+      const license = (licenses.length ? licenses : mockLicensesWithDescriptions).find(
+        (l) => l.value === licenseValue
+      );
+      setSelectedLicense(license || { value: licenseValue, label: licenseValue });
+      // Clear custom name when switching away from custom
+      setCustomLicenseName("");
+    }
   };
 
   const getCollectionIcon = (code?: string) => {
@@ -182,12 +193,19 @@ export function Classification({
     })),
   ];
 
-  const licenseOptions = isLoadingLicenses
+  const defaultLicenseOptions = licenses
+    .filter((l) => l.value !== "custom")
+    .map((license) => ({ value: license.value, label: license.label }));
+
+  const groupedLicenseOptions = isLoadingLicenses
     ? []
-    : licenses.map((license) => ({
-        value: license.value,
-        label: license.label,
-      }));
+    : [
+        {
+          label: "Custom",
+          options: [{ value: "custom", label: "Add Custom License" }],
+        },
+        { label: "Default", options: defaultLicenseOptions },
+      ];
 
   return (
     <div className="space-y-6">
@@ -231,15 +249,35 @@ export function Classification({
       <div>
         <Select
           label="License"
-          options={licenseOptions}
+          groupedOptions={groupedLicenseOptions}
           value={data.license}
           onChange={handleLicenseChange}
           placeholder="Select a license"
           error={errors.license}
         />
 
-        {selectedLicense && selectedLicense.description && (
-          <LicenseCard license={selectedLicense} />
+        {data.license === "custom" ? (
+          <div className="mt-3">
+            <Input
+              name="customLicenseName"
+              label="Custom License Name *"
+              placeholder="Enter custom license name"
+              value={customLicenseName}
+              onChange={(e) => setCustomLicenseName(e.target.value)}
+              error={
+                data.license === "custom" && customLicenseName.trim() === ""
+                  ? "Custom license name is required"
+                  : undefined
+              }
+            />
+          </div>
+        ) : (
+          selectedLicense && (
+            <LicenseCard
+              license={selectedLicense}
+              primaryUrl={selectedLicense.urls && selectedLicense.urls[0]}
+            />
+          )
         )}
       </div>
 
