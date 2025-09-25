@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, ChevronDown } from "lucide-react";
+import {
+  Search,
+  ChevronDown,
+  Microscope,
+  Cpu,
+  HeartPulse,
+  Trees,
+  PersonStanding,
+  Speech,
+  Atom,
+} from "lucide-react";
 import { Input } from "./Input";
 import { Checkbox } from "./Checkbox";
 
@@ -86,6 +96,25 @@ export default function HierarchicalDropdown({
       .length;
   };
 
+  const getCategoryIcon = (code: string) => {
+    switch (code) {
+      case "1":
+        return Microscope;
+      case "2":
+        return Cpu;
+      case "3":
+        return HeartPulse;
+      case "4":
+        return Trees;
+      case "5":
+        return PersonStanding;
+      case "6":
+        return Speech;
+      default:
+        return Atom;
+    }
+  };
+
   return (
     <div className="w-full">
       {/* Search input at the top */}
@@ -110,12 +139,19 @@ export default function HierarchicalDropdown({
               : `category-${Math.random()}`;
 
           return (
-            <div key={categoryKey}>
+            <div
+              key={categoryKey}
+              className="border-b border-slate-200 last:border-b-0 pb-2"
+            >
               <div
-                className="flex items-center justify-between pr-6 py-1 cursor-pointer"
+                className="flex items-center justify-between pr-4 pl-2 py-1 cursor-pointer"
                 onClick={() => toggleCategory(category.code)}
               >
                 <div className="flex items-center gap-2">
+                  {(() => {
+                    const Icon = getCategoryIcon(category.code);
+                    return <Icon className="w-4 h-4 text-slate-600" />;
+                  })()}
                   <span className="text-sm text-slate-850">
                     {typeof category.name === "string"
                       ? category.name
