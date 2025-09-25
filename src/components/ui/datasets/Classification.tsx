@@ -1,8 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import {
+  CloudSun,
+  Calculator,
+  GraduationCap,
+  Languages,
+  Star,
+  X,
+} from "lucide-react";
 import { useSession } from "next-auth/react";
-import HierarchicalDropdown, { HierarchicalCategory } from "../HierarchicalDropdown";
+import HierarchicalDropdown, {
+  HierarchicalCategory,
+} from "../HierarchicalDropdown";
 import { Select } from "../Select";
 import { VisibilityCard } from "./VisibilityCard";
 import { LicenseCard } from "./LicenseCard";
@@ -39,34 +49,46 @@ const mockLicensesWithDescriptions = [
   {
     value: "cc-by-4.0",
     label: "CC BY 4.0",
-    description: "This license allows reusers to distribute, remix, adapt, and build upon the material in any medium or format, so long as attribution is given to the creator."
+    description:
+      "This license allows reusers to distribute, remix, adapt, and build upon the material in any medium or format, so long as attribution is given to the creator.",
   },
   {
     value: "cc-by-sa-4.0",
-    label: "CC BY-SA 4.0", 
-    description: "This license allows reusers to distribute, remix, adapt, and build upon the material in any medium or format, so long as attribution is given to the creator. The license allows for commercial use. If you remix, adapt, or build upon the material, you must license the modified material under identical terms."
+    label: "CC BY-SA 4.0",
+    description:
+      "This license allows reusers to distribute, remix, adapt, and build upon the material in any medium or format, so long as attribution is given to the creator. The license allows for commercial use. If you remix, adapt, or build upon the material, you must license the modified material under identical terms.",
   },
   {
     value: "mit",
     label: "MIT License",
-    description: "A short and simple permissive license with conditions only requiring preservation of copyright and license notices."
+    description:
+      "A short and simple permissive license with conditions only requiring preservation of copyright and license notices.",
   },
   {
     value: "apache-2.0",
     label: "Apache License 2.0",
-    description: "A permissive license whose main conditions require preservation of copyright and license notices."
+    description:
+      "A permissive license whose main conditions require preservation of copyright and license notices.",
   },
   {
     value: "custom",
     label: "Add Custom License",
-    description: "Create a custom license for your dataset."
-  }
+    description: "Create a custom license for your dataset.",
+  },
 ];
 
-export function Classification({ data, onChange, errors }: ClassificationProps) {
+export function Classification({
+  data,
+  onChange,
+  errors,
+}: ClassificationProps) {
   const { data: session } = useSession() as any;
-  const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<HierarchicalCategory[]>([]);
-  const [licenses, setLicenses] = useState<{ value: string; label: string }[]>([]);
+  const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
+    HierarchicalCategory[]
+  >([]);
+  const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
+    []
+  );
   const [isLoadingFields, setIsLoadingFields] = useState(true);
   const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
   const [selectedLicense, setSelectedLicense] = useState<any>(null);
@@ -93,7 +115,10 @@ export function Classification({ data, onChange, errors }: ClassificationProps) 
     setIsLoadingLicenses(true);
     fetchLicenses(token)
       .then((licenseOptions) => {
-        setLicenses([...licenseOptions, { value: "custom", label: "Add Custom License" }]);
+        setLicenses([
+          ...licenseOptions,
+          { value: "custom", label: "Add Custom License" },
+        ]);
       })
       .catch((error) => {
         console.error("Error fetching licenses:", error);
@@ -114,20 +139,54 @@ export function Classification({ data, onChange, errors }: ClassificationProps) 
 
   const handleLicenseChange = (licenseValue: string) => {
     handleFieldChange("license", licenseValue);
-    const license = mockLicensesWithDescriptions.find(l => l.value === licenseValue);
+    const license = mockLicensesWithDescriptions.find(
+      (l) => l.value === licenseValue
+    );
     setSelectedLicense(license);
   };
 
+  const getCollectionIcon = (code?: string) => {
+    const commonProps = {
+      strokeWidth: 1.25,
+      className: "w-4 h-4 text-icon",
+    } as const;
+    if (!code) return <Star {...commonProps} />;
+    switch (code.toLowerCase()) {
+      case "weather":
+      case "meteo":
+        return <CloudSun {...commonProps} />;
+      case "math":
+      case "mathe":
+        return <Calculator {...commonProps} />;
+      case "lifelong":
+      case "learning":
+        return <GraduationCap {...commonProps} />;
+      case "language":
+      case "languages":
+        return <Languages {...commonProps} />;
+      default:
+        return <Star {...commonProps} />;
+    }
+  };
+
   const collectionOptions = [
-    { value: "", label: "No collection" },
-    ...mockCollections
+    {
+      value: "",
+      label: "No collection",
+      icon: <X strokeWidth={1.25} className="w-4 h-4 text-icon" />,
+    },
+    ...mockCollections.map((c) => ({
+      value: c.value,
+      label: c.label.replace(/ Collection$/i, ""),
+      icon: getCollectionIcon(c.value),
+    })),
   ];
 
-  const licenseOptions = isLoadingLicenses 
-    ? [] 
-    : licenses.map(license => ({
+  const licenseOptions = isLoadingLicenses
+    ? []
+    : licenses.map((license) => ({
         value: license.value,
-        label: license.label
+        label: license.label,
       }));
 
   return (
@@ -178,7 +237,7 @@ export function Classification({ data, onChange, errors }: ClassificationProps) 
           placeholder="Select a license"
           error={errors.license}
         />
-        
+
         {selectedLicense && selectedLicense.description && (
           <LicenseCard license={selectedLicense} />
         )}
@@ -186,9 +245,7 @@ export function Classification({ data, onChange, errors }: ClassificationProps) 
 
       {/* Visibility */}
       <div>
-        <h4 className="text-sm font-medium text-gray-750 mb-3">
-          Visibility *
-        </h4>
+        <h4 className="text-sm font-medium text-gray-750 mb-3">Visibility *</h4>
         <VisibilityCard
           value={data.visibility}
           onChange={(value) => handleFieldChange("visibility", value)}
