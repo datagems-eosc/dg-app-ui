@@ -18,6 +18,8 @@ import { Input } from "../Input";
 import { VisibilityCard } from "./VisibilityCard";
 import { LicenseCard } from "./LicenseCard";
 import { fetchFieldsOfScience, fetchLicenses } from "@/config/filterOptions";
+import { useCollections } from "@/contexts/CollectionsContext";
+import { Collection, ApiCollection } from "@/types/collection";
 
 interface ClassificationData {
   fieldsOfScience: string[];
@@ -37,7 +39,7 @@ interface ClassificationProps {
   };
 }
 
-// Mock collections data - in real app this would come from API
+// Mock collections data - fallback when API collections are not available
 const mockCollections = [
   { value: "weather", label: "Weather Collection" },
   { value: "math", label: "Math Collection" },
@@ -84,14 +86,13 @@ export function Classification({
   errors,
 }: ClassificationProps) {
   const { data: session } = useSession() as any;
+  const { apiCollections, isLoadingApiCollections } = useCollections();
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
   const [licenses, setLicenses] = useState<
     { value: string; label: string; description?: string; urls?: string[] }[]
-  >(
-    []
-  );
+  >([]);
   const [isLoadingFields, setIsLoadingFields] = useState(true);
   const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
   const [selectedLicense, setSelectedLicense] = useState<any>(null);
@@ -147,10 +148,12 @@ export function Classification({
       setSelectedLicense(null);
       // Keep previously typed custom name; do not clear automatically
     } else {
-      const license = (licenses.length ? licenses : mockLicensesWithDescriptions).find(
-        (l) => l.value === licenseValue
+      const license = (
+        licenses.length ? licenses : mockLicensesWithDescriptions
+      ).find((l) => l.value === licenseValue);
+      setSelectedLicense(
+        license || { value: licenseValue, label: licenseValue }
       );
-      setSelectedLicense(license || { value: licenseValue, label: licenseValue });
       // Clear custom name when switching away from custom
       setCustomLicenseName("");
     }
@@ -180,18 +183,42 @@ export function Classification({
     }
   };
 
-  const collectionOptions = [
-    {
-      value: "",
-      label: "No collection",
-      icon: <X strokeWidth={1.25} className="w-4 h-4 text-icon" />,
-    },
-    ...mockCollections.map((c) => ({
-      value: c.value,
-      label: c.label.replace(/ Collection$/i, ""),
-      icon: getCollectionIcon(c.value),
-    })),
-  ];
+  // Generate collection options from API collections only
+  const generateCollectionOptions = () => {
+    const baseOptions = [
+      {
+        value: "",
+        label: "No collection",
+        icon: <X strokeWidth={1.25} className="w-4 h-4 text-icon" />,
+      },
+    ];
+
+    if (isLoadingApiCollections) {
+      return baseOptions;
+    }
+
+    const collectionOptions = apiCollections.map((collection) => ({
+      value: collection.id,
+      label: collection.name,
+      icon: getCollectionIcon(collection.code),
+    }));
+
+    // If no API collections are available, fall back to mock collections
+    if (collectionOptions.length === 0) {
+      return [
+        ...baseOptions,
+        ...mockCollections.map((c) => ({
+          value: c.value,
+          label: c.label.replace(/ Collection$/i, ""),
+          icon: getCollectionIcon(c.value),
+        })),
+      ];
+    }
+
+    return [...baseOptions, ...collectionOptions];
+  };
+
+  const collectionOptions = generateCollectionOptions();
 
   const defaultLicenseOptions = licenses
     .filter((l) => l.value !== "custom")
@@ -236,14 +263,27 @@ export function Classification({
       </div>
 
       {/* Collection */}
-      <Select
-        label="Collection"
-        options={collectionOptions}
-        value={data.collection}
-        onChange={(value) => handleFieldChange("collection", value)}
-        placeholder="Select a collection"
-        error={errors.collection}
-      />
+      <div>
+        <h4 className="text-sm font-medium text-gray-750 mb-1">Collection</h4>
+        {isLoadingApiCollections ? (
+          <div className="flex justify-center items-center h-10">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <Select
+            options={collectionOptions}
+            value={data.collection}
+            onChange={(value) => handleFieldChange("collection", value)}
+            placeholder="Select a collection"
+            error={errors.collection}
+          />
+        )}
+        {errors.collection && (
+          <p className="mt-1 text-descriptions-12-regular text-red-500">
+            {errors.collection}
+          </p>
+        )}
+      </div>
 
       {/* License */}
       <div>
