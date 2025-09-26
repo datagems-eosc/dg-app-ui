@@ -2,13 +2,16 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "./ui/Button";
+import { Tooltip } from "./ui/Tooltip";
 import { DatasetUpload } from "./ui/datasets/DatasetUpload";
 import { BasicInformation } from "./ui/datasets/BasicInformation";
 import { Classification } from "./ui/datasets/Classification";
 import { AdditionalInformation } from "./ui/datasets/AdditionalInformation";
 import { FormSectionLayout } from "./ui/FormSectionLayout";
 import { APP_ROUTES } from "@/config/appUrls";
+import { apiClient } from "@/lib/apiClient";
 
 interface UploadedFile {
   id: string;
@@ -88,6 +91,7 @@ const initialErrors: FormErrors = {
 
 export default function AddDatasetForm() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<FormErrors>(initialErrors);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -185,16 +189,50 @@ export default function AddDatasetForm() {
     setIsSubmitting(true);
 
     try {
-      // Mock API call - in real implementation, this would call the backend
-      console.log("Submitting dataset:", formData);
+      const token = (session as any)?.accessToken;
+      if (!token) {
+        throw new Error("No access token available");
+      }
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const files = formData.files || [];
+      const sizes = files.map((f) => f.size).filter((n) => Number.isFinite(n));
+      const sizeRange =
+        sizes.length > 0
+          ? { start: Math.min(...sizes), end: Math.max(...sizes) }
+          : undefined;
 
-      // Mock success response
+      const mimeTypes = files.map((f) => f.type).filter(Boolean);
+
+      const likeTerms = [
+        formData.basicInfo.title,
+        formData.basicInfo.headline,
+        formData.basicInfo.description,
+        ...(formData.basicInfo.keywords || []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+      const payload: any = {
+        like: likeTerms || undefined,
+        license: formData.classification.license || undefined,
+        mimeType: mimeTypes[0] || undefined,
+        fieldsOfScience: formData.classification.fieldsOfScience?.length
+          ? formData.classification.fieldsOfScience
+          : undefined,
+        sizeRange,
+        page: { offset: 0, size: 10 },
+      };
+
+      if (formData.classification.collection) {
+        payload.collectionIds = [formData.classification.collection];
+      }
+
+      const response = await apiClient.queryDatasets(payload, token);
+
+      console.log("/dataset/query response", response);
       alert("Dataset submitted successfully!");
 
-      // Reset form
       setFormData(initialFormData);
       setErrors(initialErrors);
     } catch (error) {
@@ -303,13 +341,15 @@ export default function AddDatasetForm() {
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full sm:w-auto px-6 sm:px-8 order-1 sm:order-2"
-        >
-          {isSubmitting ? "Submitting..." : "Publish Dataset"}
-        </Button>
+        <Tooltip content="Publishing is not implemented yet." position="top">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full sm:w-auto px-6 sm:px-8 order-1 sm:order-2"
+          >
+            {isSubmitting ? "Submitting..." : "Publish Dataset"}
+          </Button>
+        </Tooltip>
       </div>
     </form>
   );
