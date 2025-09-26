@@ -3,28 +3,29 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
-  size?: "medium" | "large";
+interface TextareaProps
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
-  icon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
+  characterCount?: boolean;
+  maxLength?: number;
   required?: boolean;
 }
 
-export function Input({
-  size = "medium",
+export function Textarea({
   className,
   name,
   label,
   error,
-  icon,
-  rightIcon,
   required,
   disabled,
+  characterCount = false,
+  maxLength,
+  value = "",
   ...props
-}: InputProps) {
+}: TextareaProps) {
+  const currentLength = typeof value === 'string' ? value.length : 0;
+
   return (
     <div className="w-full">
       {label && (
@@ -44,33 +45,21 @@ export function Input({
         </label>
       )}
       <div className="relative">
-        {icon && (
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-            {icon}
-          </div>
-        )}
-        <input
+        <textarea
           id={name}
           disabled={disabled}
+          maxLength={maxLength}
+          value={value}
           className={cn(
-            "w-full px-3 border rounded-4xl text-sm font-normal transition-colors",
-            // Size-based padding
-            size === "large" ? "py-2.25" : "py-1.75",
+            "w-full px-3 py-2 border rounded-2xl text-sm font-normal transition-colors resize-none",
             // Base styles
             "border-slate-350 text-gray-750 placeholder-slate-400",
-            // Icon padding
-            icon && "pl-10",
-            rightIcon && "pr-10",
             // Hover state
             "hover:border-slate-450",
             // Focus state
-            // Cross-browser consistent focus: outer 2px blue ring, 1px offset gap, keep inner border slate
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1 focus-visible:ring-offset-white focus-visible:text-gray-750",
-            // Filled state (when input has value)
-            "peer",
             // Error state
             error &&
-              // Keep red border and use red ring with same geometry
               "border-red-550 text-gray-750 focus-visible:ring-red-550",
             // Disabled state
             disabled &&
@@ -79,16 +68,17 @@ export function Input({
           )}
           {...props}
         />
-        {rightIcon && (
-          <div
-            className={`absolute flex right-3 top-1/2 transform -translate-y-1/2 ${
-              size === "large" ? "top-1/2" : "top-1/2"
-            }`}
-          >
-            {rightIcon}
+        {characterCount && maxLength && (
+          <div className="absolute bottom-2 right-3 text-xs text-gray-650">
+            {currentLength}/{maxLength}
           </div>
         )}
       </div>
+      {characterCount && !maxLength && (
+        <div className="mt-1 text-xs text-gray-650 text-right">
+          {currentLength}/3000
+        </div>
+      )}
       {error && (
         <p className="mt-1 text-descriptions-12-regular text-red-500">
           {error}

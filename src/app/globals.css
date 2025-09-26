@@ -32,7 +32,7 @@
   --color-slate-450: #8095ad;
   --color-slate-500: #64748b; /* icons */
   --color-slate-600: #475569; /* secondary-text */
-  --color-slate-700: #334155; /* primary-text */
+  --color-slate-700: #8fa1b8; /* primary-text */
   --color-slate-800: #1e293b;
   --color-slate-850: #1d293d;
   --color-slate-900: #0f172a;
@@ -139,8 +139,8 @@
   --color-emerald-200: #a4f4cf;
   --color-emerald-300: #6ee7b7;
   --color-emerald-400: #00d492;
-  --color-emerald-500: #00BC7D;
-  --color-emerald-600: #059669;
+  --color-emerald-500: #00bc7d;
+  --color-emerald-600: #009966;
   --color-emerald-700: #007a55;
   --color-emerald-800: #006045;
   --color-emerald-900: #064e3b;
@@ -450,6 +450,26 @@
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   font-size: 14px;
+  line-height: 150%;
+  text-decoration: none;
+  letter-spacing: normal;
+}
+
+/* Body 12 Regular */
+.text-body-12-regular {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 150%;
+  text-decoration: none;
+  letter-spacing: normal;
+}
+
+/* Body 12 Medium */
+.text-body-12-medium {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
   line-height: 150%;
   text-decoration: none;
   letter-spacing: normal;

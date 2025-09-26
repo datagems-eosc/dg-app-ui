@@ -16,7 +16,7 @@ const HINTS = [
   "Educational materials mathematics",
   "Rainfall data Central Europe",
   "Climate indicators Mediterranean",
-  "Climate indicators Mediterranean",
+  "What the average weather in Basel in 2000?",
 ];
 
 export default function SmartSearchExamples({
