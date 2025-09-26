@@ -38,7 +38,8 @@ export function BasicInformation({
   return (
     <div className="space-y-4 sm:space-y-6">
       <Input
-        label="Title *"
+        label="Title"
+        required
         value={data.title}
         onChange={(e) => handleFieldChange("title", e.target.value)}
         placeholder="Enter dataset title"
@@ -47,7 +48,8 @@ export function BasicInformation({
 
       <div>
         <Input
-          label="Headline *"
+          label="Headline"
+          required
           value={data.headline}
           onChange={(e) => handleFieldChange("headline", e.target.value)}
           placeholder="Enter short headline"

@@ -10,6 +10,7 @@ interface InputProps
   error?: string;
   icon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  required?: boolean;
 }
 
 export function Input({
@@ -20,6 +21,7 @@ export function Input({
   error,
   icon,
   rightIcon,
+  required,
   disabled,
   ...props
 }: InputProps) {
@@ -38,6 +40,7 @@ export function Input({
           )}
         >
           {label}
+          {required && <span className="ml-0.5 text-red-550">*</span>}
         </label>
       )}
       <div className="relative">

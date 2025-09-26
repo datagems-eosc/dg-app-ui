@@ -9,6 +9,7 @@ interface TextareaProps
   error?: string;
   characterCount?: boolean;
   maxLength?: number;
+  required?: boolean;
 }
 
 export function Textarea({
@@ -16,6 +17,7 @@ export function Textarea({
   name,
   label,
   error,
+  required,
   disabled,
   characterCount = false,
   maxLength,
@@ -39,6 +41,7 @@ export function Textarea({
           )}
         >
           {label}
+          {required && <span className="ml-0.5 text-red-550">*</span>}
         </label>
       )}
       <div className="relative">

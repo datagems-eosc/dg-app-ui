@@ -239,7 +239,7 @@ export function Classification({
       {/* Field of Science */}
       <div>
         <h4 className="text-body-14-medium sm:text-sm font-medium text-gray-750 mb-1">
-          Field of Science *
+          Field of Science <span className="ml-0.5 text-red-550">*</span>
         </h4>
         {isLoadingFields ? (
           <div className="flex justify-center items-center h-16 sm:h-20">
@@ -302,7 +302,8 @@ export function Classification({
           <div className="mt-3">
             <Input
               name="customLicenseName"
-              label="Custom License Name *"
+              label="Custom License Name"
+              required
               placeholder="Enter custom license name"
               value={customLicenseName}
               onChange={(e) => setCustomLicenseName(e.target.value)}
@@ -326,7 +327,7 @@ export function Classification({
       {/* Visibility */}
       <div>
         <h4 className="text-body-14-medium sm:text-sm font-medium text-gray-750 mb-3">
-          Visibility *
+          Visibility <span className="ml-0.5 text-red-550">*</span>
         </h4>
         <VisibilityCard
           value={data.visibility}

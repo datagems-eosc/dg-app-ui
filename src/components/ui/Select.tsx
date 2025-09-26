@@ -26,6 +26,7 @@ interface SelectProps {
   error?: string;
   disabled?: boolean;
   onSelectionChange?: (option: SelectOption | null) => void;
+  required?: boolean;
 }
 
 export function Select({
@@ -36,6 +37,7 @@ export function Select({
   placeholder = "Select an option",
   label,
   error,
+  required,
   disabled = false,
   onSelectionChange,
 }: SelectProps) {
@@ -82,6 +84,7 @@ export function Select({
           )}
         >
           {label}
+          {required && <span className="ml-0.5 text-red-550">*</span>}
         </label>
       )}
 
