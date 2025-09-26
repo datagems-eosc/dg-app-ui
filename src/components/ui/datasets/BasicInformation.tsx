@@ -36,14 +36,13 @@ export function BasicInformation({
   };
 
   return (
-    <div>
+    <div className="space-y-4 sm:space-y-6">
       <Input
         label="Title *"
         value={data.title}
         onChange={(e) => handleFieldChange("title", e.target.value)}
         placeholder="Enter dataset title"
         error={errors.title}
-        className="mb-6"
       />
 
       <div>
@@ -66,7 +65,7 @@ export function BasicInformation({
           value={data.description}
           onChange={(e) => handleFieldChange("description", e.target.value)}
           placeholder="Provide a detailed description of the dataset contents"
-          rows={6}
+          rows={4}
           error={errors.description}
           maxLength={3000}
         />

@@ -34,14 +34,14 @@ export function AdditionalInformation({
   };
 
   return (
-    <div>
+    <div className="space-y-4 sm:space-y-6">
       <div>
         <Textarea
           label="Reference String"
           value={data.referenceString}
           onChange={(e) => handleFieldChange("referenceString", e.target.value)}
           placeholder="How should this dataset be cited?"
-          rows={4}
+          rows={3}
           error={errors.referenceString}
           maxLength={3000}
         />

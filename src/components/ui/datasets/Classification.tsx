@@ -235,15 +235,15 @@ export function Classification({
       ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Field of Science */}
       <div>
-        <h4 className="text-sm font-medium text-gray-750 mb-1">
+        <h4 className="text-body-14-medium sm:text-sm font-medium text-gray-750 mb-1">
           Field of Science *
         </h4>
         {isLoadingFields ? (
-          <div className="flex justify-center items-center h-20">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <div className="flex justify-center items-center h-16 sm:h-20">
+            <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-blue-600"></div>
           </div>
         ) : (
           <HierarchicalDropdown
@@ -264,9 +264,11 @@ export function Classification({
 
       {/* Collection */}
       <div>
-        <h4 className="text-sm font-medium text-gray-750 mb-1">Collection</h4>
+        <h4 className="text-body-14-medium sm:text-sm font-medium text-gray-750 mb-1">
+          Collection
+        </h4>
         {isLoadingApiCollections ? (
-          <div className="flex justify-center items-center h-10">
+          <div className="flex justify-center items-center h-8 sm:h-10">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           </div>
         ) : (
@@ -323,7 +325,9 @@ export function Classification({
 
       {/* Visibility */}
       <div>
-        <h4 className="text-sm font-medium text-gray-750 mb-3">Visibility *</h4>
+        <h4 className="text-body-14-medium sm:text-sm font-medium text-gray-750 mb-3">
+          Visibility *
+        </h4>
         <VisibilityCard
           value={data.visibility}
           onChange={(value) => handleFieldChange("visibility", value)}

@@ -164,12 +164,12 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Upload Area */}
       <div
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className="relative rounded-lg p-10 text-center transition-colors group overflow-hidden bg-slate-75"
+        className="relative rounded-lg p-6 sm:p-10 text-center transition-colors group overflow-hidden bg-slate-75"
       >
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
@@ -187,24 +187,37 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
             strokeDasharray="4 4"
           />
         </svg>
-        <div className="flex flex-col items-center space-y-4">
-          <Upload strokeWidth={2.5} className="w-7.5 h-7.5 text-slate-350" />
+        <div className="flex flex-col items-center space-y-3 sm:space-y-4">
+          <Upload
+            strokeWidth={2.5}
+            className="w-6 h-6 sm:w-7.5 sm:h-7.5 text-slate-350"
+          />
 
-          <div className="space-y-2">
-            <p className="text-body-16-medium text-gray-750">
+          <div className="space-y-1 sm:space-y-2">
+            <p className="text-body-14-medium sm:text-body-16-medium text-gray-750">
               Drop files here or add from remote location
             </p>
-            <p className="text-body-14-regular text-gray-650">
+            <p className="text-body-12-regular sm:text-body-14-regular text-gray-650">
               Supported formats: CSV, PDF, XLSX (max 500MB per file)
             </p>
           </div>
 
-          <div className="flex items-center gap-2 pt-2">
-            <Button variant="outline" onClick={handleBrowseFiles}>
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-2 pt-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleBrowseFiles}
+              className="w-full sm:w-auto"
+            >
               Browse local files
             </Button>
-            <p className="text-body-14-regular text-gray-650">OR</p>
-            <Button variant="outline" onClick={handleAddRemoteLocation}>
+            <p className="text-body-12-regular sm:text-body-14-regular text-gray-650 hidden sm:block">
+              OR
+            </p>
+            <Button
+              variant="outline"
+              onClick={handleAddRemoteLocation}
+              className="w-full sm:w-auto"
+            >
               Add remote location
             </Button>
           </div>
@@ -224,28 +237,28 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
       {/* Remote Location Section */}
       {showRemoteLocation && (
         <div>
-          <h4 className="text-body-16-semibold text-gray-750 mb-4">
+          <h4 className="text-body-14-semibold sm:text-body-16-semibold text-gray-750 mb-3 sm:mb-4">
             Choose remote location
           </h4>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-4">
             {REMOTE_LOCATIONS.map((location) => (
               <button
                 key={location.id}
                 onClick={() => setSelectedRemoteType(location.id)}
-                className={`p-3 border rounded-lg flex justify-center items-center gap-2 text-body-14-medium text-gray-750 transition-colors ${
+                className={`p-2 sm:p-3 border rounded-lg flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 text-body-12-medium sm:text-body-14-medium text-gray-750 transition-colors ${
                   selectedRemoteType === location.id
                     ? "border-blue-850 bg-blue-75"
                     : "border-slate-200 hover:border-slate-350 hover:shadow-s2 hover:cursor-pointer"
                 }`}
               >
                 {location.icon}
-                {location.label}
+                <span className="text-center">{location.label}</span>
               </button>
             ))}
           </div>
 
-          <div className="flex gap-2 w-full items-end">
+          <div className="flex flex-col sm:flex-row gap-2 w-full items-end">
             <div className="flex-1 min-w-0">
               <Input
                 label="URL"
@@ -256,7 +269,7 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
               />
             </div>
             <Button
-              className="shrink-0 whitespace-nowrap"
+              className="w-full sm:w-auto shrink-0 whitespace-nowrap"
               onClick={handleRemoteUpload}
               disabled={!remoteUrl.trim() || !selectedRemoteType}
             >

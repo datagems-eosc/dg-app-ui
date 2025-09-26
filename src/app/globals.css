@@ -455,6 +455,26 @@
   letter-spacing: normal;
 }
 
+/* Body 12 Regular */
+.text-body-12-regular {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 150%;
+  text-decoration: none;
+  letter-spacing: normal;
+}
+
+/* Body 12 Medium */
+.text-body-12-medium {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 150%;
+  text-decoration: none;
+  letter-spacing: normal;
+}
+
 /* Descriptions 12 Semibold */
 .text-descriptions-12-semibold {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;

@@ -231,7 +231,7 @@ export default function AddDatasetForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         {[
           {
             key: "upload",
@@ -294,15 +294,20 @@ export default function AddDatasetForm() {
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-5 flex justify-end gap-3">
+      <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end gap-3 sm:gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={() => router.push(APP_ROUTES.DASHBOARD)}
+          className="w-full sm:w-auto order-2 sm:order-1"
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting} className="px-8">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full sm:w-auto px-6 sm:px-8 order-1 sm:order-2"
+        >
           {isSubmitting ? "Submitting..." : "Publish Dataset"}
         </Button>
       </div>

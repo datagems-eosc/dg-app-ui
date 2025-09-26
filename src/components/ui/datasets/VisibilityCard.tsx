@@ -43,12 +43,12 @@ const visibilityOptions: VisibilityOption[] = [
 
 export function VisibilityCard({ value, onChange }: VisibilityCardProps) {
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-col sm:flex-row gap-3">
       {visibilityOptions.map((option) => (
         <label
           key={option.value}
           className={cn(
-            "flex items-start gap-2 p-5 border rounded-lg cursor-pointer transition-colors",
+            "flex items-start gap-2 p-5 border rounded-lg cursor-pointer transition-colors w-full sm:w-auto",
             value === option.value
               ? "border-blue-850 bg-blue-75"
               : "border-slate-200 hover:border-slate-350 hover:shadow-s2 bg-white"
@@ -80,7 +80,7 @@ export function VisibilityCard({ value, onChange }: VisibilityCardProps) {
             <h4 className="text-body-14-regular font-medium text-gray-750 mb-1">
               {option.title}
             </h4>
-            <p className="w-[85%] text-descriptions-12-regular tracking-1p text-gray-650">
+            <p className="w-full sm:w-[85%] text-descriptions-12-regular tracking-1p text-gray-650">
               {option.description}
             </p>
           </div>
