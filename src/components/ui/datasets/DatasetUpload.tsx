@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Upload, Link as LinkIcon, FileText } from "lucide-react";
+import Image from "next/image";
+import { Upload, Link as LinkIcon } from "lucide-react";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { FileUploadCard } from "./FileUploadCard";
@@ -22,14 +23,32 @@ interface DatasetUploadProps {
 }
 
 const REMOTE_LOCATIONS = [
-  { id: "direct", label: "Direct url", icon: <LinkIcon className="w-4 h-4" /> },
-  { id: "s3", label: "Amazon S3", icon: <FileText className="w-4 h-4" /> },
-  { id: "onedrive", label: "OneDrive", icon: <FileText className="w-4 h-4" /> },
-  { id: "dropbox", label: "Dropbox", icon: <FileText className="w-4 h-4" /> },
+  {
+    id: "direct",
+    label: "Direct url",
+    icon: <Image src="/share.svg" alt="Direct" width={16} height={16} />,
+  },
+  {
+    id: "s3",
+    label: "Amazon S3",
+    icon: <Image src="/aws.svg" alt="Amazon S3" width={16} height={16} />,
+  },
+  {
+    id: "onedrive",
+    label: "OneDrive",
+    icon: <Image src="/one-drive.svg" alt="OneDrive" width={16} height={16} />,
+  },
+  {
+    id: "dropbox",
+    label: "Dropbox",
+    icon: <Image src="/dropbox.svg" alt="Dropbox" width={16} height={16} />,
+  },
   {
     id: "googledrive",
     label: "Google Drive",
-    icon: <FileText className="w-4 h-4" />,
+    icon: (
+      <Image src="/g-drive.svg" alt="Google Drive" width={16} height={16} />
+    ),
   },
 ];
 
