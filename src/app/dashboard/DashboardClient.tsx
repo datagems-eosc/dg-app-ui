@@ -5,7 +5,7 @@ import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import { Dataset } from "@/data/mockDatasets";
 import React, { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { convertToBackendFilters, FilterState } from "@/config/filterOptions";
@@ -90,6 +90,16 @@ const USER_COLLECTION_API_PAYLOAD = {
 };
 
 type Collection = { id: string; name: string; code: string };
+type DatasetPlus = Dataset & {
+  collections?: { id: string; name: string; code: string }[];
+  license?: string;
+  mimeType?: string;
+  fieldOfScience?: string[];
+  datePublished?: string;
+  keywords?: string[];
+  url?: string;
+  version?: string;
+};
 function mapApiDatasetToDataset(api: unknown): Dataset & {
   collections?: Collection[];
   license?: string;
@@ -275,14 +285,16 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
 export default function DashboardClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allDatasets, setAllDatasets] = useState<Dataset[]>([]);
+  const [allDatasets, setAllDatasets] = useState<DatasetPlus[]>([]);
   const { data: session } = useSession() as any;
-  const [filteredDatasets, setFilteredDatasets] = useState<Dataset[]>([]);
+  const [filteredDatasets, setFilteredDatasets] = useState<DatasetPlus[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); // used for API
   const [pendingSearchTerm, setPendingSearchTerm] = useState(""); // input value
   const [sortBy, setSortBy] = useState("name-asc");
+  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
   const selectedCollection = searchParams.get("collection");
   const isCustomCollection = searchParams.get("isCustom") === "true";
   const [filters, setFilters] = useState<FilterState>({
@@ -557,6 +569,185 @@ export default function DashboardClient() {
           return;
         }
 
+        // Smart Search flow: use cross-dataset search like in Chat.tsx
+        if (
+          !selectedCollection &&
+          isSmartSearchEnabled &&
+          searchTerm.trim().length >= 3
+        ) {
+          try {
+            // 1) Create a lightweight conversation to attach the search to
+            const persistPayload = { name: searchTerm };
+            const persistData = await apiClient.persistConversation(
+              persistPayload,
+              "?f=id&f=etag",
+              token
+            );
+            const conversationIdFromPersist = persistData.id;
+
+            if (!conversationIdFromPersist) {
+              throw new Error("No conversation ID returned from server.");
+            }
+
+            // 2) Run cross-dataset search
+            const crossDatasetPayload = {
+              conversationOptions: {
+                conversationId: conversationIdFromPersist,
+                autoCreateConversation: false,
+              },
+              project: {
+                fields: [
+                  "conversationId",
+                  "content",
+                  "useCase",
+                  "dataset.id",
+                  "dataset.code",
+                  "dataset.name",
+                  "dataset.description",
+                  "dataset.license",
+                  "dataset.mimeType",
+                  "dataset.url",
+                  "dataset.version",
+                  "dataset.fieldOfScience",
+                  "dataset.keywords",
+                  "dataset.size",
+                  "dataset.datePublished",
+                  "dataset.collections.id",
+                  "dataset.collections.code",
+                  "dataset.collections.name",
+                  "dataset.collections.datasetCount",
+                  "dataset.permissions.browseDataset",
+                  "dataset.permissions.editDataset",
+                  "dataset.profileRaw",
+                  "dataset.maxSimilarity",
+                  "dataset.hits.content",
+                  "dataset.hits.objectId",
+                  "dataset.hits.similarity",
+                  "sourceId",
+                  "chunkId",
+                  "language",
+                  "distance",
+                ],
+              },
+              query: searchTerm,
+              resultCount: 100,
+            } as any;
+
+            const data = await apiClient.searchCrossDataset(
+              crossDatasetPayload,
+              token
+            );
+
+            const results = Array.isArray(data.result) ? data.result : [];
+
+            // Map directly from cross-dataset results and deduplicate by dataset.id
+            const byId = new Map<string, DatasetPlus>();
+            for (const item of results) {
+              const ds = (item as any)?.dataset || {};
+              if (!ds || typeof ds !== "object") continue;
+              const id = String(ds.id ?? "");
+              if (!id || byId.has(id)) continue;
+
+              // Determine category based on fieldOfScience
+              let category:
+                | "Weather"
+                | "Math"
+                | "Lifelong Learning"
+                | "Language" = "Math";
+              const fields = Array.isArray(ds.fieldOfScience)
+                ? ds.fieldOfScience.map((f: any) => String(f).toLowerCase())
+                : [];
+              if (
+                fields.some(
+                  (f) =>
+                    f.includes("meteorology") ||
+                    f.includes("climate") ||
+                    f.includes("weather")
+                )
+              ) {
+                category = "Weather";
+              } else if (
+                fields.some(
+                  (f) => f.includes("language") || f.includes("linguistics")
+                )
+              ) {
+                category = "Language";
+              } else if (
+                fields.some(
+                  (f) => f.includes("education") || f.includes("learning")
+                )
+              ) {
+                category = "Lifelong Learning";
+              } else if (
+                fields.some(
+                  (f) => f.includes("mathematics") || f.includes("statistics")
+                )
+              ) {
+                category = "Math";
+              }
+
+              const collections = Array.isArray(ds.collections)
+                ? ds.collections
+                    .map((c: any) =>
+                      c && typeof c === "object" && ("name" in c || "id" in c)
+                        ? {
+                            id: String(c.id ?? ""),
+                            name: String(c.name ?? ""),
+                            code: String(c.code ?? ""),
+                          }
+                        : null
+                    )
+                    .filter((c: any) => c !== null)
+                : [];
+
+              const permissions = Array.isArray(ds.permissions)
+                ? ds.permissions
+                : [];
+              const access = permissions.includes("browsedataset")
+                ? "Open Access"
+                : "Restricted";
+
+              const mapped: DatasetPlus = {
+                id,
+                title: String(ds.name ?? ds.code ?? "Untitled"),
+                category,
+                access,
+                description: String(ds.description ?? ""),
+                size: ds.size ? String(ds.size) : "N/A",
+                lastUpdated: ds.datePublished
+                  ? String(ds.datePublished)
+                  : "2024-01-01",
+                tags: Array.isArray(ds.keywords)
+                  ? ds.keywords.map((k: any) => String(k))
+                  : [],
+                collections,
+                license: ds.license ? String(ds.license) : undefined,
+                mimeType: ds.mimeType ? String(ds.mimeType) : undefined,
+                fieldOfScience: Array.isArray(ds.fieldOfScience)
+                  ? ds.fieldOfScience.map((f: any) => String(f))
+                  : undefined,
+                datePublished: ds.datePublished
+                  ? String(ds.datePublished)
+                  : undefined,
+                keywords: Array.isArray(ds.keywords)
+                  ? ds.keywords.map((k: any) => String(k))
+                  : undefined,
+                url: ds.url ? String(ds.url) : undefined,
+                version: ds.version ? String(ds.version) : undefined,
+              };
+
+              byId.set(id, mapped);
+            }
+
+            setAllDatasets(Array.from(byId.values()));
+            setIsLoading(false);
+            return;
+          } catch (smartErr: any) {
+            console.error("Smart search failed, falling back:", smartErr);
+            // Fall through to default logic below
+          }
+        }
+
         // Check if we should fetch from user collection endpoint
         if (selectedCollection && isCustomCollection) {
           // Fetch from user collection endpoint to get dataset IDs
@@ -816,6 +1007,7 @@ export default function DashboardClient() {
     filters,
     selectedCollection,
     isCustomCollection,
+    isSmartSearchEnabled,
   ]);
 
   // Filter datasets when selectedCollection changes (frontend filtering for collection)
@@ -887,6 +1079,20 @@ export default function DashboardClient() {
       tokenLength: session?.accessToken?.length,
     });
   }, [session]);
+
+  // Reset search input and submitted value on route changes
+  useEffect(() => {
+    setPendingSearchTerm("");
+    setSearchTerm("");
+  }, [pathname]);
+
+  // Also reset search when switching to a specific collection via query param
+  useEffect(() => {
+    if (selectedCollection) {
+      setPendingSearchTerm("");
+      setSearchTerm("");
+    }
+  }, [selectedCollection]);
 
   // Fetch favorites collection when session is available
   useEffect(() => {
@@ -968,6 +1174,8 @@ export default function DashboardClient() {
           onSortByChange={handleSortByChange}
           filters={filters}
           onApplyFilters={handleApplyFilters}
+          isSmartSearchEnabled={isSmartSearchEnabled}
+          onSmartSearchToggle={setIsSmartSearchEnabled}
           selectedDatasets={selectedDatasets}
           onSelectedDatasetsChange={setSelectedDatasets}
           showSelectedPanel={showSelectedPanel}

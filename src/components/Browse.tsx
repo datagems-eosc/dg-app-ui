@@ -35,6 +35,7 @@ import DeleteCollectionModal from "./DeleteCollectionModal";
 import { Button } from "./ui/Button";
 import Switch from "./ui/Switch";
 import SmartSearch from "./ui/SmartSearch";
+import SmartSearchExamples from "./ui/SmartSearchExamples";
 import { Chip } from "./ui/Chip";
 import SortingDropdown from "./SortingDropdown";
 import { useRouter } from "next/navigation";
@@ -127,6 +128,11 @@ interface BrowseProps {
    * Handler for when the collection name is updated.
    */
   onCollectionNameUpdate?: (newName: string) => void;
+  /**
+   * Controlled smart search toggle from parent (DashboardClient)
+   */
+  isSmartSearchEnabled?: boolean;
+  onSmartSearchToggle?: (enabled: boolean) => void;
 }
 
 const defaultFilters: FilterState = getDefaultFilters();
@@ -189,6 +195,8 @@ export default function Browse({
   collectionName = "",
   collectionId = "",
   onCollectionNameUpdate,
+  isSmartSearchEnabled: controlledSmartSearchEnabled,
+  onSmartSearchToggle,
 }: BrowseProps) {
   const { data: session } = useSession() as any;
   const { notifyCollectionModified, refreshExtraCollections } =
@@ -228,7 +236,12 @@ export default function Browse({
   const [editingName, setEditingName] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
-  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
+  const [isSmartSearchEnabledLocal, setIsSmartSearchEnabledLocal] =
+    useState(false);
+  const isSmartSearchEnabled =
+    typeof controlledSmartSearchEnabled === "boolean"
+      ? controlledSmartSearchEnabled
+      : isSmartSearchEnabledLocal;
 
   // Handle mobile detection and sidebar state
   useEffect(() => {
@@ -748,6 +761,10 @@ export default function Browse({
 
   const isPanelVisible = showSelectedPanel || isPanelClosing;
   const isDetailsPanelVisible = selectedDataset || isDetailsPanelClosing;
+  const shouldShowSmartExamples =
+    showSearchAndFilters !== false &&
+    isSmartSearchEnabled &&
+    (searchTerm ?? "").trim().length === 0;
 
   return (
     <div className="flex relative min-h-screen">
@@ -817,9 +834,7 @@ export default function Browse({
                   <h1 className="text-H2-32-semibold sm:text-H2-24-semibold text-gray-750">
                     {title}
                   </h1>
-                  <p className="text-H2-20-regular text-gray-650">
-                    {subtitle}
-                  </p>
+                  <p className="text-H2-20-regular text-gray-650">{subtitle}</p>
                 </>
               )}
             </div>
@@ -1028,7 +1043,13 @@ export default function Browse({
             <div className="px-4 sm:px-6">
               <SmartSearch
                 enabled={isSmartSearchEnabled}
-                onToggle={setIsSmartSearchEnabled}
+                onToggle={(val) => {
+                  if (onSmartSearchToggle) {
+                    onSmartSearchToggle(!!val);
+                  } else {
+                    setIsSmartSearchEnabledLocal(!!val);
+                  }
+                }}
               />
             </div>
           )}
@@ -1074,6 +1095,16 @@ export default function Browse({
               )}
             </div>
           )}
+          {/* Smart search examples */}
+          {shouldShowSmartExamples && (
+            <SmartSearchExamples
+              className="px-4 pt-6 sm:px-6 sm:pt-24 mb-4"
+              onPickExample={(value) => {
+                if (onSearchTermChange) onSearchTermChange(value);
+                if (onSearchTermSubmit) onSearchTermSubmit(value);
+              }}
+            />
+          )}
           {/* Active Filters */}
           {showSearchAndFilters !== false && activeFilterTags.length > 0 && (
             <div className="flex gap-2 mb-4 flex-nowrap sm:flex-wrap overflow-x-auto pl-4 sm:px-6">
@@ -1095,7 +1126,7 @@ export default function Browse({
             </div>
           )}
           {/* Results count and sorting */}
-          {showSearchAndFilters !== false && (
+          {showSearchAndFilters !== false && !shouldShowSmartExamples && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
               <p className="text-body-14-regular text-gray-650">
                 Showing:{" "}
@@ -1113,79 +1144,81 @@ export default function Browse({
             </div>
           )}
           {/* Main content area - do not shift cards when modal is open */}
-          <div className="transition-all duration-300 px-4 sm:px-6">
-            {/* Loader or error */}
-            {isLoading ? (
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-                    : "grid grid-cols-1 gap-4"
-                }
-              >
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <DatasetCardSkeleton key={index} viewMode={viewMode} />
-                ))}
-              </div>
-            ) : error ? (
-              <div className="text-red-600 text-center py-8">{error}</div>
-            ) : (
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-                    : "grid grid-cols-1 gap-4"
-                }
-              >
-                {filteredDatasets.map((dataset) => (
-                  <DatasetCard
-                    key={dataset.id}
-                    dataset={dataset}
-                    onClick={() => handleDatasetClick(dataset)}
-                    isSelected={selectedDataset?.id === dataset.id}
-                    isMultiSelected={currentSelectedDatasets.includes(
-                      dataset.id
-                    )}
-                    onSelect={(isSelected) =>
-                      handleDatasetSelect(dataset.id, isSelected)
-                    }
-                    showSelectButton={true}
-                    isEditMode={isEditMode}
-                    onRemove={
-                      isEditMode && onRemoveDataset
-                        ? () => onRemoveDataset(dataset.id)
-                        : undefined
-                    }
-                    viewMode={viewMode}
-                    onAddToCollection={() => handleAddToCollection(dataset)}
-                    showAddButton={showAddButton}
-                    isFavorite={favoriteDatasetIds.includes(dataset.id)}
-                    favoritesCollectionId={favoritesCollectionId}
-                    onAddToFavorites={onAddToFavorites}
-                    hasFetchedFavorites={hasFetchedFavorites}
-                    onRemoveFromFavorites={onRemoveFromFavorites}
-                    hasSidePanelOpen={
-                      (!!selectedDataset && !isDetailsPanelClosing) ||
-                      (showSelectedPanel && !isPanelClosing)
-                    }
-                    isSmartSearchEnabled={isSmartSearchEnabled}
-                  />
-                ))}
-              </div>
-            )}
-            {/* Empty state */}
-            {!isLoading && !error && filteredDatasets.length === 0 && (
-              <div className="text-center py-18 space-y-2">
-                <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
-                <h3 className="text-body-16-semibold text-slate-850">
-                  No datasets found matching your search criteria.
-                </h3>
-                <p className="text-body-14-regular text-gray-650">
-                  Try rephrasing your question or using different keywords.
-                </p>
-              </div>
-            )}
-          </div>
+          {!shouldShowSmartExamples && (
+            <div className="transition-all duration-300 px-4 sm:px-6">
+              {/* Loader or error */}
+              {isLoading ? (
+                <div
+                  className={
+                    viewMode === "grid"
+                      ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                      : "grid grid-cols-1 gap-4"
+                  }
+                >
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <DatasetCardSkeleton key={index} viewMode={viewMode} />
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="text-red-600 text-center py-8">{error}</div>
+              ) : (
+                <div
+                  className={
+                    viewMode === "grid"
+                      ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                      : "grid grid-cols-1 gap-4"
+                  }
+                >
+                  {filteredDatasets.map((dataset) => (
+                    <DatasetCard
+                      key={dataset.id}
+                      dataset={dataset}
+                      onClick={() => handleDatasetClick(dataset)}
+                      isSelected={selectedDataset?.id === dataset.id}
+                      isMultiSelected={currentSelectedDatasets.includes(
+                        dataset.id
+                      )}
+                      onSelect={(isSelected) =>
+                        handleDatasetSelect(dataset.id, isSelected)
+                      }
+                      showSelectButton={true}
+                      isEditMode={isEditMode}
+                      onRemove={
+                        isEditMode && onRemoveDataset
+                          ? () => onRemoveDataset(dataset.id)
+                          : undefined
+                      }
+                      viewMode={viewMode}
+                      onAddToCollection={() => handleAddToCollection(dataset)}
+                      showAddButton={showAddButton}
+                      isFavorite={favoriteDatasetIds.includes(dataset.id)}
+                      favoritesCollectionId={favoritesCollectionId}
+                      onAddToFavorites={onAddToFavorites}
+                      hasFetchedFavorites={hasFetchedFavorites}
+                      onRemoveFromFavorites={onRemoveFromFavorites}
+                      hasSidePanelOpen={
+                        (!!selectedDataset && !isDetailsPanelClosing) ||
+                        (showSelectedPanel && !isPanelClosing)
+                      }
+                      // isSmartSearchEnabled={isSmartSearchEnabled} TODO: uncomment this when smart search is implemented
+                    />
+                  ))}
+                </div>
+              )}
+              {/* Empty state */}
+              {!isLoading && !error && filteredDatasets.length === 0 && (
+                <div className="text-center py-18 space-y-2">
+                  <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
+                  <h3 className="text-body-16-semibold text-slate-850">
+                    No datasets found matching your search criteria.
+                  </h3>
+                  <p className="text-body-14-regular text-gray-650">
+                    Try rephrasing your question or using different keywords.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
           {/* Dataset Details Panel */}
           {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (
             <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
