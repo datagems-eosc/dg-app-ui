@@ -1,4 +1,5 @@
 export interface Dataset {
+  [x: string]: any;
   id: string;
   title: string;
   category: "Weather" | "Math" | "Lifelong Learning" | "Language";
@@ -14,6 +15,22 @@ export interface Dataset {
   keywords?: string[];
   url?: string;
 }
+
+export type DatasetPlus = Dataset & {
+  collections?: { id: string; name: string; code: string }[];
+  license?: string;
+  mimeType?: string;
+  fieldOfScience?: string[];
+  datePublished?: string;
+  keywords?: string[];
+  url?: string;
+  version?: string;
+  maxSimilarity?: number;
+};
+
+export type DatasetWithCollections = Dataset & { collections?: Collection[] };
+export type Collection = { id: string; name: string, code: string };
+
 
 export const mockDatasets: Dataset[] = [
   {
