@@ -20,18 +20,16 @@ export function MainHeader({
   onLogout,
 }: MainHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-18">
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 h-18">
       <div
-        className={`h-full px-4 md:px-6 flex ${
-          isSidebarOpen ? "justify-end" : "justify-between"
-        } items-center`}
+        className={`h-full px-4 md:px-6 flex ${isSidebarOpen ? "justify-end" : "justify-between"
+          } items-center`}
       >
         {/* Left side - Logo and toggle when sidebar is closed */}
         {!isSidebarOpen && (
           <div
-            className={`flex items-center gap-4 transition-all duration-300 ${
-              isSidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"
-            }`}
+            className={`flex items-center gap-4 transition-all duration-300 ${isSidebarOpen ? "opacity-0 pointer-events-none" : "opacity-100"
+              }`}
           >
             <button
               onClick={onToggleSidebar}
