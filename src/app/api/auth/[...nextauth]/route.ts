@@ -22,7 +22,7 @@ const handler = NextAuth({
       },
       authorization: {
         params: {
-          scope: "openid datasets dg-app-api offline_access",
+          scope: "openid dg-app-api offline_access",
           pkce: true,
           redirect_uri: `${appBaseUrl}/api/auth/callback/keycloak`,
         },
