@@ -12,7 +12,7 @@ import {
   ChevronUp,
   Check,
 } from "lucide-react";
-import { Dataset } from "@/data/mockDatasets";
+import { Dataset, DatasetPlus, DatasetWithCollections } from "@/data/dataset";
 import { useDataset } from "@/contexts/DatasetContext";
 import { Button } from "./ui/Button";
 import FormattedText from "./ui/FormattedText";
@@ -43,6 +43,8 @@ function hasCollections(
   );
 }
 
+type DatasetCardData = Dataset | DatasetPlus | DatasetWithCollections;
+
 // Helper to get dataset name from either mock or API dataset
 function getDatasetName(dataset: unknown): string {
   if (typeof dataset === "object" && dataset !== null) {
@@ -72,7 +74,7 @@ function formatDatePublished(datePublished?: string): string {
 }
 
 interface DatasetCardProps {
-  dataset: Dataset;
+  dataset: DatasetCardData;
   onClick?: () => void;
   isSelected?: boolean;
   isMultiSelected?: boolean;
@@ -240,17 +242,15 @@ export default function DatasetCard({
 
   return (
     <div
-      className={`rounded-2xl border-1 hover:shadow-md transition-all cursor-pointer relative p-5 h-fit ${
-        isSmartSearchEnabled && !isListMode && hasSidePanelOpen
-          ? "min-h-[280px]"
-          : ""
-      } ${
-        isSelected
+      className={`rounded-2xl border-1 hover:shadow-md transition-all cursor-pointer relative p-5 h-fit ${isSmartSearchEnabled && !isListMode && hasSidePanelOpen
+        ? "min-h-[280px]"
+        : ""
+        } ${isSelected
           ? "border-blue-650 shadow-s2 bg-blue-75"
           : isMultiSelected
             ? "border-blue-650 shadow-s2 bg-blue-75"
             : "border-slate-200 bg-white"
-      }`}
+        }`}
       onClick={onClick}
     >
       {/* Edit mode remove button */}
@@ -296,7 +296,7 @@ export default function DatasetCard({
                 {dataset.access}
               </Chip>
               {/* Smart search match chip - only show in chips row for grid layout */}
-              {isSmartSearchEnabled && !isListMode && (
+              {isSmartSearchEnabled && 'maxSimilarity' in dataset && !isListMode && (
                 <Chip
                   color="smart-search"
                   variant="outline"
@@ -304,14 +304,14 @@ export default function DatasetCard({
                   className="h-6 text-descriptions-12-medium tracking-1p flex-shrink-0"
                 >
                   <Check className="w-3 h-3 mr-1" />
-                  100% Match
+                  {dataset.maxSimilarity.toFixed(2)} % Match
                 </Chip>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Smart search match chip - show on right side for list layout */}
-            {isSmartSearchEnabled && isListMode && (
+            {isSmartSearchEnabled && 'maxSimilarity' in dataset && isListMode && (
               <Chip
                 color="smart-search"
                 variant="outline"
@@ -319,26 +319,24 @@ export default function DatasetCard({
                 className="h-6 text-descriptions-12-medium tracking-1p"
               >
                 <Check className="w-3 h-3 mr-1" />
-                100% Match
+                {dataset.maxSimilarity.toFixed(2)} % Match
               </Chip>
             )}
             {!isEditMode && (
               <button
                 onClick={handleStarClick}
                 disabled={isFavoriteLoading}
-                className={`flex-shrink-0 p-1.5 rounded transition-colors ${
-                  isFavoriteLoading
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-slate-75"
-                }`}
+                className={`flex-shrink-0 p-1.5 rounded transition-colors ${isFavoriteLoading
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-slate-75"
+                  }`}
               >
                 {isFavoriteLoading ? (
                   <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
                 ) : (
                   <Star
-                    className={`w-5 h-5 ${
-                      isStarred ? "fill-amber-200 text-amber-400" : "text-icon"
-                    }`}
+                    className={`w-5 h-5 ${isStarred ? "fill-amber-200 text-amber-400" : "text-icon"
+                      }`}
                   />
                 )}
               </button>
