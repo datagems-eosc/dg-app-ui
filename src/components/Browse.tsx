@@ -15,7 +15,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { Search } from "./ui/Search";
-import { Dataset } from "@/data/mockDatasets";
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
 import DatasetCard from "./DatasetCard";
@@ -44,6 +43,7 @@ import { useSession } from "next-auth/react";
 import { getNavigationUrl } from "@/lib/utils";
 import { apiClient } from "@/lib/apiClient";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { Dataset } from "@/data/dataset";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
