@@ -1,5 +1,4 @@
 export interface Dataset {
-  [x: string]: any;
   id: string;
   title: string;
   category: "Weather" | "Math" | "Lifelong Learning" | "Language";

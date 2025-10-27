@@ -296,7 +296,7 @@ export default function DatasetCard({
                 {dataset.access}
               </Chip>
               {/* Smart search match chip - only show in chips row for grid layout */}
-              {isSmartSearchEnabled && dataset.maxSimilarity && !isListMode && (
+              {isSmartSearchEnabled && 'maxSimilarity' in dataset && !isListMode && (
                 <Chip
                   color="smart-search"
                   variant="outline"
@@ -304,14 +304,14 @@ export default function DatasetCard({
                   className="h-6 text-descriptions-12-medium tracking-1p flex-shrink-0"
                 >
                   <Check className="w-3 h-3 mr-1" />
-                  {dataset.maxSimilarity.toFixed()} % Match
+                  {dataset.maxSimilarity.toFixed(2)} % Match
                 </Chip>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Smart search match chip - show on right side for list layout */}
-            {isSmartSearchEnabled && dataset.maxSimilarity && isListMode && (
+            {isSmartSearchEnabled && 'maxSimilarity' in dataset && isListMode && (
               <Chip
                 color="smart-search"
                 variant="outline"
@@ -319,7 +319,7 @@ export default function DatasetCard({
                 className="h-6 text-descriptions-12-medium tracking-1p"
               >
                 <Check className="w-3 h-3 mr-1" />
-                {dataset.maxSimilarity.toFixed()} % Match
+                {dataset.maxSimilarity.toFixed(2)} % Match
               </Chip>
             )}
             {!isEditMode && (
