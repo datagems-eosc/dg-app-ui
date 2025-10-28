@@ -433,6 +433,22 @@ class ApiClient {
     const responseData = await response.json();
     return responseData;
   }
+
+  async getUserSettings(userId: string, token: string): Promise<any> {
+    const response = await this.makeRequest(
+      `/user/me/settings`,
+      {
+        method: "GET",
+      },
+      token
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch user settings");
+    }
+
+    return response.json();
+  }
 }
 
 // Export a singleton instance

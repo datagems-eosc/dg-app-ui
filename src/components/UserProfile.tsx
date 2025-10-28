@@ -9,6 +9,8 @@ import PersonalSettingsSection from "@/components/ui/user/PersonalSettingsSectio
 import PreferencesSection from "@/components/ui/user/PreferencesSection";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useRouter } from "next/navigation";
+import { apiClient } from "@/lib/apiClient";
+import { useSession } from "next-auth/react";
 
 interface NotificationSettings {
   newFeatures: {
@@ -34,6 +36,8 @@ interface NotificationSettings {
 }
 
 export default function UserProfile() {
+  const { data: session } = useSession();
+
   const { userData, updateUserData, setProfilePicture, isLoading } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"personal" | "preferences">(
@@ -50,8 +54,6 @@ export default function UserProfile() {
     systemErrors: { email: false, inApp: false },
   });
 
-  console.log(userData);
-
   const [backupUserData, setBackupUserData] = useState(userData);
   const [backupNotifications, setBackupNotifications] =
     useState<NotificationSettings>(notifications);
@@ -60,6 +62,16 @@ export default function UserProfile() {
     setBackupUserData(userData);
     setFormData({ name: userData.name, surname: userData.surname });
   }, [userData.name, userData.surname]);
+
+  useEffect(() => {
+    const token = (session as any)?.accessToken;
+    const userId = (session as any)?.user?.id;
+    console.log("debug UserProfile fetch user settings with token:", session);
+    if (!token || !userId) return;
+    apiClient.getUserSettings(userId, token).then((settings) => {
+      console.log("debug Fetch user settings:", settings);
+    });
+  }, [session]);
 
   const handleSaveChanges = () => {
     updateUserData({ name: formData.name, surname: formData.surname });
