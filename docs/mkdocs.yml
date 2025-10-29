@@ -6,7 +6,7 @@ repo_url: https://github.com/datagems-eosc/dg-app-ui
 nav:
   - Overview: index.md
   - System:
-    - Architecture: architecture.md
+    - Architecture & Tech stack: architecture.md
     - Security: security.md
   - Setup & Monitoring:
     - Automations: automations.md
