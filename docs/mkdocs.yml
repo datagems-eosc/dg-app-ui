@@ -17,7 +17,7 @@ nav:
     - Onboarding: onboarding.md
     - Quality Assurance: qa.md
     - FAQ & Known Issues: faq.md
-  - License: license.md
+  - Licence: licence.md
   - Home: https://datagems-eosc.github.io/
 
 theme:
