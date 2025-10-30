@@ -9,7 +9,7 @@ nav:
     - Architecture: architecture.md
   - Material: 
     - Onboarding: onboarding.md
-    - Key Features:
+    #- Key Features:
     - Design System:
       - Components: design-system.md
       - Theming: theming.md
