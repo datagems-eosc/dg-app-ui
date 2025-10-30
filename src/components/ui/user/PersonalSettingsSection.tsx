@@ -13,11 +13,13 @@ type FormData = {
 interface Props {
   formData: FormData;
   updateFormData: (data: Partial<FormData>) => void;
+  isLoading: boolean;
 }
 
 export default function PersonalSettingsSection({
   formData,
   updateFormData,
+  isLoading,
 }: Props) {
   return (
     <div className="space-y-8">
@@ -39,6 +41,7 @@ export default function PersonalSettingsSection({
               size="large"
               value={formData.name}
               onChange={(e) => updateFormData({ name: e.target.value })}
+              disabled={isLoading}
             />
             <Input
               name="surname"
@@ -46,6 +49,7 @@ export default function PersonalSettingsSection({
               size="large"
               value={formData.surname}
               onChange={(e) => updateFormData({ surname: e.target.value })}
+              disabled={isLoading}
             />
           </div>
         </div>

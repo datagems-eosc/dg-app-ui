@@ -79,21 +79,22 @@ export default function UserHeader({
               variant="outline"
               onClick={onCancel}
               className="w-full sm:w-[150px]"
+              disabled={!hasChanges || isLoading}
             >
               Cancel
             </Button>
           </div>
           <div className="w-full sm:w-[150px]">
             <Tooltip
-              content="Saving is temporarily disabled while backend integration is in progress."
+              content="Save user settings."
               position="top"
               className="w-full sm:w-[150px]"
             >
               <Button
                 variant="primary"
-                disabled
                 onClick={onSave}
                 className="w-full sm:w-[150px]"
+                disabled={!hasChanges || isLoading}
               >
                 Save Changes
               </Button>
