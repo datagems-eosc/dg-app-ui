@@ -434,9 +434,14 @@ class ApiClient {
     return responseData;
   }
 
-  async getUserSettings(userId: string, token: string): Promise<any> {
+  async getUserSettings(settingsKey: string, token: string): Promise<any> {
+    const returnFields = ["id", "key", "value", "eTag"];
+    const qs = returnFields && returnFields.length > 0
+      ? `?${returnFields.map((f) => `f=${encodeURIComponent(f)}`).join("&")}`
+      : "";
+
     const response = await this.makeRequest(
-      `/user/me/settings`,
+      `/user/settings/key/${settingsKey}${qs}`,
       {
         method: "GET",
       },
@@ -447,6 +452,33 @@ class ApiClient {
       throw new Error(errorData.error || "Failed to fetch user settings");
     }
 
+    return response.json();
+  }
+
+  async saveUserSettings(
+    payload: any,
+    token: string,
+    id?: string
+  ): Promise<any> {
+    const body = { ...payload };
+    if (id) {
+      body.id = id;
+    }
+    body.value = JSON.stringify(body.value);
+
+
+    const response = await this.makeRequest(
+      `/user/settings/persist`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+      token
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to save user settings");
+    }
     return response.json();
   }
 }
