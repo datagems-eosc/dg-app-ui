@@ -16,16 +16,16 @@ export default defineConfig({
           // NOTE: These reduce browser security and should only be used for local/CI test runs.
           // Disable enforcement of SameSite and Secure requirements so cookies set by
           // the IdP during cross-origin flows are accepted by the test browser.
-          launchOptions.args.push(
-            "--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,BlockThirdPartyCookies,ThirdPartyCookieBlocking"
-          );
+          // launchOptions.args.push(
+          //   "--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,BlockThirdPartyCookies,ThirdPartyCookieBlocking"
+          // );
 
           // Disable site isolation and other strict network features that can interfere with
           // cross-origin OIDC flows in instrumentation environments.
-          launchOptions.args.push("--disable-site-isolation-trials");
+          // launchOptions.args.push("--disable-site-isolation-trials");
 
-          // Disable web security to allow cross-origin interactions during tests (use cautiously).
-          launchOptions.args.push("--disable-web-security");
+          // // Disable web security to allow cross-origin interactions during tests (use cautiously).
+          // launchOptions.args.push("--disable-web-security");
 
           // Use an isolated user-data-dir for the Cypress browser so flags take effect and
           // the profile can be configured to allow third-party cookies if needed.

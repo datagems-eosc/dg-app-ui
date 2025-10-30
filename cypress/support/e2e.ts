@@ -25,7 +25,7 @@ beforeEach(() => {
 	// Always clean cookies and local storage at the start of each test
 	cy.clearCookies();
 	cy.clearLocalStorage();
-
+cy.viewport(1200, 1000)
 	if (!shouldAutoLogin) {
 		// If auto-login disabled, stop here
 		return;
