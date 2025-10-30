@@ -9,8 +9,19 @@ import PersonalSettingsSection from "@/components/ui/user/PersonalSettingsSectio
 import PreferencesSection from "@/components/ui/user/PreferencesSection";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useRouter } from "next/navigation";
+import { apiClient } from "@/lib/apiClient";
+import { useSession } from "next-auth/react";
+
+interface UserData {
+  id?: string;
+  eTag?: string;
+  name: string;
+  surname: string;
+}
 
 interface NotificationSettings {
+  id?: string;
+  eTag?: string;
   newFeatures: {
     email: boolean;
     inApp: boolean;
@@ -34,13 +45,16 @@ interface NotificationSettings {
 }
 
 export default function UserProfile() {
-  const { userData, updateUserData, setProfilePicture, isLoading } = useUser();
+  const { data: session } = useSession();
+
+  const { userData, updateUserData, setProfilePicture } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"personal" | "preferences">(
     "personal"
   );
+  const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
-  const [formData, setFormData] = useState({ name: userData.name, surname: userData.surname });
+  const [personalSettings, setPersonalSettings] = useState<UserData>({ name: '', surname: '' });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newFeatures: { email: false, inApp: false },
@@ -50,23 +64,114 @@ export default function UserProfile() {
     systemErrors: { email: false, inApp: false },
   });
 
-  console.log(userData);
-
   const [backupUserData, setBackupUserData] = useState(userData);
   const [backupNotifications, setBackupNotifications] =
     useState<NotificationSettings>(notifications);
 
   useEffect(() => {
     setBackupUserData(userData);
-    setFormData({ name: userData.name, surname: userData.surname });
   }, [userData.name, userData.surname]);
 
+  useEffect(() => {
+    const token = (session as any)?.accessToken;
+    let cancelled = false;
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        await Promise.all([loadNotificationSettings(token), loadPersonalSettings(token)]);
+      } catch (err) {
+        console.error("Failed loading user settings:", err);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  // Make loaders return promises
+  async function loadPersonalSettings(token: string) {
+    if (!token) return;
+    try {
+      const settings = await apiClient.getUserSettings("personalSettings", token);
+      if (!settings || settings.length === 0) return;
+      const lastIndex = settings.length - 1;
+      const data = JSON.parse(settings[lastIndex].value);
+      setPersonalSettings({
+        name: data.name,
+        surname: data.surname,
+        id: settings[lastIndex].id,
+        eTag: settings[lastIndex].eTag,
+      });
+    } catch (err) {
+      console.error("Failed to load userData", err);
+    }
+  }
+
+  async function loadNotificationSettings(token: string) {
+    if (!token) return;
+    try {
+      const settings = await apiClient.getUserSettings("notificationSettings", token);
+      if (!settings || settings.length === 0) return;
+      const lastIndex = settings.length - 1;
+      setNotifications({
+        ...JSON.parse(settings[lastIndex].value),
+        id: settings[lastIndex].id,
+        eTag: settings[lastIndex].eTag,
+      });
+    } catch (err) {
+      console.error("Failed to load notificationSettings", err);
+    }
+  }
+
   const handleSaveChanges = () => {
-    updateUserData({ name: formData.name, surname: formData.surname });
-    setBackupUserData({ ...userData, name: formData.name, surname: formData.surname });
+    setIsLoading(true);
+    saveNotificationSettings();
+    savePersonalSettings();
+
+    updateUserData(
+      { name: personalSettings.name, surname: personalSettings.surname }
+    );
+    setBackupUserData({ ...userData, name: personalSettings.name, surname: personalSettings.surname });
     setBackupNotifications(notifications);
     setShowToast(true);
   };
+
+  const saveNotificationSettings = () => {
+    const token = (session as any)?.accessToken;
+    if (!token) return;
+
+    // send notification settings with `value` not containing the `id` field
+    const { id, eTag, ...value } = notifications as any;
+    const payload: any = {
+      key: "notificationSettings",
+      value,
+    };
+
+    if (id) payload.id = id;
+    if (eTag) payload.eTag = eTag;
+
+    apiClient.saveUserSettings(payload, token);
+  }
+  const savePersonalSettings = () => {
+    const token = (session as any)?.accessToken;
+    if (!token) return;
+
+    // send notification settings with `value` not containing the `id` field
+    const { id, eTag, ...value } = personalSettings as any;
+    const payload: any = {
+      key: "personalSettings",
+      value,
+    };
+
+    if (id) payload.id = id;
+    if (eTag) payload.eTag = eTag;
+
+    apiClient.saveUserSettings(payload, token);
+  }
 
   const handleCancel = () => {
     router.push(APP_ROUTES.DASHBOARD);
@@ -102,10 +207,10 @@ export default function UserProfile() {
 
   const hasUserDataChanges = useMemo(() => {
     return (
-      (backupUserData?.name || "") !== (formData?.name || "") ||
-      (backupUserData?.surname || "") !== (formData?.surname || "")
+      (backupUserData?.name || "") !== (personalSettings?.name || "") ||
+      (backupUserData?.surname || "") !== (personalSettings?.surname || "")
     );
-  }, [backupUserData, formData]);
+  }, [backupUserData, personalSettings]);
 
   const hasNotificationChanges = useMemo(() => {
     return (
@@ -126,14 +231,15 @@ export default function UserProfile() {
   };
 
   const updateNotification = (
-    category: keyof NotificationSettings,
+    key: keyof NotificationSettings,
     type: "email" | "inApp",
     value: boolean
   ) => {
+    if (key === 'id' || key === 'eTag') return;
     setNotifications((prev) => ({
       ...prev,
-      [category]: {
-        ...prev[category],
+      [key]: {
+        ...prev[key],
         [type]: value,
       },
     }));
@@ -162,13 +268,15 @@ export default function UserProfile() {
             <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
               {activeTab === "personal" && (
                 <PersonalSettingsSection
-                  formData={formData}
-                  updateFormData={(data) => setFormData((prev) => ({ ...prev, ...data }))}
+                  isLoading={isLoading}
+                  formData={personalSettings}
+                  updateFormData={(data) => setPersonalSettings((prev) => ({ ...prev, ...data }))}
                 />
               )}
 
               {activeTab === "preferences" && (
                 <PreferencesSection
+                  isLoading={isLoading}
                   notifications={notifications}
                   onEnableAll={handleEnableAll}
                   onDisableAll={handleDisableAll}

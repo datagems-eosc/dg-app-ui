@@ -28,6 +28,7 @@ interface Props {
     type: "email" | "inApp",
     value: boolean
   ) => void;
+  isLoading: boolean;
 }
 
 const NOTIFICATION_ITEMS: Array<{
@@ -35,39 +36,40 @@ const NOTIFICATION_ITEMS: Array<{
   title: string;
   description: string;
 }> = [
-  {
-    key: "newFeatures",
-    title: "New Features",
-    description: "Get notified when new features are added to the platform",
-  },
-  {
-    key: "datasetLibraryChanges",
-    title: "Dataset Library Changes",
-    description: "Receive updates about changes to the datasets library",
-  },
-  {
-    key: "newDatasets",
-    title: "New Datasets",
-    description: "Be informed when new datasets are added to the system",
-  },
-  {
-    key: "systemMaintenance",
-    title: "System Maintenance",
-    description: "Get notified about planned system maintenance",
-  },
-  {
-    key: "systemErrors",
-    title: "System Errors",
-    description:
-      "Receive alerts about errors affecting your data or collections",
-  },
-];
+    {
+      key: "newFeatures",
+      title: "New Features",
+      description: "Get notified when new features are added to the platform",
+    },
+    {
+      key: "datasetLibraryChanges",
+      title: "Dataset Library Changes",
+      description: "Receive updates about changes to the datasets library",
+    },
+    {
+      key: "newDatasets",
+      title: "New Datasets",
+      description: "Be informed when new datasets are added to the system",
+    },
+    {
+      key: "systemMaintenance",
+      title: "System Maintenance",
+      description: "Get notified about planned system maintenance",
+    },
+    {
+      key: "systemErrors",
+      title: "System Errors",
+      description:
+        "Receive alerts about errors affecting your data or collections",
+    },
+  ];
 
 export default function PreferencesSection({
   notifications,
   onEnableAll,
   onDisableAll,
   updateNotification,
+  isLoading,
 }: Props) {
   return (
     <div className="space-y-8">
@@ -107,6 +109,7 @@ export default function PreferencesSection({
               </div>
               <div className="justify-self-start sm:justify-self-center">
                 <Checkbox
+                  disabled={isLoading}
                   id={`${item.key}-email`}
                   label="E-mail"
                   checked={notifications[item.key].email}
@@ -117,6 +120,7 @@ export default function PreferencesSection({
               </div>
               <div className="justify-self-start sm:justify-self-center">
                 <Checkbox
+                  disabled={isLoading}
                   id={`${item.key}-app`}
                   label="In App"
                   checked={notifications[item.key].inApp}
