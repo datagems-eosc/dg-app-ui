@@ -5,6 +5,10 @@
          <lastmod>2025-10-30</lastmod>
     </url>
     <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/CypressLogin/</loc>
+         <lastmod>2025-10-30</lastmod>
+    </url>
+    <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/architecture/</loc>
          <lastmod>2025-10-30</lastmod>
     </url>
@@ -21,6 +25,10 @@
          <lastmod>2025-10-30</lastmod>
     </url>
     <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/design-system/</loc>
+         <lastmod>2025-10-30</lastmod>
+    </url>
+    <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/faq/</loc>
          <lastmod>2025-10-30</lastmod>
     </url>
@@ -33,6 +41,10 @@
          <lastmod>2025-10-30</lastmod>
     </url>
     <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/login/</loc>
+         <lastmod>2025-10-30</lastmod>
+    </url>
+    <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/onboarding/</loc>
          <lastmod>2025-10-30</lastmod>
     </url>
@@ -42,6 +54,10 @@
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/security/</loc>
+         <lastmod>2025-10-30</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/theming/</loc>
          <lastmod>2025-10-30</lastmod>
     </url>
 </urlset>

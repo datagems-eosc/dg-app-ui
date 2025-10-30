@@ -8,9 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://datagems-eosc.github.io/dg-app-ui/v0.0.1/logging/">
+        <link rel="canonical" href="https://datagems-eosc.github.io/dg-app-ui/v0.0.1/CypressLogin/">
       
       
+        <link rel="prev" href="../qa/">
+      
+      
+        <link rel="next" href="../security/">
       
       
       <link rel="icon" href="../images/favicon.jpg">
@@ -18,7 +22,7 @@
     
     
       
-        <title>Logging - DataGEMS Front-end Docs</title>
+        <title>Login in Tests - DataGEMS Front-end Docs</title>
       
     
     
@@ -65,7 +69,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#logging" class="md-skip">
+        <a href="#cypress-login-flow-and-e2e-test-setup" class="md-skip">
           Skip to content
         </a>
       
@@ -119,7 +123,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Logging
+              Login in Tests
             
           </span>
         </div>
@@ -325,18 +329,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -352,7 +358,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Material
@@ -478,18 +484,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
@@ -505,7 +513,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_3">
             <span class="md-nav__icon md-icon"></span>
             Quality Assurance
@@ -539,10 +547,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../CypressLogin/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Login in Tests
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -553,6 +583,122 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#test-environment-challenges" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test environment challenges
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test environment challenges">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Browser flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#header-rewriting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Header rewriting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-origin-interactions-with-cyorigin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cross-origin interactions with cy.origin()
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stubbing-problematic-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Stubbing problematic scripts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reusable-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reusable helpers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-pseudo-flow-used-by-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example pseudo-flow used by tests
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credentials-for-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Credentials for tests
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references-and-examples-in-this-repo" class="md-nav__link">
+    <span class="md-ellipsis">
+      References and examples in this repo
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -780,36 +926,96 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#log-format" class="md-nav__link">
+  <a href="#test-environment-challenges" class="md-nav__link">
     <span class="md-ellipsis">
-      Log format
+      Test environment challenges
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test environment challenges">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#browser-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      Browser flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#header-rewriting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Header rewriting
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-origin-interactions-with-cyorigin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cross-origin interactions with cy.origin()
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stubbing-problematic-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Stubbing problematic scripts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reusable-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reusable helpers
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#correlation-identifier" class="md-nav__link">
+  <a href="#example-pseudo-flow-used-by-tests" class="md-nav__link">
     <span class="md-ellipsis">
-      Correlation Identifier
+      Example pseudo-flow used by tests
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting-logs" class="md-nav__link">
+  <a href="#credentials-for-tests" class="md-nav__link">
     <span class="md-ellipsis">
-      Troubleshooting Logs
+      Credentials for tests
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#accounting-logs" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
-      Accounting Logs
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references-and-examples-in-this-repo" class="md-nav__link">
+    <span class="md-ellipsis">
+      References and examples in this repo
     </span>
   </a>
   
@@ -834,122 +1040,75 @@
   
 
 
-<h1 id="logging">Logging<a class="headerlink" href="#logging" title="Permanent link">&para;</a></h1>
-<p>All DataGEMS services are producing logs in a structured way, usilizing common log formats. The logs are aggregated to the <a href="https://datagems-eosc.github.io/dg-logging-service">Logging Service</a> where they can be queried and analyzed.</p>
-<h2 id="log-format">Log format<a class="headerlink" href="#log-format" title="Permanent link">&para;</a></h2>
-<p>The service utilized serilog for structured logging. The respective <a href="../configuration/">Configuration</a> section describes where this is configured. </p>
-<p>The log format utilized by is compact json providing structured presentation of the information presented. This is easily parsed and made available for further processing.</p>
-<h2 id="correlation-identifier">Correlation Identifier<a class="headerlink" href="#correlation-identifier" title="Permanent link">&para;</a></h2>
-<p>A key property in enabling troubleshooting in the micro-service DataGEMS architecture is the Correlation Identifier. </p>
-<p>In order to serve a user request, a number of services invocations may be chained. It will be useful to be able to track the chain of the request across all involved services. To achive this, we utilize a shared Correlation Id that is generated early in the call stack and propagated across all subsequent invocations.</p>
-<p>At the begining of the request stack, we check if there is a correlation id provided for the request in the request headers typically under a header named x-tracking-correlation. If not, we generate one for the request and any downstream calls. We also add it in the logging configuration so that all subsequent log messages include this correlation id.</p>
-<p>At the time of invoking another service, we include the correlation id header, along with the correlation id value so that the next service in line will use the same identifier.</p>
-<p>The respective <a href="../configuration/">Configuration</a> section describes where this behavior is configured. </p>
-<h2 id="troubleshooting-logs">Troubleshooting Logs<a class="headerlink" href="#troubleshooting-logs" title="Permanent link">&para;</a></h2>
-<p>Troubleshooting logs are produced by the service throughout the execution of caller requests. The messages are separated by the log level:</p>
+<h1 id="cypress-login-flow-and-e2e-test-setup">Cypress — Login flow and E2E test setup<a class="headerlink" href="#cypress-login-flow-and-e2e-test-setup" title="Permanent link">&para;</a></h1>
+<p>This document focuses on the Cypress-specific parts of the authentication flow: how tests perform automated login, the workarounds required for cross-origin IdP interactions, and troubleshooting steps for flaky auth tests.</p>
+<h2 id="test-environment-challenges">Test environment challenges<a class="headerlink" href="#test-environment-challenges" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Trace</li>
-<li>Debug</li>
-<li>Information</li>
-<li>Warning</li>
-<li>Error</li>
-<li>Critical</li>
+<li>Cross-origin OIDC flows (Keycloak) set cookies on the IdP domain. Modern browsers enforce SameSite and third-party cookie rules that can break automated logins when running in a test runner.</li>
+<li>IdP pages may load scripts that throw client-side errors or perform behaviours (autofocus) that interfere with deterministic test runs.</li>
 </ul>
-<p>Log entries may contain the following information (where available):</p>
+<p>To address these, the test-suite uses several pragmatic workarounds (only for test environments):</p>
+<h3 id="browser-flags">Browser flags<a class="headerlink" href="#browser-flags" title="Permanent link">&para;</a></h3>
+<p>The Cypress configuration adds Chromium flags when launching the browser in CI/local tests to relax SameSite and third-party cookie enforcement. These flags are defined in <code>cypress.config.ts</code> and are only applied to the Cypress-launched browser.</p>
+<h3 id="header-rewriting">Header rewriting<a class="headerlink" href="#header-rewriting" title="Permanent link">&para;</a></h3>
+<p><code>cy.rewriteHeaders()</code> (defined in <code>cypress/support/commands.ts</code>) intercepts responses during tests and rewrites <code>Set-Cookie</code> headers so cookies include <code>SameSite=None; Secure</code> where necessary. This helps the browser accept cookies created by Keycloak during the cross-origin login flow.</p>
+<h3 id="cross-origin-interactions-with-cyorigin">Cross-origin interactions with cy.origin()<a class="headerlink" href="#cross-origin-interactions-with-cyorigin" title="Permanent link">&para;</a></h3>
+<p>When interacting with the Keycloak pages the tests run that interaction inside <code>cy.origin('&lt;keycloak-host&gt;', ...)</code> — this makes the cross-origin commands explicit and prevents Cypress from blocking those interactions.</p>
+<h3 id="stubbing-problematic-scripts">Stubbing problematic scripts<a class="headerlink" href="#stubbing-problematic-scripts" title="Permanent link">&para;</a></h3>
+<p>If the IdP loads auxiliary scripts that cause errors during tests (for example the <code>authChecker.js</code> module), tests stub those requests and return small, inert modules to avoid uncaught exceptions that would otherwise fail the test.</p>
+<h2 id="reusable-helpers">Reusable helpers<a class="headerlink" href="#reusable-helpers" title="Permanent link">&para;</a></h2>
+<p>The project provides a set of helpers to simplify login in E2E tests:</p>
 <ul>
-<li>Timestamp in UTC (ISO8601)</li>
-<li>Correlation Identifier</li>
-<li>Subject Id</li>
-<li>Client Id</li>
-<li>Message text</li>
-<li>Log Level</li>
-<li>... additional properties</li>
+<li><code>cy.rewriteHeaders()</code> — rewrites response <code>Set-Cookie</code> headers (see above).</li>
+<li><code>cy.login(opts?)</code> — performs the full login flow (reads credentials from <code>cypress/fixtures/credentials.json</code> or environment variables). The command:</li>
+<li>calls <code>cy.rewriteHeaders()</code></li>
+<li>clears cookies and local storage</li>
+<li>visits the app root and clicks the Sign in control</li>
+<li>performs cross-origin IdP interactions using <code>cy.origin()</code> and submits username/password</li>
+<li>waits for redirect back to <code>/dashboard</code> and asserts presence of a dashboard-specific UI element</li>
 </ul>
-<p>An prettified example of a log entry is:</p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;@t&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-08T11:13:14.8335054Z&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@mt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{\&quot;msg\&quot;:\&quot;building\&quot;,\&quot;m\&quot;:{\&quot;type\&quot;:\&quot;Collection\&quot;,\&quot;fields\&quot;:{\&quot;Fields\&quot;:[\&quot;id\&quot;,\&quot;code\&quot;,\&quot;name\&quot;,\&quot;datasetcount\&quot;]},\&quot;dataCount\&quot;:5}}&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@l&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Debug&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@tr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c3e3abe1e71da568c1dceb387b19a7ff&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@sp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5eee2c1f0d5309b2&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;SourceContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DataGEMS.Gateway.App.Model.Builder.CollectionBuilder&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ActionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;654d5a3b-9980-4684-a70a-4eedaada7b99&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ActionName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DataGEMS.Gateway.Api.Controllers.DatasetController.Query (DataGEMS.Gateway.Api)&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0J:00000001&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/dataset/query&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ConnectionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0J&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ClientId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Username&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the subject id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;DGCorrelationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the correlation id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MachineName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the machine name&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ProcessId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ThreadId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">19</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Application&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the application id&quot;</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;@t&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-08T11:13:14.8357014Z&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@mt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@r&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">            </span><span class="s2">&quot;38.1723&quot;</span>
-<span class="w">        </span><span class="p">],</span>
-<span class="w">        </span><span class="nt">&quot;@tr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;03cb7b58744f0d0e3ffff2e05ce85ed5&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@sp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cfc6357aff7c7c7c&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestMethod&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/dataset/query&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;StatusCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">200</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">38.172305</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;SourceContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Serilog.AspNetCore.RequestLoggingMiddleware&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;DGCorrelationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the correlation id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0H:00000001&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ConnectionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0H&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MachineName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the machine name&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ProcessId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ThreadId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">19</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Application&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the application id&quot;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="p">]</span>
+<p>The <code>cy.login()</code> command is intended for tests that need to start in an authenticated state. There is also a global <code>beforeEach</code> in <code>cypress/support/e2e.ts</code> which calls <code>cy.login()</code> by default; this can be disabled by running Cypress with <code>AUTO_LOGIN=false</code>.</p>
+<h2 id="example-pseudo-flow-used-by-tests">Example pseudo-flow used by tests<a class="headerlink" href="#example-pseudo-flow-used-by-tests" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nx">cy</span><span class="p">.</span><span class="nx">rewriteHeaders</span><span class="p">();</span>
+<span class="nx">cy</span><span class="p">.</span><span class="nx">clearCookies</span><span class="p">();</span>
+<span class="nx">cy</span><span class="p">.</span><span class="nx">clearLocalStorage</span><span class="p">();</span>
+<span class="nx">cy</span><span class="p">.</span><span class="nx">visit</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">);</span>
+<span class="nx">cy</span><span class="p">.</span><span class="nx">contains</span><span class="p">(</span><span class="s1">&#39;Sign in&#39;</span><span class="p">).</span><span class="nx">click</span><span class="p">();</span>
+<span class="nx">cy</span><span class="p">.</span><span class="nx">origin</span><span class="p">(</span><span class="s1">&#39;https://&lt;keycloak-host&gt;&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">args</span><span class="o">:</span><span class="w"> </span><span class="nx">creds</span><span class="w"> </span><span class="p">},</span><span class="w"> </span><span class="p">(</span><span class="nx">creds</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">cy</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;input[name=&quot;username&quot;]&#39;</span><span class="p">).</span><span class="nx">type</span><span class="p">(</span><span class="nx">creds</span><span class="p">.</span><span class="nx">username</span><span class="p">);</span>
+<span class="w">  </span><span class="nx">cy</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;input[name=&quot;password&quot;]&#39;</span><span class="p">).</span><span class="nx">type</span><span class="p">(</span><span class="nx">creds</span><span class="p">.</span><span class="nx">password</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">log</span><span class="o">:</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="p">});</span>
+<span class="w">  </span><span class="nx">cy</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">&#39;button[type=&quot;submit&quot;]&#39;</span><span class="p">).</span><span class="nx">click</span><span class="p">();</span>
+<span class="p">});</span>
+<span class="nx">cy</span><span class="p">.</span><span class="nx">url</span><span class="p">().</span><span class="nx">should</span><span class="p">(</span><span class="s1">&#39;include&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;/dashboard&#39;</span><span class="p">);</span>
+<span class="nx">cy</span><span class="p">.</span><span class="nx">contains</span><span class="p">(</span><span class="s1">&#39;Add Dataset&#39;</span><span class="p">).</span><span class="nx">should</span><span class="p">(</span><span class="s1">&#39;be.visible&#39;</span><span class="p">);</span>
 </code></pre></div>
-<h2 id="accounting-logs">Accounting Logs<a class="headerlink" href="#accounting-logs" title="Permanent link">&para;</a></h2>
-<p>The service generates accounting entries that utilize the same logging mechanism but are differentiated by troubleshooting logs through the "SourceContext" property which is set to "accounting".</p>
-<p>These accounting log entries are harvested and processed by the <a href="https://datagems-eosc.github.io/dg-accounting-service">Accounting Service</a></p>
-<p>A prettified example of an accounting log entry is:
+<h2 id="credentials-for-tests">Credentials for tests<a class="headerlink" href="#credentials-for-tests" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Use <code>cypress/fixtures/credentials.json</code> (do not commit sensitive values to the repo). Example fixture shape:</li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;@t&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-08T11:13:14.8354027Z&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;@mt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{\&quot;m\&quot;:{\&quot;timestamp\&quot;:\&quot;2025-08-08T11:13:14.8353562Z\&quot;,\&quot;serviceId\&quot;:\&quot;the service id\&quot;,\&quot;action\&quot;:\&quot;Query\&quot;,\&quot;resource\&quot;:\&quot;Dataset\&quot;,\&quot;userId\&quot;:\&quot;the subject id\&quot;,\&quot;value\&quot;:\&quot;1\&quot;,\&quot;measure\&quot;:\&quot;Unit\&quot;,\&quot;type\&quot;:\&quot;+\&quot;}}&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;@tr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;03cb7b58744f0d0e3ffff2e05ce85ed5&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;@sp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cfc6357aff7c7c7c&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;SourceContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;accounting&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ActionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;654d5a3b-9980-4684-a70a-4eedaada7b99&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ActionName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DataGEMS.Gateway.Api.Controllers.DatasetController.Query (DataGEMS.Gateway.Api)&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0H:00000001&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;RequestPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/dataset/query&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ConnectionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0H&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ClientId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Username&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the subject id&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;DGCorrelationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the correlation id&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;MachineName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the machine name&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ProcessId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ThreadId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">19</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Application&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the application id&quot;</span>
+<span class="w">  </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;username&gt;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;password&gt;&quot;</span>
 <span class="p">}</span>
-</code></pre></div></p>
-<p>The <em>@mt</em> property contains the information that is intended to be utilized by the accounting service to track this action:
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;m&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-08T11:13:14.8353562Z&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;serviceId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the service id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;action&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Query&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;resource&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Dataset&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;userId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the subject id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;measure&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unit&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;+&quot;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div></p>
+</code></pre></div>
+<ul>
+<li>Or provide <code>CYPRESS_USERNAME</code> and <code>CYPRESS_PASSWORD</code> environment variables in CI.</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<ul>
+<li>If cookies are rejected by the browser, ensure the Cypress browser is launched with the SameSite/third-party cookie flags (see <code>cypress.config.ts</code>).</li>
+<li>If cross-origin actions fail, make sure interactions on the IdP domain are wrapped in <code>cy.origin()</code>.</li>
+<li>If benign IdP exceptions appear, add targeted ignores within the <code>cy.origin()</code> handler (the dashboard test provides examples).</li>
+<li>If <code>cy.task</code> helpers that open files (editor integration) fail with <code>code ENOENT</code>, verify the <code>code</code> CLI is present in PATH.</li>
+</ul>
+<h2 id="references-and-examples-in-this-repo">References and examples in this repo<a class="headerlink" href="#references-and-examples-in-this-repo" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>cypress/support/commands.ts</code> — <code>cy.rewriteHeaders()</code> and <code>cy.login()</code> implementation.</li>
+<li><code>cypress/support/e2e.ts</code> — global <code>beforeEach</code> that calls <code>cy.login()</code> by default.</li>
+<li><code>cypress/e2e/dashboard.cy.ts</code> — full fixture-based login example using <code>cy.origin()</code>.</li>
+</ul>
+<hr />
+<p>This file is part of the automated tests documentation. For general authentication flow (NextAuth + Keycloak) see <code>../login.md</code>.</p>
 
 
 

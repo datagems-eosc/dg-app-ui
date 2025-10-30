@@ -8,9 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://datagems-eosc.github.io/dg-app-ui/v0.0.1/logging/">
+        <link rel="canonical" href="https://datagems-eosc.github.io/dg-app-ui/v0.0.1/design-system/">
       
       
+        <link rel="prev" href="../onboarding/">
+      
+      
+        <link rel="next" href="../theming/">
       
       
       <link rel="icon" href="../images/favicon.jpg">
@@ -18,7 +22,7 @@
     
     
       
-        <title>Logging - DataGEMS Front-end Docs</title>
+        <title>Components - DataGEMS Front-end Docs</title>
       
     
     
@@ -63,11 +67,6 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
-      
-        
-        <a href="#logging" class="md-skip">
-          Skip to content
-        </a>
       
     </div>
     <div data-md-component="announce">
@@ -119,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Logging
+              Components
             
           </span>
         </div>
@@ -325,18 +324,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -352,7 +353,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Material
@@ -386,18 +387,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
         
           
           <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
@@ -413,7 +416,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             Design System
@@ -424,10 +427,17 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../design-system/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -438,6 +448,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -770,52 +781,6 @@
   
   
   
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#log-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      Log format
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#correlation-identifier" class="md-nav__link">
-    <span class="md-ellipsis">
-      Correlation Identifier
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting-logs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Troubleshooting Logs
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accounting-logs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Accounting Logs
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -834,122 +799,9 @@
   
 
 
-<h1 id="logging">Logging<a class="headerlink" href="#logging" title="Permanent link">&para;</a></h1>
-<p>All DataGEMS services are producing logs in a structured way, usilizing common log formats. The logs are aggregated to the <a href="https://datagems-eosc.github.io/dg-logging-service">Logging Service</a> where they can be queried and analyzed.</p>
-<h2 id="log-format">Log format<a class="headerlink" href="#log-format" title="Permanent link">&para;</a></h2>
-<p>The service utilized serilog for structured logging. The respective <a href="../configuration/">Configuration</a> section describes where this is configured. </p>
-<p>The log format utilized by is compact json providing structured presentation of the information presented. This is easily parsed and made available for further processing.</p>
-<h2 id="correlation-identifier">Correlation Identifier<a class="headerlink" href="#correlation-identifier" title="Permanent link">&para;</a></h2>
-<p>A key property in enabling troubleshooting in the micro-service DataGEMS architecture is the Correlation Identifier. </p>
-<p>In order to serve a user request, a number of services invocations may be chained. It will be useful to be able to track the chain of the request across all involved services. To achive this, we utilize a shared Correlation Id that is generated early in the call stack and propagated across all subsequent invocations.</p>
-<p>At the begining of the request stack, we check if there is a correlation id provided for the request in the request headers typically under a header named x-tracking-correlation. If not, we generate one for the request and any downstream calls. We also add it in the logging configuration so that all subsequent log messages include this correlation id.</p>
-<p>At the time of invoking another service, we include the correlation id header, along with the correlation id value so that the next service in line will use the same identifier.</p>
-<p>The respective <a href="../configuration/">Configuration</a> section describes where this behavior is configured. </p>
-<h2 id="troubleshooting-logs">Troubleshooting Logs<a class="headerlink" href="#troubleshooting-logs" title="Permanent link">&para;</a></h2>
-<p>Troubleshooting logs are produced by the service throughout the execution of caller requests. The messages are separated by the log level:</p>
-<ul>
-<li>Trace</li>
-<li>Debug</li>
-<li>Information</li>
-<li>Warning</li>
-<li>Error</li>
-<li>Critical</li>
-</ul>
-<p>Log entries may contain the following information (where available):</p>
-<ul>
-<li>Timestamp in UTC (ISO8601)</li>
-<li>Correlation Identifier</li>
-<li>Subject Id</li>
-<li>Client Id</li>
-<li>Message text</li>
-<li>Log Level</li>
-<li>... additional properties</li>
-</ul>
-<p>An prettified example of a log entry is:</p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;@t&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-08T11:13:14.8335054Z&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@mt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{\&quot;msg\&quot;:\&quot;building\&quot;,\&quot;m\&quot;:{\&quot;type\&quot;:\&quot;Collection\&quot;,\&quot;fields\&quot;:{\&quot;Fields\&quot;:[\&quot;id\&quot;,\&quot;code\&quot;,\&quot;name\&quot;,\&quot;datasetcount\&quot;]},\&quot;dataCount\&quot;:5}}&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@l&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Debug&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@tr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c3e3abe1e71da568c1dceb387b19a7ff&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@sp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5eee2c1f0d5309b2&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;SourceContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DataGEMS.Gateway.App.Model.Builder.CollectionBuilder&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ActionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;654d5a3b-9980-4684-a70a-4eedaada7b99&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ActionName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DataGEMS.Gateway.Api.Controllers.DatasetController.Query (DataGEMS.Gateway.Api)&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0J:00000001&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/dataset/query&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ConnectionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0J&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ClientId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Username&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the subject id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;DGCorrelationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the correlation id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MachineName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the machine name&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ProcessId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ThreadId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">19</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Application&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the application id&quot;</span>
-<span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;@t&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-08T11:13:14.8357014Z&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@mt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@r&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">            </span><span class="s2">&quot;38.1723&quot;</span>
-<span class="w">        </span><span class="p">],</span>
-<span class="w">        </span><span class="nt">&quot;@tr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;03cb7b58744f0d0e3ffff2e05ce85ed5&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;@sp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cfc6357aff7c7c7c&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestMethod&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/dataset/query&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;StatusCode&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">200</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Elapsed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">38.172305</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;SourceContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Serilog.AspNetCore.RequestLoggingMiddleware&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;DGCorrelationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the correlation id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0H:00000001&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ConnectionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0H&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;MachineName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the machine name&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ProcessId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;ThreadId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">19</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;Application&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the application id&quot;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="p">]</span>
-</code></pre></div>
-<h2 id="accounting-logs">Accounting Logs<a class="headerlink" href="#accounting-logs" title="Permanent link">&para;</a></h2>
-<p>The service generates accounting entries that utilize the same logging mechanism but are differentiated by troubleshooting logs through the "SourceContext" property which is set to "accounting".</p>
-<p>These accounting log entries are harvested and processed by the <a href="https://datagems-eosc.github.io/dg-accounting-service">Accounting Service</a></p>
-<p>A prettified example of an accounting log entry is:
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;@t&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-08T11:13:14.8354027Z&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;@mt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{\&quot;m\&quot;:{\&quot;timestamp\&quot;:\&quot;2025-08-08T11:13:14.8353562Z\&quot;,\&quot;serviceId\&quot;:\&quot;the service id\&quot;,\&quot;action\&quot;:\&quot;Query\&quot;,\&quot;resource\&quot;:\&quot;Dataset\&quot;,\&quot;userId\&quot;:\&quot;the subject id\&quot;,\&quot;value\&quot;:\&quot;1\&quot;,\&quot;measure\&quot;:\&quot;Unit\&quot;,\&quot;type\&quot;:\&quot;+\&quot;}}&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;@tr&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;03cb7b58744f0d0e3ffff2e05ce85ed5&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;@sp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cfc6357aff7c7c7c&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;SourceContext&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;accounting&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ActionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;654d5a3b-9980-4684-a70a-4eedaada7b99&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ActionName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DataGEMS.Gateway.Api.Controllers.DatasetController.Query (DataGEMS.Gateway.Api)&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;RequestId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0H:00000001&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;RequestPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/api/dataset/query&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ConnectionId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0HNEMDADKBH0H&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ClientId&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Username&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;UserId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the subject id&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;DGCorrelationId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the correlation id&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;MachineName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the machine name&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ProcessId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;ThreadId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">19</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">&quot;Application&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the application id&quot;</span>
-<span class="p">}</span>
-</code></pre></div></p>
-<p>The <em>@mt</em> property contains the information that is intended to be utilized by the accounting service to track this action:
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;m&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-08-08T11:13:14.8353562Z&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;serviceId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the service id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;action&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Query&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;resource&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Dataset&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;userId&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;the subject id&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;value&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;measure&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Unit&quot;</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;+&quot;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div></p>
+  <h1>Components</h1>
+
+
 
 
 
