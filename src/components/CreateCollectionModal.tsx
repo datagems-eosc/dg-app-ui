@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X, Plus, FileText, Loader2 } from "lucide-react";
-import { Dataset } from "@/data/mockDatasets";
+import { Dataset } from "@/data/dataset";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -232,21 +232,19 @@ export default function CreateCollectionModal({
           <div className="flex bg-slate-100 rounded-[40px] p-1">
             <button
               onClick={() => handleTabSwitch("create")}
-              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${
-                activeTab === "create"
+              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${activeTab === "create"
                   ? "bg-white text-gray-750"
                   : "text-gray-650 hover:text-gray-950 cursor-pointer"
-              }`}
+                }`}
             >
               Create New
             </button>
             <button
               onClick={() => handleTabSwitch("add")}
-              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${
-                activeTab === "add"
+              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${activeTab === "add"
                   ? "bg-white text-gray-750"
                   : "text-gray-650 hover:text-gray-950 cursor-pointer"
-              }`}
+                }`}
             >
               Add to existing
             </button>
@@ -319,9 +317,8 @@ export default function CreateCollectionModal({
                             onClick={() =>
                               handleCollectionToggle(collection.id)
                             }
-                            className={`px-4 py-2.75 flex items-start gap-2 rounded-lg transition-all duration-200 group cursor-pointer ${
-                              isSelected ? "bg-white" : "hover:bg-slate-100"
-                            }`}
+                            className={`px-4 py-2.75 flex items-start gap-2 rounded-lg transition-all duration-200 group cursor-pointer ${isSelected ? "bg-white" : "hover:bg-slate-100"
+                              }`}
                           >
                             <Checkbox
                               id={`collection-${collection.id}`}

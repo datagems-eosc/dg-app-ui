@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import AddDatasetsModal from "@/components/AddDatasetsModal";
-import { mockDatasets } from "@/data/mockDatasets";
+import { mockDatasets } from "@/data/dataset";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { getNavigationUrl } from "@/lib/utils";
 
@@ -116,7 +116,7 @@ export default function CustomCollectionPage() {
     if (!collection) return;
     setIsEditMode(true);
     setEditedName(collection.name);
-    setEditedDatasetIds([...collection.datasetIds]);
+    setEditedDatasetIds(collection.datasetIds ? [...collection.datasetIds] : []);
   };
 
   const handleCancelEdit = () => {
@@ -249,8 +249,10 @@ export default function CustomCollectionPage() {
           )}
           <p className="text-gray-600 mt-1">
             Custom collection • {displayDatasetIds.length} datasets
-            {"createdAt" in collection && collection.createdAt && (
+            {"createdAt" in collection && collection.createdAt ? (
               <> • Created {(collection.createdAt as Date).toLocaleDateString()}</>
+            ) : (
+              <> - </>
             )}
           </p>
         </div>

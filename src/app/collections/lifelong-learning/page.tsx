@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
-import { mockDatasets } from "@/data/mockDatasets";
+import { mockDatasets } from "@/data/dataset";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { getNavigationUrl } from "@/lib/utils";
 

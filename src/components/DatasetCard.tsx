@@ -304,7 +304,7 @@ export default function DatasetCard({
                   className="h-6 text-descriptions-12-medium tracking-1p flex-shrink-0"
                 >
                   <Check className="w-3 h-3 mr-1" />
-                  {dataset.maxSimilarity.toFixed(2)} % Match
+                  {dataset.maxSimilarity?.toFixed(2)} % Match
                 </Chip>
               )}
             </div>
@@ -319,7 +319,7 @@ export default function DatasetCard({
                 className="h-6 text-descriptions-12-medium tracking-1p"
               >
                 <Check className="w-3 h-3 mr-1" />
-                {dataset.maxSimilarity.toFixed(2)} % Match
+                {dataset.maxSimilarity?.toFixed(2)} % Match
               </Chip>
             )}
             {!isEditMode && (

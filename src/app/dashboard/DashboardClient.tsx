@@ -368,7 +368,7 @@ export default function DashboardClient() {
 
       // Find the "Favorites" collection
       const favoritesCollection = items.find(
-        (item) =>
+        (item: any) =>
           typeof item === "object" &&
           item !== null &&
           "name" in item &&
@@ -382,7 +382,7 @@ export default function DashboardClient() {
       console.log("Found favorites collection:", favoritesCollection);
       console.log(
         "All collection names:",
-        items.map((item) =>
+        items.map((item: any) =>
           typeof item === "object" && item !== null && "name" in item
             ? item.name
             : "unknown"
@@ -400,7 +400,7 @@ export default function DashboardClient() {
           : [];
 
         const datasetIds = userDatasetCollections
-          .map((item) => {
+          .map((item: any) => {
             if (
               typeof item === "object" &&
               item !== null &&
@@ -411,7 +411,7 @@ export default function DashboardClient() {
             }
             return null;
           })
-          .filter((id): id is string => id !== null);
+          .filter((id: any): id is string => id !== null);
 
         console.log("Setting favorite dataset IDs:", datasetIds);
         setFavoriteDatasetIds(datasetIds);
@@ -649,7 +649,7 @@ export default function DashboardClient() {
                 : [];
               if (
                 fields.some(
-                  (f) =>
+                  (f: any) =>
                     f.includes("meteorology") ||
                     f.includes("climate") ||
                     f.includes("weather")
@@ -658,19 +658,19 @@ export default function DashboardClient() {
                 category = "Weather";
               } else if (
                 fields.some(
-                  (f) => f.includes("language") || f.includes("linguistics")
+                  (f: any) => f.includes("language") || f.includes("linguistics")
                 )
               ) {
                 category = "Language";
               } else if (
                 fields.some(
-                  (f) => f.includes("education") || f.includes("learning")
+                  (f: any) => f.includes("education") || f.includes("learning")
                 )
               ) {
                 category = "Lifelong Learning";
               } else if (
                 fields.some(
-                  (f) => f.includes("mathematics") || f.includes("statistics")
+                  (f: any) => f.includes("mathematics") || f.includes("statistics")
                 )
               ) {
                 category = "Math";
@@ -770,7 +770,7 @@ export default function DashboardClient() {
                 }
                 return null;
               })
-              .filter((id): id is string => id !== null);
+              .filter((id: any): id is string => id !== null);
 
             if (datasetIds.length > 0) {
               try {
@@ -836,7 +836,7 @@ export default function DashboardClient() {
                     );
                     if (
                       fields.some(
-                        (field) =>
+                        (field: any) =>
                           field.includes("meteorology") ||
                           field.includes("climate") ||
                           field.includes("weather")
@@ -845,7 +845,7 @@ export default function DashboardClient() {
                       category = "Weather";
                     } else if (
                       fields.some(
-                        (field) =>
+                        (field: any) =>
                           field.includes("language") ||
                           field.includes("linguistics")
                       )
@@ -853,7 +853,7 @@ export default function DashboardClient() {
                       category = "Language";
                     } else if (
                       fields.some(
-                        (field) =>
+                        (field: any) =>
                           field.includes("education") ||
                           field.includes("learning")
                       )
@@ -861,7 +861,7 @@ export default function DashboardClient() {
                       category = "Lifelong Learning";
                     } else if (
                       fields.some(
-                        (field) =>
+                        (field: any) =>
                           field.includes("mathematics") ||
                           field.includes("statistics")
                       )

@@ -63,11 +63,11 @@ export const convertToBackendFilters = (
       const startYear = filters.creationYear.start;
       const endYear = filters.creationYear.end;
 
-      // Only include publishedRange if at least one year is provided
-      if (startYear || endYear) {
+      // Only include publishedRange if both years are provided
+      if (startYear && endYear) {
         return {
-          start: startYear ? convertYearToDate(startYear, false) : undefined,
-          end: endYear ? convertYearToDate(endYear, true) : undefined,
+          start: convertYearToDate(startYear, false),
+          end: convertYearToDate(endYear, true),
         };
       }
       return undefined;
