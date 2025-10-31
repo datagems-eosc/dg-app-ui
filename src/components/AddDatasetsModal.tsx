@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { Dataset } from "@/data/mockDatasets";
+import { Dataset } from "@/data/dataset";
 import Browse from "./Browse";
 
 interface AddDatasetsModalProps {

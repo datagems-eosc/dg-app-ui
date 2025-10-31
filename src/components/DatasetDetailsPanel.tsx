@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Dataset } from "@/data/mockDatasets";
+import type { Dataset } from "@/data/dataset";
 import { Chip } from "./ui/Chip";
 import {
   CalendarPlus,
@@ -52,11 +52,11 @@ export default function DatasetDetailsPanel({
   isVisible,
   onAddToCollection,
 }: DatasetDetailsPanelProps) {
-  const hasDatasetCollections = hasCollections(dataset);
+  const hasDatasetCollections = dataset && hasCollections(dataset);
 
   // Calculate display category/collection name with proper processing
   const displayCategory = (() => {
-    if (hasDatasetCollections && dataset.collections.length > 0) {
+    if (dataset && hasDatasetCollections && dataset.collections.length > 0) {
       // Use first collection name and remove " Collection" suffix like DatasetCard
       const firstCollection = dataset.collections[0];
       return typeof firstCollection.name === "string"
@@ -64,25 +64,25 @@ export default function DatasetDetailsPanel({
         : firstCollection.name;
     }
     // Fallback to category if no collections
-    return "category" in dataset && dataset.category ? dataset.category : "";
+    return dataset && "category" in dataset && dataset.category ? dataset.category : "";
   })();
   const permissions =
-    "permissions" in dataset ? dataset.permissions : undefined;
+    dataset && "permissions" in dataset ? dataset.permissions : undefined;
   const displayAccess =
-    "access" in dataset && dataset.access
+    dataset && "access" in dataset && dataset.access
       ? dataset.access
       : Array.isArray(permissions) && permissions.includes("browsedataset")
         ? "Open Access"
         : "Restricted";
   const displayUpdated =
-    "lastUpdated" in dataset && dataset.lastUpdated ? dataset.lastUpdated : "";
+    dataset && "lastUpdated" in dataset && dataset.lastUpdated ? dataset.lastUpdated : "";
   const sourceUrl =
-    "url" in dataset && typeof dataset.url === "string"
+    dataset && "url" in dataset && typeof dataset.url === "string"
       ? dataset.url
       : undefined;
-  const displaySize = "size" in dataset && dataset.size ? dataset.size : "";
+  const displaySize = dataset && "size" in dataset && dataset.size ? dataset.size : "";
   const displayKeywords = (() => {
-    if ("keywords" in dataset && dataset.keywords) {
+    if (dataset && "keywords" in dataset && dataset.keywords) {
       // Handle both array and single string cases
       if (Array.isArray(dataset.keywords)) {
         return dataset.keywords.length > 0 ? dataset.keywords : undefined;
@@ -93,7 +93,7 @@ export default function DatasetDetailsPanel({
     return undefined;
   })();
   const displayFieldsOfScience = (() => {
-    if ("fieldOfScience" in dataset && dataset.fieldOfScience) {
+    if (dataset && "fieldOfScience" in dataset && dataset.fieldOfScience) {
       // Handle both array and single string cases
       if (Array.isArray(dataset.fieldOfScience)) {
         return dataset.fieldOfScience.length > 0
@@ -112,7 +112,7 @@ export default function DatasetDetailsPanel({
       label: "Added",
       value:
         formatDate(
-          "datePublished" in dataset &&
+          dataset && "datePublished" in dataset &&
             typeof dataset.datePublished === "string"
             ? dataset.datePublished
             : undefined
@@ -136,7 +136,7 @@ export default function DatasetDetailsPanel({
       label: "File Type",
       value: (
         getMimeTypeName(
-          "mimeType" in dataset && typeof dataset.mimeType === "string"
+          dataset && "mimeType" in dataset && typeof dataset.mimeType === "string"
             ? dataset.mimeType
             : undefined
         ) || "-"

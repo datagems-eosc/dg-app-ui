@@ -62,7 +62,7 @@ export async function fetchFieldsOfScience(
     // Handle both formats: direct array or wrapped in hierarchy property
     const hierarchy = Array.isArray(data) ? data : data.hierarchy;
 
-    const categories = convertToHierarchicalCategories(hierarchy);
+    const categories = convertToHierarchicalCategories(hierarchy ?? []);
 
     // Cache the result
     fieldsOfScienceCache = categories;

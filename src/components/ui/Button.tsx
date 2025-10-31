@@ -39,6 +39,7 @@ export function Button({
   };
 
   const typography = {
+    icon: "",
     sm: "text-descriptions-12-medium",
     smPlus: "text-body-14-regular",
     md: "text-body-14-medium",

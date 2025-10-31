@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X, Plus, Folder } from "lucide-react";
-import { Dataset } from "@/data/mockDatasets";
+import { Dataset } from "@/data/dataset";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { Button } from "./ui/Button";
 import { useSession } from "next-auth/react";
@@ -137,11 +137,10 @@ export default function AddToCollectionModal({
                 {customCollections.map((collection) => (
                   <label
                     key={collection.id}
-                    className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedCollectionId === collection.id
+                    className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${selectedCollectionId === collection.id
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"

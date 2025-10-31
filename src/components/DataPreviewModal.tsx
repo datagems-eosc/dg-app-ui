@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { Dataset } from '@/data/mockDatasets';
+import { Dataset } from '@/data/dataset';
 
 interface DataPreviewModalProps {
   isVisible: boolean;
@@ -35,7 +35,7 @@ export default function DataPreviewModal({ isVisible, onClose, dataset }: DataPr
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      
+
       {/* Modal */}
       <div className="relative z-10 h-full flex items-start justify-center pt-8 pb-8">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-full overflow-hidden flex flex-col">
@@ -130,7 +130,7 @@ export default function DataPreviewModal({ isVisible, onClose, dataset }: DataPr
               <button className="px-4 py-2 text-descriptions-12-regular text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
                 Download Full Dataset
               </button>
-              <button 
+              <button
                 onClick={onClose}
                 className="px-4 py-2 text-descriptions-12-regular text-white bg-blue-600 rounded-md hover:bg-blue-700"
               >
