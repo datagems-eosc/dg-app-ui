@@ -1,4 +1,5 @@
 import { getApiBaseUrl, fetchWithAuth } from "./utils";
+import { ApiError } from "./apiErrors";
 
 /**
  * API Client for making direct calls to the DataGEMS API
@@ -477,8 +478,69 @@ class ApiClient {
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to save user settings");
+      throw new Error(errorData.error || ApiError.SAVE_USER_SETTINGS);
     }
+    return response.json();
+  }
+
+  async getPrincipalMe(token: string): Promise<any> {
+    const response = await this.makeRequest("/principal/me", { method: "GET" }, token);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || ApiError.FETCH_PRINCIPAL);
+    }
+
+    return response.json();
+  }
+
+  async getContextGrants(token: string): Promise<any> {
+    const response = await this.makeRequest(
+      "/principal/me/context-grants",
+      { method: "GET" },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || ApiError.FETCH_CONTEXT_GRANTS);
+    }
+
+    return response.json();
+  }
+
+  async getDatasetContextGrants(datasetId: string, token: string): Promise<any> {
+    const response = await this.makeRequest(
+      `/principal/me/context-grants/dataset?id=${encodeURIComponent(datasetId)}`,
+      { method: "GET" },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || ApiError.FETCH_DATASET_CONTEXT_GRANTS);
+    }
+
+    return response.json();
+  }
+
+  async getCollectionContextGrants(
+    collectionId: string,
+    token: string
+  ): Promise<any> {
+    const response = await this.makeRequest(
+      `/principal/me/context-grants/collection?id=${encodeURIComponent(collectionId)}`,
+      { method: "GET" },
+      token
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.error || ApiError.FETCH_COLLECTION_CONTEXT_GRANTS
+      );
+    }
+
     return response.json();
   }
 }
