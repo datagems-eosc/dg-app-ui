@@ -41,7 +41,7 @@ export default function PersonalSettingsSection({
               size="large"
               value={formData.name}
               onChange={(e) => updateFormData({ name: e.target.value })}
-              disabled={isLoading}
+              disabled={true}
             />
             <Input
               name="surname"
@@ -49,7 +49,7 @@ export default function PersonalSettingsSection({
               size="large"
               value={formData.surname}
               onChange={(e) => updateFormData({ surname: e.target.value })}
-              disabled={isLoading}
+              disabled={true}
             />
           </div>
         </div>
