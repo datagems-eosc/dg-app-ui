@@ -54,7 +54,7 @@ export default function UserProfile() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
-  const [personalSettings, setPersonalSettings] = useState<UserData>({ name: '', surname: '' });
+  const [personalSettings, setPersonalSettings] = useState<UserData>({ name: userData.name, surname: userData.surname });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newFeatures: { email: false, inApp: false },
@@ -70,6 +70,7 @@ export default function UserProfile() {
 
   useEffect(() => {
     setBackupUserData(userData);
+    setPersonalSettings({ name: userData.name, surname: userData.surname });
   }, [userData.name, userData.surname]);
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export default function UserProfile() {
 
     (async () => {
       try {
-        await Promise.all([loadNotificationSettings(token), loadPersonalSettings(token)]);
+        await loadNotificationSettings(token);
       } catch (err) {
         console.error("Failed loading user settings:", err);
       } finally {
@@ -91,25 +92,6 @@ export default function UserProfile() {
       cancelled = true;
     };
   }, [session]);
-
-  // Make loaders return promises
-  async function loadPersonalSettings(token: string) {
-    if (!token) return;
-    try {
-      const settings = await apiClient.getUserSettings("personalSettings", token);
-      if (!settings || settings.length === 0) return;
-      const lastIndex = settings.length - 1;
-      const data = JSON.parse(settings[lastIndex].value);
-      setPersonalSettings({
-        name: data.name,
-        surname: data.surname,
-        id: settings[lastIndex].id,
-        eTag: settings[lastIndex].eTag,
-      });
-    } catch (err) {
-      console.error("Failed to load userData", err);
-    }
-  }
 
   async function loadNotificationSettings(token: string) {
     if (!token) return;
@@ -129,12 +111,9 @@ export default function UserProfile() {
 
   const handleSaveChanges = () => {
     setIsLoading(true);
-    saveNotificationSettings();
-    savePersonalSettings();
-
-    updateUserData(
-      { name: personalSettings.name, surname: personalSettings.surname }
-    );
+    saveNotificationSettings()?.then(() => {
+      setIsLoading(false);
+    });
     setBackupUserData({ ...userData, name: personalSettings.name, surname: personalSettings.surname });
     setBackupNotifications(notifications);
     setShowToast(true);
@@ -154,23 +133,7 @@ export default function UserProfile() {
     if (id) payload.id = id;
     if (eTag) payload.eTag = eTag;
 
-    apiClient.saveUserSettings(payload, token);
-  }
-  const savePersonalSettings = () => {
-    const token = (session as any)?.accessToken;
-    if (!token) return;
-
-    // send notification settings with `value` not containing the `id` field
-    const { id, eTag, ...value } = personalSettings as any;
-    const payload: any = {
-      key: "personalSettings",
-      value,
-    };
-
-    if (id) payload.id = id;
-    if (eTag) payload.eTag = eTag;
-
-    apiClient.saveUserSettings(payload, token);
+    return apiClient.saveUserSettings(payload, token);
   }
 
   const handleCancel = () => {
