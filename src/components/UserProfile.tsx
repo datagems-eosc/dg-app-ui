@@ -58,9 +58,9 @@ export default function UserProfile() {
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newFeatures: { email: false, inApp: false },
-    datasetLibraryChanges: { email: true, inApp: false },
-    newDatasets: { email: false, inApp: true },
-    systemMaintenance: { email: false, inApp: true },
+    datasetLibraryChanges: { email: false, inApp: false },
+    newDatasets: { email: false, inApp: false },
+    systemMaintenance: { email: false, inApp: false },
     systemErrors: { email: false, inApp: false },
   });
 
@@ -96,13 +96,18 @@ export default function UserProfile() {
   async function loadNotificationSettings(token: string) {
     if (!token) return;
     try {
-      const settings = await apiClient.getUserSettings("notificationSettings", token);
-      if (!settings || settings.length === 0) return;
-      const lastIndex = settings.length - 1;
+      const notificationSettings = await apiClient.getUserSettings("notificationSettings", token);
+      if (!notificationSettings || notificationSettings.length === 0) return;
+      const lastIndex = notificationSettings.length - 1;
       setNotifications({
-        ...JSON.parse(settings[lastIndex].value),
-        id: settings[lastIndex].id,
-        eTag: settings[lastIndex].eTag,
+        ...JSON.parse(notificationSettings[lastIndex].value),
+        id: notificationSettings[lastIndex].id,
+        eTag: notificationSettings[lastIndex].eTag,
+      });
+      setBackupNotifications({
+        ...JSON.parse(notificationSettings[lastIndex].value),
+        id: notificationSettings[lastIndex].id,
+        eTag: notificationSettings[lastIndex].eTag,
       });
     } catch (err) {
       console.error("Failed to load notificationSettings", err);
@@ -111,7 +116,8 @@ export default function UserProfile() {
 
   const handleSaveChanges = () => {
     setIsLoading(true);
-    saveNotificationSettings()?.then(() => {
+    saveNotificationSettings()?.then(({ id, eTag }) => {
+      setNotifications((prev) => ({ ...prev, id, eTag }));
       setIsLoading(false);
     });
     setBackupUserData({ ...userData, name: personalSettings.name, surname: personalSettings.surname });
@@ -159,13 +165,14 @@ export default function UserProfile() {
   };
 
   const handleEnableAll = () => {
-    setNotifications({
+    setNotifications(prev => ({
+      ...prev,
       newFeatures: { email: true, inApp: true },
       datasetLibraryChanges: { email: true, inApp: true },
       newDatasets: { email: true, inApp: true },
       systemMaintenance: { email: true, inApp: true },
       systemErrors: { email: true, inApp: true },
-    });
+    }));
   };
 
   const hasUserDataChanges = useMemo(() => {
@@ -184,13 +191,14 @@ export default function UserProfile() {
   const hasChanges = hasUserDataChanges || hasNotificationChanges;
 
   const handleDisableAll = () => {
-    setNotifications({
+    setNotifications(prev => ({
+      ...prev,
       newFeatures: { email: false, inApp: false },
       datasetLibraryChanges: { email: false, inApp: false },
       newDatasets: { email: false, inApp: false },
       systemMaintenance: { email: false, inApp: false },
       systemErrors: { email: false, inApp: false },
-    });
+    }));
   };
 
   const updateNotification = (
@@ -211,6 +219,8 @@ export default function UserProfile() {
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        {hasChanges ? 'has unsaved changes' : 'has no changes'}
+        {isLoading ? 'is loading...' : 'is not loading'}
         <UserHeader
           isLoading={isLoading}
           userData={userData}
