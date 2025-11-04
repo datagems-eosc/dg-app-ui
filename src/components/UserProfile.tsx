@@ -58,9 +58,9 @@ export default function UserProfile() {
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newFeatures: { email: false, inApp: false },
-    datasetLibraryChanges: { email: true, inApp: false },
-    newDatasets: { email: false, inApp: true },
-    systemMaintenance: { email: false, inApp: true },
+    datasetLibraryChanges: { email: false, inApp: false },
+    newDatasets: { email: false, inApp: false },
+    systemMaintenance: { email: false, inApp: false },
     systemErrors: { email: false, inApp: false },
   });
 
@@ -96,19 +96,18 @@ export default function UserProfile() {
   async function loadNotificationSettings(token: string) {
     if (!token) return;
     try {
-      const settings = await apiClient.getUserSettings("notificationSettings", token);
-      if (!settings || settings.length === 0) return;
-      const lastIndex = settings.length - 1;
-      console.log("Loaded notification settings with id:", settings[lastIndex].id, "and eTag:", settings[lastIndex].eTag);
+      const notificationSettings = await apiClient.getUserSettings("notificationSettings", token);
+      if (!notificationSettings || notificationSettings.length === 0) return;
+      const lastIndex = notificationSettings.length - 1;
       setNotifications({
-        ...JSON.parse(settings[lastIndex].value),
-        id: settings[lastIndex].id,
-        eTag: settings[lastIndex].eTag,
+        ...JSON.parse(notificationSettings[lastIndex].value),
+        id: notificationSettings[lastIndex].id,
+        eTag: notificationSettings[lastIndex].eTag,
       });
       setBackupNotifications({
-        ...JSON.parse(settings[lastIndex].value),
-        id: settings[lastIndex].id,
-        eTag: settings[lastIndex].eTag,
+        ...JSON.parse(notificationSettings[lastIndex].value),
+        id: notificationSettings[lastIndex].id,
+        eTag: notificationSettings[lastIndex].eTag,
       });
     } catch (err) {
       console.error("Failed to load notificationSettings", err);
@@ -118,7 +117,6 @@ export default function UserProfile() {
   const handleSaveChanges = () => {
     setIsLoading(true);
     saveNotificationSettings()?.then(({ id, eTag }) => {
-      console.log("Saved notification settings with id:", id, "and eTag:", eTag);
       setNotifications((prev) => ({ ...prev, id, eTag }));
       setIsLoading(false);
     });
@@ -133,8 +131,6 @@ export default function UserProfile() {
 
     // send notification settings with `value` not containing the `id` field
     const { id, eTag, ...value } = notifications as any;
-    console.log("Saving notification settings with id:", id, "and eTag:", eTag);
-
     const payload: any = {
       key: "notificationSettings",
       value,
