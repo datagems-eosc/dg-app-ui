@@ -436,12 +436,16 @@ class ApiClient {
 
   async getUserSettings(settingsKey: string, token: string): Promise<any> {
     const returnFields = ["id", "key", "value", "eTag"];
-    const qs = returnFields && returnFields.length > 0
-      ? `?${returnFields.map((f) => `f=${encodeURIComponent(f)}`).join("&")}`
+    const fieldQs = returnFields && returnFields.length > 0
+      ? returnFields.map((f) => `f=${encodeURIComponent(f)}`).join("&")
       : "";
+    const pageQs = "page.Offset=0&page.Size=100";
+    const qsParts = [fieldQs, pageQs].filter(Boolean);
+    const qs = qsParts.length ? `?${qsParts.join("&")}` : "";
+    const endpoint = `/user/settings/key/${settingsKey}${qs}`;
 
     const response = await this.makeRequest(
-      `/user/settings/key/${settingsKey}${qs}`,
+      endpoint,
       {
         method: "GET",
       },
