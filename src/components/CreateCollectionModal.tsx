@@ -92,38 +92,27 @@ export default function CreateCollectionModal({
         token
       );
 
-      // Add to local state with the real ID from API response
       if (response.id) {
-        // Create a proper collection object with the real ID
-        const newCollection = {
-          id: response.id,
-          name: response.name || collectionName.trim(),
-          datasetIds: selectedDatasets,
-          createdAt: new Date(),
-          icon: "📁",
-        };
+        for (const datasetId of selectedDatasets) {
+          await apiClient.addDatasetToUserCollection(
+            response.id,
+            datasetId,
+            token
+          );
+        }
 
-        // Don't add to local state - let the API handle it
-        // The sidebar will show collections fetched from the API
-
-        // Refresh the sidebar to show the newly created collection
         await refreshExtraCollections();
-        // Also notify that collections have been modified to refresh sidebar
         notifyCollectionModified();
 
-        // Call the original callback if provided (for backward compatibility)
         if (onCreateCollection) {
           onCreateCollection(collectionName.trim());
         }
 
-        // Reset form
         setCollectionName("Custom Collection");
         setDescription("");
 
-        // Close modal
         onClose();
 
-        // Redirect to the dashboard with collection parameters
         router.push(`/dashboard?collection=${response.id}&isCustom=true`);
       }
     } catch (error) {
