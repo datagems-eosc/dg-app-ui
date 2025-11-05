@@ -6,8 +6,12 @@ const KeycloakProvider = require("next-auth/providers/keycloak").default;
 // Use environment variables consistently
 const appBaseUrl =
   process.env.NEXT_PUBLIC_APP_BASE_URL ?? "http://localhost:3000";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const fullBaseUrl = `${appBaseUrl}${basePath}`;
 
-// NEXTAUTH_URL is now set via environment variable in docker-compose.yml
+if (!process.env.NEXTAUTH_URL) {
+  process.env.NEXTAUTH_URL = fullBaseUrl;
+}
 
 const handler = NextAuth({
   providers: [
@@ -24,7 +28,7 @@ const handler = NextAuth({
         params: {
           scope: "openid dg-app-api offline_access",
           pkce: true,
-          redirect_uri: `${appBaseUrl}/api/auth/callback/keycloak`,
+          redirect_uri: `${fullBaseUrl}/api/auth/callback/keycloak`,
         },
       },
       checks: ["pkce"],
@@ -48,15 +52,22 @@ const handler = NextAuth({
     },
     async redirect({ url, baseUrl }) {
       console.log("Redirect callback:", { url, baseUrl });
-      // Handle base path in redirects
-      if (url.startsWith(baseUrl)) {
+      const basePathForRedirect = process.env.NEXT_PUBLIC_BASE_PATH || "";
+      const fullBaseUrlForRedirect = `${baseUrl}${basePathForRedirect}`;
+      
+      if (url.startsWith(fullBaseUrlForRedirect)) {
         return url;
       }
-      // Allows relative callback URLs
-      else if (url.startsWith("/")) {
-        return `${baseUrl}${url}`;
+      
+      if (url.startsWith("/")) {
+        return `${fullBaseUrlForRedirect}${url}`;
       }
-      return baseUrl;
+      
+      if (url.startsWith(baseUrl)) {
+        return url.replace(baseUrl, fullBaseUrlForRedirect);
+      }
+      
+      return fullBaseUrlForRedirect;
     },
     async session({ session, token, user }) {
       console.log("Session callback:", { session, token, user });
