@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import DashboardLayout from "@/components/DashboardLayout";
+import { useEffect, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
-import { mockDatasets } from "@/data/dataset";
+import DashboardLayout from "@/components/DashboardLayout";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { mockDatasets } from "@/data/dataset";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function LifelongLearningPage() {
@@ -20,7 +20,7 @@ export default function LifelongLearningPage() {
 
   // Filter datasets to show only Lifelong Learning category
   const lifelongLearningDatasets = mockDatasets.filter(
-    (dataset) => dataset.category === "Lifelong Learning"
+    (dataset) => dataset.category === "Lifelong Learning",
   );
 
   // Load selected datasets from localStorage on mount
@@ -44,7 +44,7 @@ export default function LifelongLearningPage() {
     if (!isLoaded) return;
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
   }, [selectedDatasets, isLoaded]);
 
@@ -68,7 +68,7 @@ export default function LifelongLearningPage() {
     setShowCreateCollectionModal(true);
   };
 
-  const handleCreateCollection = (name: string) => {
+  const handleCreateCollection = (_name: string) => {
     // Collections are now created via API in the CreateCollectionModal
     // This function is kept for backward compatibility but doesn't do anything
     console.log("Collection creation handled by CreateCollectionModal");

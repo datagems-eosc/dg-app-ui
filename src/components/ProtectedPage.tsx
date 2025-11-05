@@ -1,8 +1,8 @@
 "use client";
 
-import { useSession, signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
+import type React from "react";
 import { useEffect } from "react";
-import React from "react";
 
 export default function ProtectedPage({
   children,
@@ -20,7 +20,7 @@ export default function ProtectedPage({
       });
       signIn(); // Redirects to login
     }
-  }, [status]);
+  }, [status, session]);
 
   if (status === "loading") {
     return (

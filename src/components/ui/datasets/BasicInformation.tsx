@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Input } from "../Input";
 import { Textarea } from "../Textarea";
 import { KeywordInput } from "./KeywordInput";

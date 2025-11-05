@@ -1,24 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import {
-  Star,
-  X,
-  PackagePlus,
-  FileCheck,
-  HardDrive,
   CalendarCheck2,
+  Check,
   ChevronDown,
   ChevronUp,
-  Check,
+  FileCheck,
+  HardDrive,
+  PackagePlus,
+  Star,
+  X,
 } from "lucide-react";
-import { Dataset, DatasetPlus, DatasetWithCollections } from "@/data/dataset";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { useDataset } from "@/contexts/DatasetContext";
-import { Button } from "./ui/Button";
-import FormattedText from "./ui/FormattedText";
-import { Chip } from "./ui/Chip";
-import { SmartSearchMatchItem } from "./ui/SmartSearchMatchItem";
+import type {
+  Dataset,
+  DatasetPlus,
+  DatasetWithCollections,
+} from "@/data/dataset";
 import { formatFileSize } from "@/lib/utils";
+import { Button } from "./ui/Button";
+import { Chip } from "./ui/Chip";
+import FormattedText from "./ui/FormattedText";
+import { SmartSearchMatchItem } from "./ui/SmartSearchMatchItem";
 
 interface Collection {
   id?: string;
@@ -32,13 +37,13 @@ interface SmartSearchMatch {
 }
 
 function hasCollections(
-  dataset: Dataset | (Dataset & { collections?: unknown })
+  dataset: Dataset | (Dataset & { collections?: unknown }),
 ): dataset is Dataset & { collections: Collection[] } {
   const maybeCollections = (dataset as { collections?: unknown }).collections;
   return (
     Array.isArray(maybeCollections) &&
     maybeCollections.every(
-      (col: unknown) => col && typeof col === "object" && "name" in col
+      (col: unknown) => col && typeof col === "object" && "name" in col,
     )
   );
 }
@@ -66,7 +71,7 @@ function formatDatePublished(datePublished?: string): string {
   if (!datePublished) return "N/A";
   try {
     const date = new Date(datePublished);
-    if (isNaN(date.getTime())) return "N/A";
+    if (Number.isNaN(date.getTime())) return "N/A";
     return date.toISOString().split("T")[0]; // Returns YYYY-MM-DD format
   } catch {
     return "N/A";
@@ -242,15 +247,17 @@ export default function DatasetCard({
 
   return (
     <div
-      className={`rounded-2xl border-1 hover:shadow-md transition-all cursor-pointer relative p-5 h-fit ${isSmartSearchEnabled && !isListMode && hasSidePanelOpen
-        ? "min-h-[280px]"
-        : ""
-        } ${isSelected
+      className={`rounded-2xl border-1 hover:shadow-md transition-all cursor-pointer relative p-5 h-fit ${
+        isSmartSearchEnabled && !isListMode && hasSidePanelOpen
+          ? "min-h-[280px]"
+          : ""
+      } ${
+        isSelected
           ? "border-blue-650 shadow-s2 bg-blue-75"
           : isMultiSelected
             ? "border-blue-650 shadow-s2 bg-blue-75"
             : "border-slate-200 bg-white"
-        }`}
+      }`}
       onClick={onClick}
     >
       {/* Edit mode remove button */}
@@ -263,40 +270,42 @@ export default function DatasetCard({
           <X className="w-4 h-4 text-icon" />
         </button>
       )}
-      <>
-        {/* Header with title and star */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h2 className="text-H6-18-semibold text-slate-850 mb-3 line-clamp-1">
-              {getDatasetName(dataset)}
-            </h2>
-            <div className="flex items-center gap-1 flex-wrap">
-              {hasCollections(dataset) && dataset.collections.length > 0 ? (
-                dataset.collections.map((col) => (
-                  <Chip
-                    key={col.id || col.name}
-                    color="info"
-                    variant="outline"
-                    size="sm"
-                  >
-                    {typeof col.name === "string"
-                      ? col.name.replace(/ Collection$/i, "")
-                      : col.name}
-                  </Chip>
-                ))
-              ) : (
-                <Chip color="info" variant="outline" size="sm">
-                  {dataset.category}
+
+      {/* Header with title and star */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <h2 className="text-H6-18-semibold text-slate-850 mb-3 line-clamp-1">
+            {getDatasetName(dataset)}
+          </h2>
+          <div className="flex items-center gap-1 flex-wrap">
+            {hasCollections(dataset) && dataset.collections.length > 0 ? (
+              dataset.collections.map((col) => (
+                <Chip
+                  key={col.id || col.name}
+                  color="info"
+                  variant="outline"
+                  size="sm"
+                >
+                  {typeof col.name === "string"
+                    ? col.name.replace(/ Collection$/i, "")
+                    : col.name}
                 </Chip>
-              )}
-              <Chip
-                color={dataset.access === "Open Access" ? "success" : "warning"}
-                size="sm"
-              >
-                {dataset.access}
+              ))
+            ) : (
+              <Chip color="info" variant="outline" size="sm">
+                {dataset.category}
               </Chip>
-              {/* Smart search match chip - only show in chips row for grid layout */}
-              {isSmartSearchEnabled && 'maxSimilarity' in dataset && !isListMode && (
+            )}
+            <Chip
+              color={dataset.access === "Open Access" ? "success" : "warning"}
+              size="sm"
+            >
+              {dataset.access}
+            </Chip>
+            {/* Smart search match chip - only show in chips row for grid layout */}
+            {isSmartSearchEnabled &&
+              "maxSimilarity" in dataset &&
+              !isListMode && (
                 <Chip
                   color="smart-search"
                   variant="outline"
@@ -307,140 +316,141 @@ export default function DatasetCard({
                   {dataset.maxSimilarity?.toFixed(2)} % Match
                 </Chip>
               )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Smart search match chip - show on right side for list layout */}
-            {isSmartSearchEnabled && 'maxSimilarity' in dataset && isListMode && (
-              <Chip
-                color="smart-search"
-                variant="outline"
-                size="sm"
-                className="h-6 text-descriptions-12-medium tracking-1p"
-              >
-                <Check className="w-3 h-3 mr-1" />
-                {dataset.maxSimilarity?.toFixed(2)} % Match
-              </Chip>
-            )}
-            {!isEditMode && (
-              <button
-                onClick={handleStarClick}
-                disabled={isFavoriteLoading}
-                className={`flex-shrink-0 p-1.5 rounded transition-colors ${isFavoriteLoading
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-slate-75"
-                  }`}
-              >
-                {isFavoriteLoading ? (
-                  <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-                ) : (
-                  <Star
-                    className={`w-5 h-5 ${isStarred ? "fill-amber-200 text-amber-400" : "text-icon"
-                      }`}
-                  />
-                )}
-              </button>
-            )}
-            {/* Expand arrow for smart search */}
-            {isSmartSearchEnabled && (
-              <button
-                onClick={handleExpandClick}
-                className="flex-shrink-0 p-1.5 rounded transition-colors hover:bg-slate-75 cursor-pointer"
-              >
-                {isExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-icon" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-icon" />
-                )}
-              </button>
-            )}
           </div>
         </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Smart search match chip - show on right side for list layout */}
+          {isSmartSearchEnabled && "maxSimilarity" in dataset && isListMode && (
+            <Chip
+              color="smart-search"
+              variant="outline"
+              size="sm"
+              className="h-6 text-descriptions-12-medium tracking-1p"
+            >
+              <Check className="w-3 h-3 mr-1" />
+              {dataset.maxSimilarity?.toFixed(2)} % Match
+            </Chip>
+          )}
+          {!isEditMode && (
+            <button
+              onClick={handleStarClick}
+              disabled={isFavoriteLoading}
+              className={`flex-shrink-0 p-1.5 rounded transition-colors ${
+                isFavoriteLoading
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-slate-75"
+              }`}
+            >
+              {isFavoriteLoading ? (
+                <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+              ) : (
+                <Star
+                  className={`w-5 h-5 ${
+                    isStarred ? "fill-amber-200 text-amber-400" : "text-icon"
+                  }`}
+                />
+              )}
+            </button>
+          )}
+          {/* Expand arrow for smart search */}
+          {isSmartSearchEnabled && (
+            <button
+              onClick={handleExpandClick}
+              className="flex-shrink-0 p-1.5 rounded transition-colors hover:bg-slate-75 cursor-pointer"
+            >
+              {isExpanded ? (
+                <ChevronUp className="w-4 h-4 text-icon" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-icon" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
 
-        {/* Description */}
-        <FormattedText
-          as="p"
-          className="text-body-14-regular text-gray-650 mb-4 line-clamp-2 break-words"
-          text={dataset.description}
-        />
+      {/* Description */}
+      <FormattedText
+        as="p"
+        className="text-body-14-regular text-gray-650 mb-4 line-clamp-2 break-words"
+        text={dataset.description}
+      />
 
-        {/* Smart search expanded content */}
-        {isSmartSearchEnabled && isExpanded && (
-          <div className="mb-4">
-            {smartSearchMatches.map((match, index) => (
-              <SmartSearchMatchItem
-                key={match.number}
-                number={match.number}
-                description={match.description}
-                matchPercentage={match.matchPercentage}
-                isLast={index === smartSearchMatches.length - 1}
-              />
-            ))}
+      {/* Smart search expanded content */}
+      {isSmartSearchEnabled && isExpanded && (
+        <div className="mb-4">
+          {smartSearchMatches.map((match, index) => (
+            <SmartSearchMatchItem
+              key={match.number}
+              number={match.number}
+              description={match.description}
+              matchPercentage={match.matchPercentage}
+              isLast={index === smartSearchMatches.length - 1}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Footer with action buttons and metadata */}
+      <div
+        className={
+          shouldStackFooter
+            ? "flex flex-col gap-2"
+            : "flex flex-col-reverse sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-2"
+        }
+      >
+        {/* Action buttons */}
+        {!isEditMode && (
+          <div className="flex items-center gap-2">
+            {showSelectButton && onSelect && (
+              <Button variant="outline" size="sm" onClick={handleSelectClick}>
+                {isMultiSelected ? "Deselect" : "Select"}
+              </Button>
+            )}
+            {showAddButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddToCollectionClick}
+              >
+                <PackagePlus className="w-4 h-4 mr-1 text-icon" />
+                Add
+              </Button>
+            )}
           </div>
         )}
 
-        {/* Footer with action buttons and metadata */}
+        {/* Metadata */}
         <div
           className={
             shouldStackFooter
-              ? "flex flex-col gap-2"
-              : "flex flex-col-reverse sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-2"
+              ? "flex items-center text-descriptions-12-regular text-gray-500 mt-2 justify-end"
+              : "flex items-center justify-between text-descriptions-12-regular text-gray-500"
           }
         >
-          {/* Action buttons */}
-          {!isEditMode && (
+          <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              {showSelectButton && onSelect && (
-                <Button variant="outline" size="sm" onClick={handleSelectClick}>
-                  {isMultiSelected ? "Deselect" : "Select"}
-                </Button>
-              )}
-              {showAddButton && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddToCollectionClick}
-                >
-                  <PackagePlus className="w-4 h-4 mr-1 text-icon" />
-                  Add
-                </Button>
-              )}
+              <FileCheck className="w-3 h-3 text-icon" />
+              <span className="text-descriptions-12-regular text-gray-650 tracking-1p uppercase">
+                {getMimeTypeName(dataset.mimeType)}
+              </span>
             </div>
-          )}
-
-          {/* Metadata */}
-          <div
-            className={
-              shouldStackFooter
-                ? "flex items-center text-descriptions-12-regular text-gray-500 mt-2 justify-end"
-                : "flex items-center justify-between text-descriptions-12-regular text-gray-500"
-            }
-          >
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <HardDrive className="w-3 h-3 text-icon" />
+              <span className="text-descriptions-12-regular text-gray-650 tracking-1p">
+                {formatFileSize(dataset.size)}
+              </span>
+            </div>
+            {isListMode && (
               <div className="flex items-center gap-2">
-                <FileCheck className="w-3 h-3 text-icon" />
-                <span className="text-descriptions-12-regular text-gray-650 tracking-1p uppercase">
-                  {getMimeTypeName(dataset.mimeType)}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <HardDrive className="w-3 h-3 text-icon" />
+                <CalendarCheck2 className="w-3 h-3 text-icon" />
                 <span className="text-descriptions-12-regular text-gray-650 tracking-1p">
-                  {formatFileSize(dataset.size)}
+                  {formatDatePublished(dataset.datePublished)}
                 </span>
               </div>
-              {isListMode && (
-                <div className="flex items-center gap-2">
-                  <CalendarCheck2 className="w-3 h-3 text-icon" />
-                  <span className="text-descriptions-12-regular text-gray-650 tracking-1p">
-                    {formatDatePublished(dataset.datePublished)}
-                  </span>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
-      </>
+      </div>
     </div>
   );
 }

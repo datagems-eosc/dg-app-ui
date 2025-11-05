@@ -1,16 +1,16 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Toast } from "./ui/Toast";
-import { useUser } from "@/contexts/UserContext";
-import UserHeader from "@/components/ui/user/UserHeader";
-import TabsHeader from "@/components/ui/user/TabsHeader";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useEffect, useMemo, useState } from "react";
 import PersonalSettingsSection from "@/components/ui/user/PersonalSettingsSection";
 import PreferencesSection from "@/components/ui/user/PreferencesSection";
+import TabsHeader from "@/components/ui/user/TabsHeader";
+import UserHeader from "@/components/ui/user/UserHeader";
 import { APP_ROUTES } from "@/config/appUrls";
-import { useRouter } from "next/navigation";
+import { useUser } from "@/contexts/UserContext";
 import { apiClient } from "@/lib/apiClient";
-import { useSession } from "next-auth/react";
+import { Toast } from "./ui/Toast";
 
 interface UserData {
   id?: string;
@@ -50,11 +50,14 @@ export default function UserProfile() {
   const { userData, updateUserData, setProfilePicture } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"personal" | "preferences">(
-    "personal"
+    "personal",
   );
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
-  const [personalSettings, setPersonalSettings] = useState<UserData>({ name: userData.name, surname: userData.surname });
+  const [personalSettings, setPersonalSettings] = useState<UserData>({
+    name: userData.name,
+    surname: userData.surname,
+  });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newFeatures: { email: false, inApp: false },
@@ -71,7 +74,7 @@ export default function UserProfile() {
   useEffect(() => {
     setBackupUserData(userData);
     setPersonalSettings({ name: userData.name, surname: userData.surname });
-  }, [userData.name, userData.surname]);
+  }, [userData.name, userData.surname, userData]);
 
   useEffect(() => {
     const token = (session as any)?.accessToken;
@@ -91,12 +94,15 @@ export default function UserProfile() {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session, loadNotificationSettings]);
 
   async function loadNotificationSettings(token: string) {
     if (!token) return;
     try {
-      const notificationSettings = await apiClient.getUserSettings("notificationSettings", token);
+      const notificationSettings = await apiClient.getUserSettings(
+        "notificationSettings",
+        token,
+      );
       if (!notificationSettings || notificationSettings.length === 0) return;
       const lastIndex = notificationSettings.length - 1;
       setNotifications({
@@ -120,7 +126,11 @@ export default function UserProfile() {
       setNotifications((prev) => ({ ...prev, id, eTag }));
       setIsLoading(false);
     });
-    setBackupUserData({ ...userData, name: personalSettings.name, surname: personalSettings.surname });
+    setBackupUserData({
+      ...userData,
+      name: personalSettings.name,
+      surname: personalSettings.surname,
+    });
     setBackupNotifications(notifications);
     setShowToast(true);
   };
@@ -140,7 +150,7 @@ export default function UserProfile() {
     if (eTag) payload.eTag = eTag;
 
     return apiClient.saveUserSettings(payload, token);
-  }
+  };
 
   const handleCancel = () => {
     router.push(APP_ROUTES.DASHBOARD);
@@ -165,7 +175,7 @@ export default function UserProfile() {
   };
 
   const handleEnableAll = () => {
-    setNotifications(prev => ({
+    setNotifications((prev) => ({
       ...prev,
       newFeatures: { email: true, inApp: true },
       datasetLibraryChanges: { email: true, inApp: true },
@@ -191,7 +201,7 @@ export default function UserProfile() {
   const hasChanges = hasUserDataChanges || hasNotificationChanges;
 
   const handleDisableAll = () => {
-    setNotifications(prev => ({
+    setNotifications((prev) => ({
       ...prev,
       newFeatures: { email: false, inApp: false },
       datasetLibraryChanges: { email: false, inApp: false },
@@ -204,9 +214,9 @@ export default function UserProfile() {
   const updateNotification = (
     key: keyof NotificationSettings,
     type: "email" | "inApp",
-    value: boolean
+    value: boolean,
   ) => {
-    if (key === 'id' || key === 'eTag') return;
+    if (key === "id" || key === "eTag") return;
     setNotifications((prev) => ({
       ...prev,
       [key]: {
@@ -219,8 +229,8 @@ export default function UserProfile() {
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        {hasChanges ? 'has unsaved changes' : 'has no changes'}
-        {isLoading ? 'is loading...' : 'is not loading'}
+        {hasChanges ? "has unsaved changes" : "has no changes"}
+        {isLoading ? "is loading..." : "is not loading"}
         <UserHeader
           isLoading={isLoading}
           userData={userData}
@@ -243,7 +253,9 @@ export default function UserProfile() {
                 <PersonalSettingsSection
                   isLoading={isLoading}
                   formData={personalSettings}
-                  updateFormData={(data) => setPersonalSettings((prev) => ({ ...prev, ...data }))}
+                  updateFormData={(data) =>
+                    setPersonalSettings((prev) => ({ ...prev, ...data }))
+                  }
                 />
               )}
 

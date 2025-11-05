@@ -1,10 +1,9 @@
 "use client";
 
-import React from "react";
+import { AIMessageContent } from "@/components/ui/chat/AIMessageContent";
 import { AIMessageHeader } from "@/components/ui/chat/AIMessageHeader";
 import { TemperatureMap } from "@/components/ui/chat/TemperatureMap";
-import { AIMessageContent } from "@/components/ui/chat/AIMessageContent";
-import { Message } from "@/types/chat";
+import type { Message } from "@/types/chat";
 
 interface AIMessageProps {
   message: Message;

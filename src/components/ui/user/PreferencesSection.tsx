@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 
@@ -26,7 +25,7 @@ interface Props {
   updateNotification: (
     category: NotificationCategory,
     type: "email" | "inApp",
-    value: boolean
+    value: boolean,
   ) => void;
   isLoading: boolean;
 }
@@ -36,33 +35,33 @@ const NOTIFICATION_ITEMS: Array<{
   title: string;
   description: string;
 }> = [
-    {
-      key: "newFeatures",
-      title: "New Features",
-      description: "Get notified when new features are added to the platform",
-    },
-    {
-      key: "datasetLibraryChanges",
-      title: "Dataset Library Changes",
-      description: "Receive updates about changes to the datasets library",
-    },
-    {
-      key: "newDatasets",
-      title: "New Datasets",
-      description: "Be informed when new datasets are added to the system",
-    },
-    {
-      key: "systemMaintenance",
-      title: "System Maintenance",
-      description: "Get notified about planned system maintenance",
-    },
-    {
-      key: "systemErrors",
-      title: "System Errors",
-      description:
-        "Receive alerts about errors affecting your data or collections",
-    },
-  ];
+  {
+    key: "newFeatures",
+    title: "New Features",
+    description: "Get notified when new features are added to the platform",
+  },
+  {
+    key: "datasetLibraryChanges",
+    title: "Dataset Library Changes",
+    description: "Receive updates about changes to the datasets library",
+  },
+  {
+    key: "newDatasets",
+    title: "New Datasets",
+    description: "Be informed when new datasets are added to the system",
+  },
+  {
+    key: "systemMaintenance",
+    title: "System Maintenance",
+    description: "Get notified about planned system maintenance",
+  },
+  {
+    key: "systemErrors",
+    title: "System Errors",
+    description:
+      "Receive alerts about errors affecting your data or collections",
+  },
+];
 
 export default function PreferencesSection({
   notifications,

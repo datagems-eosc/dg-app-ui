@@ -1,15 +1,16 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
 import { useSession } from "next-auth/react";
+import type React from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { apiClient } from "@/lib/apiClient";
-import { ApiCollection } from "@/types/collection";
+import type { ApiCollection } from "@/types/collection";
 
 interface CollectionsContextType {
   collections: ApiCollection[]; // Combined collections for backward compatibility
@@ -27,7 +28,7 @@ interface CollectionsContextType {
 }
 
 const CollectionsContext = createContext<CollectionsContextType | undefined>(
-  undefined
+  undefined,
 );
 
 const COLLECTIONS_API_PAYLOAD = {
@@ -73,7 +74,7 @@ export function CollectionsProvider({
       fetchApiCollections();
       fetchExtraCollections();
     }
-  }, [session]);
+  }, [session, fetchApiCollections, fetchExtraCollections]);
 
   const fetchApiCollections = async () => {
     setIsLoadingApiCollections(true);
@@ -84,7 +85,7 @@ export function CollectionsProvider({
       }
       const data = await apiClient.queryCollections(
         COLLECTIONS_API_PAYLOAD,
-        token
+        token,
       );
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
@@ -146,7 +147,7 @@ export function CollectionsProvider({
       };
       const data = await apiClient.queryUserCollections(
         extraCollectionsPayload,
-        token
+        token,
       );
       console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];
@@ -161,15 +162,15 @@ export function CollectionsProvider({
 
   const refreshApiCollections = useCallback(async () => {
     await fetchApiCollections();
-  }, [session]);
+  }, [fetchApiCollections]);
 
   const refreshExtraCollections = useCallback(async () => {
     await fetchExtraCollections();
-  }, [session]);
+  }, [fetchExtraCollections]);
 
   const refreshAllCollections = useCallback(async () => {
     await Promise.all([fetchApiCollections(), fetchExtraCollections()]);
-  }, [session]);
+  }, [fetchApiCollections, fetchExtraCollections]);
 
   const notifyCollectionModified = useCallback(() => {
     // This function can be called by components to notify that collections have been modified
@@ -188,9 +189,9 @@ export function CollectionsProvider({
         extraCollections,
         isLoadingApiCollections,
         isLoadingExtraCollections,
-        addCollection: async (name, datasetIds) => {},
-        updateCollection: async (id, updates) => {},
-        removeCollection: async (id) => {},
+        addCollection: async (_name, _datasetIds) => {},
+        updateCollection: async (_id, _updates) => {},
+        removeCollection: async (_id) => {},
         refreshApiCollections,
         refreshExtraCollections,
         refreshAllCollections,

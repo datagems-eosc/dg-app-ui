@@ -37,10 +37,8 @@ export function decodeJWT(token: string): unknown {
     const jsonPayload = decodeURIComponent(
       atob(base64)
         .split("")
-        .map(function (c) {
-          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-        })
-        .join("")
+        .map((c) => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`)
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
@@ -53,7 +51,7 @@ export function decodeJWT(token: string): unknown {
  * Extracts user information from JWT token
  */
 export function getUserFromToken(
-  token: string
+  token: string,
 ): { name: string; email: string; preferred_username?: string } | null {
   const decoded = decodeJWT(token);
   if (!decoded || typeof decoded !== "object" || decoded === null) return null;
@@ -90,7 +88,7 @@ export function getApiBaseUrl(): string {
  */
 export async function fetchWithAuth(
   input: RequestInfo,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<Response> {
   const response = await fetch(input, init);
   if (response.status === 401 && typeof window !== "undefined") {
@@ -121,9 +119,9 @@ export function mbToBytes(mb: number): number {
  * Format file size in human readable format
  */
 export function formatFileSize(bytes: number | string): string {
-  const size = typeof bytes === "string" ? parseInt(bytes, 10) : bytes;
+  const size = typeof bytes === "string" ? Number.parseInt(bytes, 10) : bytes;
 
-  if (isNaN(size)) return "N/A";
+  if (Number.isNaN(size)) return "N/A";
 
   const units = ["B", "KB", "MB", "GB", "TB"];
   let unitIndex = 0;
@@ -147,7 +145,7 @@ export function parseSizeString(sizeStr: string): number {
   const match = sizeStr.match(/^(\d+\.?\d*)\s*(B|KB|MB|GB|TB)?$/i);
   if (!match) return 0;
 
-  const value = parseFloat(match[1]);
+  const value = Number.parseFloat(match[1]);
   const unit = (match[2] || "B").toUpperCase();
 
   const multipliers = {
@@ -171,12 +169,12 @@ export function formatRelativeTime(date: string | Date): string {
   const targetDate = typeof date === "string" ? new Date(date) : date;
 
   // Check if the date is valid
-  if (isNaN(targetDate.getTime())) {
+  if (Number.isNaN(targetDate.getTime())) {
     return "Invalid date";
   }
 
   const diffInSeconds = Math.floor(
-    (now.getTime() - targetDate.getTime()) / 1000
+    (now.getTime() - targetDate.getTime()) / 1000,
   );
 
   // Just now (less than 1 minute)
@@ -211,7 +209,7 @@ export function formatDate(dateString?: string): string {
   if (!dateString) return "-";
   try {
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "-";
+    if (Number.isNaN(date.getTime())) return "-";
     return date.toISOString().split("T")[0]; // Returns YYYY-MM-DD format
   } catch {
     return "-";

@@ -28,8 +28,7 @@ export type DatasetPlus = Dataset & {
 };
 
 export type DatasetWithCollections = Dataset & { collections?: Collection[] };
-export type Collection = { id: string; name: string, code: string };
-
+export type Collection = { id: string; name: string; code: string };
 
 export const mockDatasets: Dataset[] = [
   {

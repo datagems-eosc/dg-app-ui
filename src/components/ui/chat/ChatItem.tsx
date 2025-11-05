@@ -1,18 +1,19 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import Link from "next/link";
 import {
   MessageCircleMore,
   MoreVertical,
   TextCursorInput,
   Trash,
 } from "lucide-react";
-import { formatRelativeTime } from "@/lib/utils";
-import { Tooltip } from "../Tooltip";
-import { Toast } from "../Toast";
-import { apiClient } from "@/lib/apiClient";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
+import { apiClient } from "@/lib/apiClient";
+import { formatRelativeTime } from "@/lib/utils";
+import { Toast } from "../Toast";
+import { Tooltip } from "../Tooltip";
 
 interface ConversationListItem {
   id: string;
@@ -27,11 +28,11 @@ interface ChatItemProps {
   onConversationUpdate?: (
     id: string,
     newName: string,
-    newETag?: string
+    newETag?: string,
   ) => void;
   onDeleteConversation?: (
     conversationId: string,
-    conversationName: string
+    conversationName: string,
   ) => void;
 }
 
@@ -117,7 +118,7 @@ export function ChatItem({
           name: trimmedName,
           eTag: conversation.eTag,
         },
-        token
+        token,
       );
       // Update the conversation with new name and eTag
       onConversationUpdate?.(conversation.id, trimmedName, result.eTag);

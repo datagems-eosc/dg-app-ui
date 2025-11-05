@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
 import { User } from "lucide-react";
+import type React from "react";
 
 interface AvatarProps {
   src?: string | null;
@@ -55,8 +55,7 @@ function getAvatarColor(name?: string, email?: string): string {
   ];
 
   // Use email as the primary stable key so color doesn't change when editing name
-  const str =
-    (email && email.trim()) || (name && name.trim()) || "Marry Johnson";
+  const str = email?.trim() || name?.trim() || "Marry Johnson";
   const hash = str.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 }
@@ -84,7 +83,7 @@ export function Avatar({
   }
 
   // Only show image if we have a valid data URL (starts with data:image)
-  const hasValidImage = src && src.startsWith("data:image");
+  const hasValidImage = src?.startsWith("data:image");
 
   if (hasValidImage) {
     return (
@@ -150,7 +149,7 @@ export function AvatarUpload({
   const handleClick = () => {
     if (!disabled) {
       const input = document.getElementById(
-        "avatar-upload"
+        "avatar-upload",
       ) as HTMLInputElement;
       input?.click();
     }

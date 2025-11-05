@@ -1,4 +1,4 @@
-import { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
+import type { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
 import { apiClient } from "./apiClient";
 
 // Types for the API response
@@ -21,7 +21,7 @@ let licensesCache:
 
 // Convert API response to HierarchicalCategory format
 function convertToHierarchicalCategories(
-  hierarchy: VocabularyItem[]
+  hierarchy: VocabularyItem[],
 ): HierarchicalCategory[] {
   return hierarchy
     .filter((item) => item.children && item.children.length > 0) // Only include items with children
@@ -29,7 +29,7 @@ function convertToHierarchicalCategories(
       name:
         item.name.charAt(0).toUpperCase() + item.name.slice(1).toLowerCase(),
       code: item.code,
-      options: item.children!.map((childItem) => {
+      options: item.children?.map((childItem) => {
         return {
           value: childItem.code,
           label:
@@ -44,7 +44,7 @@ function convertToHierarchicalCategories(
 
 // Fetch fields of science from API
 export async function fetchFieldsOfScience(
-  authToken?: string
+  authToken?: string,
 ): Promise<HierarchicalCategory[]> {
   // Return cached data if available
   if (fieldsOfScienceCache) {
@@ -78,7 +78,7 @@ export async function fetchFieldsOfScience(
 
 // Fetch licenses from API
 export async function fetchLicenses(
-  authToken?: string
+  authToken?: string,
 ): Promise<
   { value: string; label: string; description?: string; urls?: string[] }[]
 > {

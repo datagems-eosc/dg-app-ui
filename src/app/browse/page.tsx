@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import DashboardLayout from "@/components/DashboardLayout";
+import { useEffect, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
-import { mockDatasets } from "@/data/dataset";
+import DashboardLayout from "@/components/DashboardLayout";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { mockDatasets } from "@/data/dataset";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function BrowsePage() {
@@ -37,7 +37,7 @@ export default function BrowsePage() {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
     router.push(getNavigationUrl("/chat"));
   };
@@ -58,7 +58,7 @@ export default function BrowsePage() {
     setShowCreateCollectionModal(true);
   };
 
-  const handleCreateCollection = (name: string) => {
+  const handleCreateCollection = (_name: string) => {
     // Collections are now created via API in the CreateCollectionModal
     // This function is kept for backward compatibility but doesn't do anything
     console.log("Collection creation handled by CreateCollectionModal");

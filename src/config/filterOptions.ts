@@ -45,12 +45,16 @@ export const getDefaultFilters = (): FilterState => ({
 
 // Convert FilterState to UnifiedFilterState for backend
 export const convertToBackendFilters = (
-  filters: FilterState
+  filters: FilterState,
 ): UnifiedFilterState => {
   // Convert year to date format (YYYY-01-01 for start, YYYY-12-31 for end)
   const convertYearToDate = (year: string, isEnd: boolean = false) => {
     if (!year) return "";
-    const date = new Date(parseInt(year), isEnd ? 11 : 0, isEnd ? 31 : 1);
+    const date = new Date(
+      Number.parseInt(year, 10),
+      isEnd ? 11 : 0,
+      isEnd ? 31 : 1,
+    );
     return date.toISOString().split("T")[0]; // Returns YYYY-MM-DD format
   };
 
@@ -74,10 +78,10 @@ export const convertToBackendFilters = (
     })(),
     sizeRange: (() => {
       const startMB = filters.datasetSize.start
-        ? parseFloat(filters.datasetSize.start)
+        ? Number.parseFloat(filters.datasetSize.start)
         : 0;
       const endMB = filters.datasetSize.end
-        ? parseFloat(filters.datasetSize.end)
+        ? Number.parseFloat(filters.datasetSize.end)
         : 0;
 
       // Only include sizeRange if at least one value is provided and greater than 0

@@ -1,26 +1,24 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useRouter, usePathname } from "next/navigation";
 import { Trash } from "lucide-react";
-import { useCollections } from "@/contexts/CollectionsContext";
-import { useSession } from "next-auth/react";
-import { createUrl } from "@/lib/utils";
-import { signOut } from "next-auth/react";
-import { ApiCollection } from "@/types/collection";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateChatUrl } from "@/config/appUrls";
+import { useCollections } from "@/contexts/CollectionsContext";
+import { createUrl } from "@/lib/utils";
+import type { ApiCollection } from "@/types/collection";
 import CollectionSettingsModal from "./CollectionSettingsModal";
 import { ConfirmationModal } from "./ui/ConfirmationModal";
-import { Toast } from "./ui/Toast";
-import { SidebarHeader } from "./ui/SidebarHeader";
 import { MainHeader } from "./ui/MainHeader";
 import { SidebarContent } from "./ui/SidebarContent";
+import { SidebarHeader } from "./ui/SidebarHeader";
+import { Toast } from "./ui/Toast";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
-
-
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
@@ -68,7 +66,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [session, refreshAllCollections]);
 
   // Function to manually refresh collections when needed (e.g., after creating a collection)
-  const handleManualRefresh = () => {
+  const _handleManualRefresh = () => {
     if (session) {
       refreshAllCollections();
     }
@@ -77,7 +75,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Function to sort and filter collections based on localStorage settings
   const getSortedAndFilteredCollections = (
     collections: ApiCollection[],
-    isExtra = false
+    _isExtra = false,
   ) => {
     const savedSettings =
       typeof window !== "undefined"
@@ -124,7 +122,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           ...collection,
           isVisible: true,
           order: index, // Start ordering from 0 for custom collections
-        })
+        }),
       );
 
       const apiCollectionsWithDefaults = apiCollections.map(
@@ -132,7 +130,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           ...collection,
           isVisible: true,
           order: extraCollectionsWithDefaults.length + index, // Start ordering after custom collections
-        })
+        }),
       );
 
       return [...extraCollectionsWithDefaults, ...apiCollectionsWithDefaults];
@@ -177,12 +175,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     window.addEventListener(
       "requestCloseSidebarForTablet",
-      handleRequestCloseSidebarForTablet
+      handleRequestCloseSidebarForTablet,
     );
     return () => {
       window.removeEventListener(
         "requestCloseSidebarForTablet",
-        handleRequestCloseSidebarForTablet
+        handleRequestCloseSidebarForTablet,
       );
     };
   }, [isTablet]);
@@ -201,21 +199,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     window.addEventListener(
       "collectionSettingsChanged",
-      handleCollectionSettingsChange
+      handleCollectionSettingsChange,
     );
     window.addEventListener(
       "forceCollectionsRefresh",
-      handleForceCollectionsRefresh
+      handleForceCollectionsRefresh,
     );
 
     return () => {
       window.removeEventListener(
         "collectionSettingsChanged",
-        handleCollectionSettingsChange
+        handleCollectionSettingsChange,
       );
       window.removeEventListener(
         "forceCollectionsRefresh",
-        handleForceCollectionsRefresh
+        handleForceCollectionsRefresh,
       );
     };
   }, [refreshAllCollections]);
@@ -243,7 +241,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleDeleteConversation = (
     conversationId: string,
-    conversationName: string
+    conversationName: string,
   ) => {
     setDeleteModalState({
       isVisible: true,
@@ -259,13 +257,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         const { apiClient } = await import("@/lib/apiClient");
         await apiClient.deleteConversation(
           deleteModalState.conversationId,
-          token
+          token,
         );
         // Remove the conversation from local state immediately
         setConversations((prevConversations) =>
           prevConversations.filter(
-            (conv) => conv.id !== deleteModalState.conversationId
-          )
+            (conv) => conv.id !== deleteModalState.conversationId,
+          ),
         );
         // Show success toast
         setToastType("success");
@@ -289,14 +287,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleConversationUpdate = (
     id: string,
     newName: string,
-    newETag?: string
+    newETag?: string,
   ) => {
     setConversations((prevConversations) =>
       prevConversations.map((conv) =>
         conv.id === id
           ? { ...conv, name: newName, eTag: newETag || conv.eTag }
-          : conv
-      )
+          : conv,
+      ),
     );
   };
 

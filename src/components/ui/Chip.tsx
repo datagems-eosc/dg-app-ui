@@ -1,11 +1,18 @@
-import React from "react";
-import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
+import type React from "react";
+import { cn } from "@/lib/utils";
 
 interface ChipProps {
   children: React.ReactNode;
   variant?: "outline" | "regular";
-  color?: "warning" | "info" | "success" | "error" | "default" | "grey" | "smart-search";
+  color?:
+    | "warning"
+    | "info"
+    | "success"
+    | "error"
+    | "default"
+    | "grey"
+    | "smart-search";
   size?: "xs" | "sm" | "md";
   className?: string;
   onRemove?: () => void;
@@ -74,7 +81,7 @@ export function Chip({
         variants[variant],
         colors[color][variant],
         // Typography (explicit Tailwind utilities to avoid twMerge dropping custom class)
-        "font-medium text-[12px] leading-[150%]"
+        "font-medium text-[12px] leading-[150%]",
       )}
     >
       {children}

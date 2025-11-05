@@ -1,7 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import type React from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 interface UserData {
   name: string;
@@ -43,9 +44,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const savedProfilePicture = localStorage.getItem("profilePicture");
       if (savedProfilePicture) {
         try {
-          setUserData((prev) => ({ ...prev, profilePicture: savedProfilePicture }));
+          setUserData((prev) => ({
+            ...prev,
+            profilePicture: savedProfilePicture,
+          }));
         } catch (error) {
-          console.error("Error reading profile picture from localStorage:", error);
+          console.error(
+            "Error reading profile picture from localStorage:",
+            error,
+          );
         }
       }
     }
@@ -81,7 +88,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         updateUserData({ profilePicture: null });
         try {
           localStorage.removeItem("profilePicture");
-        } catch (e) {
+        } catch (_e) {
           // noop
         }
         return;
@@ -96,7 +103,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           updateUserData({ profilePicture: result });
           try {
             localStorage.setItem("profilePicture", result);
-          } catch (e) {
+          } catch (_e) {
             // noop
           }
           resolve();

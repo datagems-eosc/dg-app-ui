@@ -1,13 +1,6 @@
 "use client";
 
-import React from "react";
-import {
-  Settings,
-  Bell,
-  LucideIcon,
-  UserPenIcon,
-  UserRoundPen,
-} from "lucide-react";
+import { Bell, type LucideIcon, UserRoundPen } from "lucide-react";
 
 type ActiveTab = "personal" | "preferences";
 

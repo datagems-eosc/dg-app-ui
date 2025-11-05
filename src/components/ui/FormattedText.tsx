@@ -42,7 +42,7 @@ export default function FormattedText({
     // Decode any \uXXXX into actual characters
     processed = processed.replace(/\\u([0-9a-fA-F]{4})/g, (_m, hex) => {
       try {
-        return String.fromCharCode(parseInt(hex, 16));
+        return String.fromCharCode(Number.parseInt(hex, 16));
       } catch {
         return _m;
       }
@@ -90,7 +90,7 @@ export default function FormattedText({
   // Render with newline preservation
   const renderSegment = (
     segment: { type: "text" | "link"; value: string },
-    key: number
+    key: number,
   ) => {
     if (segment.type === "link") {
       return (

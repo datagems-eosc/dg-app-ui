@@ -1,49 +1,51 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
 import {
-  Search as SearchIcon,
-  Filter,
-  MessageSquare,
-  Database,
-  ListChecks,
-  Grid2X2,
-  MoreHorizontal,
   ArrowRightLeft,
+  Database,
   Edit3,
+  Filter,
+  Grid2X2,
+  ListChecks,
+  MoreHorizontal,
+  Search as SearchIcon,
   Tag,
   Trash2,
 } from "lucide-react";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "./ui/Search";
+
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
-import DatasetCard from "./DatasetCard";
-import DatasetCardSkeleton from "./ui/datasets/DatasetCardSkeleton";
-import DatasetDetailsPanel from "./DatasetDetailsPanel";
-import SelectedDatasetsPanel from "./SelectedDatasetsPanel";
-import FilterModal from "./FilterModal";
+
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useCollections } from "@/contexts/CollectionsContext";
+import type { Dataset } from "@/data/dataset";
+import { apiClient } from "@/lib/apiClient";
+import { getNavigationUrl } from "@/lib/utils";
 import {
-  FilterState,
-  getDefaultFilters,
+  type FilterState,
   fetchFieldsOfScience,
   fetchLicenses,
+  getDefaultFilters,
   SORTING_OPTIONS,
 } from "../config/filterOptions";
 import CreateCollectionModal from "./CreateCollectionModal";
+import DatasetCard from "./DatasetCard";
+import DatasetDetailsPanel from "./DatasetDetailsPanel";
 import DeleteCollectionModal from "./DeleteCollectionModal";
+import FilterModal from "./FilterModal";
+import SelectedDatasetsPanel from "./SelectedDatasetsPanel";
+import SortingDropdown from "./SortingDropdown";
 import { Button } from "./ui/Button";
-import Switch from "./ui/Switch";
+import { Chip } from "./ui/Chip";
+import DatasetCardSkeleton from "./ui/datasets/DatasetCardSkeleton";
+import type { HierarchicalCategory } from "./ui/HierarchicalDropdown";
 import SmartSearch from "./ui/SmartSearch";
 import SmartSearchExamples from "./ui/SmartSearchExamples";
-import { Chip } from "./ui/Chip";
-import SortingDropdown from "./SortingDropdown";
-import { useRouter } from "next/navigation";
-import { HierarchicalCategory } from "./ui/HierarchicalDropdown";
-import { useSession } from "next-auth/react";
-import { getNavigationUrl } from "@/lib/utils";
-import { apiClient } from "@/lib/apiClient";
-import { useCollections } from "@/contexts/CollectionsContext";
-import { Dataset } from "@/data/dataset";
+import Switch from "./ui/Switch";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -147,7 +149,7 @@ function isApiDataset(obj: unknown): obj is {
 }
 
 // Helper to safely get a string field from an object
-function getApiField(obj: unknown, key: string): string {
+function _getApiField(obj: unknown, key: string): string {
   if (
     typeof obj === "object" &&
     obj !== null &&
@@ -207,7 +209,7 @@ export default function Browse({
   const [selectedDataset, setSelectedDataset] =
     useState<DatasetWithCollections | null>(null);
   const [filters, setFilters] = useState<FilterState>(
-    propFilters || defaultFilters
+    propFilters || defaultFilters,
   );
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
@@ -215,13 +217,13 @@ export default function Browse({
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const [datasetsToAdd, setDatasetsToAdd] = useState<DatasetWithCollections[]>(
-    []
+    [],
   );
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
   const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
-    []
+    [],
   );
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
@@ -246,7 +248,7 @@ export default function Browse({
   // Handle mobile detection and sidebar state
   useEffect(() => {
     //Remove the last conversation id when not transitioning between conversations
-    sessionStorage.removeItem('lastConversationId');
+    sessionStorage.removeItem("lastConversationId");
     const handleResize = () => {
       const mobile = window.innerWidth < 640;
       const tablet = window.innerWidth >= 640 && window.innerWidth < 1024;
@@ -277,15 +279,15 @@ export default function Browse({
 
     window.addEventListener(
       "sidebarOpenedForTablet",
-      handleSidebarOpenedForTablet
+      handleSidebarOpenedForTablet,
     );
     return () => {
       window.removeEventListener(
         "sidebarOpenedForTablet",
-        handleSidebarOpenedForTablet
+        handleSidebarOpenedForTablet,
       );
     };
-  }, [isTablet, selectedDataset, showSelectedPanel]);
+  }, [isTablet, selectedDataset, showSelectedPanel, handleClosePanel]);
 
   // Use controlled or local state for selected datasets
   const currentSelectedDatasets = onSelectedDatasetsChange
@@ -452,7 +454,7 @@ export default function Browse({
       // Check if click is within title actions dropdown
       if (showTitleActionsDropdown) {
         const titleDropdownContainer = document.querySelector(
-          "[data-title-actions-dropdown]"
+          "[data-title-actions-dropdown]",
         );
         if (
           titleDropdownContainer &&
@@ -465,7 +467,7 @@ export default function Browse({
       // Check if click is within actions dropdown
       if (showActionsDropdown) {
         const actionsDropdownContainer = document.querySelector(
-          "[data-actions-dropdown]"
+          "[data-actions-dropdown]",
         );
         if (
           actionsDropdownContainer &&
@@ -523,13 +525,13 @@ export default function Browse({
           typeof dataset.access === "string"
             ? dataset.access
             : isApiDataset(dataset) &&
-              Array.isArray(
-                (dataset as unknown as Record<string, unknown>).permissions
-              ) &&
-              (
-                (dataset as unknown as Record<string, unknown>)
-                  .permissions as string[]
-              ).includes("browsedataset")
+                Array.isArray(
+                  (dataset as unknown as Record<string, unknown>).permissions,
+                ) &&
+                (
+                  (dataset as unknown as Record<string, unknown>)
+                    .permissions as string[]
+                ).includes("browsedataset")
               ? "Open Access"
               : "Restricted";
         const isOpen = access === "Open Access";
@@ -538,7 +540,7 @@ export default function Browse({
       }
       return true;
     });
-  }, [datasets, filters.access, propFilters]);
+  }, [datasets, filters.access]);
 
   const selectAll = () => {
     const allIds = filteredDatasets.map((d) => d.id);
@@ -549,7 +551,7 @@ export default function Browse({
     setCurrentSelectedDatasets([]);
   };
 
-  const toggleSelectAll = () => {
+  const _toggleSelectAll = () => {
     const allIds = filteredDatasets.map((d) => d.id);
     const allSelected =
       allIds.length > 0 &&
@@ -563,7 +565,7 @@ export default function Browse({
   };
 
   // Check if all filtered datasets are selected
-  const allFilteredSelected = useMemo(() => {
+  const _allFilteredSelected = useMemo(() => {
     const allIds = filteredDatasets.map((d) => d.id);
     return (
       allIds.length > 0 &&
@@ -621,7 +623,7 @@ export default function Browse({
       handleOpenPanel();
     } else {
       setCurrentSelectedDatasets(
-        currentSelectedDatasets.filter((id) => id !== datasetId)
+        currentSelectedDatasets.filter((id) => id !== datasetId),
       );
     }
   };
@@ -706,7 +708,7 @@ export default function Browse({
       const selectedFieldNames = filters.fieldsOfScience.map((fieldCode) => {
         for (const category of fieldsOfScienceCategories) {
           const option = category.options.find(
-            (opt) => opt.value === fieldCode
+            (opt) => opt.value === fieldCode,
           );
           if (option) {
             return option.label;
@@ -759,7 +761,7 @@ export default function Browse({
     }
 
     return tags;
-  }, [filters, propFilters, fieldsOfScienceCategories, licenses]);
+  }, [filters, fieldsOfScienceCategories, licenses]);
 
   const isPanelVisible = showSelectedPanel || isPanelClosing;
   const isDetailsPanelVisible = selectedDataset || isDetailsPanelClosing;
@@ -771,12 +773,13 @@ export default function Browse({
   return (
     <div className="flex relative min-h-screen">
       <div
-        className={`flex-1 transition-all duration-500 ease-out ${isPanelVisible
-          ? "sm:pr-[388px]"
-          : isDetailsPanelVisible
-            ? "sm:pr-[384px]"
-            : ""
-          }`}
+        className={`flex-1 transition-all duration-500 ease-out ${
+          isPanelVisible
+            ? "sm:pr-[388px]"
+            : isDetailsPanelVisible
+              ? "sm:pr-[384px]"
+              : ""
+        }`}
       >
         <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out py-4 sm:py-10">
           {/* Header */}
@@ -799,7 +802,6 @@ export default function Browse({
                       }}
                       className="w-full px-3 py-2 text-H2-32-semibold text-gray-750 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                       placeholder="Enter collection name"
-                      autoFocus
                     />
                     <p className="text-body-16-regular text-gray-650 mt-1">
                       {subtitle}
@@ -821,7 +823,7 @@ export default function Browse({
                       disabled={
                         !editingName.trim() ||
                         editingName.trim() ===
-                        collectionName.replace(/\s+Datasets?$/, "")
+                          collectionName.replace(/\s+Datasets?$/, "")
                       }
                       className="px-4 py-2"
                     >
@@ -913,22 +915,21 @@ export default function Browse({
                   </div>
                 )}
                 {/* Custom Action Buttons */}
-                {customActionButtons &&
-                  customActionButtons.map((button, index) => (
-                    <Button
-                      key={index}
-                      variant={button.variant || "outline"}
-                      size="sm"
-                      onClick={button.onClick}
-                      disabled={button.disabled}
-                      className={`flex items-center gap-2 ${button.className || ""}`}
-                    >
-                      {button.icon && (
-                        <button.icon className="w-4 h-4 text-icon" />
-                      )}
-                      {button.label}
-                    </Button>
-                  ))}
+                {customActionButtons?.map((button, index) => (
+                  <Button
+                    key={index}
+                    variant={button.variant || "outline"}
+                    size="sm"
+                    onClick={button.onClick}
+                    disabled={button.disabled}
+                    className={`flex items-center gap-2 ${button.className || ""}`}
+                  >
+                    {button.icon && (
+                      <button.icon className="w-4 h-4 text-icon" />
+                    )}
+                    {button.label}
+                  </Button>
+                ))}
                 {/* Selected datasets counter - clickable when sidebar is closed */}
                 <Button
                   variant="outline"
@@ -969,7 +970,7 @@ export default function Browse({
                             setShowActionsDropdown(false);
                             // Select all datasets logic
                             console.log(
-                              "Select All clicked (selected datasets)"
+                              "Select All clicked (selected datasets)",
                             );
                             selectAll();
                             // Open the selected datasets panel when selecting all
@@ -1063,9 +1064,7 @@ export default function Browse({
                   placeholder="Search datasets..."
                   value={searchTerm}
                   onChange={onSearchTermChange}
-                  onSearch={(value) =>
-                    onSearchTermSubmit && onSearchTermSubmit(value)
-                  }
+                  onSearch={(value) => onSearchTermSubmit?.(value)}
                   onClear={() => {
                     if (onSearchTermChange) {
                       onSearchTermChange("");
@@ -1138,7 +1137,7 @@ export default function Browse({
               </p>
               <SortingDropdown
                 value={sortBy}
-                onChange={(value) => onSortByChange && onSortByChange(value)}
+                onChange={(value) => onSortByChange?.(value)}
                 options={SORTING_OPTIONS}
                 triggerLabel="Sorting"
               />
@@ -1177,7 +1176,7 @@ export default function Browse({
                       onClick={() => handleDatasetClick(dataset)}
                       isSelected={selectedDataset?.id === dataset.id}
                       isMultiSelected={currentSelectedDatasets.includes(
-                        dataset.id
+                        dataset.id,
                       )}
                       onSelect={(isSelected) =>
                         handleDatasetSelect(dataset.id, isSelected)
@@ -1224,12 +1223,13 @@ export default function Browse({
           {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (
             <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
               <div
-                className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${isDetailsPanelAnimating
-                  ? "translate-x-full"
-                  : isDetailsPanelClosing
+                className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
+                  isDetailsPanelAnimating
                     ? "translate-x-full"
-                    : "translate-x-0"
-                  }`}
+                    : isDetailsPanelClosing
+                      ? "translate-x-full"
+                      : "translate-x-0"
+                }`}
               >
                 <DatasetDetailsPanel
                   dataset={selectedDataset}
@@ -1262,7 +1262,7 @@ export default function Browse({
           setShowCreateCollectionModal(false);
           setDatasetsToAdd([]);
         }}
-        onCreateCollection={(name: string) => {
+        onCreateCollection={(_name: string) => {
           // This will be handled by the modal itself
           setShowCreateCollectionModal(false);
           setDatasetsToAdd([]);
@@ -1283,12 +1283,13 @@ export default function Browse({
       {(showSelectedPanel || isPanelClosing) && (
         <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
           <div
-            className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${isPanelAnimating
-              ? "translate-x-full"
-              : isPanelClosing
+            className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
+              isPanelAnimating
                 ? "translate-x-full"
-                : "translate-x-0"
-              }`}
+                : isPanelClosing
+                  ? "translate-x-full"
+                  : "translate-x-0"
+            }`}
           >
             <SelectedDatasetsPanel
               selectedDatasetIds={currentSelectedDatasets}

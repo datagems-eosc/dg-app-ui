@@ -1,7 +1,6 @@
 "use client";
 
-import React from "react";
-import { Avatar, AvatarUpload } from "@/components/ui/Avatar";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Chip } from "../Chip";

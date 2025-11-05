@@ -1,0 +1,34 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit checks..."
+echo ""
+
+echo "📋 Step 1/2: Linting files with Biome..."
+npm run lint:biome:check
+LINT_EXIT_CODE=$?
+
+if [ $LINT_EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "❌ Linting failed. Please fix the errors above."
+  exit 1
+fi
+
+echo "✅ Linting passed"
+echo ""
+
+echo "🧪 Step 2/2: Running tests..."
+npm test
+TEST_EXIT_CODE=$?
+
+if [ $TEST_EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "❌ Tests failed. Please fix the errors above."
+  exit 1
+fi
+
+echo "✅ Tests passed"
+echo ""
+
+echo "✨ All checks passed! Proceeding with commit..."
+echo ""
+

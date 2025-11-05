@@ -1,4 +1,4 @@
-import { getApiBaseUrl, fetchWithAuth } from "./utils";
+import { fetchWithAuth, getApiBaseUrl } from "./utils";
 
 /**
  * API Client for making direct calls to the DataGEMS API
@@ -17,7 +17,7 @@ class ApiClient {
   private async makeRequest(
     endpoint: string,
     options: RequestInit = {},
-    token?: string
+    token?: string,
   ): Promise<Response> {
     const url = `${this.baseUrl}/gw/api${endpoint}`;
 
@@ -34,7 +34,7 @@ class ApiClient {
     }
 
     if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+      headers.Authorization = `Bearer ${token}`;
     }
 
     return fetchWithAuth(url, {
@@ -53,7 +53,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -74,7 +74,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -95,7 +95,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -120,7 +120,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify({ name }),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -137,14 +137,14 @@ class ApiClient {
   async addDatasetToUserCollection(
     collectionId: string,
     datasetId: string,
-    token: string
+    token: string,
   ): Promise<any> {
     const response = await this.makeRequest(
       `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id&f=UserDatasetCollections.id&f=UserDatasetCollections.dataset.id&f=name&f=user.id&f=user.name&f=UserDatasetCollections.dataset.name`,
       {
         method: "POST",
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -161,20 +161,20 @@ class ApiClient {
   async removeDatasetFromUserCollection(
     collectionId: string,
     datasetId: string,
-    token: string
+    token: string,
   ): Promise<any> {
     const response = await this.makeRequest(
       `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
       {
         method: "DELETE",
       },
-      token
+      token,
     );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        errorData.error || "Failed to remove dataset from collection"
+        errorData.error || "Failed to remove dataset from collection",
       );
     }
 
@@ -186,14 +186,14 @@ class ApiClient {
    */
   async deleteUserCollection(
     collectionId: string,
-    token: string
+    token: string,
   ): Promise<any> {
     const response = await this.makeRequest(
       `/user/collection/${collectionId}`,
       {
         method: "DELETE",
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -214,7 +214,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -232,7 +232,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -249,14 +249,14 @@ class ApiClient {
   async getConversation(
     id: string,
     queryParams: string,
-    token: string
+    token: string,
   ): Promise<any> {
     const response = await this.makeRequest(
       `/conversation/${id}${queryParams}`,
       {
         method: "GET",
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -274,7 +274,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -288,7 +288,7 @@ class ApiClient {
   async persistConversation(
     payload: any,
     queryParams: string,
-    token: string
+    token: string,
   ): Promise<any> {
     const response = await this.makeRequest(
       `/conversation/me/persist${queryParams}`,
@@ -296,7 +296,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -310,7 +310,7 @@ class ApiClient {
   async persistConversationDeep(
     payload: any,
     queryParams: string,
-    token: string
+    token: string,
   ): Promise<any> {
     const response = await this.makeRequest(
       `/conversation/me/persist/deep${queryParams}`,
@@ -318,7 +318,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -336,7 +336,7 @@ class ApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -353,7 +353,7 @@ class ApiClient {
   async updateConversation(
     id: string,
     payload: { name: string; eTag: string },
-    token: string
+    token: string,
   ): Promise<any> {
     const response = await this.makeRequest(
       `/conversation/me/persist?f=id&f=etag&f=name`,
@@ -365,7 +365,7 @@ class ApiClient {
           eTag: payload.eTag,
         }),
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -385,7 +385,7 @@ class ApiClient {
       {
         method: "DELETE",
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -405,7 +405,7 @@ class ApiClient {
       {
         method: "GET",
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -422,7 +422,7 @@ class ApiClient {
       {
         method: "GET",
       },
-      token
+      token,
     );
 
     if (!response.ok) {
@@ -436,16 +436,17 @@ class ApiClient {
 
   async getUserSettings(settingsKey: string, token: string): Promise<any> {
     const returnFields = ["id", "key", "value", "eTag"];
-    const qs = returnFields && returnFields.length > 0
-      ? `?${returnFields.map((f) => `f=${encodeURIComponent(f)}`).join("&")}`
-      : "";
+    const qs =
+      returnFields && returnFields.length > 0
+        ? `?${returnFields.map((f) => `f=${encodeURIComponent(f)}`).join("&")}`
+        : "";
 
     const response = await this.makeRequest(
       `/user/settings/key/${settingsKey}${qs}`,
       {
         method: "GET",
       },
-      token
+      token,
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -458,7 +459,7 @@ class ApiClient {
   async saveUserSettings(
     payload: any,
     token: string,
-    id?: string
+    id?: string,
   ): Promise<any> {
     const body = { ...payload };
     if (id) {
@@ -466,14 +467,13 @@ class ApiClient {
     }
     body.value = JSON.stringify(body.value);
 
-
     const response = await this.makeRequest(
       `/user/settings/persist`,
       {
         method: "POST",
         body: JSON.stringify(body),
       },
-      token
+      token,
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

@@ -1,21 +1,23 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { Button } from "./ui/Button";
-import { Radio } from "./ui/Radio";
-import { Input } from "./ui/Input";
-import { MultiSelect } from "./ui/MultiSelect";
-import HierarchicalDropdown from "./ui/HierarchicalDropdown";
+import { useSession } from "next-auth/react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import {
   ACCESS_OPTIONS,
-  FilterState,
-  VALIDATION_CONFIG,
+  type FilterState,
   fetchFieldsOfScience,
   fetchLicenses,
+  VALIDATION_CONFIG,
 } from "../config/filterOptions";
-import { HierarchicalCategory } from "./ui/HierarchicalDropdown";
-import { useSession } from "next-auth/react";
+import { Button } from "./ui/Button";
+import HierarchicalDropdown, {
+  type HierarchicalCategory,
+} from "./ui/HierarchicalDropdown";
+import { Input } from "./ui/Input";
+import { MultiSelect } from "./ui/MultiSelect";
+import { Radio } from "./ui/Radio";
 
 export default function FilterModal({
   isVisible,
@@ -36,7 +38,7 @@ export default function FilterModal({
     HierarchicalCategory[]
   >([]);
   const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
-    []
+    [],
   );
   const [isLoadingFields, setIsLoadingFields] = useState(true);
   const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
@@ -57,7 +59,7 @@ export default function FilterModal({
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
     };
-  }, [isVisible]);
+  }, [isVisible, handleCancel]);
 
   // Sync local filters with currentFilters when they change
   useEffect(() => {
@@ -105,9 +107,9 @@ export default function FilterModal({
 
   const validateYear = (value: string): boolean => {
     if (!value) return true;
-    const year = parseInt(value);
+    const year = Number.parseInt(value, 10);
     return (
-      !isNaN(year) &&
+      !Number.isNaN(year) &&
       year >= VALIDATION_CONFIG.year.min &&
       year <= VALIDATION_CONFIG.year.max
     );
@@ -115,8 +117,8 @@ export default function FilterModal({
 
   const validateSize = (value: string): boolean => {
     if (!value) return true;
-    const num = parseFloat(value);
-    return !isNaN(num) && num >= VALIDATION_CONFIG.size.min;
+    const num = Number.parseFloat(value);
+    return !Number.isNaN(num) && num >= VALIDATION_CONFIG.size.min;
   };
 
   const handleYearChange = (field: "start" | "end", value: string) => {
@@ -134,14 +136,14 @@ export default function FilterModal({
       field === "start" &&
       newCreationYear.end &&
       value &&
-      parseInt(value) > parseInt(newCreationYear.end)
+      Number.parseInt(value, 10) > Number.parseInt(newCreationYear.end, 10)
     ) {
       errors[field] = "Start year cannot be greater than end year";
     } else if (
       field === "end" &&
       newCreationYear.start &&
       value &&
-      parseInt(value) < parseInt(newCreationYear.start)
+      Number.parseInt(value, 10) < Number.parseInt(newCreationYear.start, 10)
     ) {
       errors[field] = "End year cannot be less than start year";
     } else {
@@ -152,14 +154,14 @@ export default function FilterModal({
       field === "start" &&
       newCreationYear.end &&
       value &&
-      parseInt(value) > parseInt(newCreationYear.end)
+      Number.parseInt(value, 10) > Number.parseInt(newCreationYear.end, 10)
     ) {
       errors.end = "End year cannot be less than start year";
     } else if (
       field === "end" &&
       newCreationYear.start &&
       value &&
-      parseInt(value) < parseInt(newCreationYear.start)
+      Number.parseInt(value, 10) < Number.parseInt(newCreationYear.start, 10)
     ) {
       errors.start = "Start year cannot be greater than end year";
     } else if (field === "start" && newCreationYear.end) {
@@ -185,14 +187,14 @@ export default function FilterModal({
       field === "start" &&
       newDatasetSize.end &&
       value &&
-      parseFloat(value) > parseFloat(newDatasetSize.end)
+      Number.parseFloat(value) > Number.parseFloat(newDatasetSize.end)
     ) {
       errors[field] = "Min size cannot be greater than max size";
     } else if (
       field === "end" &&
       newDatasetSize.start &&
       value &&
-      parseFloat(value) < parseFloat(newDatasetSize.start)
+      Number.parseFloat(value) < Number.parseFloat(newDatasetSize.start)
     ) {
       errors[field] = "Max size cannot be less than min size";
     } else {
@@ -203,14 +205,14 @@ export default function FilterModal({
       field === "start" &&
       newDatasetSize.end &&
       value &&
-      parseFloat(value) > parseFloat(newDatasetSize.end)
+      Number.parseFloat(value) > Number.parseFloat(newDatasetSize.end)
     ) {
       errors.end = "Max size cannot be less than min size";
     } else if (
       field === "end" &&
       newDatasetSize.start &&
       value &&
-      parseFloat(value) < parseFloat(newDatasetSize.start)
+      Number.parseFloat(value) < Number.parseFloat(newDatasetSize.start)
     ) {
       errors.start = "Min size cannot be greater than max size";
     } else if (field === "start" && newDatasetSize.end) {
