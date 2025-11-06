@@ -9,8 +9,7 @@ import PersonalSettingsSection from "@/components/ui/user/PersonalSettingsSectio
 import PreferencesSection from "@/components/ui/user/PreferencesSection";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/lib/apiClient";
-import { useSession } from "next-auth/react";
+import { useApi } from "@/hooks/useApi";
 
 interface UserData {
   id?: string;
@@ -45,7 +44,7 @@ interface NotificationSettings {
 }
 
 export default function UserProfile() {
-  const { data: session } = useSession();
+  const api = useApi();
 
   const { userData, updateUserData, setProfilePicture } = useUser();
   const router = useRouter();
@@ -74,13 +73,17 @@ export default function UserProfile() {
   }, [userData.name, userData.surname]);
 
   useEffect(() => {
-    const token = (session as any)?.accessToken;
+    if (!api.hasToken) {
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setIsLoading(true);
 
     (async () => {
       try {
-        await loadNotificationSettings(token);
+        await loadNotificationSettings();
       } catch (err) {
         console.error("Failed loading user settings:", err);
       } finally {
@@ -91,12 +94,12 @@ export default function UserProfile() {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [api.hasToken]);
 
-  async function loadNotificationSettings(token: string) {
-    if (!token) return;
+  async function loadNotificationSettings() {
+    if (!api.hasToken) return;
     try {
-      const notificationSettings = await apiClient.getUserSettings("notificationSettings", token);
+      const notificationSettings = await api.getUserSettings("notificationSettings");
       if (!notificationSettings || notificationSettings.length === 0) return;
       const lastIndex = notificationSettings.length - 1;
       setNotifications({
@@ -126,8 +129,7 @@ export default function UserProfile() {
   };
 
   const saveNotificationSettings = () => {
-    const token = (session as any)?.accessToken;
-    if (!token) return;
+    if (!api.hasToken) return;
 
     // send notification settings with `value` not containing the `id` field
     const { id, eTag, ...value } = notifications as any;
@@ -139,7 +141,7 @@ export default function UserProfile() {
     if (id) payload.id = id;
     if (eTag) payload.eTag = eTag;
 
-    return apiClient.saveUserSettings(payload, token);
+    return api.saveUserSettings(payload, id);
   }
 
   const handleCancel = () => {
