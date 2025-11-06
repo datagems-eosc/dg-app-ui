@@ -350,7 +350,6 @@ export default function Browse({
 
     try {
       // TODO: Implement API call to update collection name
-      // For now, just update the local state
       console.log("Saving new collection name:", editingName.trim());
 
       // Call parent handler to update the collection name

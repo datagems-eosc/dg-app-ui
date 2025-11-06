@@ -12,13 +12,13 @@ export default function ProtectedPage({
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    console.log("ProtectedPage status:", status, "session:", session);
+    console.log("ProtectedPage status:", { status, session });
     if (status === "unauthenticated") {
-      console.log("[ProtectedPage] signIn called", {
+      console.log("ProtectedPage signIn called", {
         windowLocation:
           typeof window !== "undefined" ? window.location.href : null,
       });
-      signIn(); // Redirects to login
+      signIn();
     }
   }, [status, session]);
 
