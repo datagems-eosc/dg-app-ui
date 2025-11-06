@@ -7,6 +7,7 @@ import { useCollections } from "@/contexts/CollectionsContext";
 import { useSession } from "next-auth/react";
 import { createUrl } from "@/lib/utils";
 import { signOut } from "next-auth/react";
+import { useApi } from "@/hooks/useApi";
 import { ApiCollection } from "@/types/collection";
 import { generateChatUrl } from "@/config/appUrls";
 import CollectionSettingsModal from "./CollectionSettingsModal";
@@ -23,6 +24,7 @@ interface DashboardLayoutProps {
 
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const api = useApi();
   const router = useRouter();
   const pathname = usePathname();
   const hasLoadedCollections = useRef(false);
@@ -253,13 +255,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const handleConfirmDeleteConversation = async () => {
-    const token = (session as any)?.accessToken;
-    if (deleteModalState.conversationId && token) {
+    if (deleteModalState.conversationId && api.hasToken) {
       try {
-        const { apiClient } = await import("@/lib/apiClient");
-        await apiClient.deleteConversation(
-          deleteModalState.conversationId,
-          token
+        await api.deleteConversation(
+          deleteModalState.conversationId
         );
         // Remove the conversation from local state immediately
         setConversations((prevConversations) =>

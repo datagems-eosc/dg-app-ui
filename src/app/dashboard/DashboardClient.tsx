@@ -7,11 +7,10 @@ import { Collection, Dataset, DatasetPlus } from "@/data/dataset";
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { convertToBackendFilters, FilterState } from "@/config/filterOptions";
 import { getNavigationUrl } from "@/lib/utils";
 import { useCollections } from "@/contexts/CollectionsContext";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 import type { ApiCollection } from "@/types/collection";
 
 const API_PAYLOAD = {
@@ -270,15 +269,14 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
   });
 }
 
-// next-auth session type does not include accessToken by default
 export default function DashboardClient() {
+  const api = useApi();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetPlus[]>([]);
-  const { data: session } = useSession() as any;
   const [filteredDatasets, setFilteredDatasets] = useState<DatasetPlus[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); // used for API
   const [pendingSearchTerm, setPendingSearchTerm] = useState(""); // input value
@@ -335,13 +333,12 @@ export default function DashboardClient() {
   const fetchFavoritesCollection = useCallback(async () => {
     console.log("fetchFavoritesCollection called");
     try {
-      const token = session?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         console.log("No token available for fetchFavoritesCollection");
         return;
       }
 
-      console.log("Fetching favorites collection with token:", !!token);
+      console.log("Fetching favorites collection with token:", api.hasToken);
       const favoritesPayload = {
         project: {
           fields: ["id", "name", "userDatasetCollections.dataset.id"],
@@ -358,9 +355,8 @@ export default function DashboardClient() {
         },
       };
 
-      const data = await apiClient.queryUserCollections(
-        favoritesPayload,
-        token
+      const data = await api.queryUserCollections(
+        favoritesPayload
       );
       console.log("Favorites collection response:", data);
       const items = Array.isArray(data.items) ? data.items : [];
@@ -437,7 +433,7 @@ export default function DashboardClient() {
       setFavoritesCollectionId("");
       setHasFetchedFavorites(true);
     }
-  }, [session]);
+  }, [api.hasToken]);
 
   /**
    * Add dataset to favorites collection
@@ -446,10 +442,9 @@ export default function DashboardClient() {
     async (datasetId: string) => {
       console.log("handleAddToFavorites called with datasetId:", datasetId);
       try {
-        const token = session?.accessToken;
-        if (!token || !favoritesCollectionId) {
+        if (!api.hasToken || !favoritesCollectionId) {
           console.log("Token or favoritesCollectionId missing:", {
-            hasToken: !!token,
+            hasToken: api.hasToken,
             favoritesCollectionId,
           });
           throw new Error("No authentication token or favorites collection ID");
@@ -460,10 +455,9 @@ export default function DashboardClient() {
           datasetId,
         });
 
-        await apiClient.addDatasetToUserCollection(
+        await api.addDatasetToUserCollection(
           favoritesCollectionId,
-          datasetId,
-          token
+          datasetId
         );
 
         console.log("Successfully added dataset to favorites, refreshing...");
@@ -475,7 +469,7 @@ export default function DashboardClient() {
         throw err;
       }
     },
-    [session, favoritesCollectionId, fetchFavoritesCollection]
+    [api.hasToken, favoritesCollectionId, fetchFavoritesCollection]
   );
 
   /**
@@ -488,10 +482,9 @@ export default function DashboardClient() {
         datasetId
       );
       try {
-        const token = session?.accessToken;
-        if (!token || !favoritesCollectionId) {
+        if (!api.hasToken || !favoritesCollectionId) {
           console.log("Token or favoritesCollectionId missing:", {
-            hasToken: !!token,
+            hasToken: api.hasToken,
             favoritesCollectionId,
           });
           throw new Error("No authentication token or favorites collection ID");
@@ -502,10 +495,9 @@ export default function DashboardClient() {
           datasetId,
         });
 
-        await apiClient.removeDatasetFromUserCollection(
+        await api.removeDatasetFromUserCollection(
           favoritesCollectionId,
-          datasetId,
-          token
+          datasetId
         );
 
         console.log(
@@ -533,7 +525,7 @@ export default function DashboardClient() {
       }
     },
     [
-      session,
+      api.hasToken,
       favoritesCollectionId,
       fetchFavoritesCollection,
       selectedCollection,
@@ -551,8 +543,7 @@ export default function DashboardClient() {
       setIsLoading(true);
       setError(null);
       try {
-        const token = session?.accessToken;
-        if (!token) {
+        if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
           return;
@@ -567,10 +558,9 @@ export default function DashboardClient() {
           try {
             // 1) Create a lightweight conversation to attach the search to
             const persistPayload = { name: searchTerm };
-            const persistData = await apiClient.persistConversation(
+            const persistData = await api.persistConversation(
               persistPayload,
-              "?f=id&f=etag",
-              token
+              "?f=id&f=etag"
             );
             const conversationIdFromPersist = persistData.id;
 
@@ -622,9 +612,8 @@ export default function DashboardClient() {
               resultCount: 100,
             } as any;
 
-            const data = await apiClient.searchCrossDataset(
-              crossDatasetPayload,
-              token
+            const data = await api.searchCrossDataset(
+              crossDatasetPayload
             );
 
             const results = Array.isArray(data.result) ? data.result : [];
@@ -771,7 +760,7 @@ export default function DashboardClient() {
             ids: [selectedCollection],
           };
 
-          const data = await apiClient.queryUserCollections(payload, token);
+          const data = await api.queryUserCollections(payload);
           const items = Array.isArray(data.items) ? data.items : [];
 
           if (items.length > 0) {
@@ -836,9 +825,8 @@ export default function DashboardClient() {
                   },
                 };
 
-                const datasetData = await apiClient.queryDatasets(
-                  datasetPayload,
-                  token
+                const datasetData = await api.queryDatasets(
+                  datasetPayload
                 );
                 const datasets = Array.isArray(datasetData.items)
                   ? datasetData.items
@@ -999,7 +987,7 @@ export default function DashboardClient() {
           }
         }
 
-        const data = await apiClient.queryDatasets(payload, token);
+        const data = await api.queryDatasets(payload);
         const items = Array.isArray(data.items) ? data.items : [];
         const mappedDatasets = items.map(mapApiDatasetToDataset);
         setAllDatasets(mappedDatasets);
@@ -1015,7 +1003,7 @@ export default function DashboardClient() {
     fetchDatasets();
   }, [
     router,
-    session,
+    api.hasToken,
     searchTerm,
     sortBy,
     filters,
@@ -1088,11 +1076,9 @@ export default function DashboardClient() {
   // Debug: Log session info
   useEffect(() => {
     console.log("Session info:", {
-      hasSession: !!session,
-      hasAccessToken: !!session?.accessToken,
-      tokenLength: session?.accessToken?.length,
+      hasToken: api.hasToken,
     });
-  }, [session]);
+  }, [api.hasToken]);
 
   // Reset search input and submitted value on route changes
   useEffect(() => {
@@ -1108,15 +1094,15 @@ export default function DashboardClient() {
     }
   }, [selectedCollection]);
 
-  // Fetch favorites collection when session is available
+  // Fetch favorites collection when token is available
   useEffect(() => {
-    if (session?.accessToken) {
-      console.log("Session available, fetching favorites collection...");
+    if (api.hasToken) {
+      console.log("Token available, fetching favorites collection...");
       fetchFavoritesCollection();
     } else {
-      console.log("No session or access token available");
+      console.log("No access token available");
     }
-  }, [session, fetchFavoritesCollection]);
+  }, [api.hasToken, fetchFavoritesCollection]);
 
   // On non-chat pages, ensure chat selection is cleared in localStorage
   useEffect(() => {
