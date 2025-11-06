@@ -25,6 +25,7 @@ export type DatasetPlus = Dataset & {
   url?: string;
   version?: string;
   maxSimilarity?: number;
+  hits?: { number: number; text: string; similarity: number }[];
 };
 
 export type DatasetWithCollections = Dataset & { collections?: Collection[] };

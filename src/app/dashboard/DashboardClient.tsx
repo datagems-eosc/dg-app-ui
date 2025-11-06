@@ -610,9 +610,9 @@ export default function DashboardClient() {
                   "dataset.permissions.browseDataset",
                   "dataset.permissions.editDataset",
                   "dataset.profileRaw",
-                  "dataset.hits.content",
-                  "dataset.hits.objectId",
-                  "dataset.hits.similarity",
+                  "hits.content",
+                  "hits.objectId",
+                  "hits.similarity",
                   "sourceId",
                   "chunkId",
                   "language",
@@ -641,6 +641,30 @@ export default function DashboardClient() {
                 typeof item.maxSimilarity === "number"
                   ? item.maxSimilarity
                   : undefined;
+
+              const rawHits = Array.isArray((item as any).hits)
+                ? (item as any).hits
+                : [];
+              const topHits = rawHits.slice(0, 3);
+              const hits = topHits.map((h: any, idx: number) => {
+                const text =
+                  h && typeof h === "object" && ("content" in h || "text" in h)
+                    ? String(h.content ?? h.text ?? "")
+                    : String(h ?? "");
+                const similarity =
+                  h && typeof h === "object" && typeof h.similarity === "number"
+                    ? h.similarity
+                    : typeof h === "object" &&
+                        typeof h.maxSimilarity === "number"
+                      ? h.maxSimilarity
+                      : 0;
+                const number =
+                  h && typeof h === "object" && typeof h.number === "number"
+                    ? h.number
+                    : idx;
+                return { number, text, similarity };
+              });
+
               if (!id || byId.has(id)) continue;
 
               // Determine category based on fieldOfScience
@@ -710,6 +734,7 @@ export default function DashboardClient() {
                 category,
                 access,
                 maxSimilarity,
+                hits,
                 description: String(ds.description ?? ""),
                 size: ds.size ? String(ds.size) : "N/A",
                 lastUpdated: ds.datePublished

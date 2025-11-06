@@ -130,26 +130,6 @@ export default function DatasetCard({
   const [shouldStackFooter, setShouldStackFooter] = useState(false);
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  // Mock data for smart search matches - TODO: Replace with real backend data
-  const smartSearchMatches: SmartSearchMatch[] = [
-    {
-      number: 1,
-      description:
-        "The fundamental theorem of calculus states that differentiation and integration are inverse operations... It can also be interpreted as a precise statement of the fact that differentiation is the inverse of integration.",
-      matchPercentage: 95,
-    },
-    {
-      number: 2,
-      description: "Includes precipitation measurements and humidity levels",
-      matchPercentage: 87,
-    },
-    {
-      number: 3,
-      description: "Geographic data covering multiple regions and time periods",
-      matchPercentage: 78,
-    },
-  ];
-
   // Check if we should stack the footer (side panel open + small screen)
   useEffect(() => {
     const checkScreenSize = () => {
@@ -376,19 +356,37 @@ export default function DatasetCard({
       />
 
       {/* Smart search expanded content */}
-      {isSmartSearchEnabled && isExpanded && (
-        <div className="mb-4">
-          {smartSearchMatches.map((match, index) => (
-            <SmartSearchMatchItem
-              key={match.number}
-              number={match.number}
-              description={match.description}
-              matchPercentage={match.matchPercentage}
-              isLast={index === smartSearchMatches.length - 1}
-            />
-          ))}
-        </div>
-      )}
+      {isSmartSearchEnabled &&
+        isExpanded &&
+        (() => {
+          type SmartSearchHit = {
+            number: number;
+            text: string;
+            similarity: number;
+          };
+          const hits: SmartSearchHit[] = Array.isArray((dataset as any).hits)
+            ? (dataset as any).hits.filter(Boolean).map((h: any) => ({
+                number: typeof h.number === "number" ? h.number : 0,
+                text:
+                  typeof h.text === "string" ? h.text : String(h.text ?? ""),
+                similarity: typeof h.similarity === "number" ? h.similarity : 0,
+              }))
+            : [];
+          if (hits.length === 0) return null;
+          return (
+            <div className="mb-4">
+              {hits.map((match, index) => (
+                <SmartSearchMatchItem
+                  key={match.number}
+                  number={match.number}
+                  description={match.text}
+                  matchPercentage={match.similarity.toFixed(2)}
+                  isLast={index === hits.length - 1}
+                />
+              ))}
+            </div>
+          );
+        })()}
 
       {/* Footer with action buttons and metadata */}
       <div
