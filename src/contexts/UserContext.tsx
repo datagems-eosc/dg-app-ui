@@ -51,7 +51,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           console.error(
             "Error reading profile picture from localStorage:",
-            error,
+            error
           );
         }
       }

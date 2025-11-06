@@ -1,34 +1,31 @@
 #!/bin/sh
 
-echo "🔍 Running pre-commit checks..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 PRE-COMMIT CHECKS"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-echo "📋 Step 1/2: Linting files with Biome..."
-npm run lint:biome:check
-LINT_EXIT_CODE=$?
+echo "📋 Step 1: Running lint-staged (linting + formatting)..."
+echo ""
+npx lint-staged --verbose
+LINT_STAGED_EXIT_CODE=$?
 
-if [ $LINT_EXIT_CODE -ne 0 ]; then
+if [ $LINT_STAGED_EXIT_CODE -ne 0 ]; then
   echo ""
-  echo "❌ Linting failed. Please fix the errors above."
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ LINT-STAGED FAILED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Fix the linting/formatting errors above and try again."
+  echo ""
   exit 1
 fi
 
-echo "✅ Linting passed"
 echo ""
-
-echo "🧪 Step 2/2: Running tests..."
-npm test
-TEST_EXIT_CODE=$?
-
-if [ $TEST_EXIT_CODE -ne 0 ]; then
-  echo ""
-  echo "❌ Tests failed. Please fix the errors above."
-  exit 1
-fi
-
-echo "✅ Tests passed"
+echo "✅ Lint-staged passed"
 echo ""
-
-echo "✨ All checks passed! Proceeding with commit..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✨ All pre-commit checks passed! Proceeding with commit..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 

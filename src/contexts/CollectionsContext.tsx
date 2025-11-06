@@ -28,7 +28,7 @@ interface CollectionsContextType {
 }
 
 const CollectionsContext = createContext<CollectionsContextType | undefined>(
-  undefined,
+  undefined
 );
 
 const COLLECTIONS_API_PAYLOAD = {
@@ -85,7 +85,7 @@ export function CollectionsProvider({
       }
       const data = await apiClient.queryCollections(
         COLLECTIONS_API_PAYLOAD,
-        token,
+        token
       );
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
@@ -147,7 +147,7 @@ export function CollectionsProvider({
       };
       const data = await apiClient.queryUserCollections(
         extraCollectionsPayload,
-        token,
+        token
       );
       console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];

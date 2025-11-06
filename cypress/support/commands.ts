@@ -63,8 +63,8 @@ Cypress.Commands.add("rewriteHeaders", () => {
               .replace(/(?<!samesite=)(;?\s*)$/i, (m) =>
                 headerContent.toLowerCase().includes("samesite=")
                   ? m
-                  : `${m}; SameSite=None; Secure`,
-              ),
+                  : `${m}; SameSite=None; Secure`
+              )
           );
 
         // Set the rewritten headers back on the response
@@ -129,7 +129,7 @@ Cypress.Commands.add("login", (opts = {}) => {
 
     if (!username || !password) {
       throw new Error(
-        "No credentials found for cy.login(): add cypress/fixtures/credentials.json or set CYPRESS_USERNAME/CYPRESS_PASSWORD env vars.",
+        "No credentials found for cy.login(): add cypress/fixtures/credentials.json or set CYPRESS_USERNAME/CYPRESS_PASSWORD env vars."
       );
     }
 
@@ -139,10 +139,10 @@ Cypress.Commands.add("login", (opts = {}) => {
 
     // Visit the application root (use baseUrl) so the Sign in button is available
     cy.visit(
-      visitPath.startsWith("http") ? visitPath : `${baseUrl}${visitPath}`,
+      visitPath.startsWith("http") ? visitPath : `${baseUrl}${visitPath}`
     );
     cy.contains(/Sign in to DataGEMS/i, { timeout: 10000 }).should(
-      "be.visible",
+      "be.visible"
     );
 
     // Stub the external authChecker script (matches existing test pattern)
@@ -180,21 +180,21 @@ Cypress.Commands.add("login", (opts = {}) => {
 
       cy.get(
         'input[placeholder="Username or email"], input[name="username"], input#username',
-        { timeout: 20000 },
+        { timeout: 20000 }
       )
         .should("be.visible")
         .type(u);
 
       cy.get(
         'input[placeholder="Password"], input[name="password"], input#password',
-        { timeout: 20000 },
+        { timeout: 20000 }
       )
         .should("be.visible")
         .type(p, { log: false });
 
       cy.get(
         'input#kc-login, input[name="login"], input[value="Sign In"], button[type="submit"]',
-        { timeout: 10000 },
+        { timeout: 10000 }
       )
         .first()
         .click();

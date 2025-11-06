@@ -28,11 +28,11 @@ interface ChatItemProps {
   onConversationUpdate?: (
     id: string,
     newName: string,
-    newETag?: string,
+    newETag?: string
   ) => void;
   onDeleteConversation?: (
     conversationId: string,
-    conversationName: string,
+    conversationName: string
   ) => void;
 }
 
@@ -118,7 +118,7 @@ export function ChatItem({
           name: trimmedName,
           eTag: conversation.eTag,
         },
-        token,
+        token
       );
       // Update the conversation with new name and eTag
       onConversationUpdate?.(conversation.id, trimmedName, result.eTag);

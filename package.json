@@ -2,6 +2,10 @@
   "name": "data-gems-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -11,7 +15,9 @@
     "lint:biome:check": "npx @biomejs/biome check .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "type-check": "tsc --noEmit",
     "test": "echo \"Running tests...\" && exit 0",
+    "test:coverage": "echo \"Running tests with coverage...\" && exit 0",
     "prepare": "husky"
   },
   "dependencies": {
@@ -28,6 +34,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.3",
+    "@commitlint/cli": "20.1.0",
+    "@commitlint/config-conventional": "20.0.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

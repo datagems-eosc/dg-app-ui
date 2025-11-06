@@ -77,11 +77,11 @@ describe("Feature: Dataset Search Functionality", () => {
     // Look through dataset card titles (h2) and count matches for /mathe/i
     cy.get("h2", { timeout: 10000 }).then(($els) => {
       const matches = Array.from($els).filter((el) =>
-        /mathe/i.test(el.innerText),
+        /mathe/i.test(el.innerText)
       );
       expect(
         matches.length,
-        `expected >= 2 matches for /mathe/i, found ${matches.length}`,
+        `expected >= 2 matches for /mathe/i, found ${matches.length}`
       ).to.be.gte(2);
     });
   });
@@ -95,11 +95,11 @@ describe("Feature: Dataset Search Functionality", () => {
     // We look for dataset card containers (they render with class 'rounded-2xl') and check their innerText
     cy.get("div.rounded-2xl", { timeout: 10000 }).then(($cards) => {
       const matches = Array.from($cards).filter((c) =>
-        /Ency/i.test((c as HTMLElement).innerText),
+        /Ency/i.test((c as HTMLElement).innerText)
       );
       expect(
         matches.length,
-        `expected >= 2 dataset cards to contain 'Ency' (case-insensitive), found ${matches.length}`,
+        `expected >= 2 dataset cards to contain 'Ency' (case-insensitive), found ${matches.length}`
       ).to.be.gte(2);
     });
   });

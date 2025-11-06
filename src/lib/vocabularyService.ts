@@ -21,7 +21,7 @@ let licensesCache:
 
 // Convert API response to HierarchicalCategory format
 function convertToHierarchicalCategories(
-  hierarchy: VocabularyItem[],
+  hierarchy: VocabularyItem[]
 ): HierarchicalCategory[] {
   return hierarchy
     .filter((item) => item.children && item.children.length > 0) // Only include items with children
@@ -44,7 +44,7 @@ function convertToHierarchicalCategories(
 
 // Fetch fields of science from API
 export async function fetchFieldsOfScience(
-  authToken?: string,
+  authToken?: string
 ): Promise<HierarchicalCategory[]> {
   // Return cached data if available
   if (fieldsOfScienceCache) {
@@ -78,7 +78,7 @@ export async function fetchFieldsOfScience(
 
 // Fetch licenses from API
 export async function fetchLicenses(
-  authToken?: string,
+  authToken?: string
 ): Promise<
   { value: string; label: string; description?: string; urls?: string[] }[]
 > {

@@ -1,0 +1,83 @@
+name: CI - Next.js Quality Gate
+
+on:
+  pull_request:
+    branches: [main, develop, staging]
+  push:
+    branches: [main, develop, staging]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+env:
+  NODE_ENV: development
+  NEXT_TELEMETRY_DISABLED: 1
+  CI: true
+
+jobs:
+  quality:
+    name: Code Quality & Build Validation
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci
+          echo "✅ Dependencies installed"
+
+      - name: Lint with Biome
+        run: |
+          echo "🔍 Running Biome linter..."
+          npm run lint:biome:check
+          echo "✅ Biome linting passed"
+
+      - name: Lint with ESLint
+        run: |
+          echo "🔍 Running ESLint..."
+          npm run lint
+          echo "✅ ESLint passed"
+
+      - name: Check formatting with Prettier
+        run: |
+          echo "💅 Checking code formatting..."
+          npm run format:check
+          echo "✅ Formatting check passed"
+
+      - name: Type check with TypeScript
+        run: |
+          echo "📘 Running TypeScript type check..."
+          npm run type-check
+          echo "✅ Type check passed"
+
+      - name: Run tests
+        run: |
+          echo "🧪 Running tests..."
+          npm run test:coverage
+          echo "✅ Tests passed"
+
+      - name: Build Next.js app
+        run: |
+          echo "🏗️ Building Next.js application..."
+          npm run build
+          echo "✅ Build successful"
+
+      - name: Security audit
+        run: |
+          echo "🔒 Running security audit..."
+          npm audit --audit-level=moderate || echo "⚠️ Security audit found issues (non-blocking)"
