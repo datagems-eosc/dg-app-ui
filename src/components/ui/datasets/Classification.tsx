@@ -9,7 +9,6 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { useSession } from "next-auth/react";
 import HierarchicalDropdown, {
   HierarchicalCategory,
 } from "../HierarchicalDropdown";
@@ -17,7 +16,8 @@ import { Select } from "../Select";
 import { Input } from "../Input";
 import { VisibilityCard } from "./VisibilityCard";
 import { LicenseCard } from "./LicenseCard";
-import { fetchFieldsOfScience, fetchLicenses } from "@/config/filterOptions";
+import { processFieldsOfScience, processLicenses } from "@/config/filterOptions";
+import { useApi } from "@/hooks/useApi";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { Collection, ApiCollection } from "@/types/collection";
 
@@ -85,7 +85,7 @@ export function Classification({
   onChange,
   errors,
 }: ClassificationProps) {
-  const { data: session } = useSession() as any;
+  const api = useApi();
   const { apiCollections, isLoadingApiCollections } = useCollections();
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
@@ -100,12 +100,13 @@ export function Classification({
 
   // Fetch fields of science and licenses
   useEffect(() => {
-    const token = session?.accessToken;
+    if (!api.hasToken) return;
 
     // Fetch fields of science
     setIsLoadingFields(true);
-    fetchFieldsOfScience(token)
-      .then((categories) => {
+    api.getFieldsOfScience()
+      .then((data) => {
+        const categories = processFieldsOfScience(data);
         setFieldsOfScienceCategories(categories);
       })
       .catch((error) => {
@@ -118,8 +119,9 @@ export function Classification({
 
     // Fetch licenses
     setIsLoadingLicenses(true);
-    fetchLicenses(token)
-      .then((licenseOptions) => {
+    api.getLicenses()
+      .then((data) => {
+        const licenseOptions = processLicenses(data);
         setLicenses([
           ...licenseOptions,
           { value: "custom", label: "Add Custom License" },
@@ -133,7 +135,7 @@ export function Classification({
       .finally(() => {
         setIsLoadingLicenses(false);
       });
-  }, [session]);
+  }, [api.hasToken]);
 
   const handleFieldChange = (field: keyof ClassificationData, value: any) => {
     onChange({
