@@ -3,7 +3,7 @@
 import { MessageCircleMore, SearchX } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 import { NoData } from "../NoData";
 import { Search as SearchInput } from "../Search";
 import { ChatItem } from "./ChatItem";
@@ -64,6 +64,7 @@ export function ChatHistoryList({
   conversations: externalConversations,
   setConversations: setExternalConversations,
 }: ChatHistoryListProps) {
+  const api = useApi();
   const [conversations, setConversations] = useState<ConversationListItem[]>(
     [],
   );
@@ -97,8 +98,7 @@ export function ChatHistoryList({
       setIsLoading(true);
       setError(null);
       try {
-        const token = (session as any)?.accessToken;
-        if (!token) return;
+        if (!api.hasToken) return;
         const payload = {
           project: {
             fields: [
@@ -118,7 +118,7 @@ export function ChatHistoryList({
           Order: { Items: ["-createdAt"] },
           Metadata: { CountAll: true },
         };
-        const data = await apiClient.queryConversations(payload, token);
+        const data = await api.queryConversations(payload);
         const conversations = Array.isArray(data.items)
           ? data.items
               .filter(
@@ -167,7 +167,7 @@ export function ChatHistoryList({
       }
     };
     fetchConversations();
-  }, [session, setCurrentConversations]);
+  }, [api.hasToken]);
 
   if (isLoading) {
     return <ChatHistorySkeleton />;

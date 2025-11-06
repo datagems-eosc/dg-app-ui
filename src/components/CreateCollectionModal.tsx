@@ -1,13 +1,12 @@
 "use client";
 
-import { FileText, Loader2, X } from "lucide-react";
+import { FileText, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
 import { Input } from "./ui/Input";
@@ -43,7 +42,7 @@ export default function CreateCollectionModal({
     refreshExtraCollections,
     notifyCollectionModified,
   } = useCollections();
-  const { data: session } = useSession();
+  const api = useApi();
   const router = useRouter();
 
   const _selectedDatasetObjects = datasets.filter((dataset) =>
@@ -55,19 +54,19 @@ export default function CreateCollectionModal({
     (collection) => collection.name !== "Favorites",
   );
 
-  // Refresh collections when modal opens or session changes to ensure fresh data
+  // Refresh collections when modal opens or token is available to ensure fresh data
   useEffect(() => {
-    if (isVisible && session) {
-      // Always refresh collections when modal opens or session changes to ensure fresh data
+    if (isVisible && api.hasToken) {
+      // Always refresh collections when modal opens or token is available to ensure fresh data
       refreshExtraCollections();
     }
-  }, [isVisible, session, refreshExtraCollections]);
+  }, [isVisible, api.hasToken, refreshExtraCollections]);
 
   // Handle tab switching with collection refresh
   const handleTabSwitch = (tab: TabType) => {
     setActiveTab(tab);
     // If switching to "Add to existing" tab, refresh collections to ensure fresh data
-    if (tab === "add" && session) {
+    if (tab === "add" && api.hasToken) {
       refreshExtraCollections();
     }
   };
@@ -75,23 +74,15 @@ export default function CreateCollectionModal({
   const handleCreate = async () => {
     if (!collectionName.trim()) return;
 
-    if (!session) {
+    if (!api.hasToken) {
       alert("Please log in to create collections");
       return;
     }
 
     setIsCreating(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
-        throw new Error("No access token available");
-      }
-
       // Create collection via API
-      const response = await apiClient.createUserCollection(
-        collectionName.trim(),
-        token,
-      );
+      const response = await api.createUserCollection(collectionName.trim());
 
       // Add to local state with the real ID from API response
       if (response.id) {
@@ -138,26 +129,17 @@ export default function CreateCollectionModal({
   const handleAddToCollections = async () => {
     if (selectedCollectionIds.length === 0) return;
 
-    if (!session) {
+    if (!api.hasToken) {
       alert("Please log in to add datasets to collections");
       return;
     }
 
     setIsAdding(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
-        throw new Error("No access token available");
-      }
-
       // Add datasets to all selected collections via API
       for (const collectionId of selectedCollectionIds) {
         for (const datasetId of selectedDatasets) {
-          await apiClient.addDatasetToUserCollection(
-            collectionId,
-            datasetId,
-            token,
-          );
+          await api.addDatasetToUserCollection(collectionId, datasetId);
         }
       }
 

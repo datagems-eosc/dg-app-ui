@@ -7,6 +7,7 @@ import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { generateChatUrl } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { useApi } from "@/hooks/useApi";
 import { createUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
 import CollectionSettingsModal from "./CollectionSettingsModal";
@@ -21,6 +22,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const api = useApi();
   const router = useRouter();
   const pathname = usePathname();
   const hasLoadedCollections = useRef(false);
@@ -75,7 +77,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Function to sort and filter collections based on localStorage settings
   const getSortedAndFilteredCollections = (
     collections: ApiCollection[],
-    _isExtra = false,
+    isExtra = false,
   ) => {
     const savedSettings =
       typeof window !== "undefined"
@@ -251,14 +253,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const handleConfirmDeleteConversation = async () => {
-    const token = (session as any)?.accessToken;
-    if (deleteModalState.conversationId && token) {
+    if (deleteModalState.conversationId && api.hasToken) {
       try {
-        const { apiClient } = await import("@/lib/apiClient");
-        await apiClient.deleteConversation(
-          deleteModalState.conversationId,
-          token,
-        );
+        await api.deleteConversation(deleteModalState.conversationId);
         // Remove the conversation from local state immediately
         setConversations((prevConversations) =>
           prevConversations.filter(

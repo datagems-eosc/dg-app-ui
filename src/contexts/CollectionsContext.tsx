@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import type React from "react";
 import {
   createContext,
@@ -9,11 +8,11 @@ import {
   useEffect,
   useState,
 } from "react";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 import type { ApiCollection } from "@/types/collection";
 
 interface CollectionsContextType {
-  collections: ApiCollection[]; // Combined collections for backward compatibility
+  collections: ApiCollection[];
   apiCollections: ApiCollection[];
   extraCollections: ApiCollection[];
   isLoadingApiCollections: boolean;
@@ -61,32 +60,27 @@ export function CollectionsProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session } = useSession();
+  const api = useApi();
   const [apiCollections, setApiCollections] = useState<ApiCollection[]>([]);
   const [extraCollections, setExtraCollections] = useState<ApiCollection[]>([]);
   const [isLoadingApiCollections, setIsLoadingApiCollections] = useState(true);
   const [isLoadingExtraCollections, setIsLoadingExtraCollections] =
     useState(true);
 
-  // Fetch API collections when session is available
   useEffect(() => {
-    if (session) {
+    if (api.hasToken) {
       fetchApiCollections();
       fetchExtraCollections();
     }
-  }, [session]);
+  }, [api.hasToken]);
 
   async function fetchApiCollections() {
     setIsLoadingApiCollections(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         return;
       }
-      const data = await apiClient.queryCollections(
-        COLLECTIONS_API_PAYLOAD,
-        token,
-      );
+      const data = await api.queryCollections(COLLECTIONS_API_PAYLOAD);
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
     } catch (err: unknown) {
@@ -99,8 +93,7 @@ export function CollectionsProvider({
   async function fetchExtraCollections() {
     setIsLoadingExtraCollections(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         return;
       }
       const extraCollectionsPayload = {
@@ -132,7 +125,7 @@ export function CollectionsProvider({
         },
         page: {
           Offset: 0,
-          Size: 100, // Increased from 10 to 100 to ensure all collections are fetched
+          Size: 100,
         },
         Order: {
           Items: ["+createdAt"],
@@ -140,15 +133,10 @@ export function CollectionsProvider({
         Metadata: {
           CountAll: true,
         },
-        // Add cache-busting timestamp to ensure fresh data
         _timestamp: Date.now(),
-        // Add random cache-busting parameter
         _cacheBust: Math.random().toString(36).substring(7),
       };
-      const data = await apiClient.queryUserCollections(
-        extraCollectionsPayload,
-        token,
-      );
+      const data = await api.queryUserCollections(extraCollectionsPayload);
       console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];
       console.log("Setting extraCollections to:", items);
@@ -162,29 +150,26 @@ export function CollectionsProvider({
 
   const refreshApiCollections = useCallback(async () => {
     await fetchApiCollections();
-  }, [fetchApiCollections]);
+  }, [api.hasToken]);
 
   const refreshExtraCollections = useCallback(async () => {
     await fetchExtraCollections();
-  }, [fetchExtraCollections]);
+  }, [api.hasToken]);
 
   const refreshAllCollections = useCallback(async () => {
     await Promise.all([fetchApiCollections(), fetchExtraCollections()]);
-  }, [fetchApiCollections, fetchExtraCollections]);
+  }, [api.hasToken]);
 
   const notifyCollectionModified = useCallback(() => {
-    // This function can be called by components to notify that collections have been modified
-    // It will trigger a refresh of all collections
-    // Force immediate refresh to ensure deleted collections are removed from UI
     setTimeout(() => {
       refreshAllCollections();
-    }, 100); // Small delay to ensure API operation completes
+    }, 100);
   }, [refreshAllCollections]);
 
   return (
     <CollectionsContext.Provider
       value={{
-        collections: [...apiCollections, ...extraCollections], // Combined collections for backward compatibility
+        collections: [...apiCollections, ...extraCollections],
         apiCollections,
         extraCollections,
         isLoadingApiCollections,

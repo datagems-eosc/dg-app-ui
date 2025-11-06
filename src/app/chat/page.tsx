@@ -1,14 +1,13 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Chat from "@/components/Chat";
 import DashboardLayout from "@/components/DashboardLayout";
 // import { getApiBaseUrl } from "@/lib/utils"; // No longer needed
 import ProtectedPage from "@/components/ProtectedPage";
 import type { Dataset } from "@/data/dataset";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 
 // API fetch payload (copied from dashboard)
 const API_DATASETS_PAYLOAD = {
@@ -105,7 +104,7 @@ function ChatPageContent({
   hideCollectionActions,
 }: ChatPageProps) {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
-  const { data: session } = useSession();
+  const api = useApi();
   const [isMounted, setIsMounted] = useState(false);
   // Removed unused messages state
   const [chatInitialMessages, setChatInitialMessages] = useState<
@@ -156,11 +155,10 @@ function ChatPageContent({
       setConversationId(id);
 
       const fetchHistory = async () => {
-        const token = (session as any)?.accessToken;
-        if (!token) return;
+        if (!api.hasToken) return;
         const queryParams =
           "?f=id&f=isActive&f=name&f=user.id&f=user.name&f=datasets.dataset.id&f=datasets.dataset.code&f=messages.kind&f=messages.data&f=messages.createdAt";
-        const data = await apiClient.getConversation(id, queryParams, token);
+        const data = await api.getConversation(id, queryParams);
 
         let datasetIds: string[] = [];
         if (data.datasets && Array.isArray(data.datasets)) {
@@ -209,7 +207,7 @@ function ChatPageContent({
         setTimeout(() => setIsResetting(false), 0);
       }
     }
-  }, [params, session]);
+  }, [params, api.hasToken]);
 
   // Load from localStorage when on initial chat page (only if not just cleared)
   useEffect(() => {
@@ -232,24 +230,20 @@ function ChatPageContent({
   useEffect(() => {
     if (conversationId) return;
     const fetchAllDatasets = async () => {
-      // next-auth session type does not include accessToken by default
-      const token = (session as any)?.accessToken;
-      if (!token) return;
-      const data = await apiClient.queryDatasets(API_DATASETS_PAYLOAD, token);
+      if (!api.hasToken) return;
+      const data = await api.queryDatasets(API_DATASETS_PAYLOAD);
       if (Array.isArray(data.items)) {
         setDatasets(data.items);
       }
     };
     fetchAllDatasets();
-  }, [conversationId, session]);
+  }, [conversationId, api.hasToken]);
 
   // Fetch detailed dataset info when selectedDatasets changes and conversationId is present
   useEffect(() => {
     const fetchDatasets = async () => {
       if (!conversationId || selectedDatasets.length === 0) return;
-      // next-auth session type does not include accessToken by default
-      const token = (session as any)?.accessToken;
-      if (!token) return;
+      if (!api.hasToken) return;
       const payload = {
         project: {
           fields: [
@@ -279,22 +273,20 @@ function ChatPageContent({
           CountAll: true,
         },
       };
-      const data = await apiClient.queryDatasets(payload, token);
+      const data = await api.queryDatasets(payload);
       if (Array.isArray(data.items)) {
         setDatasets(data.items);
       }
     };
     fetchDatasets();
-  }, [conversationId, selectedDatasets, session]);
+  }, [conversationId, selectedDatasets, api.hasToken]);
 
   // Fetch conversation messages when on /chat/[conversationId]
   useEffect(() => {
     if (!conversationId) return;
     setChatInitialMessages([]);
     const fetchMessages = async () => {
-      // next-auth session type does not include accessToken by default
-      const token = (session as any)?.accessToken;
-      if (!token) return;
+      if (!api.hasToken) return;
       const payload = {
         project: {
           fields: [
@@ -311,7 +303,7 @@ function ChatPageContent({
         Order: { Items: ["+createdAt"] },
         Metadata: { CountAll: true },
       };
-      const data = await apiClient.queryMessages(payload, token);
+      const data = await api.queryMessages(payload);
       if (Array.isArray(data.items)) {
         setChatInitialMessages(data.items);
       } else {
@@ -319,7 +311,7 @@ function ChatPageContent({
       }
     };
     fetchMessages();
-  }, [conversationId, session]);
+  }, [conversationId, api.hasToken]);
 
   // Helper to normalize datasets to always have the correct id (UUID)
   function normalizeDatasets(rawDatasets: unknown[]): unknown[] {
