@@ -120,7 +120,7 @@ interface SidebarContentProps {
   onCollectionAskQuestion: (collectionId: string) => void;
   onDeleteConversation: (
     conversationId: string,
-    conversationName: string
+    conversationName: string,
   ) => void;
   onConversationUpdate: (id: string, newName: string, newETag?: string) => void;
   setConversations: React.Dispatch<React.SetStateAction<any[]>>;
@@ -195,7 +195,7 @@ export function SidebarContent({
                 {finalSortedCollections.map((collection) => {
                   // Check if this collection is from extraCollections (custom collections)
                   const isExtra = extraCollections.some(
-                    (ec) => ec.id === collection.id
+                    (ec) => ec.id === collection.id,
                   );
 
                   return (

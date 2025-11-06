@@ -208,7 +208,7 @@ export default function Browse({
   const [selectedDataset, setSelectedDataset] =
     useState<DatasetWithCollections | null>(null);
   const [filters, setFilters] = useState<FilterState>(
-    propFilters || defaultFilters
+    propFilters || defaultFilters,
   );
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
@@ -216,13 +216,13 @@ export default function Browse({
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const [datasetsToAdd, setDatasetsToAdd] = useState<DatasetWithCollections[]>(
-    []
+    [],
   );
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
   const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
-    []
+    [],
   );
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
@@ -278,12 +278,12 @@ export default function Browse({
 
     window.addEventListener(
       "sidebarOpenedForTablet",
-      handleSidebarOpenedForTablet
+      handleSidebarOpenedForTablet,
     );
     return () => {
       window.removeEventListener(
         "sidebarOpenedForTablet",
-        handleSidebarOpenedForTablet
+        handleSidebarOpenedForTablet,
       );
     };
   }, [isTablet, selectedDataset, showSelectedPanel, handleClosePanel]);
@@ -457,7 +457,7 @@ export default function Browse({
       // Check if click is within title actions dropdown
       if (showTitleActionsDropdown) {
         const titleDropdownContainer = document.querySelector(
-          "[data-title-actions-dropdown]"
+          "[data-title-actions-dropdown]",
         );
         if (
           titleDropdownContainer &&
@@ -470,7 +470,7 @@ export default function Browse({
       // Check if click is within actions dropdown
       if (showActionsDropdown) {
         const actionsDropdownContainer = document.querySelector(
-          "[data-actions-dropdown]"
+          "[data-actions-dropdown]",
         );
         if (
           actionsDropdownContainer &&
@@ -529,7 +529,7 @@ export default function Browse({
             ? dataset.access
             : isApiDataset(dataset) &&
                 Array.isArray(
-                  (dataset as unknown as Record<string, unknown>).permissions
+                  (dataset as unknown as Record<string, unknown>).permissions,
                 ) &&
                 (
                   (dataset as unknown as Record<string, unknown>)
@@ -626,7 +626,7 @@ export default function Browse({
       handleOpenPanel();
     } else {
       setCurrentSelectedDatasets(
-        currentSelectedDatasets.filter((id) => id !== datasetId)
+        currentSelectedDatasets.filter((id) => id !== datasetId),
       );
     }
   };
@@ -711,7 +711,7 @@ export default function Browse({
       const selectedFieldNames = filters.fieldsOfScience.map((fieldCode) => {
         for (const category of fieldsOfScienceCategories) {
           const option = category.options.find(
-            (opt) => opt.value === fieldCode
+            (opt) => opt.value === fieldCode,
           );
           if (option) {
             return option.label;
@@ -974,7 +974,7 @@ export default function Browse({
                             setShowActionsDropdown(false);
                             // Select all datasets logic
                             console.log(
-                              "Select All clicked (selected datasets)"
+                              "Select All clicked (selected datasets)",
                             );
                             selectAll();
                             // Open the selected datasets panel when selecting all
@@ -1180,7 +1180,7 @@ export default function Browse({
                       onClick={() => handleDatasetClick(dataset)}
                       isSelected={selectedDataset?.id === dataset.id}
                       isMultiSelected={currentSelectedDatasets.includes(
-                        dataset.id
+                        dataset.id,
                       )}
                       onSelect={(isSelected) =>
                         handleDatasetSelect(dataset.id, isSelected)

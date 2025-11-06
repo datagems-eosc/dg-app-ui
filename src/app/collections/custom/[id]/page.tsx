@@ -77,14 +77,14 @@ export default function CustomCollectionPage() {
     ? editedDatasetIds
     : collection?.datasetIds || [];
   const collectionDatasets = mockDatasets.filter((dataset) =>
-    displayDatasetIds.includes(dataset.id)
+    displayDatasetIds.includes(dataset.id),
   );
 
   const handleChatWithData = () => {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
     router.push(getNavigationUrl("/chat"));
   };
@@ -108,7 +108,7 @@ export default function CustomCollectionPage() {
   const handleCreateCollection = (name: string) => {
     addCollection(name, selectedDatasets);
     alert(
-      `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`
+      `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`,
     );
   };
 
@@ -117,7 +117,7 @@ export default function CustomCollectionPage() {
     setIsEditMode(true);
     setEditedName(collection.name);
     setEditedDatasetIds(
-      collection.datasetIds ? [...collection.datasetIds] : []
+      collection.datasetIds ? [...collection.datasetIds] : [],
     );
   };
 
@@ -146,7 +146,7 @@ export default function CustomCollectionPage() {
   const handleAddDatasetsFromModal = (newSelectedDatasets: string[]) => {
     // Add any new datasets that aren't already in the collection
     const datasetsToAdd = newSelectedDatasets.filter(
-      (id) => !editedDatasetIds.includes(id)
+      (id) => !editedDatasetIds.includes(id),
     );
     setEditedDatasetIds((prev) => [...prev, ...datasetsToAdd]);
   };
@@ -155,7 +155,7 @@ export default function CustomCollectionPage() {
     if (!collection) return;
     if (
       confirm(
-        `Are you sure you want to delete "${collection.name}"? This action cannot be undone.`
+        `Are you sure you want to delete "${collection.name}"? This action cannot be undone.`,
       )
     ) {
       removeCollection(collection.id);

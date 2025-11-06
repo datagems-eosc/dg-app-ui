@@ -53,7 +53,7 @@ export function Button({
         variants[variant],
         sizes[size],
         typography[size],
-        className
+        className,
       )}
       {...props}
     >

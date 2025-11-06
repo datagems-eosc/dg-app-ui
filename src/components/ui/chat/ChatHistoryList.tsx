@@ -45,12 +45,12 @@ interface ChatHistoryListProps {
   currentConversationId?: string;
   onDeleteConversation?: (
     conversationId: string,
-    conversationName: string
+    conversationName: string,
   ) => void;
   onConversationUpdate?: (
     id: string,
     newName: string,
-    newETag?: string
+    newETag?: string,
   ) => void;
   conversations?: any[];
   setConversations?: React.Dispatch<React.SetStateAction<any[]>>;
@@ -66,7 +66,7 @@ export function ChatHistoryList({
 }: ChatHistoryListProps) {
   const api = useApi();
   const [conversations, setConversations] = useState<ConversationListItem[]>(
-    []
+    [],
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,14 +80,14 @@ export function ChatHistoryList({
   const handleConversationUpdate = (
     id: string,
     newName: string,
-    newETag?: string
+    newETag?: string,
   ) => {
     setCurrentConversations((prevConversations: any[]) =>
       prevConversations.map((conv: any) =>
         conv.id === id
           ? { ...conv, name: newName, eTag: newETag || conv.eTag }
-          : conv
-      )
+          : conv,
+      ),
     );
     // Also call the external handler if provided
     onConversationUpdate?.(id, newName, newETag);
@@ -133,7 +133,7 @@ export function ChatHistoryList({
                     Array.isArray(item.messages) &&
                     item.messages.length > 0
                   );
-                }
+                },
               )
               .map(
                 (item: {
@@ -155,7 +155,7 @@ export function ChatHistoryList({
                     eTag: item.eTag,
                     createdAt,
                   };
-                }
+                },
               )
           : [];
         setCurrentConversations(conversations);
@@ -181,7 +181,7 @@ export function ChatHistoryList({
       : currentConversations.filter((c) =>
           (c.name || "Untitled Conversation")
             .toLowerCase()
-            .includes(searchQuery.toLowerCase())
+            .includes(searchQuery.toLowerCase()),
         );
   return (
     <div className="flex flex-col gap-4 h-full">

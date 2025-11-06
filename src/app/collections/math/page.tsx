@@ -19,7 +19,7 @@ export default function MathPage() {
 
   // Filter datasets to show only Math category
   const mathDatasets = mockDatasets.filter(
-    (dataset) => dataset.category === "Math"
+    (dataset) => dataset.category === "Math",
   );
 
   // On mount: clear any previous chat selection as this is not the chat page
@@ -34,7 +34,7 @@ export default function MathPage() {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
     router.push(getNavigationUrl("/chat"));
   };

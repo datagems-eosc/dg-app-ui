@@ -19,7 +19,7 @@ export default function LanguagePage() {
 
   // Filter datasets to show only Language category
   const languageDatasets = mockDatasets.filter(
-    (dataset) => dataset.category === "Language"
+    (dataset) => dataset.category === "Language",
   );
 
   // On mount: clear any previous chat selection as this is not the chat page
@@ -34,7 +34,7 @@ export default function LanguagePage() {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
     router.push(getNavigationUrl("/chat"));
   };

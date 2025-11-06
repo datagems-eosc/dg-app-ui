@@ -31,7 +31,7 @@ export function Radio({
           key={option.value}
           className={cn(
             "flex items-center cursor-pointer group",
-            disabled && "cursor-not-allowed opacity-60"
+            disabled && "cursor-not-allowed opacity-60",
           )}
         >
           <div className="relative">
@@ -51,14 +51,14 @@ export function Radio({
                   ? "border-slate-450"
                   : value === option.value
                     ? "border-blue-650"
-                    : "border-slate-350 group-hover:border-slate-450"
+                    : "border-slate-350 group-hover:border-slate-450",
               )}
             >
               {value === option.value && (
                 <div
                   className={cn(
                     "w-2 h-2 rounded-full",
-                    disabled ? "bg-slate-450" : "bg-blue-650"
+                    disabled ? "bg-slate-450" : "bg-blue-650",
                   )}
                 ></div>
               )}
@@ -67,7 +67,7 @@ export function Radio({
           <span
             className={cn(
               "ml-2 text-body-14-regular transition-colors",
-              disabled ? "!text-slate-450" : "!text-gray-750"
+              disabled ? "!text-slate-450" : "!text-gray-750",
             )}
           >
             {option.label}

@@ -54,7 +54,7 @@ export default function HierarchicalDropdown({
     setExpandedCategories((prev) =>
       prev.includes(categoryCode)
         ? prev.filter((code) => code !== categoryCode)
-        : [...prev, categoryCode]
+        : [...prev, categoryCode],
     );
   };
 
@@ -73,7 +73,7 @@ export default function HierarchicalDropdown({
           options: category.options.filter(
             (option) =>
               option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              option.code?.toLowerCase().includes(searchTerm.toLowerCase())
+              option.code?.toLowerCase().includes(searchTerm.toLowerCase()),
           ),
         }))
         .filter((category) => category.options.length > 0)

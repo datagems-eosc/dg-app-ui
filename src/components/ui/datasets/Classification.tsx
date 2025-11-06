@@ -158,7 +158,7 @@ export function Classification({
         licenses.length ? licenses : mockLicensesWithDescriptions
       ).find((l) => l.value === licenseValue);
       setSelectedLicense(
-        license || { value: licenseValue, label: licenseValue }
+        license || { value: licenseValue, label: licenseValue },
       );
       // Clear custom name when switching away from custom
       setCustomLicenseName("");

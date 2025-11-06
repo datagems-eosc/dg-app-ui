@@ -38,18 +38,18 @@ export default function SelectedDatasetsPanel({
   const [expandedDatasets, setExpandedDatasets] = React.useState<string[]>([]);
 
   const selectedDatasets = datasets.filter((dataset) =>
-    selectedDatasetIds.includes(dataset.id)
+    selectedDatasetIds.includes(dataset.id),
   );
   // Add fallback for missing datasets
   const missingDatasetIds = selectedDatasetIds.filter(
-    (id) => !selectedDatasets.some((ds) => ds.id === id)
+    (id) => !selectedDatasets.some((ds) => ds.id === id),
   );
 
   const toggleExpanded = (datasetId: string) => {
     setExpandedDatasets((prev) =>
       prev.includes(datasetId)
         ? prev.filter((id) => id !== datasetId)
-        : [...prev, datasetId]
+        : [...prev, datasetId],
     );
   };
 

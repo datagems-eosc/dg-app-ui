@@ -43,7 +43,7 @@ export function useApi() {
         headers,
       });
     },
-    [token, baseUrl]
+    [token, baseUrl],
   );
 
   /**
@@ -63,7 +63,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   /**
@@ -83,7 +83,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const queryUserCollections = useCallback(
@@ -102,7 +102,7 @@ export function useApi() {
       console.log("queryUserCollections req", payload, "res", res);
       return res;
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const createUserCollection = useCallback(
@@ -112,7 +112,7 @@ export function useApi() {
         {
           method: "POST",
           body: JSON.stringify({ name }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -122,7 +122,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const addDatasetToUserCollection = useCallback(
@@ -131,19 +131,19 @@ export function useApi() {
         `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id&f=UserDatasetCollections.id&f=UserDatasetCollections.dataset.id&f=name&f=user.id&f=user.name&f=UserDatasetCollections.dataset.name`,
         {
           method: "POST",
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.error || "Failed to add dataset to collection"
+          errorData.error || "Failed to add dataset to collection",
         );
       }
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const removeDatasetFromUserCollection = useCallback(
@@ -152,19 +152,19 @@ export function useApi() {
         `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.error || "Failed to remove dataset from collection"
+          errorData.error || "Failed to remove dataset from collection",
         );
       }
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const deleteUserCollection = useCallback(
@@ -180,7 +180,7 @@ export function useApi() {
 
       return {};
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   /**
@@ -200,7 +200,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const searchCrossDataset = useCallback(
@@ -217,7 +217,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   /**
@@ -236,7 +236,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const queryConversations = useCallback(
@@ -253,7 +253,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const persistConversation = useCallback(
@@ -263,7 +263,7 @@ export function useApi() {
         {
           method: "POST",
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -273,7 +273,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const persistConversationDeep = useCallback(
@@ -283,19 +283,19 @@ export function useApi() {
         {
           method: "POST",
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.error || "Failed to persist conversation deep"
+          errorData.error || "Failed to persist conversation deep",
         );
       }
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const queryMessages = useCallback(
@@ -312,13 +312,13 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const updateConversation = useCallback(
     async (
       id: string,
-      payload: { name: string; eTag: string }
+      payload: { name: string; eTag: string },
     ): Promise<any> => {
       const response = await makeRequest(
         `/conversation/me/persist?f=id&f=etag&f=name`,
@@ -329,7 +329,7 @@ export function useApi() {
             name: payload.name,
             eTag: payload.eTag,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -339,7 +339,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const deleteConversation = useCallback(
@@ -355,7 +355,7 @@ export function useApi() {
 
       return {};
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   /**
@@ -402,7 +402,7 @@ export function useApi() {
         `/user/settings/key/${settingsKey}${qs}`,
         {
           method: "GET",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -412,7 +412,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const saveUserSettings = useCallback(
@@ -435,7 +435,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   return {

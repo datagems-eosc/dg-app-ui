@@ -49,7 +49,7 @@ export default function UserProfile() {
   const { userData, setProfilePicture } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"personal" | "preferences">(
-    "personal"
+    "personal",
   );
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
@@ -103,7 +103,7 @@ export default function UserProfile() {
     if (!api.hasToken) return;
     try {
       const notificationSettings = await api.getUserSettings(
-        "notificationSettings"
+        "notificationSettings",
       );
       if (!notificationSettings || notificationSettings.length === 0) return;
       const lastIndex = notificationSettings.length - 1;
@@ -215,7 +215,7 @@ export default function UserProfile() {
   const updateNotification = (
     key: keyof NotificationSettings,
     type: "email" | "inApp",
-    value: boolean
+    value: boolean,
   ) => {
     if (key === "id" || key === "eTag") return;
     setNotifications((prev) => ({

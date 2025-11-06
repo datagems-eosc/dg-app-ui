@@ -15,8 +15,9 @@ export default function SmartSwitch({
   className = "",
   disabled = false,
 }: SmartSwitchProps) {
-  const [internalChecked, setInternalChecked] =
-    React.useState<boolean>(!!checked);
+  const [internalChecked, setInternalChecked] = React.useState<boolean>(
+    !!checked,
+  );
 
   const isControlled = typeof checked === "boolean";
   const isOn = isControlled ? !!checked : internalChecked;
