@@ -54,7 +54,10 @@ export default function UserProfile() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
-  const [personalSettings, setPersonalSettings] = useState<UserData>({ name: '', surname: '' });
+  const [personalSettings, setPersonalSettings] = useState<UserData>({
+    name: "",
+    surname: "",
+  });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
     newFeatures: { email: false, inApp: false },
@@ -79,7 +82,10 @@ export default function UserProfile() {
 
     (async () => {
       try {
-        await Promise.all([loadNotificationSettings(token), loadPersonalSettings(token)]);
+        await Promise.all([
+          loadNotificationSettings(token),
+          loadPersonalSettings(token),
+        ]);
       } catch (err) {
         console.error("Failed loading user settings:", err);
       } finally {
@@ -96,7 +102,10 @@ export default function UserProfile() {
   async function loadPersonalSettings(token: string) {
     if (!token) return;
     try {
-      const settings = await apiClient.getUserSettings("personalSettings", token);
+      const settings = await apiClient.getUserSettings(
+        "personalSettings",
+        token
+      );
       if (!settings || settings.length === 0) return;
       const lastIndex = settings.length - 1;
       const data = JSON.parse(settings[lastIndex].value);
@@ -114,7 +123,10 @@ export default function UserProfile() {
   async function loadNotificationSettings(token: string) {
     if (!token) return;
     try {
-      const settings = await apiClient.getUserSettings("notificationSettings", token);
+      const settings = await apiClient.getUserSettings(
+        "notificationSettings",
+        token
+      );
       if (!settings || settings.length === 0) return;
       const lastIndex = settings.length - 1;
       setNotifications({
@@ -132,10 +144,15 @@ export default function UserProfile() {
     saveNotificationSettings();
     savePersonalSettings();
 
-    updateUserData(
-      { name: personalSettings.name, surname: personalSettings.surname }
-    );
-    setBackupUserData({ ...userData, name: personalSettings.name, surname: personalSettings.surname });
+    updateUserData({
+      name: personalSettings.name,
+      surname: personalSettings.surname,
+    });
+    setBackupUserData({
+      ...userData,
+      name: personalSettings.name,
+      surname: personalSettings.surname,
+    });
     setBackupNotifications(notifications);
     setShowToast(true);
   };
@@ -155,7 +172,7 @@ export default function UserProfile() {
     if (eTag) payload.eTag = eTag;
 
     apiClient.saveUserSettings(payload, token);
-  }
+  };
   const savePersonalSettings = () => {
     const token = (session as any)?.accessToken;
     if (!token) return;
@@ -171,7 +188,7 @@ export default function UserProfile() {
     if (eTag) payload.eTag = eTag;
 
     apiClient.saveUserSettings(payload, token);
-  }
+  };
 
   const handleCancel = () => {
     router.push(APP_ROUTES.DASHBOARD);
@@ -235,7 +252,7 @@ export default function UserProfile() {
     type: "email" | "inApp",
     value: boolean
   ) => {
-    if (key === 'id' || key === 'eTag') return;
+    if (key === "id" || key === "eTag") return;
     setNotifications((prev) => ({
       ...prev,
       [key]: {
@@ -270,7 +287,9 @@ export default function UserProfile() {
                 <PersonalSettingsSection
                   isLoading={isLoading}
                   formData={personalSettings}
-                  updateFormData={(data) => setPersonalSettings((prev) => ({ ...prev, ...data }))}
+                  updateFormData={(data) =>
+                    setPersonalSettings((prev) => ({ ...prev, ...data }))
+                  }
                 />
               )}
 

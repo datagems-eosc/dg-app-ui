@@ -8,7 +8,7 @@ The main delivery package for the service is a docker image. The [Dockerfile](ht
 
 ## Docker image publishing
 
-A GitHub Action workflow is available to [build and publish](https://github.com/datagems-eosc/dg-app-api/blob/main/.github/workflows/docker-publish.yml) the generated docker image for the service. The action is triggered when a new tag is created in the repository with a pattern of v*. This way, all the images produced are always named and can be traced back to the codebase snapshot that generated them.
+A GitHub Action workflow is available to [build and publish](https://github.com/datagems-eosc/dg-app-api/blob/main/.github/workflows/docker-publish.yml) the generated docker image for the service. The action is triggered when a new tag is created in the repository with a pattern of v\*. This way, all the images produced are always named and can be traced back to the codebase snapshot that generated them.
 
 The generated docker image is pushed to the GitHub organization Packages using the name of the service repo and the version tag that triggered the execution.
 
@@ -31,17 +31,18 @@ The scan is configured to evaluate rules on security, quality and maintenability
 A GitHub Action workflow is available to generate [code metrics](https://github.com/datagems-eosc/dg-app-api/blob/main/.github/workflows/code-metrics-on-demand.yml) using ASP.NET Core msbuild targets. The action is triggered manually and can be executed against the HEAD of the repository.
 
 The generated metrics includes useful insight on metrics such as:
-* Maintenability index
-* Cyclomatic Complexity
-* Class Coupling
-* Depth of Inheritance
-* Lines of code
+
+- Maintenability index
+- Cyclomatic Complexity
+- Class Coupling
+- Depth of Inheritance
+- Lines of code
 
 The metrics are generated for the hierarchy of the code base, including Assembly, Namespace, Class, Method. This provides navigable insight. The results generated are in custom msbuild xml format and are available as action artefacts.
 
 ## Documentation
 
-A GitHub Action workflow is available to [generate documentation](https://github.com/datagems-eosc/dg-app-api/blob/main/.github/workflows/deploy-docs-on-demand.yml) available in the project in the format presented here. The action is triggered manually and can be executed against the head of the repository. The documentatino generated is versioned and the documentation version is expected as input to the workflow. 
+A GitHub Action workflow is available to [generate documentation](https://github.com/datagems-eosc/dg-app-api/blob/main/.github/workflows/deploy-docs-on-demand.yml) available in the project in the format presented here. The action is triggered manually and can be executed against the head of the repository. The documentatino generated is versioned and the documentation version is expected as input to the workflow.
 
 The documentation is build using the [mkdocs](https://www.mkdocs.org/) library and specifically using the [Material for mkdocs](https://squidfunk.github.io/mkdocs-material/) plugin. A number of additional tools are ustilized, such as [mike](https://github.com/jimporter/mike) to support versioning, [neoteroi.mkdocsoad](https://www.neoteroi.dev/mkdocs-plugins/web/oad/) to support OpenAPI specification rendering, and others.
 

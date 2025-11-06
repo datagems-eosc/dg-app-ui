@@ -30,9 +30,7 @@ export default function MissingDatasetItem({
               ? "opacity-30 cursor-not-allowed"
               : "hover:bg-gray-200"
           }`}
-          title={
-            hideRemoveDataset ? undefined : "Remove this dataset"
-          }
+          title={hideRemoveDataset ? undefined : "Remove this dataset"}
         >
           <X className="w-4 h-4 text-icon" />
         </button>
@@ -42,4 +40,4 @@ export default function MissingDatasetItem({
       </div>
     </div>
   );
-} 
+}

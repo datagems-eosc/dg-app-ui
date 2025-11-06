@@ -43,9 +43,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const savedProfilePicture = localStorage.getItem("profilePicture");
       if (savedProfilePicture) {
         try {
-          setUserData((prev) => ({ ...prev, profilePicture: savedProfilePicture }));
+          setUserData((prev) => ({
+            ...prev,
+            profilePicture: savedProfilePicture,
+          }));
         } catch (error) {
-          console.error("Error reading profile picture from localStorage:", error);
+          console.error(
+            "Error reading profile picture from localStorage:",
+            error
+          );
         }
       }
     }

@@ -7,9 +7,12 @@ interface LogoProps {
   className?: string;
 }
 
-export function Logo({ isMobile = false, className = "h-6 w-auto" }: LogoProps) {
+export function Logo({
+  isMobile = false,
+  className = "h-6 w-auto",
+}: LogoProps) {
   const logoSrc = isMobile ? "mobile-logo.svg" : "logo.svg";
-  
+
   return (
     <Link
       href={createUrl(APP_ROUTES.DASHBOARD)}

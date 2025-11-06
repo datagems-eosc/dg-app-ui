@@ -118,19 +118,19 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
   const obj = api as Record<string, unknown>;
   const collections: Collection[] = Array.isArray(obj.collections)
     ? obj.collections
-      .map((c) =>
-        typeof c === "object" && c !== null && "name" in c && "id" in c
-          ? {
-            id: String((c as Record<string, unknown>).id ?? ""),
-            name: String((c as Record<string, unknown>).name),
-            code: String((c as Record<string, unknown>).code ?? ""),
-          }
-          : undefined
-      )
-      .filter(
-        (c): c is Collection =>
-          !!c && typeof c.id === "string" && typeof c.name === "string"
-      )
+        .map((c) =>
+          typeof c === "object" && c !== null && "name" in c && "id" in c
+            ? {
+                id: String((c as Record<string, unknown>).id ?? ""),
+                name: String((c as Record<string, unknown>).name),
+                code: String((c as Record<string, unknown>).code ?? ""),
+              }
+            : undefined
+        )
+        .filter(
+          (c): c is Collection =>
+            !!c && typeof c.id === "string" && typeof c.name === "string"
+        )
     : [];
 
   // Handle fieldsOfScience - could be string or array
@@ -158,7 +158,7 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
     category: "Math", // fallback only
     access:
       Array.isArray(obj.permissions) &&
-        obj.permissions.includes("browsedataset")
+      obj.permissions.includes("browsedataset")
         ? "Open Access"
         : "Restricted",
     description: String(obj.description ?? ""),
@@ -224,19 +224,19 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
     // Extract all available dataset fields
     const collections = Array.isArray(dataset.collections)
       ? dataset.collections
-        .map((c: unknown) => {
-          if (c && typeof c === "object" && "name" in c) {
-            return {
-              id: String((c as Record<string, unknown>).id ?? ""),
-              name: String((c as Record<string, unknown>).name ?? ""),
-              code: String((c as Record<string, unknown>).code ?? ""),
-            };
-          }
-          return null;
-        })
-        .filter(
-          (c): c is { id: string; name: string; code: string } => c !== null
-        )
+          .map((c: unknown) => {
+            if (c && typeof c === "object" && "name" in c) {
+              return {
+                id: String((c as Record<string, unknown>).id ?? ""),
+                name: String((c as Record<string, unknown>).name ?? ""),
+                code: String((c as Record<string, unknown>).code ?? ""),
+              };
+            }
+            return null;
+          })
+          .filter(
+            (c): c is { id: string; name: string; code: string } => c !== null
+          )
       : [];
 
     const permissions = Array.isArray(dataset.permissions)
@@ -635,26 +635,32 @@ export default function DashboardClient() {
               const ds = (item as any)?.dataset || {};
               if (!ds || typeof ds !== "object") continue;
               const id = String(ds.id ?? "");
-              const maxSimilarity = typeof item.maxSimilarity === "number" ? item.maxSimilarity : undefined;
+              const maxSimilarity =
+                typeof item.maxSimilarity === "number"
+                  ? item.maxSimilarity
+                  : undefined;
 
               // Normalize raw hits (unknown[]) into the expected typed shape:
               // { number: number; text: string; similarity: number; }[]
-              const rawHits = Array.isArray((item as any).hits) ? (item as any).hits : [];
+              const rawHits = Array.isArray((item as any).hits)
+                ? (item as any).hits
+                : [];
               // only keep the first 3 hits
               const topHits = rawHits.slice(0, 3);
               const hits = topHits.map((h: any, idx: number) => {
                 const text =
-                  h && (typeof h === "object") && ("content" in h || "text" in h)
+                  h && typeof h === "object" && ("content" in h || "text" in h)
                     ? String(h.content ?? h.text ?? "")
                     : String(h ?? "");
                 const similarity =
-                  h && (typeof h === "object") && typeof h.similarity === "number"
+                  h && typeof h === "object" && typeof h.similarity === "number"
                     ? h.similarity
-                    : typeof h === "object" && typeof h.maxSimilarity === "number"
+                    : typeof h === "object" &&
+                        typeof h.maxSimilarity === "number"
                       ? h.maxSimilarity
                       : 0;
                 const number =
-                  h && (typeof h === "object") && typeof h.number === "number"
+                  h && typeof h === "object" && typeof h.number === "number"
                     ? h.number
                     : idx;
                 return { number, text, similarity };
@@ -682,7 +688,8 @@ export default function DashboardClient() {
                 category = "Weather";
               } else if (
                 fields.some(
-                  (f: any) => f.includes("language") || f.includes("linguistics")
+                  (f: any) =>
+                    f.includes("language") || f.includes("linguistics")
                 )
               ) {
                 category = "Language";
@@ -694,7 +701,8 @@ export default function DashboardClient() {
                 category = "Lifelong Learning";
               } else if (
                 fields.some(
-                  (f: any) => f.includes("mathematics") || f.includes("statistics")
+                  (f: any) =>
+                    f.includes("mathematics") || f.includes("statistics")
                 )
               ) {
                 category = "Math";
@@ -702,16 +710,16 @@ export default function DashboardClient() {
 
               const collections = Array.isArray(ds.collections)
                 ? ds.collections
-                  .map((c: any) =>
-                    c && typeof c === "object" && ("name" in c || "id" in c)
-                      ? {
-                        id: String(c.id ?? ""),
-                        name: String(c.name ?? ""),
-                        code: String(c.code ?? ""),
-                      }
-                      : null
-                  )
-                  .filter((c: any) => c !== null)
+                    .map((c: any) =>
+                      c && typeof c === "object" && ("name" in c || "id" in c)
+                        ? {
+                            id: String(c.id ?? ""),
+                            name: String(c.name ?? ""),
+                            code: String(c.code ?? ""),
+                          }
+                        : null
+                    )
+                    .filter((c: any) => c !== null)
                 : [];
 
               const permissions = Array.isArray(ds.permissions)

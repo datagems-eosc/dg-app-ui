@@ -37,11 +37,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
         );
       case "error":
         return (
-          <img
-            src="/circle-x.svg"
-            alt="Upload failed"
-            className="w-4 h-4"
-          />
+          <img src="/circle-x.svg" alt="Upload failed" className="w-4 h-4" />
         );
       default:
         return <Upload className="w-4 h-4 text-slate-600" />;

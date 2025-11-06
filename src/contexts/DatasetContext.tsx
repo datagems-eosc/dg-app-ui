@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface DatasetContextType {
   favorites: string[];
@@ -22,12 +22,12 @@ export function DatasetProvider({ children }: { children: React.ReactNode }) {
   // Load favorites from localStorage only after component mounts
   useEffect(() => {
     if (isMounted) {
-      const savedFavorites = localStorage.getItem('datagemsFavorites');
+      const savedFavorites = localStorage.getItem("datagemsFavorites");
       if (savedFavorites) {
         try {
           setFavorites(JSON.parse(savedFavorites));
         } catch (error) {
-          console.error('Error loading favorites from localStorage:', error);
+          console.error("Error loading favorites from localStorage:", error);
         }
       }
     }
@@ -36,14 +36,14 @@ export function DatasetProvider({ children }: { children: React.ReactNode }) {
   // Save favorites to localStorage whenever it changes (only when mounted)
   useEffect(() => {
     if (isMounted && favorites.length >= 0) {
-      localStorage.setItem('datagemsFavorites', JSON.stringify(favorites));
+      localStorage.setItem("datagemsFavorites", JSON.stringify(favorites));
     }
   }, [favorites, isMounted]);
 
   const toggleFavorite = (datasetId: string) => {
-    setFavorites(prev => 
+    setFavorites((prev) =>
       prev.includes(datasetId)
-        ? prev.filter(id => id !== datasetId)
+        ? prev.filter((id) => id !== datasetId)
         : [...prev, datasetId]
     );
   };
@@ -62,7 +62,7 @@ export function DatasetProvider({ children }: { children: React.ReactNode }) {
 export function useDataset() {
   const context = useContext(DatasetContext);
   if (context === undefined) {
-    throw new Error('useDataset must be used within a DatasetProvider');
+    throw new Error("useDataset must be used within a DatasetProvider");
   }
   return context;
-} 
+}

@@ -847,12 +847,13 @@ export default function Chat({
     return {
       id: (Date.now() + 1).toString(),
       type: "ai",
-      content: `Based on the ${selectedDatasetList.length
-        } dataset(s) you've selected (${selectedDatasetList
-          .map((d) => d.title)
-          .join(
-            ", "
-          )}), I can help you analyze your question: "${question}". However, I need more specific information to provide a detailed answer. Could you please clarify what specific aspects you'd like me to focus on?`,
+      content: `Based on the ${
+        selectedDatasetList.length
+      } dataset(s) you've selected (${selectedDatasetList
+        .map((d) => d.title)
+        .join(
+          ", "
+        )}), I can help you analyze your question: "${question}". However, I need more specific information to provide a detailed answer. Could you please clarify what specific aspects you'd like me to focus on?`,
       timestamp: new Date(),
       sources: selectedDatasetList.length,
       relatedDatasetIds: datasetIds,
@@ -1046,17 +1047,17 @@ export default function Chat({
           {(messages.length > 0 ||
             isMessagesLoading ||
             isGeneratingAIResponse) && (
-              <div className="min-h-0" ref={messagesEndRef}>
-                <ChatMessages
-                  messages={messages}
-                  isMessagesLoading={isMessagesLoading}
-                  isGeneratingAIResponse={isGeneratingAIResponse}
-                  messagesEndRef={messagesEndRef}
-                  onSourcesClick={handleSourcesClick}
-                  showSelectedPanel={showSelectedPanel}
-                />
-              </div>
-            )}
+            <div className="min-h-0" ref={messagesEndRef}>
+              <ChatMessages
+                messages={messages}
+                isMessagesLoading={isMessagesLoading}
+                isGeneratingAIResponse={isGeneratingAIResponse}
+                messagesEndRef={messagesEndRef}
+                onSourcesClick={handleSourcesClick}
+                showSelectedPanel={showSelectedPanel}
+              />
+            </div>
+          )}
         </div>
 
         {/* Centered ChatInitialView for default state */}
@@ -1118,46 +1119,47 @@ export default function Chat({
           messages.length > 0 ||
           isMessagesLoading ||
           isGeneratingAIResponse) && (
-            <div
-              className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
-            >
-              <div className="w-full max-w-md sm:max-w-4xl mx-auto">
-                {/* Dataset Change Warning */}
-                <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
+          <div
+            className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+          >
+            <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+              {/* Dataset Change Warning */}
+              <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
-                <ChatInput
-                  value={inputValue}
-                  onChange={setInputValue}
-                  onSend={handleSendMessage}
-                  onAddDatasets={() => setShowAddDatasetsModal(true)}
-                  collections={{
-                    apiCollections,
-                    collections: [],
-                    extraCollections,
-                    isLoading: isLoadingApiCollections,
-                  }}
-                  selectedCollection={selectedCollection}
-                  onSelectCollection={handleSelectCollection}
-                  isLoading={isLoading}
-                  disabled={isInputDisabled}
-                  error={error}
-                  showAddDatasetsModal={showAddDatasetsModal}
-                />
-              </div>
+              <ChatInput
+                value={inputValue}
+                onChange={setInputValue}
+                onSend={handleSendMessage}
+                onAddDatasets={() => setShowAddDatasetsModal(true)}
+                collections={{
+                  apiCollections,
+                  collections: [],
+                  extraCollections,
+                  isLoading: isLoadingApiCollections,
+                }}
+                selectedCollection={selectedCollection}
+                onSelectCollection={handleSelectCollection}
+                isLoading={isLoading}
+                disabled={isInputDisabled}
+                error={error}
+                showAddDatasetsModal={showAddDatasetsModal}
+              />
             </div>
-          )}
+          </div>
+        )}
       </div>
 
       {/* Selected Datasets Panel - Under header, fixed on right side */}
       {(showSelectedPanel || isPanelClosing) && (
         <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px]">
           <div
-            className={`h-full transition-transform duration-500 ease-out ${isPanelAnimating
-              ? "translate-x-full"
-              : isPanelClosing
+            className={`h-full transition-transform duration-500 ease-out ${
+              isPanelAnimating
                 ? "translate-x-full"
-                : "translate-x-0"
-              }`}
+                : isPanelClosing
+                  ? "translate-x-full"
+                  : "translate-x-0"
+            }`}
           >
             <SelectedDatasetsPanel
               selectedDatasetIds={

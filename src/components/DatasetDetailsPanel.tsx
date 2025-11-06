@@ -64,7 +64,9 @@ export default function DatasetDetailsPanel({
         : firstCollection.name;
     }
     // Fallback to category if no collections
-    return dataset && "category" in dataset && dataset.category ? dataset.category : "";
+    return dataset && "category" in dataset && dataset.category
+      ? dataset.category
+      : "";
   })();
   const permissions =
     dataset && "permissions" in dataset ? dataset.permissions : undefined;
@@ -75,12 +77,15 @@ export default function DatasetDetailsPanel({
         ? "Open Access"
         : "Restricted";
   const displayUpdated =
-    dataset && "lastUpdated" in dataset && dataset.lastUpdated ? dataset.lastUpdated : "";
+    dataset && "lastUpdated" in dataset && dataset.lastUpdated
+      ? dataset.lastUpdated
+      : "";
   const sourceUrl =
     dataset && "url" in dataset && typeof dataset.url === "string"
       ? dataset.url
       : undefined;
-  const displaySize = dataset && "size" in dataset && dataset.size ? dataset.size : "";
+  const displaySize =
+    dataset && "size" in dataset && dataset.size ? dataset.size : "";
   const displayKeywords = (() => {
     if (dataset && "keywords" in dataset && dataset.keywords) {
       // Handle both array and single string cases
@@ -112,7 +117,8 @@ export default function DatasetDetailsPanel({
       label: "Added",
       value:
         formatDate(
-          dataset && "datePublished" in dataset &&
+          dataset &&
+            "datePublished" in dataset &&
             typeof dataset.datePublished === "string"
             ? dataset.datePublished
             : undefined
@@ -136,7 +142,9 @@ export default function DatasetDetailsPanel({
       label: "File Type",
       value: (
         getMimeTypeName(
-          dataset && "mimeType" in dataset && typeof dataset.mimeType === "string"
+          dataset &&
+            "mimeType" in dataset &&
+            typeof dataset.mimeType === "string"
             ? dataset.mimeType
             : undefined
         ) || "-"

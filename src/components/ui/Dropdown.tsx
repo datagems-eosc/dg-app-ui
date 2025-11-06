@@ -1,26 +1,33 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 
 interface DropdownProps {
   trigger: React.ReactNode;
   children: React.ReactNode;
-  align?: 'left' | 'right';
+  align?: "left" | "right";
 }
 
-export function Dropdown({ trigger, children, align = 'right' }: DropdownProps) {
+export function Dropdown({
+  trigger,
+  children,
+  align = "right",
+}: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -33,9 +40,11 @@ export function Dropdown({ trigger, children, align = 'right' }: DropdownProps) 
       </button>
 
       {isOpen && (
-        <div className={`absolute top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50 ${
-          align === 'right' ? 'right-0' : 'left-0'
-        }`}>
+        <div
+          className={`absolute top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50 ${
+            align === "right" ? "right-0" : "left-0"
+          }`}
+        >
           {children}
         </div>
       )}
@@ -50,7 +59,12 @@ interface DropdownItemProps {
   icon?: React.ReactNode;
 }
 
-export function DropdownItem({ children, onClick, href, icon }: DropdownItemProps) {
+export function DropdownItem({
+  children,
+  onClick,
+  href,
+  icon,
+}: DropdownItemProps) {
   const content = (
     <div className="flex items-center gap-3 px-4 py-2 text-body-16-regular text-gray-700 hover:bg-gray-100 cursor-pointer">
       {icon}
@@ -66,9 +80,5 @@ export function DropdownItem({ children, onClick, href, icon }: DropdownItemProp
     );
   }
 
-  return (
-    <div onClick={onClick}>
-      {content}
-    </div>
-  );
-} 
+  return <div onClick={onClick}>{content}</div>;
+}

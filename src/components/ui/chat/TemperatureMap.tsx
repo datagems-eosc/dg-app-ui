@@ -43,9 +43,9 @@ function MapLibreMap({
     const bigint = parseInt(
       normalized.length === 3
         ? normalized
-          .split("")
-          .map((c) => c + c)
-          .join("")
+            .split("")
+            .map((c) => c + c)
+            .join("")
         : normalized,
       16
     );
@@ -76,15 +76,15 @@ function MapLibreMap({
       const palette = colors.length
         ? colors
         : [
-          "#2c7bb6",
-          "#00a6ca",
-          "#00ccbc",
-          "#90eb9d",
-          "#f9d057",
-          "#f29e2e",
-          "#e76818",
-          "#d7191c",
-        ];
+            "#2c7bb6",
+            "#00a6ca",
+            "#00ccbc",
+            "#90eb9d",
+            "#f9d057",
+            "#f29e2e",
+            "#e76818",
+            "#d7191c",
+          ];
 
       const n = palette.length;
       for (let i = 0; i < n; i++) {
@@ -287,7 +287,7 @@ function MapLibreMap({
       try {
         if (currentMap.getLayer(layerId)) currentMap.removeLayer(layerId);
         if (currentMap.getSource(sourceId)) currentMap.removeSource(sourceId);
-      } catch { }
+      } catch {}
     };
 
     const addOverlay = () => {
@@ -377,12 +377,12 @@ function MapLibreMap({
             currentMap.off("zoom", update);
             currentMap.off("rotate", update as any);
             currentMap.off("resize", update);
-          } catch { }
+          } catch {}
           try {
             if (currentMap.getLayer(layerId)) currentMap.removeLayer(layerId);
             if (currentMap.getSource(sourceId))
               currentMap.removeSource(sourceId);
-          } catch { }
+          } catch {}
           overlayState.current.isAdding = false;
         };
       } catch {

@@ -32,10 +32,10 @@ export function SidebarHeader({
           </button>
           <Logo isMobile={true} />
         </div>
-        <UserProfileDropdown 
-          session={session} 
-          isMobile={true} 
-          onLogout={onLogout} 
+        <UserProfileDropdown
+          session={session}
+          isMobile={true}
+          onLogout={onLogout}
         />
       </div>
     );
@@ -49,10 +49,7 @@ export function SidebarHeader({
         className="ml-auto p-2 rounded-md hover:bg-gray-100 transition-colors"
         aria-label="Close sidebar"
       >
-        <PanelLeftClose
-          strokeWidth={1.25}
-          className="w-5 h-5 text-icon"
-        />
+        <PanelLeftClose strokeWidth={1.25} className="w-5 h-5 text-icon" />
       </button>
     </div>
   );

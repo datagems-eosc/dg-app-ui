@@ -137,10 +137,11 @@ export default function AddToCollectionModal({
                 {customCollections.map((collection) => (
                   <label
                     key={collection.id}
-                    className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${selectedCollectionId === collection.id
+                    className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedCollectionId === collection.id
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 hover:bg-gray-50"
-                      }`}
+                    }`}
                   >
                     <input
                       type="radio"

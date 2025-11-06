@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { X } from 'lucide-react';
-import { Dataset } from '@/data/dataset';
+import React from "react";
+import { X } from "lucide-react";
+import { Dataset } from "@/data/dataset";
 
 interface DataPreviewModalProps {
   isVisible: boolean;
@@ -12,21 +12,121 @@ interface DataPreviewModalProps {
 
 // Mock tabular data for the preview
 const mockPreviewData = [
-  { country: 'Greece', city: 'Athens', year: '2020', zipCode: '92105', disaster: '1539', casualties: '453', casualties2: '453' },
-  { country: 'Greece', city: 'Kallithea', year: '2011', zipCode: '92103', disaster: '1539', casualties: '798', casualties2: '798' },
-  { country: 'Greece', city: 'Agrinio', year: '2018', zipCode: '92101', disaster: '1539', casualties: '423', casualties2: '423' },
-  { country: 'Greece', city: 'Alexandroupoli', year: '2020', zipCode: '92102', disaster: '1539', casualties: '600', casualties2: '600' },
-  { country: 'Greece', city: 'Patras', year: '2017', zipCode: '92104', disaster: '1539', casualties: '429', casualties2: '429' },
-  { country: 'Greece', city: 'Piraeus', year: '1993', zipCode: '92102', disaster: '1539', casualties: '877', casualties2: '877' },
-  { country: 'Greece', city: 'Larissa', year: '2020', zipCode: '92101', disaster: '1539', casualties: '196', casualties2: '196' },
-  { country: 'Greece', city: 'Glyfada', year: '2020', zipCode: '92101', disaster: '1539', casualties: '196', casualties2: '196' },
-  { country: 'Greece', city: 'Athens', year: '2020', zipCode: '92101', disaster: '1539', casualties: '196', casualties2: '196' },
-  { country: 'Greece', city: 'Athens', year: '2020', zipCode: '92101', disaster: '1539', casualties: '196', casualties2: '196' },
-  { country: 'Greece', city: 'Athens', year: '2020', zipCode: '92101', disaster: '1539', casualties: '196', casualties2: '196' },
-  { country: 'Greece', city: 'Athens', year: '2020', zipCode: '92102', disaster: '1539', casualties: '185', casualties2: '185' },
+  {
+    country: "Greece",
+    city: "Athens",
+    year: "2020",
+    zipCode: "92105",
+    disaster: "1539",
+    casualties: "453",
+    casualties2: "453",
+  },
+  {
+    country: "Greece",
+    city: "Kallithea",
+    year: "2011",
+    zipCode: "92103",
+    disaster: "1539",
+    casualties: "798",
+    casualties2: "798",
+  },
+  {
+    country: "Greece",
+    city: "Agrinio",
+    year: "2018",
+    zipCode: "92101",
+    disaster: "1539",
+    casualties: "423",
+    casualties2: "423",
+  },
+  {
+    country: "Greece",
+    city: "Alexandroupoli",
+    year: "2020",
+    zipCode: "92102",
+    disaster: "1539",
+    casualties: "600",
+    casualties2: "600",
+  },
+  {
+    country: "Greece",
+    city: "Patras",
+    year: "2017",
+    zipCode: "92104",
+    disaster: "1539",
+    casualties: "429",
+    casualties2: "429",
+  },
+  {
+    country: "Greece",
+    city: "Piraeus",
+    year: "1993",
+    zipCode: "92102",
+    disaster: "1539",
+    casualties: "877",
+    casualties2: "877",
+  },
+  {
+    country: "Greece",
+    city: "Larissa",
+    year: "2020",
+    zipCode: "92101",
+    disaster: "1539",
+    casualties: "196",
+    casualties2: "196",
+  },
+  {
+    country: "Greece",
+    city: "Glyfada",
+    year: "2020",
+    zipCode: "92101",
+    disaster: "1539",
+    casualties: "196",
+    casualties2: "196",
+  },
+  {
+    country: "Greece",
+    city: "Athens",
+    year: "2020",
+    zipCode: "92101",
+    disaster: "1539",
+    casualties: "196",
+    casualties2: "196",
+  },
+  {
+    country: "Greece",
+    city: "Athens",
+    year: "2020",
+    zipCode: "92101",
+    disaster: "1539",
+    casualties: "196",
+    casualties2: "196",
+  },
+  {
+    country: "Greece",
+    city: "Athens",
+    year: "2020",
+    zipCode: "92101",
+    disaster: "1539",
+    casualties: "196",
+    casualties2: "196",
+  },
+  {
+    country: "Greece",
+    city: "Athens",
+    year: "2020",
+    zipCode: "92102",
+    disaster: "1539",
+    casualties: "185",
+    casualties2: "185",
+  },
 ];
 
-export default function DataPreviewModal({ isVisible, onClose, dataset }: DataPreviewModalProps) {
+export default function DataPreviewModal({
+  isVisible,
+  onClose,
+  dataset,
+}: DataPreviewModalProps) {
   if (!isVisible) {
     return null;
   }
@@ -45,7 +145,9 @@ export default function DataPreviewModal({ isVisible, onClose, dataset }: DataPr
               <h3 className="text-H2-20-semibold text-gray-900">
                 Extreme Drought Events in Greece (2013-2023)
               </h3>
-              <p className="text-descriptions-12-regular text-gray-600 mt-1">{dataset.title}</p>
+              <p className="text-descriptions-12-regular text-gray-600 mt-1">
+                {dataset.title}
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -142,4 +244,4 @@ export default function DataPreviewModal({ isVisible, onClose, dataset }: DataPr
       </div>
     </div>
   );
-} 
+}

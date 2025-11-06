@@ -45,15 +45,15 @@ The `cy.login()` command is intended for tests that need to start in an authenti
 cy.rewriteHeaders();
 cy.clearCookies();
 cy.clearLocalStorage();
-cy.visit('/');
-cy.contains('Sign in').click();
-cy.origin('https://<keycloak-host>', { args: creds }, (creds) => {
+cy.visit("/");
+cy.contains("Sign in").click();
+cy.origin("https://<keycloak-host>", { args: creds }, (creds) => {
   cy.get('input[name="username"]').type(creds.username);
   cy.get('input[name="password"]').type(creds.password, { log: false });
   cy.get('button[type="submit"]').click();
 });
-cy.url().should('include', '/dashboard');
-cy.contains('Add Dataset').should('be.visible');
+cy.url().should("include", "/dashboard");
+cy.contains("Add Dataset").should("be.visible");
 ```
 
 ## Credentials for tests

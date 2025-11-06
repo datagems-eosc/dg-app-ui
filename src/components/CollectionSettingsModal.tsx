@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  X,
+  Eye,
+  EyeOff,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "./ui/Button";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { ApiCollection } from "@/types/collection";

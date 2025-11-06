@@ -5,7 +5,14 @@ import { X } from "lucide-react";
 interface ChipProps {
   children: React.ReactNode;
   variant?: "outline" | "regular";
-  color?: "warning" | "info" | "success" | "error" | "default" | "grey" | "smart-search";
+  color?:
+    | "warning"
+    | "info"
+    | "success"
+    | "error"
+    | "default"
+    | "grey"
+    | "smart-search";
   size?: "xs" | "sm" | "md";
   className?: string;
   onRemove?: () => void;

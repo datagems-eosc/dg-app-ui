@@ -246,7 +246,7 @@ export default function Browse({
   // Handle mobile detection and sidebar state
   useEffect(() => {
     //Remove the last conversation id when not transitioning between conversations
-    sessionStorage.removeItem('lastConversationId');
+    sessionStorage.removeItem("lastConversationId");
     const handleResize = () => {
       const mobile = window.innerWidth < 640;
       const tablet = window.innerWidth >= 640 && window.innerWidth < 1024;
@@ -523,13 +523,13 @@ export default function Browse({
           typeof dataset.access === "string"
             ? dataset.access
             : isApiDataset(dataset) &&
-              Array.isArray(
-                (dataset as unknown as Record<string, unknown>).permissions
-              ) &&
-              (
-                (dataset as unknown as Record<string, unknown>)
-                  .permissions as string[]
-              ).includes("browsedataset")
+                Array.isArray(
+                  (dataset as unknown as Record<string, unknown>).permissions
+                ) &&
+                (
+                  (dataset as unknown as Record<string, unknown>)
+                    .permissions as string[]
+                ).includes("browsedataset")
               ? "Open Access"
               : "Restricted";
         const isOpen = access === "Open Access";
@@ -771,12 +771,13 @@ export default function Browse({
   return (
     <div className="flex relative min-h-screen">
       <div
-        className={`flex-1 transition-all duration-500 ease-out ${isPanelVisible
-          ? "sm:pr-[388px]"
-          : isDetailsPanelVisible
-            ? "sm:pr-[384px]"
-            : ""
-          }`}
+        className={`flex-1 transition-all duration-500 ease-out ${
+          isPanelVisible
+            ? "sm:pr-[388px]"
+            : isDetailsPanelVisible
+              ? "sm:pr-[384px]"
+              : ""
+        }`}
       >
         <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out py-4 sm:py-10">
           {/* Header */}
@@ -821,7 +822,7 @@ export default function Browse({
                       disabled={
                         !editingName.trim() ||
                         editingName.trim() ===
-                        collectionName.replace(/\s+Datasets?$/, "")
+                          collectionName.replace(/\s+Datasets?$/, "")
                       }
                       className="px-4 py-2"
                     >
@@ -843,75 +844,76 @@ export default function Browse({
             {!isEditingName && (
               <div className="flex items-center gap-3">
                 {/* Actions dropdown button - only show on custom collection pages, not on Favorites */}
-                {isCustomCollection && collectionName !== "Favorites Datasets" && (
-                  <div className="relative" data-title-actions-dropdown>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setShowTitleActionsDropdown(!showTitleActionsDropdown)
-                      }
-                      className="p-2 min-w-0 w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-50"
-                    >
-                      <MoreHorizontal className="w-4 h-4 text-icon" />
-                    </Button>
-
-                    {/* Actions dropdown menu */}
-                    {showTitleActionsDropdown && (
-                      <div
-                        data-title-actions-dropdown
-                        className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+                {isCustomCollection &&
+                  collectionName !== "Favorites Datasets" && (
+                    <div className="relative" data-title-actions-dropdown>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setShowTitleActionsDropdown(!showTitleActionsDropdown)
+                        }
+                        className="p-2 min-w-0 w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-50"
                       >
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowTitleActionsDropdown(false);
-                            // Select all datasets logic
-                            console.log("Select All clicked");
-                            selectAll();
-                            // Open the selected datasets panel when selecting all
-                            handleOpenPanel();
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        <MoreHorizontal className="w-4 h-4 text-icon" />
+                      </Button>
+
+                      {/* Actions dropdown menu */}
+                      {showTitleActionsDropdown && (
+                        <div
+                          data-title-actions-dropdown
+                          className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
                         >
-                          <ArrowRightLeft className="w-4 h-4 text-icon" />
-                          Select All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowTitleActionsDropdown(false);
-                            // Rename logic
-                            console.log("Rename clicked");
-                            handleStartEditName();
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Tag className="w-4 h-4 text-icon" />
-                          Rename
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log("Delete collection clicked!");
-                            setShowTitleActionsDropdown(false);
-                            setShowDeleteModal(true);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4 text-icon" />
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowTitleActionsDropdown(false);
+                              // Select all datasets logic
+                              console.log("Select All clicked");
+                              selectAll();
+                              // Open the selected datasets panel when selecting all
+                              handleOpenPanel();
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <ArrowRightLeft className="w-4 h-4 text-icon" />
+                            Select All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowTitleActionsDropdown(false);
+                              // Rename logic
+                              console.log("Rename clicked");
+                              handleStartEditName();
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Tag className="w-4 h-4 text-icon" />
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log("Delete collection clicked!");
+                              setShowTitleActionsDropdown(false);
+                              setShowDeleteModal(true);
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-icon" />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 {/* Custom Action Buttons */}
                 {customActionButtons &&
                   customActionButtons.map((button, index) => (
@@ -1224,12 +1226,13 @@ export default function Browse({
           {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (
             <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
               <div
-                className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${isDetailsPanelAnimating
-                  ? "translate-x-full"
-                  : isDetailsPanelClosing
+                className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
+                  isDetailsPanelAnimating
                     ? "translate-x-full"
-                    : "translate-x-0"
-                  }`}
+                    : isDetailsPanelClosing
+                      ? "translate-x-full"
+                      : "translate-x-0"
+                }`}
               >
                 <DatasetDetailsPanel
                   dataset={selectedDataset}
@@ -1283,12 +1286,13 @@ export default function Browse({
       {(showSelectedPanel || isPanelClosing) && (
         <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
           <div
-            className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${isPanelAnimating
-              ? "translate-x-full"
-              : isPanelClosing
+            className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
+              isPanelAnimating
                 ? "translate-x-full"
-                : "translate-x-0"
-              }`}
+                : isPanelClosing
+                  ? "translate-x-full"
+                  : "translate-x-0"
+            }`}
           >
             <SelectedDatasetsPanel
               selectedDatasetIds={currentSelectedDatasets}

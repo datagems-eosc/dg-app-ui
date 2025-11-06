@@ -24,4 +24,4 @@ export default function DGIcon({ size = 24, ...props }: DGIconProps) {
       />
     </svg>
   );
-} 
+}

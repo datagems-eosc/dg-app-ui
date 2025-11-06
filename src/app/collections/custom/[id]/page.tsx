@@ -116,7 +116,9 @@ export default function CustomCollectionPage() {
     if (!collection) return;
     setIsEditMode(true);
     setEditedName(collection.name);
-    setEditedDatasetIds(collection.datasetIds ? [...collection.datasetIds] : []);
+    setEditedDatasetIds(
+      collection.datasetIds ? [...collection.datasetIds] : []
+    );
   };
 
   const handleCancelEdit = () => {
@@ -250,7 +252,10 @@ export default function CustomCollectionPage() {
           <p className="text-gray-600 mt-1">
             Custom collection • {displayDatasetIds.length} datasets
             {"createdAt" in collection && collection.createdAt ? (
-              <> • Created {(collection.createdAt as Date).toLocaleDateString()}</>
+              <>
+                {" "}
+                • Created {(collection.createdAt as Date).toLocaleDateString()}
+              </>
             ) : (
               <> - </>
             )}

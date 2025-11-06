@@ -6,5 +6,4 @@ The service is part of the DataGEMS platform offered through an existing deploym
 
 ## Configuration
 
-
 ## Dependencies

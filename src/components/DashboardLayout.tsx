@@ -20,8 +20,6 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-
-
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
