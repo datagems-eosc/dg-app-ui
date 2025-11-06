@@ -20,7 +20,7 @@ let licensesCache:
 
 // Convert API response to HierarchicalCategory format
 function convertToHierarchicalCategories(
-  hierarchy: VocabularyItem[],
+  hierarchy: VocabularyItem[]
 ): HierarchicalCategory[] {
   return hierarchy
     .filter((item) => item.children && item.children.length > 0)
@@ -43,7 +43,7 @@ function convertToHierarchicalCategories(
 }
 
 export function processFieldsOfScience(
-  data: VocabularyResponse | VocabularyItem[],
+  data: VocabularyResponse | VocabularyItem[]
 ): HierarchicalCategory[] {
   // Return cached data if available
   if (fieldsOfScienceCache) {
@@ -69,7 +69,7 @@ export function processFieldsOfScience(
 }
 
 export function processLicenses(
-  data: any,
+  data: any
 ): { value: string; label: string; description?: string; urls?: string[] }[] {
   // Return cached data if available
   if (licensesCache) {

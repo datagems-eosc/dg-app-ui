@@ -90,7 +90,7 @@ export default function FormattedText({
   // Render with newline preservation
   const renderSegment = (
     segment: { type: "text" | "link"; value: string },
-    key: number,
+    key: number
   ) => {
     if (segment.type === "link") {
       return (

@@ -102,7 +102,7 @@ const handler = NextAuth({
           expiresAt: new Date(token.expires_at * 1000),
           currentTime: new Date(),
         },
-        "Access token expired, attempting refresh",
+        "Access token expired, attempting refresh"
       );
       return refreshAccessToken(token);
     },

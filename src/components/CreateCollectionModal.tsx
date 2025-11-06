@@ -32,7 +32,7 @@ export default function CreateCollectionModal({
   const [collectionName, setCollectionName] = useState("Custom Collection");
   const [description, setDescription] = useState("");
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>(
-    [],
+    []
   );
   const [isCreating, setIsCreating] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -46,12 +46,12 @@ export default function CreateCollectionModal({
   const router = useRouter();
 
   const _selectedDatasetObjects = datasets.filter((dataset) =>
-    selectedDatasets.includes(dataset.id),
+    selectedDatasets.includes(dataset.id)
   );
 
   // Use API-fetched custom collections (same as sidebar), excluding Favorites
   const customCollections = (extraCollections || []).filter(
-    (collection) => collection.name !== "Favorites",
+    (collection) => collection.name !== "Favorites"
   );
 
   // Refresh collections when modal opens or token is available to ensure fresh data
@@ -184,7 +184,7 @@ export default function CreateCollectionModal({
     setSelectedCollectionIds((prev) =>
       prev.includes(collectionId)
         ? prev.filter((id) => id !== collectionId)
-        : [...prev, collectionId],
+        : [...prev, collectionId]
     );
   };
 
@@ -290,7 +290,7 @@ export default function CreateCollectionModal({
                     <div className="flex flex-col gap-1">
                       {customCollections.map((collection) => {
                         const isSelected = selectedCollectionIds.includes(
-                          collection.id,
+                          collection.id
                         );
                         const itemCount =
                           (collection as any)?.datasetCount ??

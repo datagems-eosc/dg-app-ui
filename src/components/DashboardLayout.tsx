@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Function to sort and filter collections based on localStorage settings
   const getSortedAndFilteredCollections = (
     collections: ApiCollection[],
-    isExtra = false,
+    isExtra = false
   ) => {
     const savedSettings =
       typeof window !== "undefined"
@@ -124,7 +124,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           ...collection,
           isVisible: true,
           order: index, // Start ordering from 0 for custom collections
-        }),
+        })
       );
 
       const apiCollectionsWithDefaults = apiCollections.map(
@@ -132,7 +132,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           ...collection,
           isVisible: true,
           order: extraCollectionsWithDefaults.length + index, // Start ordering after custom collections
-        }),
+        })
       );
 
       return [...extraCollectionsWithDefaults, ...apiCollectionsWithDefaults];
@@ -177,12 +177,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     window.addEventListener(
       "requestCloseSidebarForTablet",
-      handleRequestCloseSidebarForTablet,
+      handleRequestCloseSidebarForTablet
     );
     return () => {
       window.removeEventListener(
         "requestCloseSidebarForTablet",
-        handleRequestCloseSidebarForTablet,
+        handleRequestCloseSidebarForTablet
       );
     };
   }, [isTablet]);
@@ -201,21 +201,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     window.addEventListener(
       "collectionSettingsChanged",
-      handleCollectionSettingsChange,
+      handleCollectionSettingsChange
     );
     window.addEventListener(
       "forceCollectionsRefresh",
-      handleForceCollectionsRefresh,
+      handleForceCollectionsRefresh
     );
 
     return () => {
       window.removeEventListener(
         "collectionSettingsChanged",
-        handleCollectionSettingsChange,
+        handleCollectionSettingsChange
       );
       window.removeEventListener(
         "forceCollectionsRefresh",
-        handleForceCollectionsRefresh,
+        handleForceCollectionsRefresh
       );
     };
   }, [refreshAllCollections]);
@@ -243,7 +243,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleDeleteConversation = (
     conversationId: string,
-    conversationName: string,
+    conversationName: string
   ) => {
     setDeleteModalState({
       isVisible: true,
@@ -259,8 +259,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         // Remove the conversation from local state immediately
         setConversations((prevConversations) =>
           prevConversations.filter(
-            (conv) => conv.id !== deleteModalState.conversationId,
-          ),
+            (conv) => conv.id !== deleteModalState.conversationId
+          )
         );
         // Show success toast
         setToastType("success");
@@ -284,14 +284,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleConversationUpdate = (
     id: string,
     newName: string,
-    newETag?: string,
+    newETag?: string
   ) => {
     setConversations((prevConversations) =>
       prevConversations.map((conv) =>
         conv.id === id
           ? { ...conv, name: newName, eTag: newETag || conv.eTag }
-          : conv,
-      ),
+          : conv
+      )
     );
   };
 

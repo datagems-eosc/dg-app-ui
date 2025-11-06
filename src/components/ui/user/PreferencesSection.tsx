@@ -25,7 +25,7 @@ interface Props {
   updateNotification: (
     category: NotificationCategory,
     type: "email" | "inApp",
-    value: boolean,
+    value: boolean
   ) => void;
   isLoading: boolean;
 }

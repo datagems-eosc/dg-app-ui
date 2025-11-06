@@ -113,7 +113,7 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
                   ? "Upload failed. Please try again."
                   : undefined,
               }
-            : file,
+            : file
         );
         filesRef.current = updated;
         onFilesChange(updated);
@@ -121,7 +121,7 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
         const updated: UploadedFile[] = filesRef.current.map((file) =>
           file.id === fileId
             ? { ...file, progress: Math.round(progress) }
-            : file,
+            : file
         );
         filesRef.current = updated;
         onFilesChange(updated);

@@ -149,7 +149,7 @@ export function AvatarUpload({
   const handleClick = () => {
     if (!disabled) {
       const input = document.getElementById(
-        "avatar-upload",
+        "avatar-upload"
       ) as HTMLInputElement;
       input?.click();
     }

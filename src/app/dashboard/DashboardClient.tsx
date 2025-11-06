@@ -126,11 +126,11 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
                 name: String((c as Record<string, unknown>).name),
                 code: String((c as Record<string, unknown>).code ?? ""),
               }
-            : undefined,
+            : undefined
         )
         .filter(
           (c): c is Collection =>
-            !!c && typeof c.id === "string" && typeof c.name === "string",
+            !!c && typeof c.id === "string" && typeof c.name === "string"
         )
     : [];
 
@@ -236,7 +236,7 @@ function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
             return null;
           })
           .filter(
-            (c): c is { id: string; name: string; code: string } => c !== null,
+            (c): c is { id: string; name: string; code: string } => c !== null
           )
       : [];
 
@@ -311,7 +311,7 @@ export default function DashboardClient() {
       ? extraCollections
       : apiCollections;
     const found = list.find(
-      (c: ApiCollection) => String(c.id) === String(selectedCollection),
+      (c: ApiCollection) => String(c.id) === String(selectedCollection)
     );
     return found && typeof found.name === "string"
       ? String(found.name).replace(/ Collection$/i, "")
@@ -372,7 +372,7 @@ export default function DashboardClient() {
             item.name === "Favorites" ||
             item.name === "favorites" ||
             item.name === "FAVORITES" ||
-            item.name.toLowerCase().includes("favorite")),
+            item.name.toLowerCase().includes("favorite"))
       );
 
       console.log("Found favorites collection:", favoritesCollection);
@@ -381,8 +381,8 @@ export default function DashboardClient() {
         items.map((item: any) =>
           typeof item === "object" && item !== null && "name" in item
             ? item.name
-            : "unknown",
-        ),
+            : "unknown"
+        )
       );
 
       if (
@@ -390,7 +390,7 @@ export default function DashboardClient() {
         "userDatasetCollections" in favoritesCollection
       ) {
         const userDatasetCollections = Array.isArray(
-          favoritesCollection.userDatasetCollections,
+          favoritesCollection.userDatasetCollections
         )
           ? favoritesCollection.userDatasetCollections
           : [];
@@ -466,7 +466,7 @@ export default function DashboardClient() {
         throw err;
       }
     },
-    [api.hasToken, favoritesCollectionId, fetchFavoritesCollection],
+    [api.hasToken, favoritesCollectionId, fetchFavoritesCollection]
   );
 
   /**
@@ -476,7 +476,7 @@ export default function DashboardClient() {
     async (datasetId: string) => {
       console.log(
         "handleRemoveFromFavorites called with datasetId:",
-        datasetId,
+        datasetId
       );
       try {
         if (!api.hasToken || !favoritesCollectionId) {
@@ -494,11 +494,11 @@ export default function DashboardClient() {
 
         await api.removeDatasetFromUserCollection(
           favoritesCollectionId,
-          datasetId,
+          datasetId
         );
 
         console.log(
-          "Successfully removed dataset from favorites, refreshing...",
+          "Successfully removed dataset from favorites, refreshing..."
         );
 
         // Refresh favorites collection to update the UI
@@ -510,10 +510,10 @@ export default function DashboardClient() {
           isCustomCollection
         ) {
           console.log(
-            "Removing dataset from local state since we're on favorites collection page",
+            "Removing dataset from local state since we're on favorites collection page"
           );
           setAllDatasets((prevDatasets) =>
-            prevDatasets.filter((dataset) => dataset.id !== datasetId),
+            prevDatasets.filter((dataset) => dataset.id !== datasetId)
           );
         }
       } catch (err: unknown) {
@@ -527,7 +527,7 @@ export default function DashboardClient() {
       fetchFavoritesCollection,
       selectedCollection,
       isCustomCollection,
-    ],
+    ]
   );
 
   /**
@@ -557,7 +557,7 @@ export default function DashboardClient() {
             const persistPayload = { name: searchTerm };
             const persistData = await api.persistConversation(
               persistPayload,
-              "?f=id&f=etag",
+              "?f=id&f=etag"
             );
             const conversationIdFromPersist = persistData.id;
 
@@ -666,27 +666,27 @@ export default function DashboardClient() {
                   (f: any) =>
                     f.includes("meteorology") ||
                     f.includes("climate") ||
-                    f.includes("weather"),
+                    f.includes("weather")
                 )
               ) {
                 category = "Weather";
               } else if (
                 fields.some(
                   (f: any) =>
-                    f.includes("language") || f.includes("linguistics"),
+                    f.includes("language") || f.includes("linguistics")
                 )
               ) {
                 category = "Language";
               } else if (
                 fields.some(
-                  (f: any) => f.includes("education") || f.includes("learning"),
+                  (f: any) => f.includes("education") || f.includes("learning")
                 )
               ) {
                 category = "Lifelong Learning";
               } else if (
                 fields.some(
                   (f: any) =>
-                    f.includes("mathematics") || f.includes("statistics"),
+                    f.includes("mathematics") || f.includes("statistics")
                 )
               ) {
                 category = "Math";
@@ -701,7 +701,7 @@ export default function DashboardClient() {
                             name: String(c.name ?? ""),
                             code: String(c.code ?? ""),
                           }
-                        : null,
+                        : null
                     )
                     .filter((c: any) => c !== null)
                 : [];
@@ -769,7 +769,7 @@ export default function DashboardClient() {
           if (items.length > 0) {
             const collection = items[0];
             const userDatasetCollections = Array.isArray(
-              collection.userDatasetCollections,
+              collection.userDatasetCollections
             )
               ? collection.userDatasetCollections
               : [];
@@ -846,14 +846,14 @@ export default function DashboardClient() {
                     Array.isArray(apiDataset.fieldOfScience)
                   ) {
                     const fields = apiDataset.fieldOfScience.map((f: any) =>
-                      String(f).toLowerCase(),
+                      String(f).toLowerCase()
                     );
                     if (
                       fields.some(
                         (field: any) =>
                           field.includes("meteorology") ||
                           field.includes("climate") ||
-                          field.includes("weather"),
+                          field.includes("weather")
                       )
                     ) {
                       category = "Weather";
@@ -861,7 +861,7 @@ export default function DashboardClient() {
                       fields.some(
                         (field: any) =>
                           field.includes("language") ||
-                          field.includes("linguistics"),
+                          field.includes("linguistics")
                       )
                     ) {
                       category = "Language";
@@ -869,7 +869,7 @@ export default function DashboardClient() {
                       fields.some(
                         (field: any) =>
                           field.includes("education") ||
-                          field.includes("learning"),
+                          field.includes("learning")
                       )
                     ) {
                       category = "Lifelong Learning";
@@ -877,7 +877,7 @@ export default function DashboardClient() {
                       fields.some(
                         (field: any) =>
                           field.includes("mathematics") ||
-                          field.includes("statistics"),
+                          field.includes("statistics")
                       )
                     ) {
                       category = "Math";
@@ -1025,12 +1025,12 @@ export default function DashboardClient() {
           (
             dataset: Dataset & {
               collections?: { id: string; name: string; code: string }[];
-            },
+            }
           ) => {
             return dataset.collections?.some(
-              (col) => col.id === selectedCollection,
+              (col) => col.id === selectedCollection
             );
-          },
+          }
         );
         setFilteredDatasets(filtered);
       }
@@ -1049,7 +1049,7 @@ export default function DashboardClient() {
         searchValue !== undefined ? searchValue : pendingSearchTerm.trim();
       setSearchTerm(valueToSet);
     },
-    [pendingSearchTerm],
+    [pendingSearchTerm]
   );
 
   const handleSortByChange = useCallback((value: string) => {
@@ -1126,7 +1126,7 @@ export default function DashboardClient() {
     if (isMounted) {
       localStorage.setItem(
         "chatSelectedDatasets",
-        JSON.stringify(selectedDatasets),
+        JSON.stringify(selectedDatasets)
       );
     }
     router.push(getNavigationUrl("/chat"));

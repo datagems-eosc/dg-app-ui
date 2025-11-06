@@ -28,7 +28,7 @@ export default function AddToCollectionModal({
 
   // Filter to only show custom collections (not built-in ones), excluding Favorites
   const customCollections = extraCollections.filter(
-    (collection) => collection.name !== "Favorites",
+    (collection) => collection.name !== "Favorites"
   );
 
   // Refresh collections when modal opens or session changes to ensure fresh data
@@ -43,18 +43,18 @@ export default function AddToCollectionModal({
     if (!dataset || !selectedCollectionId) return;
 
     const targetCollection = customCollections.find(
-      (c) => c.id === selectedCollectionId,
+      (c) => c.id === selectedCollectionId
     );
     if (!targetCollection) return;
 
     // Check if dataset is already in the collection
     if (
       targetCollection.userDatasetCollections?.some(
-        (udc) => udc.id === dataset.id,
+        (udc) => udc.id === dataset.id
       )
     ) {
       alert(
-        `"${dataset.title}" is already in the "${targetCollection.name}" collection.`,
+        `"${dataset.title}" is already in the "${targetCollection.name}" collection.`
       );
       return;
     }
@@ -67,7 +67,7 @@ export default function AddToCollectionModal({
       // Also notify that collections have been modified to refresh sidebar
       notifyCollectionModified();
       alert(
-        `"${dataset.title}" has been added to "${targetCollection.name}" collection!`,
+        `"${dataset.title}" has been added to "${targetCollection.name}" collection!`
       );
       onClose();
     } catch (error) {

@@ -59,7 +59,7 @@ export function ChatInput({
     if (textarea) {
       setShowTopFade(textarea.scrollTop > 0);
       setShowBottomFade(
-        textarea.scrollTop < textarea.scrollHeight - textarea.clientHeight - 1,
+        textarea.scrollTop < textarea.scrollHeight - textarea.clientHeight - 1
       );
     }
   };
@@ -87,7 +87,7 @@ export function ChatInput({
         "focus-within:border-slate-350",
         error && "border-red-550 focus-within:border-red-550",
         disabled &&
-          "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-within:ring-0 focus-within:border-slate-200",
+          "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-within:ring-0 focus-within:border-slate-200"
       )}
       style={{
         width: "100%",
@@ -114,7 +114,7 @@ export function ChatInput({
               "text-gray-750 placeholder-slate-450",
               "focus:outline-none focus:ring-0",
               error && "text-gray-750",
-              disabled && "text-slate-450 cursor-not-allowed",
+              disabled && "text-slate-450 cursor-not-allowed"
             )}
             style={{ minHeight: "52px", maxHeight: "140px" }}
             disabled={disabled}

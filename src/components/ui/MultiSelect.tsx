@@ -51,7 +51,7 @@ export function MultiSelect({
       ? options.filter(
           (option) =>
             option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            option.code?.toLowerCase().includes(searchTerm.toLowerCase()),
+            option.code?.toLowerCase().includes(searchTerm.toLowerCase())
         )
       : options;
 
@@ -128,7 +128,7 @@ export function MultiSelect({
         <ChevronDown
           className={cn(
             "w-4 h-4 text-slate-500 transition-transform",
-            isOpen && "rotate-180",
+            isOpen && "rotate-180"
           )}
         />
       </div>
