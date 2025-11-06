@@ -44,6 +44,7 @@ import { getNavigationUrl } from "@/lib/utils";
 import { apiClient } from "@/lib/apiClient";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { Dataset } from "@/data/dataset";
+import { logger } from "@/lib/logger";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -322,7 +323,7 @@ export default function Browse({
       setShowDeleteModal(false);
       router.push(getNavigationUrl("/dashboard"));
     } catch (error) {
-      console.error("Failed to delete collection:", error);
+      logger.error({ error }, "Failed to delete collection");
       alert("Failed to delete collection. Please try again.");
     } finally {
       setIsDeleting(false);
@@ -350,8 +351,7 @@ export default function Browse({
 
     try {
       // TODO: Implement API call to update collection name
-      // For now, just update the local state
-      console.log("Saving new collection name:", editingName.trim());
+      logger.debug({ newName: editingName.trim() }, "Saving new collection name");
 
       // Call parent handler to update the collection name
       if (onCollectionNameUpdate) {
@@ -361,7 +361,7 @@ export default function Browse({
       // Close edit mode
       setIsEditingName(false);
     } catch (error) {
-      console.error("Failed to update collection name:", error);
+      logger.error({ error }, "Failed to update collection name");
       alert("Failed to update collection name. Please try again.");
     }
   };
@@ -377,14 +377,13 @@ export default function Browse({
     setIsMounted(true);
   }, []);
 
-  // Debug logging for props
   useEffect(() => {
-    console.log("Browse component props:", {
+    logger.debug({
       isCustomCollection,
       collectionName,
       collectionId,
       shouldShowEllipsis: isCustomCollection && collectionName !== "Favorites",
-    });
+    }, "Browse component props");
   }, [isCustomCollection, collectionName, collectionId]);
 
   // Load viewMode from localStorage only after component mounts
@@ -420,7 +419,7 @@ export default function Browse({
         setFieldsOfScienceCategories(categories);
       })
       .catch((error) => {
-        console.error("Error fetching fields of science:", error);
+        logger.error({ error }, "Error fetching fields of science");
         setFieldsOfScienceCategories([]);
       });
 
@@ -429,7 +428,7 @@ export default function Browse({
         setLicenses(licenseOptions);
       })
       .catch((error) => {
-        console.error("Error fetching licenses:", error);
+        logger.error({ error }, "Error fetching licenses");
         setLicenses([]);
       });
   }, [session]);
@@ -868,8 +867,7 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowTitleActionsDropdown(false);
-                            // Select all datasets logic
-                            console.log("Select All clicked");
+                            logger.debug("Select All clicked");
                             selectAll();
                             // Open the selected datasets panel when selecting all
                             handleOpenPanel();
@@ -885,8 +883,7 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowTitleActionsDropdown(false);
-                            // Rename logic
-                            console.log("Rename clicked");
+                            logger.debug("Rename clicked");
                             handleStartEditName();
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
@@ -899,7 +896,7 @@ export default function Browse({
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log("Delete collection clicked!");
+                            logger.debug("Delete collection clicked");
                             setShowTitleActionsDropdown(false);
                             setShowDeleteModal(true);
                           }}
@@ -967,10 +964,7 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowActionsDropdown(false);
-                            // Select all datasets logic
-                            console.log(
-                              "Select All clicked (selected datasets)"
-                            );
+                            logger.debug("Select All clicked (selected datasets)");
                             selectAll();
                             // Open the selected datasets panel when selecting all
                             handleOpenPanel();
@@ -986,8 +980,7 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowActionsDropdown(false);
-                            // Edit logic
-                            console.log("Edit clicked (selected datasets)");
+                            logger.debug("Edit clicked (selected datasets)");
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                         >
@@ -1000,8 +993,7 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowActionsDropdown(false);
-                            // Rename logic
-                            console.log("Rename clicked (selected datasets)");
+                            logger.debug("Rename clicked (selected datasets)");
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                         >
@@ -1014,8 +1006,7 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowActionsDropdown(false);
-                            // Delete logic
-                            console.log("Delete clicked (selected datasets)");
+                            logger.debug("Delete clicked (selected datasets)");
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                         >

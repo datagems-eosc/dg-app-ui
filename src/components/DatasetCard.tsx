@@ -19,6 +19,7 @@ import FormattedText from "./ui/FormattedText";
 import { Chip } from "./ui/Chip";
 import { SmartSearchMatchItem } from "./ui/SmartSearchMatchItem";
 import { formatFileSize } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 interface Collection {
   id?: string;
@@ -158,9 +159,9 @@ export default function DatasetCard({
   }, [hasSidePanelOpen, isListMode]);
 
   const handleStarClick = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click when starring
+    e.stopPropagation();
 
-    console.log("Star clicked!", {
+    logger.debug({
       datasetId: dataset.id,
       propIsFavorite,
       favoritesCollectionId,
@@ -168,17 +169,13 @@ export default function DatasetCard({
       onRemoveFromFavorites: !!onRemoveFromFavorites,
       hasFetchedFavorites,
       isStarred,
-      condition1: propIsFavorite !== undefined,
-      condition2: !!favoritesCollectionId,
-      condition3: !!onAddToFavorites && !!onRemoveFromFavorites,
-      condition4: hasFetchedFavorites,
       allConditions:
         propIsFavorite !== undefined &&
         favoritesCollectionId &&
         onAddToFavorites &&
         onRemoveFromFavorites &&
         hasFetchedFavorites,
-    });
+    }, "Star clicked");
 
     // If using prop-based favorite state and we have a favorites collection ID and have fetched favorites
     if (
@@ -188,28 +185,25 @@ export default function DatasetCard({
       onRemoveFromFavorites &&
       hasFetchedFavorites
     ) {
-      console.log("Using API-based favorites");
+      logger.debug("Using API-based favorites");
       try {
         setIsFavoriteLoading(true);
         if (!isStarred) {
-          // Add to favorites via API
-          console.log("Adding to favorites via API...");
+          logger.debug("Adding to favorites via API");
           await onAddToFavorites(dataset.id);
-          console.log("Successfully added to favorites");
+          logger.info({ datasetId: dataset.id }, "Successfully added to favorites");
         } else {
-          // Remove from favorites via API
-          console.log("Removing from favorites via API...");
+          logger.debug("Removing from favorites via API");
           await onRemoveFromFavorites(dataset.id);
-          console.log("Successfully removed from favorites");
+          logger.info({ datasetId: dataset.id }, "Successfully removed from favorites");
         }
       } catch (error) {
-        console.error("Failed to modify favorites:", error);
+        logger.error({ error }, "Failed to modify favorites");
       } finally {
         setIsFavoriteLoading(false);
       }
     } else {
-      console.log("Using local hook behavior");
-      // Fall back to local hook behavior
+      logger.debug("Using local hook behavior");
       toggleFavorite(dataset.id);
     }
   };

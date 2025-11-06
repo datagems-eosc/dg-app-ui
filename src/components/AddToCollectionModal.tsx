@@ -6,6 +6,7 @@ import { Dataset } from "@/data/dataset";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { Button } from "./ui/Button";
 import { useSession } from "next-auth/react";
+import { logger } from "@/lib/logger";
 
 interface AddToCollectionModalProps {
   isVisible: boolean;
@@ -71,7 +72,7 @@ export default function AddToCollectionModal({
       );
       onClose();
     } catch (error) {
-      console.error("Failed to add dataset to collection:", error);
+      logger.error({ error }, "Failed to add dataset to collection");
       alert("Failed to add dataset to collection. Please try again.");
     }
   };

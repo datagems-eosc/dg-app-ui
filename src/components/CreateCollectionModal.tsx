@@ -10,6 +10,7 @@ import { apiClient } from "@/lib/apiClient";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { Checkbox } from "./ui/Checkbox";
+import { logger } from "@/lib/logger";
 
 interface CreateCollectionModalProps {
   isVisible: boolean;
@@ -127,7 +128,7 @@ export default function CreateCollectionModal({
         router.push(`/dashboard?collection=${response.id}&isCustom=true`);
       }
     } catch (error) {
-      console.error("Failed to create collection:", error);
+      logger.error({ error }, "Failed to create collection");
       alert("Failed to create collection. Please try again.");
     } finally {
       setIsCreating(false);
@@ -171,7 +172,7 @@ export default function CreateCollectionModal({
       // Also notify that collections have been modified to refresh sidebar
       notifyCollectionModified();
     } catch (error) {
-      console.error("Failed to add datasets to collections:", error);
+      logger.error({ error }, "Failed to add datasets to collections");
       alert("Failed to add datasets to collections. Please try again.");
     } finally {
       setIsAdding(false);
