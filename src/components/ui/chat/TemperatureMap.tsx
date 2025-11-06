@@ -47,7 +47,7 @@ function MapLibreMap({
             .map((c) => c + c)
             .join("")
         : normalized,
-      16
+      16,
     );
     const r = (bigint >> 16) & 255;
     const g = (bigint >> 8) & 255;
@@ -91,7 +91,7 @@ function MapLibreMap({
         const t = (i / Math.max(1, n - 1)) * 0.95; // reserve 5% for fade-out
         grad.addColorStop(
           t,
-          hexToRgba(palette[i], Math.min(1, Math.max(0, opacity)))
+          hexToRgba(palette[i], Math.min(1, Math.max(0, opacity))),
         );
       }
       grad.addColorStop(1, hexToRgba(palette[n - 1] ?? "#d7191c", 0));
@@ -151,7 +151,7 @@ function MapLibreMap({
 
       return canvas.toDataURL("image/png");
     },
-    [hexToRgba]
+    [hexToRgba],
   );
 
   const _metersToLatDelta = (meters: number) => meters / 111320; // approx
@@ -183,7 +183,7 @@ function MapLibreMap({
         },
       ],
     }),
-    []
+    [],
   );
 
   const satelliteStyle: StyleSpecification = React.useMemo(
@@ -209,7 +209,7 @@ function MapLibreMap({
         },
       ],
     }),
-    []
+    [],
   );
 
   React.useEffect(() => {
@@ -262,7 +262,7 @@ function MapLibreMap({
       latitude,
       longitude,
       buildEllipseDataUrl,
-    ]
+    ],
   );
 
   // Separate effect for basemap changes (doesn't affect heat overlay directly)

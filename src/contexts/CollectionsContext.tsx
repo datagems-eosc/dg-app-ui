@@ -28,7 +28,7 @@ interface CollectionsContextType {
 }
 
 const CollectionsContext = createContext<CollectionsContextType | undefined>(
-  undefined
+  undefined,
 );
 
 const COLLECTIONS_API_PAYLOAD = {
@@ -74,9 +74,9 @@ export function CollectionsProvider({
       fetchApiCollections();
       fetchExtraCollections();
     }
-  }, [session, fetchApiCollections, fetchExtraCollections]);
+  }, [session]);
 
-  const fetchApiCollections = async () => {
+  async function fetchApiCollections() {
     setIsLoadingApiCollections(true);
     try {
       const token = (session as any)?.accessToken;
@@ -85,7 +85,7 @@ export function CollectionsProvider({
       }
       const data = await apiClient.queryCollections(
         COLLECTIONS_API_PAYLOAD,
-        token
+        token,
       );
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
@@ -94,9 +94,9 @@ export function CollectionsProvider({
     } finally {
       setIsLoadingApiCollections(false);
     }
-  };
+  }
 
-  const fetchExtraCollections = async () => {
+  async function fetchExtraCollections() {
     setIsLoadingExtraCollections(true);
     try {
       const token = (session as any)?.accessToken;
@@ -147,7 +147,7 @@ export function CollectionsProvider({
       };
       const data = await apiClient.queryUserCollections(
         extraCollectionsPayload,
-        token
+        token,
       );
       console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];
@@ -158,7 +158,7 @@ export function CollectionsProvider({
     } finally {
       setIsLoadingExtraCollections(false);
     }
-  };
+  }
 
   const refreshApiCollections = useCallback(async () => {
     await fetchApiCollections();

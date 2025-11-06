@@ -16,7 +16,6 @@ export default function MathPage() {
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-  const { notifyCollectionModified } = useCollections();
 
   // Filter datasets to show only Math category
   const mathDatasets = mockDatasets.filter(

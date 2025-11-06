@@ -16,7 +16,6 @@ export default function LanguagePage() {
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-  const { notifyCollectionModified } = useCollections();
 
   // Filter datasets to show only Language category
   const languageDatasets = mockDatasets.filter(

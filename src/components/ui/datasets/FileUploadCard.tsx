@@ -63,7 +63,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
           <p
             className={cn(
               "text-body-16-medium truncate",
-              file.status === "error" ? "text-slate-450" : "text-gray-750"
+              file.status === "error" ? "text-slate-450" : "text-gray-750",
             )}
             title={file.name}
           >
@@ -77,7 +77,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
             <span
               className={cn(
                 "text-body-14-regular",
-                file.status === "error" ? "text-slate-450" : "text-gray-650"
+                file.status === "error" ? "text-slate-450" : "text-gray-650",
               )}
             >
               {formatFileSize(file.size)}
@@ -93,7 +93,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
                     ? "text-emerald-600"
                     : file.status === "error"
                       ? "text-red-550"
-                      : "text-gray-650"
+                      : "text-gray-650",
                 )}
                 title={getStatusText()}
               >

@@ -16,7 +16,6 @@ export default function WeatherPage() {
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-  const { notifyCollectionModified } = useCollections();
 
   // Filter datasets to show only Weather category
   const weatherDatasets = mockDatasets.filter(

@@ -38,7 +38,7 @@ export function LicenseCard({ license, primaryUrl }: LicenseCardProps) {
                   window.open(
                     urlToOpen as string,
                     "_blank",
-                    "noopener,noreferrer"
+                    "noopener,noreferrer",
                   )
                 }
               >

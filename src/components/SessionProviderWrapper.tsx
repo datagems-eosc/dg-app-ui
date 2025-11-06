@@ -13,7 +13,7 @@ const _getBaseUrl = () => {
 
 // Component to handle session errors and automatic re-authentication
 function SessionErrorHandler({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
 
   useEffect(() => {
     // Check if there's a session error that requires re-authentication

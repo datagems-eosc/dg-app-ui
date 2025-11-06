@@ -1,6 +1,5 @@
 {
   "*.{js,jsx,ts,tsx,json}": [
     "npx @biomejs/biome check --write --files-ignore-unknown=true"
-  ],
-  "*.{js,jsx,ts,tsx,json,css,md,yml,yaml}": ["prettier --write"]
+  ]
 }

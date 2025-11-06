@@ -16,7 +16,6 @@ export default function LifelongLearningPage() {
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-  const { notifyCollectionModified } = useCollections();
 
   // Filter datasets to show only Lifelong Learning category
   const lifelongLearningDatasets = mockDatasets.filter(

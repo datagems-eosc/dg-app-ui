@@ -456,9 +456,10 @@ export default function Chat({
               collection.userDatasetCollections.length > 0
             ) {
               const apiCollection = collection as ApiCollection;
-              collectionDatasetIds = apiCollection.userDatasetCollections
-                ?.map((item) => item.dataset?.id)
-                .filter((id): id is string => !!id);
+              collectionDatasetIds =
+                apiCollection.userDatasetCollections
+                  ?.map((item) => item.dataset?.id)
+                  .filter((id): id is string => !!id) || [];
             }
             // Handle API collections with datasets array
             else if (
@@ -895,8 +896,7 @@ export default function Chat({
     }
   };
 
-  const handleSelectCollection = (collection: Collection | null) => {
-    // Store current datasets as previous before changing them
+  function handleSelectCollection(collection: Collection | null) {
     setPreviousDatasets([...selectedDatasets]);
 
     setSelectedCollection(collection);
@@ -913,9 +913,10 @@ export default function Chat({
         collection.userDatasetCollections.length > 0
       ) {
         const apiCollection = collection as ApiCollection;
-        datasetIds = apiCollection.userDatasetCollections
-          ?.map((item) => item.dataset?.id)
-          .filter((id): id is string => !!id); // Filter out any undefined values
+        datasetIds =
+          apiCollection.userDatasetCollections
+            ?.map((item) => item.dataset?.id)
+            .filter((id): id is string => !!id) || [];
       }
       // Check if collection has datasets array (API collections)
       else if (
@@ -977,17 +978,16 @@ export default function Chat({
       // Clear localStorage
       localStorage.removeItem("chatSelectedDatasets");
     }
-  };
+  }
 
-  const handleClosePanel = () => {
-    // Animate panel closing
+  function handleClosePanel() {
     setIsPanelClosing(true);
     setTimeout(() => {
       setShowSelectedPanel(false);
       setIsPanelClosing(false);
       setIsSourcesPanel(false);
     }, 500); // Match the CSS transition duration
-  };
+  }
 
   // Handler for sources button click
   const handleSourcesClick = (messageId: string) => {

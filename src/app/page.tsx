@@ -7,7 +7,7 @@ import LoginScreen from "@/components/LoginScreen";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {

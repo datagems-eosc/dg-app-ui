@@ -91,7 +91,7 @@ export function Avatar({
         className={`${sizeClass} rounded-full overflow-hidden shrink-0 ${className}`}
       >
         <img
-          src={src}
+          src={src || ""}
           alt={name || email || "Profile picture"}
           className="w-full h-full object-cover"
         />

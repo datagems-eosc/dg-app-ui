@@ -47,7 +47,7 @@ interface NotificationSettings {
 export default function UserProfile() {
   const { data: session } = useSession();
 
-  const { userData, updateUserData, setProfilePicture } = useUser();
+  const { userData, setProfilePicture } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"personal" | "preferences">(
     "personal",

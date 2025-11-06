@@ -498,7 +498,7 @@ export default function Browse({
     }
   };
 
-  const handleClosePanel = () => {
+  function handleClosePanel() {
     setIsPanelClosing(true);
     setTimeout(() => {
       if (onCloseSidebar) {
@@ -506,7 +506,7 @@ export default function Browse({
       }
       setIsPanelClosing(false);
     }, 500);
-  };
+  }
 
   const handleCloseDetailsPanel = () => {
     setIsDetailsPanelClosing(true);

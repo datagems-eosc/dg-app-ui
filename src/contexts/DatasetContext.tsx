@@ -45,7 +45,7 @@ export function DatasetProvider({ children }: { children: React.ReactNode }) {
     setFavorites((prev) =>
       prev.includes(datasetId)
         ? prev.filter((id) => id !== datasetId)
-        : [...prev, datasetId]
+        : [...prev, datasetId],
     );
   };
 

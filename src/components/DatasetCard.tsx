@@ -30,12 +30,6 @@ interface Collection {
   name: string;
 }
 
-interface SmartSearchMatch {
-  number: number;
-  description: string;
-  matchPercentage: number;
-}
-
 function hasCollections(
   dataset: Dataset | (Dataset & { collections?: unknown }),
 ): dataset is Dataset & { collections: Collection[] } {

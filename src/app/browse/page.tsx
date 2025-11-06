@@ -16,7 +16,6 @@ export default function BrowsePage() {
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-  const { notifyCollectionModified } = useCollections();
 
   // Set mounted to true after first render (client-side only)
   useEffect(() => {

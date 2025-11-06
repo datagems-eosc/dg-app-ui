@@ -235,12 +235,12 @@ export default function FilterModal({
     onClose();
   };
 
-  const handleCancel = () => {
+  function handleCancel() {
     setFilters(currentFilters);
     setYearErrors({ start: "", end: "" });
     setSizeErrors({ start: "", end: "" });
     onClose();
-  };
+  }
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     console.log("backdrop clicked");
