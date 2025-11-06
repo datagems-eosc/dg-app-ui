@@ -1,14 +1,14 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useSession } from "next-auth/react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useApi } from "@/hooks/useApi";
 import {
   ACCESS_OPTIONS,
   type FilterState,
-  fetchFieldsOfScience,
-  fetchLicenses,
+  processFieldsOfScience,
+  processLicenses,
   VALIDATION_CONFIG,
 } from "../config/filterOptions";
 import { Button } from "./ui/Button";
@@ -30,7 +30,7 @@ export default function FilterModal({
   onApplyFilters: (filters: FilterState) => void;
   currentFilters: FilterState;
 }) {
-  const { data: session } = useSession() as any;
+  const api = useApi();
   const [filters, setFilters] = useState<FilterState>(currentFilters);
   const [yearErrors, setYearErrors] = useState({ start: "", end: "" });
   const [sizeErrors, setSizeErrors] = useState({ start: "", end: "" });
@@ -68,13 +68,13 @@ export default function FilterModal({
 
   // Fetch fields of science and licenses when modal becomes visible
   useEffect(() => {
-    if (isVisible) {
-      const token = session?.accessToken;
-
+    if (isVisible && api.hasToken) {
       // Fetch fields of science
       setIsLoadingFields(true);
-      fetchFieldsOfScience(token)
-        .then((categories) => {
+      api
+        .getFieldsOfScience()
+        .then((data) => {
+          const categories = processFieldsOfScience(data);
           setFieldsOfScienceCategories(categories);
         })
         .catch((error) => {
@@ -87,8 +87,10 @@ export default function FilterModal({
 
       // Fetch licenses
       setIsLoadingLicenses(true);
-      fetchLicenses(token)
-        .then((licenseOptions) => {
+      api
+        .getLicenses()
+        .then((data) => {
+          const licenseOptions = processLicenses(data);
           setLicenses(licenseOptions);
         })
         .catch((error) => {
@@ -99,7 +101,7 @@ export default function FilterModal({
           setIsLoadingLicenses(false);
         });
     }
-  }, [isVisible, session]);
+  }, [isVisible, api.hasToken]);
 
   if (!isVisible) {
     return null;

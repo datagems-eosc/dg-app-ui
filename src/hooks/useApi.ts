@@ -1,8 +1,8 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useCallback } from "react";
-import { apiClient } from "@/lib/apiClient";
+import { useCallback, useMemo } from "react";
+import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
 
 /**
  * Custom hook for API access with automatic token management
@@ -11,164 +11,431 @@ import { apiClient } from "@/lib/apiClient";
 export function useApi() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken;
+  const baseUrl = useMemo(() => getApiBaseUrl(), []);
 
   /**
-   * Generic API call wrapper with error handling
+   * Make an authenticated API request
    */
-  const callApi = useCallback(
-    async <T>(
-      apiMethod: (token: string, ...args: any[]) => Promise<T>,
-      ...args: any[]
-    ): Promise<T> => {
+  const makeRequest = useCallback(
+    async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
       if (!token) {
         throw new Error("No authentication token available");
       }
 
-      try {
-        return await apiMethod(token, ...args);
-      } catch (error) {
-        console.error("API call failed:", error);
-        throw error;
+      const url = `${baseUrl}/gw/api${endpoint}`;
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      };
+
+      // Merge headers properly
+      if (options.headers) {
+        Object.assign(headers, options.headers);
       }
+
+      headers.Authorization = `Bearer ${token}`;
+
+      return fetchWithAuth(url, {
+        ...options,
+        headers,
+      });
     },
-    [token],
+    [token, baseUrl],
   );
 
-  // Dataset API methods
+  /**
+   * Dataset API methods
+   */
   const queryDatasets = useCallback(
-    (payload: any) => callApi(apiClient.queryDatasets.bind(apiClient), payload),
-    [callApi],
+    async (payload: any): Promise<any> => {
+      const response = await makeRequest("/dataset/query", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch datasets");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
-  // Collection API methods
+  /**
+   * Collection API methods
+   */
   const queryCollections = useCallback(
-    (payload: any) =>
-      callApi(apiClient.queryCollections.bind(apiClient), payload),
-    [callApi],
+    async (payload: any): Promise<any> => {
+      const response = await makeRequest("/collection/query", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch collections");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const queryUserCollections = useCallback(
-    (payload: any) =>
-      callApi(apiClient.queryUserCollections.bind(apiClient), payload),
-    [callApi],
+    async (payload: any): Promise<any> => {
+      const response = await makeRequest("/user/collection/me/query", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch user collections");
+      }
+
+      const res = await response.json();
+      console.log("queryUserCollections req", payload, "res", res);
+      return res;
+    },
+    [makeRequest],
   );
 
   const createUserCollection = useCallback(
-    (name: string) =>
-      callApi(apiClient.createUserCollection.bind(apiClient), name),
-    [callApi],
+    async (name: string): Promise<any> => {
+      const response = await makeRequest(
+        "/user/collection/me/persist?f=id&f=name&f=user.id&f=user.name&f=userDatasetCollections.id&f=userDatasetCollections.dataset.Id&f=userDatasetCollections.dataset.name",
+        {
+          method: "POST",
+          body: JSON.stringify({ name }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to create collection");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const addDatasetToUserCollection = useCallback(
-    (collectionId: string, datasetId: string) =>
-      callApi(
-        apiClient.addDatasetToUserCollection.bind(apiClient),
-        collectionId,
-        datasetId,
-      ),
-    [callApi],
+    async (collectionId: string, datasetId: string): Promise<any> => {
+      const response = await makeRequest(
+        `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id&f=UserDatasetCollections.id&f=UserDatasetCollections.dataset.id&f=name&f=user.id&f=user.name&f=UserDatasetCollections.dataset.name`,
+        {
+          method: "POST",
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || "Failed to add dataset to collection",
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const removeDatasetFromUserCollection = useCallback(
-    (collectionId: string, datasetId: string) =>
-      callApi(
-        apiClient.removeDatasetFromUserCollection.bind(apiClient),
-        collectionId,
-        datasetId,
-      ),
-    [callApi],
+    async (collectionId: string, datasetId: string): Promise<any> => {
+      const response = await makeRequest(
+        `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || "Failed to remove dataset from collection",
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const deleteUserCollection = useCallback(
-    (collectionId: string) =>
-      callApi(apiClient.deleteUserCollection.bind(apiClient), collectionId),
-    [callApi],
+    async (collectionId: string): Promise<any> => {
+      const response = await makeRequest(`/user/collection/${collectionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete collection");
+      }
+
+      return {};
+    },
+    [makeRequest],
   );
 
-  // Search API methods
+  /**
+   * Search API methods
+   */
   const searchInDataExplore = useCallback(
-    (payload: any) =>
-      callApi(apiClient.searchInDataExplore.bind(apiClient), payload),
-    [callApi],
+    async (payload: any): Promise<any> => {
+      const response = await makeRequest("/search/in-data-explore", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to search in data");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const searchCrossDataset = useCallback(
-    (payload: any) =>
-      callApi(apiClient.searchCrossDataset.bind(apiClient), payload),
-    [callApi],
+    async (payload: any): Promise<any> => {
+      const response = await makeRequest("/search/cross-dataset", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to search cross dataset");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
-  // Conversation API methods
+  /**
+   * Conversation API methods
+   */
   const getConversation = useCallback(
-    (id: string, queryParams: string) =>
-      callApi(apiClient.getConversation.bind(apiClient), id, queryParams),
-    [callApi],
+    async (id: string, queryParams: string): Promise<any> => {
+      const response = await makeRequest(`/conversation/${id}${queryParams}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch conversation");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const queryConversations = useCallback(
-    (payload: any) =>
-      callApi(apiClient.queryConversations.bind(apiClient), payload),
-    [callApi],
+    async (payload: any): Promise<any> => {
+      const response = await makeRequest("/conversation/me/query", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch conversations");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const persistConversation = useCallback(
-    (payload: any, queryParams: string) =>
-      callApi(
-        apiClient.persistConversation.bind(apiClient),
-        payload,
-        queryParams,
-      ),
-    [callApi],
+    async (payload: any, queryParams: string): Promise<any> => {
+      const response = await makeRequest(
+        `/conversation/me/persist${queryParams}`,
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to persist conversation");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const persistConversationDeep = useCallback(
-    (payload: any, queryParams: string) =>
-      callApi(
-        apiClient.persistConversationDeep.bind(apiClient),
-        payload,
-        queryParams,
-      ),
-    [callApi],
+    async (payload: any, queryParams: string): Promise<any> => {
+      const response = await makeRequest(
+        `/conversation/me/persist/deep${queryParams}`,
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || "Failed to persist conversation deep",
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const queryMessages = useCallback(
-    (payload: any) => callApi(apiClient.queryMessages.bind(apiClient), payload),
-    [callApi],
+    async (payload: any): Promise<any> => {
+      const response = await makeRequest("/conversation/message/me/query", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch messages");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const updateConversation = useCallback(
-    (id: string, payload: { name: string; eTag: string }) =>
-      callApi(apiClient.updateConversation.bind(apiClient), id, payload),
-    [callApi],
+    async (
+      id: string,
+      payload: { name: string; eTag: string },
+    ): Promise<any> => {
+      const response = await makeRequest(
+        `/conversation/me/persist?f=id&f=etag&f=name`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            id: id,
+            name: payload.name,
+            eTag: payload.eTag,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update conversation");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const deleteConversation = useCallback(
-    (id: string) => callApi(apiClient.deleteConversation.bind(apiClient), id),
-    [callApi],
+    async (id: string): Promise<any> => {
+      const response = await makeRequest(`/conversation/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete conversation");
+      }
+
+      return {};
+    },
+    [makeRequest],
   );
 
-  // Vocabulary API methods
-  const getFieldsOfScience = useCallback(
-    () => callApi(apiClient.getFieldsOfScience.bind(apiClient)),
-    [callApi],
-  );
+  /**
+   * Vocabulary API methods
+   */
+  const getFieldsOfScience = useCallback(async (): Promise<any> => {
+    const response = await makeRequest("/vocabulary/fields-of-science", {
+      method: "GET",
+    });
 
-  const getLicenses = useCallback(
-    () => callApi(apiClient.getLicenses.bind(apiClient)),
-    [callApi],
-  );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch fields of science");
+    }
 
-  // User settings API methods
+    return response.json();
+  }, [makeRequest]);
+
+  const getLicenses = useCallback(async (): Promise<any> => {
+    const response = await makeRequest("/vocabulary/license", {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch licenses");
+    }
+
+    return response.json();
+  }, [makeRequest]);
+
+  /**
+   * User settings API methods
+   */
   const getUserSettings = useCallback(
-    (settingsKey: string) =>
-      callApi(apiClient.getUserSettings.bind(apiClient), settingsKey),
-    [callApi],
+    async (settingsKey: string): Promise<any> => {
+      const returnFields = ["id", "key", "value", "eTag"];
+      const qs =
+        returnFields && returnFields.length > 0
+          ? `?${returnFields.map((f) => `f=${encodeURIComponent(f)}`).join("&")}`
+          : "";
+
+      const response = await makeRequest(
+        `/user/settings/key/${settingsKey}${qs}`,
+        {
+          method: "GET",
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch user settings");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   const saveUserSettings = useCallback(
-    (payload: any, id?: string) =>
-      callApi(apiClient.saveUserSettings.bind(apiClient), payload, id),
-    [callApi],
+    async (payload: any, id?: string): Promise<any> => {
+      const body = { ...payload };
+      if (id) {
+        body.id = id;
+      }
+      body.value = JSON.stringify(body.value);
+
+      const response = await makeRequest(`/user/settings/persist`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to save user settings");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
   );
 
   return {
@@ -207,8 +474,5 @@ export function useApi() {
     // User settings methods
     getUserSettings,
     saveUserSettings,
-
-    // Generic call method for custom usage
-    callApi,
   };
 }

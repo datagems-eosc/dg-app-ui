@@ -1,5 +1,4 @@
 import type { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
-import { apiClient } from "./apiClient";
 
 // Types for the API response
 interface VocabularyItem {
@@ -43,23 +42,15 @@ function convertToHierarchicalCategories(
     .filter((category) => category.options.length > 0);
 }
 
-// Fetch fields of science from API
-export async function fetchFieldsOfScience(
-  authToken?: string,
-): Promise<HierarchicalCategory[]> {
+export function processFieldsOfScience(
+  data: VocabularyResponse | VocabularyItem[],
+): HierarchicalCategory[] {
   // Return cached data if available
   if (fieldsOfScienceCache) {
     return fieldsOfScienceCache;
   }
 
   try {
-    if (!authToken) {
-      throw new Error("Authentication token is required");
-    }
-
-    const data: VocabularyResponse =
-      await apiClient.getFieldsOfScience(authToken);
-
     // Handle both formats: direct array or wrapped in hierarchy property
     const hierarchy = Array.isArray(data) ? data : data.hierarchy;
 
@@ -70,31 +61,22 @@ export async function fetchFieldsOfScience(
 
     return categories;
   } catch (error) {
-    console.error("Error fetching fields of science:", error);
+    console.error("Error processing fields of science:", error);
 
     // Return empty array as fallback
     return [];
   }
 }
 
-// Fetch licenses from API
-export async function fetchLicenses(
-  authToken?: string,
-): Promise<
-  { value: string; label: string; description?: string; urls?: string[] }[]
-> {
+export function processLicenses(
+  data: any,
+): { value: string; label: string; description?: string; urls?: string[] }[] {
   // Return cached data if available
   if (licensesCache) {
     return licensesCache;
   }
 
   try {
-    if (!authToken) {
-      throw new Error("Authentication token is required");
-    }
-
-    const data = await apiClient.getLicenses(authToken);
-
     // Transform the API response to the expected format
     // Handle different possible response formats
     let licenses: {
