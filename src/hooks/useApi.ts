@@ -14,10 +14,11 @@ export function useApi() {
 
   /**
    * Generic API call wrapper with error handling
+   * Note: apiClient methods expect token as the LAST parameter
    */
   const callApi = useCallback(
     async <T>(
-      apiMethod: (token: string, ...args: any[]) => Promise<T>,
+      apiMethod: (...args: any[]) => Promise<T>,
       ...args: any[]
     ): Promise<T> => {
       if (!token) {
@@ -25,7 +26,8 @@ export function useApi() {
       }
 
       try {
-        return await apiMethod(token, ...args);
+        // Pass all args, then token as the last argument
+        return await apiMethod(...args, token);
       } catch (error) {
         console.error("API call failed:", error);
         throw error;
