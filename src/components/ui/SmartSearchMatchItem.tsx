@@ -19,7 +19,7 @@ export function SmartSearchMatchItem({
       {/* Number in circle */}
       <div className="flex-shrink-0 w-6 h-6 rounded-full border border-slate-350 flex items-center justify-center">
         <span className="text-descriptions-12-medium text-gray-750">
-          {number}
+          {number + 1}
         </span>
       </div>
 
