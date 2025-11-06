@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { Button } from "./ui/Button";
 import { Tooltip } from "./ui/Tooltip";
 import { DatasetUpload } from "./ui/datasets/DatasetUpload";
@@ -11,7 +10,7 @@ import { Classification } from "./ui/datasets/Classification";
 import { AdditionalInformation } from "./ui/datasets/AdditionalInformation";
 import { FormSectionLayout } from "./ui/FormSectionLayout";
 import { APP_ROUTES } from "@/config/appUrls";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 
 interface UploadedFile {
   id: string;
@@ -91,7 +90,7 @@ const initialErrors: FormErrors = {
 
 export default function AddDatasetForm() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const api = useApi();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<FormErrors>(initialErrors);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -189,8 +188,7 @@ export default function AddDatasetForm() {
     setIsSubmitting(true);
 
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         throw new Error("No access token available");
       }
 
@@ -228,7 +226,7 @@ export default function AddDatasetForm() {
         payload.collectionIds = [formData.classification.collection];
       }
 
-      const response = await apiClient.queryDatasets(payload, token);
+      const response = await api.queryDatasets(payload);
 
       console.log("/dataset/query response", response);
       alert("Dataset submitted successfully!");

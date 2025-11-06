@@ -9,14 +9,13 @@ import SelectedDatasetsPanel from "./SelectedDatasetsPanel";
 import AddDatasetsModal from "./AddDatasetsModal";
 import { Button } from "./ui/Button";
 import type { ConversationMessage } from "@/app/chat/page";
-import { useSession } from "next-auth/react";
 import ChatInitialView from "./ui/chat/ChatInitialView";
 import ChatMessages from "./ui/chat/ChatMessages";
 import DatasetChangeWarning from "./ui/chat/DatasetChangeWarning";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { Collection, ApiCollection } from "@/types/collection";
 import { getLogoutUrl, getNavigationUrl } from "@/lib/utils";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 
 interface Message {
   id: string;
@@ -320,7 +319,7 @@ export default function Chat({
     Record<string, string>
   >({});
   const router = useRouter();
-  const { data: session } = useSession();
+  const api = useApi();
 
   // Determine initial visibility of the right panel responsively (show on >= sm)
   useEffect(() => {
@@ -538,8 +537,7 @@ export default function Chat({
 
       // For existing conversations, use the in-data-explore API directly
       if (conversationId && selectedDatasets.length > 0) {
-        const token = (session as any)?.accessToken;
-        if (!token) {
+        if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
           return;
@@ -558,7 +556,7 @@ export default function Chat({
           datasetIds: selectedDatasets,
         };
 
-        const response = await apiClient.searchInDataExplore(payload, token);
+        const response = await api.searchInDataExplore(payload);
 
         // Add user message immediately
         const userMessage: Message = {
@@ -596,9 +594,7 @@ export default function Chat({
         // Show generating response state while making API calls
         setIsGeneratingAIResponse(true);
 
-        // next-auth session type does not include accessToken by default
-        const token = (session as any)?.accessToken;
-        if (!token) {
+        if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
           setIsGeneratingAIResponse(false);
@@ -608,10 +604,9 @@ export default function Chat({
         const persistPayload = {
           name: inputValue,
         };
-        const persistData = await apiClient.persistConversation(
+        const persistData = await api.persistConversation(
           persistPayload,
-          "?f=id&f=etag",
-          token
+          "?f=id&f=etag"
         );
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
@@ -643,7 +638,7 @@ export default function Chat({
           query: inputValue,
           resultCount: 100,
         };
-        const data = await apiClient.searchCrossDataset(payload, token);
+        const data = await api.searchCrossDataset(payload);
         if (Array.isArray(data.result)) {
           const results = data.result as CrossDatasetSearchResult[];
           newSelectedDatasets = results
@@ -681,9 +676,7 @@ export default function Chat({
         // Show generating response state while making API calls
         setIsGeneratingAIResponse(true);
 
-        // next-auth session type does not include accessToken by default
-        const token = (session as any)?.accessToken;
-        if (!token) {
+        if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
           setIsGeneratingAIResponse(false);
@@ -696,10 +689,9 @@ export default function Chat({
             datasetId: id,
           })),
         };
-        const persistData = await apiClient.persistConversationDeep(
+        const persistData = await api.persistConversationDeep(
           persistPayload,
-          "?f=id&f=etag",
-          token
+          "?f=id&f=etag"
         );
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
@@ -721,7 +713,7 @@ export default function Chat({
           resultCount: 100,
           datasetIds: selectedDatasets, // Add datasetIds for in-data-explore
         };
-        const data = await apiClient.searchInDataExplore(payload, token);
+        const data = await api.searchInDataExplore(payload);
         let newSelectedDatasets = selectedDatasets;
         // Redirect to chat details page with conversationId
         if (conversationIdFromPersist) {

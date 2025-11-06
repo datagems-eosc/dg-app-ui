@@ -1,5 +1,4 @@
 import { mbToBytes } from "@/lib/utils";
-import { fetchFieldsOfScience, fetchLicenses } from "@/lib/vocabularyService";
 
 export const ACCESS_OPTIONS = [
   { value: "open", label: "Open" },
@@ -106,5 +105,5 @@ export const VALIDATION_CONFIG = {
   },
 } as const;
 
-// Export both fetch functions
-export { fetchFieldsOfScience, fetchLicenses };
+// Export vocabulary processing functions (not fetch - use useApi for fetching)
+export { processFieldsOfScience, processLicenses } from "../lib/vocabularyService";

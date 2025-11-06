@@ -25,8 +25,8 @@ import FilterModal from "./FilterModal";
 import {
   FilterState,
   getDefaultFilters,
-  fetchFieldsOfScience,
-  fetchLicenses,
+  processFieldsOfScience,
+  processLicenses,
   SORTING_OPTIONS,
 } from "../config/filterOptions";
 import CreateCollectionModal from "./CreateCollectionModal";
@@ -39,9 +39,8 @@ import { Chip } from "./ui/Chip";
 import SortingDropdown from "./SortingDropdown";
 import { useRouter } from "next/navigation";
 import { HierarchicalCategory } from "./ui/HierarchicalDropdown";
-import { useSession } from "next-auth/react";
 import { getNavigationUrl } from "@/lib/utils";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { Dataset } from "@/data/dataset";
 
@@ -198,7 +197,7 @@ export default function Browse({
   isSmartSearchEnabled: controlledSmartSearchEnabled,
   onSmartSearchToggle,
 }: BrowseProps) {
-  const { data: session } = useSession() as any;
+  const api = useApi();
   const { notifyCollectionModified, refreshExtraCollections } =
     useCollections();
   const router = useRouter();
@@ -300,13 +299,12 @@ export default function Browse({
 
     setIsDeleting(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         throw new Error("No access token available");
       }
 
       // Delete the collection via API
-      await apiClient.deleteUserCollection(collectionId, token);
+      await api.deleteUserCollection(collectionId);
 
       // Force immediate refresh of collections to ensure deleted collection is removed
       // This prevents the issue where deleted collections still appear in the sidebar
@@ -413,10 +411,12 @@ export default function Browse({
 
   // Fetch fields of science and licenses on component mount
   useEffect(() => {
-    const token = session?.accessToken;
+    if (!api.hasToken) return;
 
-    fetchFieldsOfScience(token)
-      .then((categories) => {
+    // Fetch fields of science
+    api.getFieldsOfScience()
+      .then((data) => {
+        const categories = processFieldsOfScience(data);
         setFieldsOfScienceCategories(categories);
       })
       .catch((error) => {
@@ -424,15 +424,17 @@ export default function Browse({
         setFieldsOfScienceCategories([]);
       });
 
-    fetchLicenses(token)
-      .then((licenseOptions) => {
+    // Fetch licenses
+    api.getLicenses()
+      .then((data) => {
+        const licenseOptions = processLicenses(data);
         setLicenses(licenseOptions);
       })
       .catch((error) => {
         console.error("Error fetching licenses:", error);
         setLicenses([]);
       });
-  }, [session]);
+  }, [api.hasToken]);
 
   // Animate SelectedDatasetsPanel on open
   useEffect(() => {
