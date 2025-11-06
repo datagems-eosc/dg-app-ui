@@ -1,8 +1,7 @@
 "use client";
 
-import React from "react";
 import { DataTable } from "@/components/ui/chat/DataTable";
-import { TableData } from "@/types/chat";
+import type { TableData } from "@/types/chat";
 
 interface AIMessageContentProps {
   content: string;

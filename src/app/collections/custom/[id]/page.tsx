@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
 import { Edit3, Plus, Save, Trash2 } from "lucide-react";
-import DashboardLayout from "@/components/DashboardLayout";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import AddDatasetsModal from "@/components/AddDatasetsModal";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
-import AddDatasetsModal from "@/components/AddDatasetsModal";
-import { mockDatasets } from "@/data/dataset";
+import DashboardLayout from "@/components/DashboardLayout";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { mockDatasets } from "@/data/dataset";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function CustomCollectionPage() {
@@ -26,7 +26,7 @@ export default function CustomCollectionPage() {
   // All useState and useEffect hooks must be called before any early return
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [_isLoaded, setIsLoaded] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
@@ -77,14 +77,14 @@ export default function CustomCollectionPage() {
     ? editedDatasetIds
     : collection?.datasetIds || [];
   const collectionDatasets = mockDatasets.filter((dataset) =>
-    displayDatasetIds.includes(dataset.id)
+    displayDatasetIds.includes(dataset.id),
   );
 
   const handleChatWithData = () => {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
     router.push(getNavigationUrl("/chat"));
   };
@@ -108,7 +108,7 @@ export default function CustomCollectionPage() {
   const handleCreateCollection = (name: string) => {
     addCollection(name, selectedDatasets);
     alert(
-      `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`
+      `Collection "${name}" created successfully with ${selectedDatasets.length} datasets!`,
     );
   };
 
@@ -116,7 +116,9 @@ export default function CustomCollectionPage() {
     if (!collection) return;
     setIsEditMode(true);
     setEditedName(collection.name);
-    setEditedDatasetIds(collection.datasetIds ? [...collection.datasetIds] : []);
+    setEditedDatasetIds(
+      collection.datasetIds ? [...collection.datasetIds] : [],
+    );
   };
 
   const handleCancelEdit = () => {
@@ -144,7 +146,7 @@ export default function CustomCollectionPage() {
   const handleAddDatasetsFromModal = (newSelectedDatasets: string[]) => {
     // Add any new datasets that aren't already in the collection
     const datasetsToAdd = newSelectedDatasets.filter(
-      (id) => !editedDatasetIds.includes(id)
+      (id) => !editedDatasetIds.includes(id),
     );
     setEditedDatasetIds((prev) => [...prev, ...datasetsToAdd]);
   };
@@ -153,7 +155,7 @@ export default function CustomCollectionPage() {
     if (!collection) return;
     if (
       confirm(
-        `Are you sure you want to delete "${collection.name}"? This action cannot be undone.`
+        `Are you sure you want to delete "${collection.name}"? This action cannot be undone.`,
       )
     ) {
       removeCollection(collection.id);
@@ -240,7 +242,6 @@ export default function CustomCollectionPage() {
               value={editedName}
               onChange={(e) => setEditedName(e.target.value)}
               className="text-H2-24-semibold text-gray-900 bg-transparent border-b-2 border-blue-500 focus:outline-none focus:border-blue-600 mb-2 w-full"
-              autoFocus
             />
           ) : (
             <h1 className="text-H2-24-semibold text-gray-900">
@@ -250,7 +251,10 @@ export default function CustomCollectionPage() {
           <p className="text-gray-600 mt-1">
             Custom collection • {displayDatasetIds.length} datasets
             {"createdAt" in collection && collection.createdAt ? (
-              <> • Created {(collection.createdAt as Date).toLocaleDateString()}</>
+              <>
+                {" "}
+                • Created {(collection.createdAt as Date).toLocaleDateString()}
+              </>
             ) : (
               <> - </>
             )}

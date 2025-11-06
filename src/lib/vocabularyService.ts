@@ -1,4 +1,4 @@
-import { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
+import type { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
 
 // Types for the API response
 interface VocabularyItem {
@@ -20,33 +20,30 @@ let licensesCache:
 
 // Convert API response to HierarchicalCategory format
 function convertToHierarchicalCategories(
-  hierarchy: VocabularyItem[]
+  hierarchy: VocabularyItem[],
 ): HierarchicalCategory[] {
   return hierarchy
-    .filter((item) => item.children && item.children.length > 0) // Only include items with children
+    .filter((item) => item.children && item.children.length > 0)
     .map((item) => ({
       name:
         item.name.charAt(0).toUpperCase() + item.name.slice(1).toLowerCase(),
       code: item.code,
-      options: item.children!.map((childItem) => {
-        return {
-          value: childItem.code,
-          label:
-            childItem.name.charAt(0).toUpperCase() +
-            childItem.name.slice(1).toLowerCase(),
-          code: childItem.code,
-        };
-      }),
+      options:
+        item.children?.map((childItem) => {
+          return {
+            value: childItem.code,
+            label:
+              childItem.name.charAt(0).toUpperCase() +
+              childItem.name.slice(1).toLowerCase(),
+            code: childItem.code,
+          };
+        }) || [],
     }))
-    .filter((category) => category.options.length > 0); // Only include categories with valid options
+    .filter((category) => category.options.length > 0);
 }
 
-/**
- * Process and cache fields of science data
- * Components should fetch data using useApi().getFieldsOfScience() and pass it here
- */
 export function processFieldsOfScience(
-  data: VocabularyResponse | VocabularyItem[]
+  data: VocabularyResponse | VocabularyItem[],
 ): HierarchicalCategory[] {
   // Return cached data if available
   if (fieldsOfScienceCache) {
@@ -71,12 +68,8 @@ export function processFieldsOfScience(
   }
 }
 
-/**
- * Process and cache license data
- * Components should fetch data using useApi().getLicenses() and pass it here
- */
 export function processLicenses(
-  data: any
+  data: any,
 ): { value: string; label: string; description?: string; urls?: string[] }[] {
   // Return cached data if available
   if (licensesCache) {
@@ -84,7 +77,6 @@ export function processLicenses(
   }
 
   try {
-
     // Transform the API response to the expected format
     // Handle different possible response formats
     let licenses: {

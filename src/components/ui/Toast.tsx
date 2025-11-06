@@ -1,8 +1,8 @@
 "use client";
 
+import { AlertCircle, CheckCircle2, X } from "lucide-react";
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, X, AlertCircle } from "lucide-react";
 
 interface ToastProps {
   message: string;

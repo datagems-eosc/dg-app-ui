@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { Dataset } from "@/data/dataset";
+import { useEffect, useState } from "react";
+import type { Dataset } from "@/data/dataset";
 import Browse from "./Browse";
 
 interface AddDatasetsModalProps {
@@ -19,7 +19,7 @@ export default function AddDatasetsModal({
   onSelectedDatasetsChange,
 }: AddDatasetsModalProps) {
   const [modalSelectedDatasets, setModalSelectedDatasets] = useState<string[]>(
-    []
+    [],
   );
 
   // Reset modal state when it opens

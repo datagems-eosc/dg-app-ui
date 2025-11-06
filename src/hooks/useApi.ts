@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
-import { getApiBaseUrl, fetchWithAuth } from "@/lib/utils";
+import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
 
 /**
  * Custom hook for API access with automatic token management
@@ -36,14 +36,14 @@ export function useApi() {
         Object.assign(headers, options.headers);
       }
 
-      headers["Authorization"] = `Bearer ${token}`;
+      headers.Authorization = `Bearer ${token}`;
 
       return fetchWithAuth(url, {
         ...options,
         headers,
       });
     },
-    [token, baseUrl]
+    [token, baseUrl],
   );
 
   /**
@@ -63,7 +63,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   /**
@@ -83,7 +83,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const queryUserCollections = useCallback(
@@ -102,7 +102,7 @@ export function useApi() {
       console.log("queryUserCollections req", payload, "res", res);
       return res;
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const createUserCollection = useCallback(
@@ -112,7 +112,7 @@ export function useApi() {
         {
           method: "POST",
           body: JSON.stringify({ name }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -122,7 +122,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const addDatasetToUserCollection = useCallback(
@@ -131,17 +131,19 @@ export function useApi() {
         `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id&f=UserDatasetCollections.id&f=UserDatasetCollections.dataset.id&f=name&f=user.id&f=user.name&f=UserDatasetCollections.dataset.name`,
         {
           method: "POST",
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to add dataset to collection");
+        throw new Error(
+          errorData.error || "Failed to add dataset to collection",
+        );
       }
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const removeDatasetFromUserCollection = useCallback(
@@ -150,19 +152,19 @@ export function useApi() {
         `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.error || "Failed to remove dataset from collection"
+          errorData.error || "Failed to remove dataset from collection",
         );
       }
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const deleteUserCollection = useCallback(
@@ -178,7 +180,7 @@ export function useApi() {
 
       return {};
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   /**
@@ -198,7 +200,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const searchCrossDataset = useCallback(
@@ -215,7 +217,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   /**
@@ -234,7 +236,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const queryConversations = useCallback(
@@ -251,7 +253,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const persistConversation = useCallback(
@@ -261,7 +263,7 @@ export function useApi() {
         {
           method: "POST",
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -271,7 +273,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const persistConversationDeep = useCallback(
@@ -281,17 +283,19 @@ export function useApi() {
         {
           method: "POST",
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to persist conversation deep");
+        throw new Error(
+          errorData.error || "Failed to persist conversation deep",
+        );
       }
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const queryMessages = useCallback(
@@ -308,11 +312,14 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const updateConversation = useCallback(
-    async (id: string, payload: { name: string; eTag: string }): Promise<any> => {
+    async (
+      id: string,
+      payload: { name: string; eTag: string },
+    ): Promise<any> => {
       const response = await makeRequest(
         `/conversation/me/persist?f=id&f=etag&f=name`,
         {
@@ -322,7 +329,7 @@ export function useApi() {
             name: payload.name,
             eTag: payload.eTag,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -332,7 +339,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const deleteConversation = useCallback(
@@ -348,43 +355,37 @@ export function useApi() {
 
       return {};
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   /**
    * Vocabulary API methods
    */
-  const getFieldsOfScience = useCallback(
-    async (): Promise<any> => {
-      const response = await makeRequest("/vocabulary/fields-of-science", {
-        method: "GET",
-      });
+  const getFieldsOfScience = useCallback(async (): Promise<any> => {
+    const response = await makeRequest("/vocabulary/fields-of-science", {
+      method: "GET",
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch fields of science");
-      }
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch fields of science");
+    }
 
-      return response.json();
-    },
-    [makeRequest]
-  );
+    return response.json();
+  }, [makeRequest]);
 
-  const getLicenses = useCallback(
-    async (): Promise<any> => {
-      const response = await makeRequest("/vocabulary/license", {
-        method: "GET",
-      });
+  const getLicenses = useCallback(async (): Promise<any> => {
+    const response = await makeRequest("/vocabulary/license", {
+      method: "GET",
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch licenses");
-      }
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to fetch licenses");
+    }
 
-      return response.json();
-    },
-    [makeRequest]
-  );
+    return response.json();
+  }, [makeRequest]);
 
   /**
    * User settings API methods
@@ -397,9 +398,12 @@ export function useApi() {
           ? `?${returnFields.map((f) => `f=${encodeURIComponent(f)}`).join("&")}`
           : "";
 
-      const response = await makeRequest(`/user/settings/key/${settingsKey}${qs}`, {
-        method: "GET",
-      });
+      const response = await makeRequest(
+        `/user/settings/key/${settingsKey}${qs}`,
+        {
+          method: "GET",
+        },
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -408,7 +412,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   const saveUserSettings = useCallback(
@@ -431,7 +435,7 @@ export function useApi() {
 
       return response.json();
     },
-    [makeRequest]
+    [makeRequest],
   );
 
   return {

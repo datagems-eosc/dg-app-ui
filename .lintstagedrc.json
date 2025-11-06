@@ -1,0 +1,5 @@
+{
+  "*.{js,jsx,ts,tsx,json}": [
+    "npx @biomejs/biome check --write --files-ignore-unknown=true"
+  ]
+}

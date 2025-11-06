@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 export function AIResponseSkeleton() {
   return (
     <div className="space-y-4 shadow-s1 border border-slate-350 rounded-2xl px-6 pt-4 pb-6">
@@ -28,4 +26,4 @@ export function AIResponseSkeleton() {
       </div>
     </div>
   );
-} 
+}

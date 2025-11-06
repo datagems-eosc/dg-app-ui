@@ -1,4 +1,3 @@
-import React from "react";
 import DGIcon from "@/components/ui/chat/DGIcon";
 
 export default function ChatInitialView() {

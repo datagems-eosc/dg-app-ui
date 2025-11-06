@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "./ui/Button";
-import { Tooltip } from "./ui/Tooltip";
-import { DatasetUpload } from "./ui/datasets/DatasetUpload";
-import { BasicInformation } from "./ui/datasets/BasicInformation";
-import { Classification } from "./ui/datasets/Classification";
-import { AdditionalInformation } from "./ui/datasets/AdditionalInformation";
-import { FormSectionLayout } from "./ui/FormSectionLayout";
+import type React from "react";
+import { useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useApi } from "@/hooks/useApi";
+import { Button } from "./ui/Button";
+import { AdditionalInformation } from "./ui/datasets/AdditionalInformation";
+import { BasicInformation } from "./ui/datasets/BasicInformation";
+import { Classification } from "./ui/datasets/Classification";
+import { DatasetUpload } from "./ui/datasets/DatasetUpload";
+import { FormSectionLayout } from "./ui/FormSectionLayout";
+import { Tooltip } from "./ui/Tooltip";
 
 interface UploadedFile {
   id: string;
@@ -254,13 +255,13 @@ export default function AddDatasetForm() {
   };
 
   const handleClassificationChange = (
-    classification: FormData["classification"]
+    classification: FormData["classification"],
   ) => {
     setFormData((prev) => ({ ...prev, classification }));
   };
 
   const handleAdditionalInfoChange = (
-    additionalInfo: FormData["additionalInfo"]
+    additionalInfo: FormData["additionalInfo"],
   ) => {
     setFormData((prev) => ({ ...prev, additionalInfo }));
   };

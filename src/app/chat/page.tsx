@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
-import Chat from "@/components/Chat";
 import { useParams, useSearchParams } from "next/navigation";
-import type { Dataset } from "@/data/dataset";
+import React, { Suspense, useEffect, useState } from "react";
+import Chat from "@/components/Chat";
+import DashboardLayout from "@/components/DashboardLayout";
 // import { getApiBaseUrl } from "@/lib/utils"; // No longer needed
 import ProtectedPage from "@/components/ProtectedPage";
+import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+
 // API fetch payload (copied from dashboard)
 const API_DATASETS_PAYLOAD = {
   project: {
@@ -59,34 +60,34 @@ export interface ConversationMessage {
   data: {
     kind: number;
     payload:
-    | {
-      query?: string; // Old format (kind 0)
-      question?: string; // New format (kind 2)
-      entries?: Array<{
-        result?: {
-          table?: {
-            columns: Array<{
-              columnNumber: number;
-              name: string;
-            }>;
-            rows: Array<{
-              rowNumber: number;
-              cells: Array<{
-                column: string;
-                value: string | number;
-              }>;
-            }>;
+      | {
+          query?: string; // Old format (kind 0)
+          question?: string; // New format (kind 2)
+          entries?: Array<{
+            result?: {
+              table?: {
+                columns: Array<{
+                  columnNumber: number;
+                  name: string;
+                }>;
+                rows: Array<{
+                  rowNumber: number;
+                  cells: Array<{
+                    column: string;
+                    value: string | number;
+                  }>;
+                }>;
+              };
+            };
+          }>;
+        }
+      | Array<{
+          dataset?: {
+            id?: string;
+            code?: string;
+            name?: string;
           };
-        };
-      }>;
-    }
-    | Array<{
-      dataset?: {
-        id?: string;
-        code?: string;
-        name?: string;
-      };
-    }>; // Old format (kind 1) - array of dataset items
+        }>; // Old format (kind 1) - array of dataset items
     version: string;
   };
   createdAt: string;
@@ -98,7 +99,10 @@ interface ChatPageProps {
 }
 
 // Main chat component that uses useSearchParams
-function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPageProps) {
+function ChatPageContent({
+  showConversationName,
+  hideCollectionActions,
+}: ChatPageProps) {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const api = useApi();
   const [isMounted, setIsMounted] = useState(false);
@@ -109,8 +113,11 @@ function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPa
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [isResetting, setIsResetting] = useState(false);
-  const [hasJustClearedLocalStorage, setHasJustClearedLocalStorage] = useState(false);
-  const [initialCollectionId, setInitialCollectionId] = useState<string | null>(null);
+  const [hasJustClearedLocalStorage, setHasJustClearedLocalStorage] =
+    useState(false);
+  const [initialCollectionId, setInitialCollectionId] = useState<string | null>(
+    null,
+  );
   const params = useParams();
   const searchParams = useSearchParams();
 
@@ -121,7 +128,7 @@ function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPa
 
   // Handle collection query parameter
   useEffect(() => {
-    const collectionId = searchParams?.get('collection');
+    const collectionId = searchParams?.get("collection");
     if (collectionId !== initialCollectionId) {
       setInitialCollectionId(collectionId);
     }
@@ -132,7 +139,7 @@ function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPa
     if (isMounted && !isResetting) {
       localStorage.setItem(
         "chatSelectedDatasets",
-        JSON.stringify(selectedDatasets)
+        JSON.stringify(selectedDatasets),
       );
     }
   }, [selectedDatasets, isMounted, isResetting]);
@@ -140,11 +147,11 @@ function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPa
   // Handle conversationId changes and initial page load
   useEffect(() => {
     const id = params?.conversationId as string | undefined;
-    const lastConversationId = sessionStorage.getItem('lastConversationId');
+    const lastConversationId = sessionStorage.getItem("lastConversationId");
     const isTransitioningFromConversation = lastConversationId !== null && !id;
 
     if (id) {
-      sessionStorage.setItem('lastConversationId', id);
+      sessionStorage.setItem("lastConversationId", id);
       setConversationId(id);
 
       const fetchHistory = async () => {
@@ -170,11 +177,11 @@ function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPa
                   "dataset" in item &&
                   (item as { dataset?: { id?: string } }).dataset?.id &&
                   !datasetIds.includes(
-                    (item as { dataset: { id: string } }).dataset.id
+                    (item as { dataset: { id: string } }).dataset.id,
                   )
                 ) {
                   datasetIds.push(
-                    (item as { dataset: { id: string } }).dataset.id
+                    (item as { dataset: { id: string } }).dataset.id,
                   );
                 }
               });
@@ -192,7 +199,7 @@ function ChatPageContent({ showConversationName, hideCollectionActions }: ChatPa
         localStorage.removeItem("chatSelectedDatasets");
         setSelectedDatasets([]);
         setHasJustClearedLocalStorage(true);
-        sessionStorage.removeItem('lastConversationId');
+        sessionStorage.removeItem("lastConversationId");
         setTimeout(() => setHasJustClearedLocalStorage(false), 100);
       } else {
         setIsResetting(true);

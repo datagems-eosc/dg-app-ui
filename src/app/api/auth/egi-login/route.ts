@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getApiBaseUrl } from "@/lib/utils";
 
 /**
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body,
-      }
+      },
     );
     const data = await response.json();
     return NextResponse.json(data, { status: response.status });
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
         error: "Proxy error",
         details: error instanceof Error ? error.message : error,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

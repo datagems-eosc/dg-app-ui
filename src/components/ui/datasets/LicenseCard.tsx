@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Files } from "lucide-react";
 
 interface LicenseCardProps {
@@ -14,7 +13,7 @@ interface LicenseCardProps {
 }
 
 export function LicenseCard({ license, primaryUrl }: LicenseCardProps) {
-  const urlToOpen = primaryUrl || (license.urls && license.urls[0]);
+  const urlToOpen = primaryUrl || license.urls?.[0];
   return (
     <div className="mt-3 p-5 bg-white rounded-lg border border-slate-200">
       <div className="flex items-start gap-3">
@@ -39,7 +38,7 @@ export function LicenseCard({ license, primaryUrl }: LicenseCardProps) {
                   window.open(
                     urlToOpen as string,
                     "_blank",
-                    "noopener,noreferrer"
+                    "noopener,noreferrer",
                   )
                 }
               >

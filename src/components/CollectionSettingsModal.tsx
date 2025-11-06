@@ -1,10 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Eye, EyeOff, GripVertical, ChevronUp, ChevronDown } from "lucide-react";
-import { Button } from "./ui/Button";
+import {
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeOff,
+  GripVertical,
+  X,
+} from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { useCollections } from "@/contexts/CollectionsContext";
-import { ApiCollection } from "@/types/collection";
+import type { ApiCollection } from "@/types/collection";
+import { Button } from "./ui/Button";
 
 interface CollectionSettingsModalProps {
   isVisible: boolean;
@@ -178,7 +186,7 @@ export default function CollectionSettingsModal({
           isVisible: saved?.isVisible ?? true,
           order: saved?.order ?? index,
         };
-      }
+      },
     );
 
     // Sort by order
@@ -261,7 +269,7 @@ export default function CollectionSettingsModal({
         };
         return acc;
       },
-      {} as Record<string, { isVisible: boolean; order: number }>
+      {} as Record<string, { isVisible: boolean; order: number }>,
     );
 
     localStorage.setItem("collectionSettings", JSON.stringify(settingsData));

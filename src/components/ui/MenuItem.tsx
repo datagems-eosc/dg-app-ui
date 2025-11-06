@@ -1,7 +1,6 @@
-import React from "react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LucideIcon } from "lucide-react";
 import { createUrl } from "@/lib/utils";
 
 interface MenuItemProps {

@@ -1,19 +1,18 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import {
-  ChevronDown,
-  PackagePlus,
-  CloudSun,
   Calculator,
+  CloudSun,
   GraduationCap,
   Languages,
+  PackagePlus,
   Star,
 } from "lucide-react";
-import { Button } from "./Button";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { Collection, ApiCollection } from "@/types/collection";
+import type { ApiCollection, Collection } from "@/types/collection";
+import { Button } from "./Button";
 
 interface CollectionsDropdownProps {
   collections: {
@@ -80,7 +79,7 @@ const CollectionItem = ({
       onClick={onClick}
       className={cn(
         "flex items-center px-3 py-1 rounded-md cursor-pointer transition-colors group mb-1",
-        isSelected ? "bg-slate-200" : "hover:bg-slate-100"
+        isSelected ? "bg-slate-200" : "hover:bg-slate-100",
       )}
     >
       {!!collection && getCollectionIcon(collection.code, "mr-3")}
@@ -145,7 +144,7 @@ export function CollectionsDropdown({
       let left = rect.right - width;
       left = Math.max(
         horizontalPadding,
-        Math.min(left, viewportWidth - width - horizontalPadding)
+        Math.min(left, viewportWidth - width - horizontalPadding),
       );
 
       // Always render above the button with a fixed gap; translateY(-100%) handles height
@@ -236,28 +235,29 @@ export function CollectionsDropdown({
 
             {/* Extra Collections (User Collections from API) */}
             {collections.extraCollections.filter(
-              (collection) => (collection.userDatasetCollections?.length ?? 0) > 0
+              (collection) =>
+                (collection.userDatasetCollections?.length ?? 0) > 0,
             ).length > 0 && (
-                <div className="px-1 pt-2">
-                  <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider mb-2 ml-2">
-                    Custom
-                  </div>
-                  {collections.extraCollections
-                    .filter(
-                      (collection) =>
-                        (collection.userDatasetCollections?.length ?? 0) > 0
-                    )
-                    .map((collection) => (
-                      <CollectionItem
-                        key={collection.id}
-                        collection={collection}
-                        isSelected={selectedCollection?.id === collection.id}
-                        onClick={() => handleSelect(collection)}
-                        isCustom={true}
-                      />
-                    ))}
+              <div className="px-1 pt-2">
+                <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider mb-2 ml-2">
+                  Custom
                 </div>
-              )}
+                {collections.extraCollections
+                  .filter(
+                    (collection) =>
+                      (collection.userDatasetCollections?.length ?? 0) > 0,
+                  )
+                  .map((collection) => (
+                    <CollectionItem
+                      key={collection.id}
+                      collection={collection}
+                      isSelected={selectedCollection?.id === collection.id}
+                      onClick={() => handleSelect(collection)}
+                      isCustom={true}
+                    />
+                  ))}
+              </div>
+            )}
 
             {/* Loading State */}
             {collections.isLoading && (
@@ -274,7 +274,8 @@ export function CollectionsDropdown({
               collections.apiCollections.length === 0 &&
               collections.collections.length === 0 &&
               collections.extraCollections.filter(
-                (collection) => (collection.userDatasetCollections?.length ?? 0) > 0
+                (collection) =>
+                  (collection.userDatasetCollections?.length ?? 0) > 0,
               ).length === 0 && (
                 <div className="px-3 py-2">
                   <div className="text-center text-gray-400 text-sm py-4">
@@ -283,7 +284,7 @@ export function CollectionsDropdown({
                 </div>
               )}
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );

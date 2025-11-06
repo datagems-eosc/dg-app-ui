@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Plus, FileText, Loader2 } from "lucide-react";
-import { Dataset } from "@/data/dataset";
-import { useCollections } from "@/contexts/CollectionsContext";
+import { FileText, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { useCollections } from "@/contexts/CollectionsContext";
+import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
 import { Checkbox } from "./ui/Checkbox";
+import { Input } from "./ui/Input";
 
 interface CreateCollectionModalProps {
   isVisible: boolean;
@@ -31,7 +32,7 @@ export default function CreateCollectionModal({
   const [collectionName, setCollectionName] = useState("Custom Collection");
   const [description, setDescription] = useState("");
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>(
-    []
+    [],
   );
   const [isCreating, setIsCreating] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -44,13 +45,13 @@ export default function CreateCollectionModal({
   const api = useApi();
   const router = useRouter();
 
-  const selectedDatasetObjects = datasets.filter((dataset) =>
-    selectedDatasets.includes(dataset.id)
+  const _selectedDatasetObjects = datasets.filter((dataset) =>
+    selectedDatasets.includes(dataset.id),
   );
 
   // Use API-fetched custom collections (same as sidebar), excluding Favorites
   const customCollections = (extraCollections || []).filter(
-    (collection) => collection.name !== "Favorites"
+    (collection) => collection.name !== "Favorites",
   );
 
   // Refresh collections when modal opens or token is available to ensure fresh data
@@ -81,14 +82,12 @@ export default function CreateCollectionModal({
     setIsCreating(true);
     try {
       // Create collection via API
-      const response = await api.createUserCollection(
-        collectionName.trim()
-      );
+      const response = await api.createUserCollection(collectionName.trim());
 
       // Add to local state with the real ID from API response
       if (response.id) {
         // Create a proper collection object with the real ID
-        const newCollection = {
+        const _newCollection = {
           id: response.id,
           name: response.name || collectionName.trim(),
           datasetIds: selectedDatasets,
@@ -140,10 +139,7 @@ export default function CreateCollectionModal({
       // Add datasets to all selected collections via API
       for (const collectionId of selectedCollectionIds) {
         for (const datasetId of selectedDatasets) {
-          await api.addDatasetToUserCollection(
-            collectionId,
-            datasetId
-          );
+          await api.addDatasetToUserCollection(collectionId, datasetId);
         }
       }
 
@@ -188,7 +184,7 @@ export default function CreateCollectionModal({
     setSelectedCollectionIds((prev) =>
       prev.includes(collectionId)
         ? prev.filter((id) => id !== collectionId)
-        : [...prev, collectionId]
+        : [...prev, collectionId],
     );
   };
 
@@ -219,19 +215,21 @@ export default function CreateCollectionModal({
           <div className="flex bg-slate-100 rounded-[40px] p-1">
             <button
               onClick={() => handleTabSwitch("create")}
-              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${activeTab === "create"
+              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${
+                activeTab === "create"
                   ? "bg-white text-gray-750"
                   : "text-gray-650 hover:text-gray-950 cursor-pointer"
-                }`}
+              }`}
             >
               Create New
             </button>
             <button
               onClick={() => handleTabSwitch("add")}
-              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${activeTab === "add"
+              className={`flex-1 py-2.5 px-4 rounded-[40px] text-body-16-regular transition-colors ${
+                activeTab === "add"
                   ? "bg-white text-gray-750"
                   : "text-gray-650 hover:text-gray-950 cursor-pointer"
-                }`}
+              }`}
             >
               Add to existing
             </button>
@@ -292,7 +290,7 @@ export default function CreateCollectionModal({
                     <div className="flex flex-col gap-1">
                       {customCollections.map((collection) => {
                         const isSelected = selectedCollectionIds.includes(
-                          collection.id
+                          collection.id,
                         );
                         const itemCount =
                           (collection as any)?.datasetCount ??
@@ -304,8 +302,9 @@ export default function CreateCollectionModal({
                             onClick={() =>
                               handleCollectionToggle(collection.id)
                             }
-                            className={`px-4 py-2.75 flex items-start gap-2 rounded-lg transition-all duration-200 group cursor-pointer ${isSelected ? "bg-white" : "hover:bg-slate-100"
-                              }`}
+                            className={`px-4 py-2.75 flex items-start gap-2 rounded-lg transition-all duration-200 group cursor-pointer ${
+                              isSelected ? "bg-white" : "hover:bg-slate-100"
+                            }`}
                           >
                             <Checkbox
                               id={`collection-${collection.id}`}

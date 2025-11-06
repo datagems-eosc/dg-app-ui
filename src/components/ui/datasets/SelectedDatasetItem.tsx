@@ -1,20 +1,19 @@
 "use client";
 
-import React from "react";
 import {
+  CalendarPlus,
   ChevronDown,
   ChevronUp,
-  Share,
   Eye,
-  HardDrive,
   FileCheck,
-  CalendarPlus,
+  HardDrive,
   RefreshCcw,
+  Share,
 } from "lucide-react";
-import type { DatasetUnion } from "@/types/datasets";
-import { Chip } from "../Chip";
-import { Button } from "../Button";
 import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
+import type { DatasetUnion } from "@/types/datasets";
+import { Button } from "../Button";
+import { Chip } from "../Chip";
 import MetadataItem from "./MetadataItem";
 
 interface Collection {
@@ -32,13 +31,13 @@ interface SelectedDatasetItemProps {
 
 // Helper function to check if dataset has collections (matching DatasetCard logic)
 function hasCollections(
-  dataset: DatasetUnion
+  dataset: DatasetUnion,
 ): dataset is DatasetUnion & { collections: Collection[] } {
   const maybeCollections = (dataset as { collections?: unknown }).collections;
   return (
     Array.isArray(maybeCollections) &&
     maybeCollections.every(
-      (col: unknown) => col && typeof col === "object" && "name" in col
+      (col: unknown) => col && typeof col === "object" && "name" in col,
     )
   );
 }
@@ -63,7 +62,7 @@ export default function SelectedDatasetItem({
   const displaySize = "size" in dataset && dataset.size ? dataset.size : "";
   const displayUpdated =
     "lastUpdated" in dataset && dataset.lastUpdated ? dataset.lastUpdated : "";
-  const displayTags =
+  const _displayTags =
     "tags" in dataset && Array.isArray(dataset.tags) ? dataset.tags : [];
 
   // Get collections using the same logic as DatasetCard
@@ -106,7 +105,7 @@ export default function SelectedDatasetItem({
           "datePublished" in dataset &&
             typeof dataset.datePublished === "string"
             ? dataset.datePublished
-            : undefined
+            : undefined,
         ) || "-",
     },
     {
@@ -126,7 +125,7 @@ export default function SelectedDatasetItem({
         getMimeTypeName(
           "mimeType" in dataset && typeof dataset.mimeType === "string"
             ? dataset.mimeType
-            : undefined
+            : undefined,
         ) || "-"
       ).toUpperCase(),
     },
