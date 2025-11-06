@@ -7,8 +7,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { useSession } from "next-auth/react";
-import { apiClient } from "@/lib/apiClient";
+import { useApi } from "@/hooks/useApi";
 import { ApiCollection } from "@/types/collection";
 
 interface CollectionsContextType {
@@ -60,32 +59,28 @@ export function CollectionsProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session } = useSession();
+  const api = useApi();
   const [apiCollections, setApiCollections] = useState<ApiCollection[]>([]);
   const [extraCollections, setExtraCollections] = useState<ApiCollection[]>([]);
   const [isLoadingApiCollections, setIsLoadingApiCollections] = useState(true);
   const [isLoadingExtraCollections, setIsLoadingExtraCollections] =
     useState(true);
 
-  // Fetch API collections when session is available
+  // Fetch API collections when token is available
   useEffect(() => {
-    if (session) {
+    if (api.hasToken) {
       fetchApiCollections();
       fetchExtraCollections();
     }
-  }, [session]);
+  }, [api.hasToken]);
 
   const fetchApiCollections = async () => {
     setIsLoadingApiCollections(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         return;
       }
-      const data = await apiClient.queryCollections(
-        COLLECTIONS_API_PAYLOAD,
-        token
-      );
+      const data = await api.queryCollections(COLLECTIONS_API_PAYLOAD);
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
     } catch (err: unknown) {
@@ -98,8 +93,7 @@ export function CollectionsProvider({
   const fetchExtraCollections = async () => {
     setIsLoadingExtraCollections(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         return;
       }
       const extraCollectionsPayload = {
@@ -144,10 +138,7 @@ export function CollectionsProvider({
         // Add random cache-busting parameter
         _cacheBust: Math.random().toString(36).substring(7),
       };
-      const data = await apiClient.queryUserCollections(
-        extraCollectionsPayload,
-        token
-      );
+      const data = await api.queryUserCollections(extraCollectionsPayload);
       console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];
       console.log("Setting extraCollections to:", items);
@@ -161,15 +152,15 @@ export function CollectionsProvider({
 
   const refreshApiCollections = useCallback(async () => {
     await fetchApiCollections();
-  }, [session]);
+  }, [api.hasToken]);
 
   const refreshExtraCollections = useCallback(async () => {
     await fetchExtraCollections();
-  }, [session]);
+  }, [api.hasToken]);
 
   const refreshAllCollections = useCallback(async () => {
     await Promise.all([fetchApiCollections(), fetchExtraCollections()]);
-  }, [session]);
+  }, [api.hasToken]);
 
   const notifyCollectionModified = useCallback(() => {
     // This function can be called by components to notify that collections have been modified

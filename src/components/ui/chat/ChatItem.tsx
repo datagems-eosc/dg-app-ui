@@ -11,8 +11,7 @@ import {
 import { formatRelativeTime } from "@/lib/utils";
 import { Tooltip } from "../Tooltip";
 import { Toast } from "../Toast";
-import { apiClient } from "@/lib/apiClient";
-import { useSession } from "next-auth/react";
+import { useApi } from "@/hooks/useApi";
 
 interface ConversationListItem {
   id: string;
@@ -41,7 +40,7 @@ export function ChatItem({
   onConversationUpdate,
   onDeleteConversation,
 }: ChatItemProps) {
-  const { data: session } = useSession();
+  const api = useApi();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(conversation.name || "");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -83,11 +82,10 @@ export function ChatItem({
   };
 
   const handleSaveEdit = async () => {
-    const token = (session as any)?.accessToken;
     const trimmedName = editName.trim();
 
     // Don't send request if no changes or if name is empty
-    if (!trimmedName || !token || trimmedName === (conversation.name || "")) {
+    if (!trimmedName || !api.hasToken || trimmedName === (conversation.name || "")) {
       setIsEditing(false);
       setEditName(conversation.name || "");
       return;
@@ -111,13 +109,12 @@ export function ChatItem({
 
     setIsUpdating(true);
     try {
-      const result = await apiClient.updateConversation(
+      const result = await api.updateConversation(
         conversation.id,
         {
           name: trimmedName,
           eTag: conversation.eTag,
-        },
-        token
+        }
       );
       // Update the conversation with new name and eTag
       onConversationUpdate?.(conversation.id, trimmedName, result.eTag);
