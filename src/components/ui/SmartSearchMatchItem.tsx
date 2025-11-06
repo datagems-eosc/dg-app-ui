@@ -4,7 +4,7 @@ import { Chip } from "./Chip";
 interface SmartSearchMatchItemProps {
   number: number;
   description: string;
-  matchPercentage: number;
+  matchPercentage: string;
   isLast?: boolean;
 }
 
