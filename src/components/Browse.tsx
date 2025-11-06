@@ -848,7 +848,7 @@ export default function Browse({
             {!isEditingName && (
               <div className="flex items-center gap-3">
                 {/* Actions dropdown button - only show on custom collection pages, not on Favorites */}
-                {isCustomCollection && collectionName !== "Favorites" && (
+                {isCustomCollection && collectionName !== "Favorites Datasets" && (
                   <div className="relative" data-title-actions-dropdown>
                     <Button
                       variant="outline"
