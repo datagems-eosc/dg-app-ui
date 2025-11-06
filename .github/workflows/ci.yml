@@ -47,18 +47,6 @@ jobs:
           npm run lint:biome:check
           echo "✅ Biome linting passed"
 
-      - name: Lint with ESLint
-        run: |
-          echo "🔍 Running ESLint..."
-          npm run lint
-          echo "✅ ESLint passed"
-
-      - name: Check formatting with Prettier
-        run: |
-          echo "💅 Checking code formatting..."
-          npm run format:check
-          echo "✅ Formatting check passed"
-
       - name: Type check with TypeScript
         run: |
           echo "📘 Running TypeScript type check..."
