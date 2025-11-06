@@ -29,36 +29,42 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: |
           echo "📦 Installing dependencies..."
-          npm ci
+          pnpm install --frozen-lockfile
           echo "✅ Dependencies installed"
 
       - name: Lint with Biome
         run: |
           echo "🔍 Running Biome linter..."
-          npm run lint:biome:check
+          pnpm run lint:biome:check
           echo "✅ Biome linting passed"
 
       - name: Type check with TypeScript
         run: |
           echo "📘 Running TypeScript type check..."
-          npm run type-check
+          pnpm run type-check
           echo "✅ Type check passed"
 
       - name: Run tests
         run: |
           echo "🧪 Running tests..."
-          npm run test:coverage
+          pnpm run test:coverage
           echo "✅ Tests passed"
 
       - name: Security audit
         run: |
           echo "🔒 Running security audit..."
-          npm audit --audit-level=moderate || echo "⚠️ Security audit found issues (non-blocking)"
+          pnpm audit --audit-level moderate || echo "⚠️ Security audit found issues (non-blocking)"
