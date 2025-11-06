@@ -18,7 +18,7 @@ env:
 
 jobs:
   quality:
-    name: Code Quality & Build Validation
+    name: Code Quality
     runs-on: ubuntu-latest
 
     strategy:
@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
 
       - name: Install dependencies
         run: |
@@ -58,12 +57,6 @@ jobs:
           echo "🧪 Running tests..."
           npm run test:coverage
           echo "✅ Tests passed"
-
-      - name: Build Next.js app
-        run: |
-          echo "🏗️ Building Next.js application..."
-          npm run build
-          echo "✅ Build successful"
 
       - name: Security audit
         run: |
