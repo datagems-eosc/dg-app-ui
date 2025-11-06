@@ -1,25 +1,27 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import {
-  CloudSun,
   Calculator,
+  CloudSun,
   GraduationCap,
   Languages,
   Star,
   X,
 } from "lucide-react";
-import { useSession } from "next-auth/react";
-import HierarchicalDropdown, {
-  HierarchicalCategory,
-} from "../HierarchicalDropdown";
-import { Select } from "../Select";
-import { Input } from "../Input";
-import { VisibilityCard } from "./VisibilityCard";
-import { LicenseCard } from "./LicenseCard";
-import { fetchFieldsOfScience, fetchLicenses } from "@/config/filterOptions";
+import { useEffect, useState } from "react";
+import {
+  processFieldsOfScience,
+  processLicenses,
+} from "@/config/filterOptions";
 import { useCollections } from "@/contexts/CollectionsContext";
-import { Collection, ApiCollection } from "@/types/collection";
+import { useApi } from "@/hooks/useApi";
+import HierarchicalDropdown, {
+  type HierarchicalCategory,
+} from "../HierarchicalDropdown";
+import { Input } from "../Input";
+import { Select } from "../Select";
+import { LicenseCard } from "./LicenseCard";
+import { VisibilityCard } from "./VisibilityCard";
 
 interface ClassificationData {
   fieldsOfScience: string[];
@@ -85,7 +87,7 @@ export function Classification({
   onChange,
   errors,
 }: ClassificationProps) {
-  const { data: session } = useSession() as any;
+  const api = useApi();
   const { apiCollections, isLoadingApiCollections } = useCollections();
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
@@ -100,12 +102,14 @@ export function Classification({
 
   // Fetch fields of science and licenses
   useEffect(() => {
-    const token = session?.accessToken;
+    if (!api.hasToken) return;
 
     // Fetch fields of science
     setIsLoadingFields(true);
-    fetchFieldsOfScience(token)
-      .then((categories) => {
+    api
+      .getFieldsOfScience()
+      .then((data) => {
+        const categories = processFieldsOfScience(data);
         setFieldsOfScienceCategories(categories);
       })
       .catch((error) => {
@@ -118,8 +122,10 @@ export function Classification({
 
     // Fetch licenses
     setIsLoadingLicenses(true);
-    fetchLicenses(token)
-      .then((licenseOptions) => {
+    api
+      .getLicenses()
+      .then((data) => {
+        const licenseOptions = processLicenses(data);
         setLicenses([
           ...licenseOptions,
           { value: "custom", label: "Add Custom License" },
@@ -133,7 +139,7 @@ export function Classification({
       .finally(() => {
         setIsLoadingLicenses(false);
       });
-  }, [session]);
+  }, [api.hasToken]);
 
   const handleFieldChange = (field: keyof ClassificationData, value: any) => {
     onChange({
@@ -152,7 +158,7 @@ export function Classification({
         licenses.length ? licenses : mockLicensesWithDescriptions
       ).find((l) => l.value === licenseValue);
       setSelectedLicense(
-        license || { value: licenseValue, label: licenseValue }
+        license || { value: licenseValue, label: licenseValue },
       );
       // Clear custom name when switching away from custom
       setCustomLicenseName("");
@@ -318,7 +324,7 @@ export function Classification({
           selectedLicense && (
             <LicenseCard
               license={selectedLicense}
-              primaryUrl={selectedLicense.urls && selectedLicense.urls[0]}
+              primaryUrl={selectedLicense.urls?.[0]}
             />
           )
         )}

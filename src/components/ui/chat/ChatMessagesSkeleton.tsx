@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 export function ChatMessagesSkeleton() {
   return (
     <div className="p-6 3xl:px-0 3xl:py-6 space-y-7.5 max-w-4xl mx-auto">
@@ -69,4 +67,4 @@ export function ChatMessagesSkeleton() {
       </div>
     </div>
   );
-} 
+}

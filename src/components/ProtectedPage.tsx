@@ -1,9 +1,8 @@
 "use client";
 
-import { useSession, signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
+import type React from "react";
 import { useEffect } from "react";
-import React from "react";
-import { logger } from "@/lib/logger";
 
 export default function ProtectedPage({
   children,
@@ -13,15 +12,15 @@ export default function ProtectedPage({
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    logger.debug({ status, session }, "ProtectedPage status");
+    console.log("ProtectedPage status:", { status, session });
     if (status === "unauthenticated") {
-      logger.info({
+      console.log("ProtectedPage signIn called", {
         windowLocation:
           typeof window !== "undefined" ? window.location.href : null,
-      }, "ProtectedPage signIn called");
+      });
       signIn();
     }
-  }, [status]);
+  }, [status, session]);
 
   if (status === "loading") {
     return (

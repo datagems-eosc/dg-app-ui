@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import { Link as LinkIcon, Upload } from "lucide-react";
 import Image from "next/image";
-import { Upload, Link as LinkIcon } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { FileUploadCard } from "./FileUploadCard";
@@ -112,7 +113,7 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
                   ? "Upload failed. Please try again."
                   : undefined,
               }
-            : file
+            : file,
         );
         filesRef.current = updated;
         onFilesChange(updated);
@@ -120,7 +121,7 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
         const updated: UploadedFile[] = filesRef.current.map((file) =>
           file.id === fileId
             ? { ...file, progress: Math.round(progress) }
-            : file
+            : file,
         );
         filesRef.current = updated;
         onFilesChange(updated);

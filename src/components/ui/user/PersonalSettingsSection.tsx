@@ -1,9 +1,8 @@
 "use client";
 
-import React from "react";
+import { Trash } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Trash } from "lucide-react";
 
 type FormData = {
   name: string;

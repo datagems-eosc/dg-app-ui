@@ -1,5 +1,5 @@
-import DashboardLayout from '@/components/DashboardLayout';
-import UserProfile from '@/components/UserProfile';
+import DashboardLayout from "@/components/DashboardLayout";
+import UserProfile from "@/components/UserProfile";
 
 export default function SettingsPage() {
   return (
@@ -7,4 +7,4 @@ export default function SettingsPage() {
       <UserProfile />
     </DashboardLayout>
   );
-} 
+}

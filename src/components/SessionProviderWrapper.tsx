@@ -1,10 +1,10 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
-import { ReactNode, useEffect } from "react";
-import { useSession, signIn } from "next-auth/react";
-import { logger } from "@/lib/logger";
-const getBaseUrl = () => {
+import { SessionProvider, signIn, useSession } from "next-auth/react";
+import { type ReactNode, useEffect } from "react";
+
+// Get the base URL including the base path for NextAuth
+const _getBaseUrl = () => {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_BASE_URL || "http://localhost:3000";
@@ -13,11 +13,12 @@ const getBaseUrl = () => {
 
 // Component to handle session errors and automatic re-authentication
 function SessionErrorHandler({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
 
   useEffect(() => {
+    // Check if there's a session error that requires re-authentication
     if (session && (session as any).error === "RefreshAccessTokenError") {
-      logger.warn("Token refresh failed, triggering re-authentication");
+      console.log("Token refresh failed, triggering re-authentication...");
       signIn("keycloak");
     }
   }, [session]);

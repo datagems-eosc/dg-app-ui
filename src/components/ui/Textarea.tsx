@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type React from "react";
 import { cn } from "@/lib/utils";
 
 interface TextareaProps
@@ -24,7 +24,7 @@ export function Textarea({
   value = "",
   ...props
 }: TextareaProps) {
-  const currentLength = typeof value === 'string' ? value.length : 0;
+  const currentLength = typeof value === "string" ? value.length : 0;
 
   return (
     <div className="w-full">
@@ -37,7 +37,7 @@ export function Textarea({
               ? "text-gray-650"
               : error
                 ? "text-red-550"
-                : "text-gray-750"
+                : "text-gray-750",
           )}
         >
           {label}
@@ -59,12 +59,11 @@ export function Textarea({
             // Focus state
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1 focus-visible:ring-offset-white focus-visible:text-gray-750",
             // Error state
-            error &&
-              "border-red-550 text-gray-750 focus-visible:ring-red-550",
+            error && "border-red-550 text-gray-750 focus-visible:ring-red-550",
             // Disabled state
             disabled &&
               "border-slate-200 text-slate-450 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-slate-200",
-            className
+            className,
           )}
           {...props}
         />

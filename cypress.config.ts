@@ -30,7 +30,8 @@ export default defineConfig({
           // Use an isolated user-data-dir for the Cypress browser so flags take effect and
           // the profile can be configured to allow third-party cookies if needed.
           // This directory will be created in the project root when the browser launches.
-          const userDataDir = launchOptions.args.find((a) => a.startsWith('--user-data-dir')) ||
+          const userDataDir =
+            launchOptions.args.find((a) => a.startsWith("--user-data-dir")) ||
             `--user-data-dir=${process.cwd()}/.cypress_profile`;
           launchOptions.args.push(userDataDir);
 

@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 export function LoadingSpinner() {
   return (
     <div className="flex justify-center items-center h-40">

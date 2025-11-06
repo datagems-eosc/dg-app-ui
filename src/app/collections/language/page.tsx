@@ -1,26 +1,25 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import DashboardLayout from "@/components/DashboardLayout";
+import { useEffect, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
-import { mockDatasets } from "@/data/dataset";
+import DashboardLayout from "@/components/DashboardLayout";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { mockDatasets } from "@/data/dataset";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function LanguagePage() {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [_isLoaded, setIsLoaded] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-  const { notifyCollectionModified } = useCollections();
 
   // Filter datasets to show only Language category
   const languageDatasets = mockDatasets.filter(
-    (dataset) => dataset.category === "Language"
+    (dataset) => dataset.category === "Language",
   );
 
   // On mount: clear any previous chat selection as this is not the chat page
@@ -35,7 +34,7 @@ export default function LanguagePage() {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
     router.push(getNavigationUrl("/chat"));
   };
@@ -56,7 +55,7 @@ export default function LanguagePage() {
     setShowCreateCollectionModal(true);
   };
 
-  const handleCreateCollection = (name: string) => {
+  const handleCreateCollection = (_name: string) => {
     // Collections are now created via API in the CreateCollectionModal
     // This function is kept for backward compatibility but doesn't do anything
     console.log("Collection creation handled by CreateCollectionModal");

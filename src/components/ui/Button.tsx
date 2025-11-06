@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { cn } from "@/lib/utils";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -53,7 +53,7 @@ export function Button({
         variants[variant],
         sizes[size],
         typography[size],
-        className
+        className,
       )}
       {...props}
     >

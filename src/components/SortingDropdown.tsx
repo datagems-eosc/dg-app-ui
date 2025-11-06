@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
 import { ArrowDownUp } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Radio } from "./ui/Radio";
 
 interface SortingOption {

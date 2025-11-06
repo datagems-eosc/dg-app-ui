@@ -1,7 +1,6 @@
 "use client";
 
-import React from "react";
-import { X, HardDrive, XCircle, Upload } from "lucide-react";
+import { HardDrive, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileUploadCardProps {
@@ -22,7 +21,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   };
 
   const getStatusIcon = () => {
@@ -37,11 +36,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
         );
       case "error":
         return (
-          <img
-            src="/circle-x.svg"
-            alt="Upload failed"
-            className="w-4 h-4"
-          />
+          <img src="/circle-x.svg" alt="Upload failed" className="w-4 h-4" />
         );
       default:
         return <Upload className="w-4 h-4 text-slate-600" />;
@@ -68,7 +63,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
           <p
             className={cn(
               "text-body-16-medium truncate",
-              file.status === "error" ? "text-slate-450" : "text-gray-750"
+              file.status === "error" ? "text-slate-450" : "text-gray-750",
             )}
             title={file.name}
           >
@@ -82,7 +77,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
             <span
               className={cn(
                 "text-body-14-regular",
-                file.status === "error" ? "text-slate-450" : "text-gray-650"
+                file.status === "error" ? "text-slate-450" : "text-gray-650",
               )}
             >
               {formatFileSize(file.size)}
@@ -98,7 +93,7 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
                     ? "text-emerald-600"
                     : file.status === "error"
                       ? "text-red-550"
-                      : "text-gray-650"
+                      : "text-gray-650",
                 )}
                 title={getStatusText()}
               >

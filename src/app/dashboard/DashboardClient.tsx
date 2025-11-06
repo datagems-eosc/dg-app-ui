@@ -1,17 +1,18 @@
 "use client";
 
-import DashboardLayout from "@/components/DashboardLayout";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import React, { useCallback, useEffect, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
-import { Collection, Dataset, DatasetPlus } from "@/data/dataset";
-import React, { useEffect, useState, useCallback } from "react";
-import { useSearchParams, usePathname } from "next/navigation";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { convertToBackendFilters, FilterState } from "@/config/filterOptions";
-import { getNavigationUrl } from "@/lib/utils";
+import DashboardLayout from "@/components/DashboardLayout";
+import {
+  convertToBackendFilters,
+  type FilterState,
+} from "@/config/filterOptions";
 import { useCollections } from "@/contexts/CollectionsContext";
-import { apiClient } from "@/lib/apiClient";
+import type { Collection, Dataset, DatasetPlus } from "@/data/dataset";
+import { useApi } from "@/hooks/useApi";
+import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
 
 const API_PAYLOAD = {
@@ -118,19 +119,19 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
   const obj = api as Record<string, unknown>;
   const collections: Collection[] = Array.isArray(obj.collections)
     ? obj.collections
-      .map((c) =>
-        typeof c === "object" && c !== null && "name" in c && "id" in c
-          ? {
-            id: String((c as Record<string, unknown>).id ?? ""),
-            name: String((c as Record<string, unknown>).name),
-            code: String((c as Record<string, unknown>).code ?? ""),
-          }
-          : undefined
-      )
-      .filter(
-        (c): c is Collection =>
-          !!c && typeof c.id === "string" && typeof c.name === "string"
-      )
+        .map((c) =>
+          typeof c === "object" && c !== null && "name" in c && "id" in c
+            ? {
+                id: String((c as Record<string, unknown>).id ?? ""),
+                name: String((c as Record<string, unknown>).name),
+                code: String((c as Record<string, unknown>).code ?? ""),
+              }
+            : undefined,
+        )
+        .filter(
+          (c): c is Collection =>
+            !!c && typeof c.id === "string" && typeof c.name === "string",
+        )
     : [];
 
   // Handle fieldsOfScience - could be string or array
@@ -158,7 +159,7 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
     category: "Math", // fallback only
     access:
       Array.isArray(obj.permissions) &&
-        obj.permissions.includes("browsedataset")
+      obj.permissions.includes("browsedataset")
         ? "Open Access"
         : "Restricted",
     description: String(obj.description ?? ""),
@@ -175,7 +176,7 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
   };
 }
 
-function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
+function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
   if (typeof userCollection !== "object" || userCollection === null) {
     return [];
   }
@@ -224,19 +225,19 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
     // Extract all available dataset fields
     const collections = Array.isArray(dataset.collections)
       ? dataset.collections
-        .map((c: unknown) => {
-          if (c && typeof c === "object" && "name" in c) {
-            return {
-              id: String((c as Record<string, unknown>).id ?? ""),
-              name: String((c as Record<string, unknown>).name ?? ""),
-              code: String((c as Record<string, unknown>).code ?? ""),
-            };
-          }
-          return null;
-        })
-        .filter(
-          (c): c is { id: string; name: string; code: string } => c !== null
-        )
+          .map((c: unknown) => {
+            if (c && typeof c === "object" && "name" in c) {
+              return {
+                id: String((c as Record<string, unknown>).id ?? ""),
+                name: String((c as Record<string, unknown>).name ?? ""),
+                code: String((c as Record<string, unknown>).code ?? ""),
+              };
+            }
+            return null;
+          })
+          .filter(
+            (c): c is { id: string; name: string; code: string } => c !== null,
+          )
       : [];
 
     const permissions = Array.isArray(dataset.permissions)
@@ -270,15 +271,14 @@ function mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
   });
 }
 
-// next-auth session type does not include accessToken by default
 export default function DashboardClient() {
+  const api = useApi();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetPlus[]>([]);
-  const { data: session } = useSession() as any;
   const [filteredDatasets, setFilteredDatasets] = useState<DatasetPlus[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); // used for API
   const [pendingSearchTerm, setPendingSearchTerm] = useState(""); // input value
@@ -311,7 +311,7 @@ export default function DashboardClient() {
       ? extraCollections
       : apiCollections;
     const found = list.find(
-      (c: ApiCollection) => String(c.id) === String(selectedCollection)
+      (c: ApiCollection) => String(c.id) === String(selectedCollection),
     );
     return found && typeof found.name === "string"
       ? String(found.name).replace(/ Collection$/i, "")
@@ -335,13 +335,12 @@ export default function DashboardClient() {
   const fetchFavoritesCollection = useCallback(async () => {
     console.log("fetchFavoritesCollection called");
     try {
-      const token = session?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         console.log("No token available for fetchFavoritesCollection");
         return;
       }
 
-      console.log("Fetching favorites collection with token:", !!token);
+      console.log("Fetching favorites collection with token:", api.hasToken);
       const favoritesPayload = {
         project: {
           fields: ["id", "name", "userDatasetCollections.dataset.id"],
@@ -358,10 +357,7 @@ export default function DashboardClient() {
         },
       };
 
-      const data = await apiClient.queryUserCollections(
-        favoritesPayload,
-        token
-      );
+      const data = await api.queryUserCollections(favoritesPayload);
       console.log("Favorites collection response:", data);
       const items = Array.isArray(data.items) ? data.items : [];
       console.log("Items from response:", items);
@@ -376,7 +372,7 @@ export default function DashboardClient() {
             item.name === "Favorites" ||
             item.name === "favorites" ||
             item.name === "FAVORITES" ||
-            item.name.toLowerCase().includes("favorite"))
+            item.name.toLowerCase().includes("favorite")),
       );
 
       console.log("Found favorites collection:", favoritesCollection);
@@ -385,8 +381,8 @@ export default function DashboardClient() {
         items.map((item: any) =>
           typeof item === "object" && item !== null && "name" in item
             ? item.name
-            : "unknown"
-        )
+            : "unknown",
+        ),
       );
 
       if (
@@ -394,7 +390,7 @@ export default function DashboardClient() {
         "userDatasetCollections" in favoritesCollection
       ) {
         const userDatasetCollections = Array.isArray(
-          favoritesCollection.userDatasetCollections
+          favoritesCollection.userDatasetCollections,
         )
           ? favoritesCollection.userDatasetCollections
           : [];
@@ -437,7 +433,7 @@ export default function DashboardClient() {
       setFavoritesCollectionId("");
       setHasFetchedFavorites(true);
     }
-  }, [session]);
+  }, [api.hasToken]);
 
   /**
    * Add dataset to favorites collection
@@ -446,10 +442,9 @@ export default function DashboardClient() {
     async (datasetId: string) => {
       console.log("handleAddToFavorites called with datasetId:", datasetId);
       try {
-        const token = session?.accessToken;
-        if (!token || !favoritesCollectionId) {
+        if (!api.hasToken || !favoritesCollectionId) {
           console.log("Token or favoritesCollectionId missing:", {
-            hasToken: !!token,
+            hasToken: api.hasToken,
             favoritesCollectionId,
           });
           throw new Error("No authentication token or favorites collection ID");
@@ -460,11 +455,7 @@ export default function DashboardClient() {
           datasetId,
         });
 
-        await apiClient.addDatasetToUserCollection(
-          favoritesCollectionId,
-          datasetId,
-          token
-        );
+        await api.addDatasetToUserCollection(favoritesCollectionId, datasetId);
 
         console.log("Successfully added dataset to favorites, refreshing...");
 
@@ -475,7 +466,7 @@ export default function DashboardClient() {
         throw err;
       }
     },
-    [session, favoritesCollectionId, fetchFavoritesCollection]
+    [api.hasToken, favoritesCollectionId, fetchFavoritesCollection],
   );
 
   /**
@@ -485,13 +476,12 @@ export default function DashboardClient() {
     async (datasetId: string) => {
       console.log(
         "handleRemoveFromFavorites called with datasetId:",
-        datasetId
+        datasetId,
       );
       try {
-        const token = session?.accessToken;
-        if (!token || !favoritesCollectionId) {
+        if (!api.hasToken || !favoritesCollectionId) {
           console.log("Token or favoritesCollectionId missing:", {
-            hasToken: !!token,
+            hasToken: api.hasToken,
             favoritesCollectionId,
           });
           throw new Error("No authentication token or favorites collection ID");
@@ -502,14 +492,13 @@ export default function DashboardClient() {
           datasetId,
         });
 
-        await apiClient.removeDatasetFromUserCollection(
+        await api.removeDatasetFromUserCollection(
           favoritesCollectionId,
           datasetId,
-          token
         );
 
         console.log(
-          "Successfully removed dataset from favorites, refreshing..."
+          "Successfully removed dataset from favorites, refreshing...",
         );
 
         // Refresh favorites collection to update the UI
@@ -521,10 +510,10 @@ export default function DashboardClient() {
           isCustomCollection
         ) {
           console.log(
-            "Removing dataset from local state since we're on favorites collection page"
+            "Removing dataset from local state since we're on favorites collection page",
           );
           setAllDatasets((prevDatasets) =>
-            prevDatasets.filter((dataset) => dataset.id !== datasetId)
+            prevDatasets.filter((dataset) => dataset.id !== datasetId),
           );
         }
       } catch (err: unknown) {
@@ -533,12 +522,12 @@ export default function DashboardClient() {
       }
     },
     [
-      session,
+      api.hasToken,
       favoritesCollectionId,
       fetchFavoritesCollection,
       selectedCollection,
       isCustomCollection,
-    ]
+    ],
   );
 
   /**
@@ -551,8 +540,7 @@ export default function DashboardClient() {
       setIsLoading(true);
       setError(null);
       try {
-        const token = session?.accessToken;
-        if (!token) {
+        if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
           return;
@@ -567,10 +555,9 @@ export default function DashboardClient() {
           try {
             // 1) Create a lightweight conversation to attach the search to
             const persistPayload = { name: searchTerm };
-            const persistData = await apiClient.persistConversation(
+            const persistData = await api.persistConversation(
               persistPayload,
               "?f=id&f=etag",
-              token
             );
             const conversationIdFromPersist = persistData.id;
 
@@ -608,9 +595,9 @@ export default function DashboardClient() {
                   "dataset.permissions.browseDataset",
                   "dataset.permissions.editDataset",
                   "dataset.profileRaw",
-                  "dataset.hits.content",
-                  "dataset.hits.objectId",
-                  "dataset.hits.similarity",
+                  "hits.content",
+                  "hits.objectId",
+                  "hits.similarity",
                   "sourceId",
                   "chunkId",
                   "language",
@@ -622,10 +609,7 @@ export default function DashboardClient() {
               resultCount: 100,
             } as any;
 
-            const data = await apiClient.searchCrossDataset(
-              crossDatasetPayload,
-              token
-            );
+            const data = await api.searchCrossDataset(crossDatasetPayload);
 
             const results = Array.isArray(data.result) ? data.result : [];
 
@@ -635,7 +619,37 @@ export default function DashboardClient() {
               const ds = (item as any)?.dataset || {};
               if (!ds || typeof ds !== "object") continue;
               const id = String(ds.id ?? "");
-              const maxSimilarity = typeof item.maxSimilarity === "number" ? item.maxSimilarity : undefined;
+              const maxSimilarity =
+                typeof item.maxSimilarity === "number"
+                  ? item.maxSimilarity
+                  : undefined;
+
+              // Normalize raw hits (unknown[]) into the expected typed shape:
+              // { number: number; text: string; similarity: number; }[]
+              const rawHits = Array.isArray((item as any).hits)
+                ? (item as any).hits
+                : [];
+              // only keep the first 3 hits
+              const topHits = rawHits.slice(0, 3);
+              const hits = topHits.map((h: any, idx: number) => {
+                const text =
+                  h && typeof h === "object" && ("content" in h || "text" in h)
+                    ? String(h.content ?? h.text ?? "")
+                    : String(h ?? "");
+                const similarity =
+                  h && typeof h === "object" && typeof h.similarity === "number"
+                    ? h.similarity
+                    : typeof h === "object" &&
+                        typeof h.maxSimilarity === "number"
+                      ? h.maxSimilarity
+                      : 0;
+                const number =
+                  h && typeof h === "object" && typeof h.number === "number"
+                    ? h.number
+                    : idx;
+                return { number, text, similarity };
+              });
+
               if (!id || byId.has(id)) continue;
 
               // Determine category based on fieldOfScience
@@ -652,25 +666,27 @@ export default function DashboardClient() {
                   (f: any) =>
                     f.includes("meteorology") ||
                     f.includes("climate") ||
-                    f.includes("weather")
+                    f.includes("weather"),
                 )
               ) {
                 category = "Weather";
               } else if (
                 fields.some(
-                  (f: any) => f.includes("language") || f.includes("linguistics")
+                  (f: any) =>
+                    f.includes("language") || f.includes("linguistics"),
                 )
               ) {
                 category = "Language";
               } else if (
                 fields.some(
-                  (f: any) => f.includes("education") || f.includes("learning")
+                  (f: any) => f.includes("education") || f.includes("learning"),
                 )
               ) {
                 category = "Lifelong Learning";
               } else if (
                 fields.some(
-                  (f: any) => f.includes("mathematics") || f.includes("statistics")
+                  (f: any) =>
+                    f.includes("mathematics") || f.includes("statistics"),
                 )
               ) {
                 category = "Math";
@@ -678,16 +694,16 @@ export default function DashboardClient() {
 
               const collections = Array.isArray(ds.collections)
                 ? ds.collections
-                  .map((c: any) =>
-                    c && typeof c === "object" && ("name" in c || "id" in c)
-                      ? {
-                        id: String(c.id ?? ""),
-                        name: String(c.name ?? ""),
-                        code: String(c.code ?? ""),
-                      }
-                      : null
-                  )
-                  .filter((c: any) => c !== null)
+                    .map((c: any) =>
+                      c && typeof c === "object" && ("name" in c || "id" in c)
+                        ? {
+                            id: String(c.id ?? ""),
+                            name: String(c.name ?? ""),
+                            code: String(c.code ?? ""),
+                          }
+                        : null,
+                    )
+                    .filter((c: any) => c !== null)
                 : [];
 
               const permissions = Array.isArray(ds.permissions)
@@ -703,6 +719,7 @@ export default function DashboardClient() {
                 category,
                 access,
                 maxSimilarity,
+                hits,
                 description: String(ds.description ?? ""),
                 size: ds.size ? String(ds.size) : "N/A",
                 lastUpdated: ds.datePublished
@@ -746,13 +763,13 @@ export default function DashboardClient() {
             ids: [selectedCollection],
           };
 
-          const data = await apiClient.queryUserCollections(payload, token);
+          const data = await api.queryUserCollections(payload);
           const items = Array.isArray(data.items) ? data.items : [];
 
           if (items.length > 0) {
             const collection = items[0];
             const userDatasetCollections = Array.isArray(
-              collection.userDatasetCollections
+              collection.userDatasetCollections,
             )
               ? collection.userDatasetCollections
               : [];
@@ -811,10 +828,7 @@ export default function DashboardClient() {
                   },
                 };
 
-                const datasetData = await apiClient.queryDatasets(
-                  datasetPayload,
-                  token
-                );
+                const datasetData = await api.queryDatasets(datasetPayload);
                 const datasets = Array.isArray(datasetData.items)
                   ? datasetData.items
                   : [];
@@ -832,14 +846,14 @@ export default function DashboardClient() {
                     Array.isArray(apiDataset.fieldOfScience)
                   ) {
                     const fields = apiDataset.fieldOfScience.map((f: any) =>
-                      String(f).toLowerCase()
+                      String(f).toLowerCase(),
                     );
                     if (
                       fields.some(
                         (field: any) =>
                           field.includes("meteorology") ||
                           field.includes("climate") ||
-                          field.includes("weather")
+                          field.includes("weather"),
                       )
                     ) {
                       category = "Weather";
@@ -847,7 +861,7 @@ export default function DashboardClient() {
                       fields.some(
                         (field: any) =>
                           field.includes("language") ||
-                          field.includes("linguistics")
+                          field.includes("linguistics"),
                       )
                     ) {
                       category = "Language";
@@ -855,7 +869,7 @@ export default function DashboardClient() {
                       fields.some(
                         (field: any) =>
                           field.includes("education") ||
-                          field.includes("learning")
+                          field.includes("learning"),
                       )
                     ) {
                       category = "Lifelong Learning";
@@ -863,7 +877,7 @@ export default function DashboardClient() {
                       fields.some(
                         (field: any) =>
                           field.includes("mathematics") ||
-                          field.includes("statistics")
+                          field.includes("statistics"),
                       )
                     ) {
                       category = "Math";
@@ -974,7 +988,7 @@ export default function DashboardClient() {
           }
         }
 
-        const data = await apiClient.queryDatasets(payload, token);
+        const data = await api.queryDatasets(payload);
         const items = Array.isArray(data.items) ? data.items : [];
         const mappedDatasets = items.map(mapApiDatasetToDataset);
         setAllDatasets(mappedDatasets);
@@ -990,7 +1004,7 @@ export default function DashboardClient() {
     fetchDatasets();
   }, [
     router,
-    session,
+    api.hasToken,
     searchTerm,
     sortBy,
     filters,
@@ -1011,12 +1025,12 @@ export default function DashboardClient() {
           (
             dataset: Dataset & {
               collections?: { id: string; name: string; code: string }[];
-            }
+            },
           ) => {
             return dataset.collections?.some(
-              (col) => col.id === selectedCollection
+              (col) => col.id === selectedCollection,
             );
-          }
+          },
         );
         setFilteredDatasets(filtered);
       }
@@ -1035,7 +1049,7 @@ export default function DashboardClient() {
         searchValue !== undefined ? searchValue : pendingSearchTerm.trim();
       setSearchTerm(valueToSet);
     },
-    [pendingSearchTerm]
+    [pendingSearchTerm],
   );
 
   const handleSortByChange = useCallback((value: string) => {
@@ -1063,11 +1077,9 @@ export default function DashboardClient() {
   // Debug: Log session info
   useEffect(() => {
     console.log("Session info:", {
-      hasSession: !!session,
-      hasAccessToken: !!session?.accessToken,
-      tokenLength: session?.accessToken?.length,
+      hasToken: api.hasToken,
     });
-  }, [session]);
+  }, [api.hasToken]);
 
   // Reset search input and submitted value on route changes
   useEffect(() => {
@@ -1083,15 +1095,15 @@ export default function DashboardClient() {
     }
   }, [selectedCollection]);
 
-  // Fetch favorites collection when session is available
+  // Fetch favorites collection when token is available
   useEffect(() => {
-    if (session?.accessToken) {
-      console.log("Session available, fetching favorites collection...");
+    if (api.hasToken) {
+      console.log("Token available, fetching favorites collection...");
       fetchFavoritesCollection();
     } else {
-      console.log("No session or access token available");
+      console.log("No access token available");
     }
-  }, [session, fetchFavoritesCollection]);
+  }, [api.hasToken, fetchFavoritesCollection]);
 
   // On non-chat pages, ensure chat selection is cleared in localStorage
   useEffect(() => {
@@ -1114,7 +1126,7 @@ export default function DashboardClient() {
     if (isMounted) {
       localStorage.setItem(
         "chatSelectedDatasets",
-        JSON.stringify(selectedDatasets)
+        JSON.stringify(selectedDatasets),
       );
     }
     router.push(getNavigationUrl("/chat"));

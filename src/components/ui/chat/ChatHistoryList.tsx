@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { SearchX, MessageCircleMore } from "lucide-react";
-import { apiClient } from "@/lib/apiClient";
-import { Search as SearchInput } from "../Search";
+import { MessageCircleMore, SearchX } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { useApi } from "@/hooks/useApi";
 import { NoData } from "../NoData";
+import { Search as SearchInput } from "../Search";
 import { ChatItem } from "./ChatItem";
 
 interface ConversationListItem {
@@ -44,12 +45,12 @@ interface ChatHistoryListProps {
   currentConversationId?: string;
   onDeleteConversation?: (
     conversationId: string,
-    conversationName: string
+    conversationName: string,
   ) => void;
   onConversationUpdate?: (
     id: string,
     newName: string,
-    newETag?: string
+    newETag?: string,
   ) => void;
   conversations?: any[];
   setConversations?: React.Dispatch<React.SetStateAction<any[]>>;
@@ -63,8 +64,9 @@ export function ChatHistoryList({
   conversations: externalConversations,
   setConversations: setExternalConversations,
 }: ChatHistoryListProps) {
+  const api = useApi();
   const [conversations, setConversations] = useState<ConversationListItem[]>(
-    []
+    [],
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,14 +80,14 @@ export function ChatHistoryList({
   const handleConversationUpdate = (
     id: string,
     newName: string,
-    newETag?: string
+    newETag?: string,
   ) => {
     setCurrentConversations((prevConversations: any[]) =>
       prevConversations.map((conv: any) =>
         conv.id === id
           ? { ...conv, name: newName, eTag: newETag || conv.eTag }
-          : conv
-      )
+          : conv,
+      ),
     );
     // Also call the external handler if provided
     onConversationUpdate?.(id, newName, newETag);
@@ -96,8 +98,7 @@ export function ChatHistoryList({
       setIsLoading(true);
       setError(null);
       try {
-        const token = (session as any)?.accessToken;
-        if (!token) return;
+        if (!api.hasToken) return;
         const payload = {
           project: {
             fields: [
@@ -117,7 +118,7 @@ export function ChatHistoryList({
           Order: { Items: ["-createdAt"] },
           Metadata: { CountAll: true },
         };
-        const data = await apiClient.queryConversations(payload, token);
+        const data = await api.queryConversations(payload);
         const conversations = Array.isArray(data.items)
           ? data.items
               .filter(
@@ -132,7 +133,7 @@ export function ChatHistoryList({
                     Array.isArray(item.messages) &&
                     item.messages.length > 0
                   );
-                }
+                },
               )
               .map(
                 (item: {
@@ -154,7 +155,7 @@ export function ChatHistoryList({
                     eTag: item.eTag,
                     createdAt,
                   };
-                }
+                },
               )
           : [];
         setCurrentConversations(conversations);
@@ -166,7 +167,7 @@ export function ChatHistoryList({
       }
     };
     fetchConversations();
-  }, [session]);
+  }, [api.hasToken]);
 
   if (isLoading) {
     return <ChatHistorySkeleton />;
@@ -180,7 +181,7 @@ export function ChatHistoryList({
       : currentConversations.filter((c) =>
           (c.name || "Untitled Conversation")
             .toLowerCase()
-            .includes(searchQuery.toLowerCase())
+            .includes(searchQuery.toLowerCase()),
         );
   return (
     <div className="flex flex-col gap-4 h-full">

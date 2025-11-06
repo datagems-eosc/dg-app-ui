@@ -23,4 +23,4 @@ export type MockDataset = {
   access?: string;
 };
 
-export type DatasetUnion = MockDataset | ApiDataset; 
+export type DatasetUnion = MockDataset | ApiDataset;

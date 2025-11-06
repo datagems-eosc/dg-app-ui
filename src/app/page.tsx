@@ -1,13 +1,13 @@
 "use client";
 
-import LoginScreen from "@/components/LoginScreen";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useEffect } from "react";
+import LoginScreen from "@/components/LoginScreen";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {

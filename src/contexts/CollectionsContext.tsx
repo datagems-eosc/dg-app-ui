@@ -1,19 +1,18 @@
 "use client";
 
-import React, {
+import type React from "react";
+import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   useCallback,
+  useContext,
+  useEffect,
+  useState,
 } from "react";
-import { useSession } from "next-auth/react";
-import { apiClient } from "@/lib/apiClient";
-import { ApiCollection } from "@/types/collection";
-import { logger } from "@/lib/logger";
+import { useApi } from "@/hooks/useApi";
+import type { ApiCollection } from "@/types/collection";
 
 interface CollectionsContextType {
-  collections: ApiCollection[]; // Combined collections for backward compatibility
+  collections: ApiCollection[];
   apiCollections: ApiCollection[];
   extraCollections: ApiCollection[];
   isLoadingApiCollections: boolean;
@@ -28,7 +27,7 @@ interface CollectionsContextType {
 }
 
 const CollectionsContext = createContext<CollectionsContextType | undefined>(
-  undefined
+  undefined,
 );
 
 const COLLECTIONS_API_PAYLOAD = {
@@ -61,46 +60,40 @@ export function CollectionsProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session } = useSession();
+  const api = useApi();
   const [apiCollections, setApiCollections] = useState<ApiCollection[]>([]);
   const [extraCollections, setExtraCollections] = useState<ApiCollection[]>([]);
   const [isLoadingApiCollections, setIsLoadingApiCollections] = useState(true);
   const [isLoadingExtraCollections, setIsLoadingExtraCollections] =
     useState(true);
 
-  // Fetch API collections when session is available
   useEffect(() => {
-    if (session) {
+    if (api.hasToken) {
       fetchApiCollections();
       fetchExtraCollections();
     }
-  }, [session]);
+  }, [api.hasToken]);
 
-  const fetchApiCollections = async () => {
+  async function fetchApiCollections() {
     setIsLoadingApiCollections(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         return;
       }
-      const data = await apiClient.queryCollections(
-        COLLECTIONS_API_PAYLOAD,
-        token
-      );
+      const data = await api.queryCollections(COLLECTIONS_API_PAYLOAD);
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
     } catch (err: unknown) {
-      logger.error({ error: err }, "Failed to fetch collections");
+      console.error("Failed to fetch collections:", err);
     } finally {
       setIsLoadingApiCollections(false);
     }
-  };
+  }
 
-  const fetchExtraCollections = async () => {
+  async function fetchExtraCollections() {
     setIsLoadingExtraCollections(true);
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
+      if (!api.hasToken) {
         return;
       }
       const extraCollectionsPayload = {
@@ -132,7 +125,7 @@ export function CollectionsProvider({
         },
         page: {
           Offset: 0,
-          Size: 100, // Increased from 10 to 100 to ensure all collections are fetched
+          Size: 100,
         },
         Order: {
           Items: ["+createdAt"],
@@ -140,58 +133,50 @@ export function CollectionsProvider({
         Metadata: {
           CountAll: true,
         },
-        // Add cache-busting timestamp to ensure fresh data
         _timestamp: Date.now(),
-        // Add random cache-busting parameter
         _cacheBust: Math.random().toString(36).substring(7),
       };
-      const data = await apiClient.queryUserCollections(
-        extraCollectionsPayload,
-        token
-      );
-      logger.debug({ data }, "Extra collections data fetched");
+      const data = await api.queryUserCollections(extraCollectionsPayload);
+      console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];
-      logger.debug({ items }, "Setting extraCollections");
+      console.log("Setting extraCollections to:", items);
       setExtraCollections(items);
     } catch (err: unknown) {
-      logger.error({ error: err }, "Failed to fetch extra collections");
+      console.error("Failed to fetch extra collections:", err);
     } finally {
       setIsLoadingExtraCollections(false);
     }
-  };
+  }
 
   const refreshApiCollections = useCallback(async () => {
     await fetchApiCollections();
-  }, [session]);
+  }, [api.hasToken]);
 
   const refreshExtraCollections = useCallback(async () => {
     await fetchExtraCollections();
-  }, [session]);
+  }, [api.hasToken]);
 
   const refreshAllCollections = useCallback(async () => {
     await Promise.all([fetchApiCollections(), fetchExtraCollections()]);
-  }, [session]);
+  }, [api.hasToken]);
 
   const notifyCollectionModified = useCallback(() => {
-    // This function can be called by components to notify that collections have been modified
-    // It will trigger a refresh of all collections
-    // Force immediate refresh to ensure deleted collections are removed from UI
     setTimeout(() => {
       refreshAllCollections();
-    }, 100); // Small delay to ensure API operation completes
+    }, 100);
   }, [refreshAllCollections]);
 
   return (
     <CollectionsContext.Provider
       value={{
-        collections: [...apiCollections, ...extraCollections], // Combined collections for backward compatibility
+        collections: [...apiCollections, ...extraCollections],
         apiCollections,
         extraCollections,
         isLoadingApiCollections,
         isLoadingExtraCollections,
-        addCollection: async (name, datasetIds) => {},
-        updateCollection: async (id, updates) => {},
-        removeCollection: async (id) => {},
+        addCollection: async (_name, _datasetIds) => {},
+        updateCollection: async (_id, _updates) => {},
+        removeCollection: async (_id) => {},
         refreshApiCollections,
         refreshExtraCollections,
         refreshAllCollections,
