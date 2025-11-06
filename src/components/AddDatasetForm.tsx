@@ -255,13 +255,13 @@ export default function AddDatasetForm() {
   };
 
   const handleClassificationChange = (
-    classification: FormData["classification"],
+    classification: FormData["classification"]
   ) => {
     setFormData((prev) => ({ ...prev, classification }));
   };
 
   const handleAdditionalInfoChange = (
-    additionalInfo: FormData["additionalInfo"],
+    additionalInfo: FormData["additionalInfo"]
   ) => {
     setFormData((prev) => ({ ...prev, additionalInfo }));
   };

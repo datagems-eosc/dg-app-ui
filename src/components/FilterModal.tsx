@@ -38,7 +38,7 @@ export default function FilterModal({
     HierarchicalCategory[]
   >([]);
   const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
-    [],
+    []
   );
   const [isLoadingFields, setIsLoadingFields] = useState(true);
   const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);

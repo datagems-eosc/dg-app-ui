@@ -79,7 +79,7 @@ const CollectionItem = ({
       onClick={onClick}
       className={cn(
         "flex items-center px-3 py-1 rounded-md cursor-pointer transition-colors group mb-1",
-        isSelected ? "bg-slate-200" : "hover:bg-slate-100",
+        isSelected ? "bg-slate-200" : "hover:bg-slate-100"
       )}
     >
       {!!collection && getCollectionIcon(collection.code, "mr-3")}
@@ -144,7 +144,7 @@ export function CollectionsDropdown({
       let left = rect.right - width;
       left = Math.max(
         horizontalPadding,
-        Math.min(left, viewportWidth - width - horizontalPadding),
+        Math.min(left, viewportWidth - width - horizontalPadding)
       );
 
       // Always render above the button with a fixed gap; translateY(-100%) handles height
@@ -236,7 +236,7 @@ export function CollectionsDropdown({
             {/* Extra Collections (User Collections from API) */}
             {collections.extraCollections.filter(
               (collection) =>
-                (collection.userDatasetCollections?.length ?? 0) > 0,
+                (collection.userDatasetCollections?.length ?? 0) > 0
             ).length > 0 && (
               <div className="px-1 pt-2">
                 <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider mb-2 ml-2">
@@ -245,7 +245,7 @@ export function CollectionsDropdown({
                 {collections.extraCollections
                   .filter(
                     (collection) =>
-                      (collection.userDatasetCollections?.length ?? 0) > 0,
+                      (collection.userDatasetCollections?.length ?? 0) > 0
                   )
                   .map((collection) => (
                     <CollectionItem
@@ -275,7 +275,7 @@ export function CollectionsDropdown({
               collections.collections.length === 0 &&
               collections.extraCollections.filter(
                 (collection) =>
-                  (collection.userDatasetCollections?.length ?? 0) > 0,
+                  (collection.userDatasetCollections?.length ?? 0) > 0
               ).length === 0 && (
                 <div className="px-3 py-2">
                   <div className="text-center text-gray-400 text-sm py-4">
@@ -284,7 +284,7 @@ export function CollectionsDropdown({
                 </div>
               )}
           </div>,
-          document.body,
+          document.body
         )}
     </div>
   );

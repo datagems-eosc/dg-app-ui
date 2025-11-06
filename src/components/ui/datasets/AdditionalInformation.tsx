@@ -24,7 +24,7 @@ export function AdditionalInformation({
 }: AdditionalInformationProps) {
   const handleFieldChange = (
     field: keyof AdditionalInformationData,
-    value: string,
+    value: string
   ) => {
     onChange({
       ...data,

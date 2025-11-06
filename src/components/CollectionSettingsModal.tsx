@@ -186,7 +186,7 @@ export default function CollectionSettingsModal({
           isVisible: saved?.isVisible ?? true,
           order: saved?.order ?? index,
         };
-      },
+      }
     );
 
     // Sort by order
@@ -269,7 +269,7 @@ export default function CollectionSettingsModal({
         };
         return acc;
       },
-      {} as Record<string, { isVisible: boolean; order: number }>,
+      {} as Record<string, { isVisible: boolean; order: number }>
     );
 
     localStorage.setItem("collectionSettings", JSON.stringify(settingsData));

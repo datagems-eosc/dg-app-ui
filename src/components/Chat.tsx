@@ -146,7 +146,7 @@ export default function Chat({
                 relatedDatasetIds = (msg.data.payload as DatasetPayloadItem[])
                   .map((item) => item.dataset?.id)
                   .filter(
-                    (id: string | undefined) => typeof id === "string",
+                    (id: string | undefined) => typeof id === "string"
                   ) as string[];
 
                 if (names.length > 0) {
@@ -194,7 +194,7 @@ export default function Chat({
                   Array.isArray(payload.datasetIds)
                 ) {
                   userDatasetIds = (payload.datasetIds as unknown[]).filter(
-                    (id) => typeof id === "string",
+                    (id) => typeof id === "string"
                   ) as string[];
                 }
               } else {
@@ -263,7 +263,7 @@ export default function Chat({
                       .join(" | ");
                     const _rowData = table.rows
                       .map((row: any) =>
-                        row.cells.map((cell: any) => cell.value).join(" | "),
+                        row.cells.map((cell: any) => cell.value).join(" | ")
                       )
                       .join("\n");
                     content = `Table Results:\n`;
@@ -366,12 +366,12 @@ export default function Chat({
     };
     window.addEventListener(
       "sidebarOpenedForTablet",
-      handleSidebarOpenedForTablet,
+      handleSidebarOpenedForTablet
     );
     return () => {
       window.removeEventListener(
         "sidebarOpenedForTablet",
-        handleSidebarOpenedForTablet,
+        handleSidebarOpenedForTablet
       );
     };
   }, [isTablet, showSelectedPanel, handleClosePanel]);
@@ -385,7 +385,7 @@ export default function Chat({
       // Find the collection by ID in API and extra collections
       const allCollections = [...apiCollections, ...extraCollections];
       const targetCollection = allCollections.find(
-        (collection) => collection.id === initialCollectionId,
+        (collection) => collection.id === initialCollectionId
       );
 
       // Always set the collection if it's different from current selection
@@ -467,7 +467,7 @@ export default function Chat({
               collection.datasets.length > 0
             ) {
               collectionDatasetIds = collection.datasets.map(
-                (dataset) => dataset.id,
+                (dataset) => dataset.id
               );
             }
             // Handle user collections with datasetIds array
@@ -484,7 +484,7 @@ export default function Chat({
               collectionDatasetIds.length > 0
             ) {
               const allMatch = selectedDatasets.every((id) =>
-                collectionDatasetIds.includes(id),
+                collectionDatasetIds.includes(id)
               );
               return allMatch;
             }
@@ -615,7 +615,7 @@ export default function Chat({
         };
         const persistData = await api.persistConversation(
           persistPayload,
-          "?f=id&f=etag",
+          "?f=id&f=etag"
         );
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
@@ -668,7 +668,7 @@ export default function Chat({
           // Also update localStorage for consistency
           localStorage.setItem(
             "chatSelectedDatasets",
-            JSON.stringify(newSelectedDatasets),
+            JSON.stringify(newSelectedDatasets)
           );
           // Redirect to /chat/conversationId if present in response and not already in a conversation
           if (conversationIdFromPersist && !conversationId) {
@@ -700,7 +700,7 @@ export default function Chat({
         };
         const persistData = await api.persistConversationDeep(
           persistPayload,
-          "?f=id&f=etag",
+          "?f=id&f=etag"
         );
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
@@ -749,7 +749,7 @@ export default function Chat({
           // Also update localStorage for consistency
           localStorage.setItem(
             "chatSelectedDatasets",
-            JSON.stringify(newSelectedDatasets),
+            JSON.stringify(newSelectedDatasets)
           );
           // Redirect to /chat/conversationId if present in response and not already in a conversation
           if (conversationIdFromPersist && !conversationId) {
@@ -791,7 +791,7 @@ export default function Chat({
             id: (Date.now() + 1).toString(),
             type: "ai",
             content: `Based on your query we found the following datasets: ${foundDatasetNames.join(
-              ", ",
+              ", "
             )}`,
             timestamp: new Date(),
             sources: foundDatasetNames.length,
@@ -805,7 +805,7 @@ export default function Chat({
           inputValue,
           newSelectedDatasets,
           datasets,
-          foundDatasetNames,
+          foundDatasetNames
         );
         setMessages((prev) => [...prev, aiResponse]);
         setIsGeneratingAIResponse(false);
@@ -826,14 +826,14 @@ export default function Chat({
     question: string,
     datasetIds: string[],
     allDatasets: Dataset[],
-    foundDatasetNames?: string[] | null,
+    foundDatasetNames?: string[] | null
   ): Message => {
     if (foundDatasetNames && foundDatasetNames.length > 0) {
       return {
         id: (Date.now() + 2).toString(),
         type: "ai",
         content: `You can now ask questions about these datasets: ${foundDatasetNames.join(
-          ", ",
+          ", "
         )}`,
         timestamp: new Date(),
         sources: foundDatasetNames.length,
@@ -841,7 +841,7 @@ export default function Chat({
       };
     }
     const selectedDatasetList = allDatasets.filter((d) =>
-      datasetIds.includes(d.id),
+      datasetIds.includes(d.id)
     );
 
     // Default response
@@ -853,7 +853,7 @@ export default function Chat({
       } dataset(s) you've selected (${selectedDatasetList
         .map((d) => d.title)
         .join(
-          ", ",
+          ", "
         )}), I can help you analyze your question: "${question}". However, I need more specific information to provide a detailed answer. Could you please clarify what specific aspects you'd like me to focus on?`,
       timestamp: new Date(),
       sources: selectedDatasetList.length,
@@ -941,7 +941,7 @@ export default function Chat({
             ) {
               const apiCollection = collection as ApiCollection;
               const userDataset = apiCollection.userDatasetCollections?.find(
-                (item) => item.dataset?.id === id,
+                (item) => item.dataset?.id === id
               );
               if (userDataset?.dataset?.name) {
                 namesMap[id] = userDataset.dataset.name;
@@ -959,7 +959,7 @@ export default function Chat({
         // Update localStorage for consistency
         localStorage.setItem(
           "chatSelectedDatasets",
-          JSON.stringify(datasetIds),
+          JSON.stringify(datasetIds)
         );
       }
     } else {
@@ -1168,7 +1168,7 @@ export default function Chat({
               datasets={datasets}
               onRemoveDataset={(id) => {
                 const newSelectedDatasets = selectedDatasets.filter(
-                  (datasetId) => datasetId !== id,
+                  (datasetId) => datasetId !== id
                 );
                 onSelectedDatasetsChange(newSelectedDatasets);
 

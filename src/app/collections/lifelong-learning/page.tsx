@@ -19,7 +19,7 @@ export default function LifelongLearningPage() {
 
   // Filter datasets to show only Lifelong Learning category
   const lifelongLearningDatasets = mockDatasets.filter(
-    (dataset) => dataset.category === "Lifelong Learning",
+    (dataset) => dataset.category === "Lifelong Learning"
   );
 
   // Load selected datasets from localStorage on mount
@@ -43,7 +43,7 @@ export default function LifelongLearningPage() {
     if (!isLoaded) return;
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets),
+      JSON.stringify(selectedDatasets)
     );
   }, [selectedDatasets, isLoaded]);
 

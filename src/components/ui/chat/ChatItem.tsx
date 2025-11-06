@@ -27,11 +27,11 @@ interface ChatItemProps {
   onConversationUpdate?: (
     id: string,
     newName: string,
-    newETag?: string,
+    newETag?: string
   ) => void;
   onDeleteConversation?: (
     conversationId: string,
-    conversationName: string,
+    conversationName: string
   ) => void;
 }
 

@@ -36,7 +36,7 @@ export function Input({
               ? "text-gray-650"
               : error
                 ? "text-red-550"
-                : "text-gray-750",
+                : "text-gray-750"
           )}
         >
           {label}
@@ -75,7 +75,7 @@ export function Input({
             // Disabled state
             disabled &&
               "border-slate-200 text-slate-450 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-slate-200",
-            className,
+            className
           )}
           {...props}
         />

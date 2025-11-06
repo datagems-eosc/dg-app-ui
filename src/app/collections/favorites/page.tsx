@@ -21,7 +21,7 @@ export default function FavoritesPage() {
 
   // Filter datasets to show only favorites
   const favoriteDatasets = mockDatasets.filter((dataset) =>
-    favorites.includes(dataset.id),
+    favorites.includes(dataset.id)
   );
 
   // On mount: clear any previous chat selection as this is not the chat page
@@ -36,7 +36,7 @@ export default function FavoritesPage() {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets),
+      JSON.stringify(selectedDatasets)
     );
     router.push(getNavigationUrl("/chat"));
   };
