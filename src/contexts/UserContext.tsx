@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { logger } from "@/lib/logger";
 
 interface UserData {
   name: string;
@@ -45,7 +46,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         try {
           setUserData((prev) => ({ ...prev, profilePicture: savedProfilePicture }));
         } catch (error) {
-          console.error("Error reading profile picture from localStorage:", error);
+          logger.error({ error }, "Error reading profile picture from localStorage");
         }
       }
     }
@@ -109,7 +110,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         reader.readAsDataURL(file);
       });
     } catch (error) {
-      console.error("Error setting profile picture:", error);
+      logger.error({ error }, "Error setting profile picture");
       throw error;
     } finally {
       setIsLoading(false);

@@ -1,9 +1,6 @@
 import { getApiBaseUrl, fetchWithAuth } from "./utils";
+import { logger } from "./logger";
 
-/**
- * API Client for making direct calls to the DataGEMS API
- * This replaces the Next.js API route proxies
- */
 class ApiClient {
   private baseUrl: string;
 
@@ -105,7 +102,7 @@ class ApiClient {
 
     const res = await response.json();
 
-    console.log("queryUserCollections req", payload, "res", res);
+    logger.debug({ payload, response: res }, "Query user collections");
 
     return res;
   }

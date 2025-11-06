@@ -3,6 +3,7 @@
 import { useSession, signIn } from "next-auth/react";
 import { useEffect } from "react";
 import React from "react";
+import { logger } from "@/lib/logger";
 
 export default function ProtectedPage({
   children,
@@ -12,13 +13,13 @@ export default function ProtectedPage({
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    console.log("ProtectedPage status:", status, "session:", session);
+    logger.debug({ status, session }, "ProtectedPage status");
     if (status === "unauthenticated") {
-      console.log("[ProtectedPage] signIn called", {
+      logger.info({
         windowLocation:
           typeof window !== "undefined" ? window.location.href : null,
-      });
-      signIn(); // Redirects to login
+      }, "ProtectedPage signIn called");
+      signIn();
     }
   }, [status]);
 

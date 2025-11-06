@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 interface DatasetContextType {
   favorites: string[];
@@ -27,7 +28,7 @@ export function DatasetProvider({ children }: { children: React.ReactNode }) {
         try {
           setFavorites(JSON.parse(savedFavorites));
         } catch (error) {
-          console.error('Error loading favorites from localStorage:', error);
+          logger.error({ error }, 'Error loading favorites from localStorage');
         }
       }
     }

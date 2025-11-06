@@ -1,7 +1,7 @@
 import { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
 import { apiClient } from "./apiClient";
+import { logger } from "./logger";
 
-// Types for the API response
 interface VocabularyItem {
   ordinal: number;
   code: string;
@@ -69,9 +69,7 @@ export async function fetchFieldsOfScience(
 
     return categories;
   } catch (error) {
-    console.error("Error fetching fields of science:", error);
-
-    // Return empty array as fallback
+    logger.error({ error }, "Error fetching fields of science");
     return [];
   }
 }
@@ -161,9 +159,7 @@ export async function fetchLicenses(
 
     return licenses;
   } catch (error) {
-    console.error("Error fetching licenses:", error);
-
-    // Return empty array as fallback
+    logger.error({ error }, "Error fetching licenses");
     return [];
   }
 }

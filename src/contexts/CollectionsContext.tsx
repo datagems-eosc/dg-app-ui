@@ -10,6 +10,7 @@ import React, {
 import { useSession } from "next-auth/react";
 import { apiClient } from "@/lib/apiClient";
 import { ApiCollection } from "@/types/collection";
+import { logger } from "@/lib/logger";
 
 interface CollectionsContextType {
   collections: ApiCollection[]; // Combined collections for backward compatibility
@@ -89,7 +90,7 @@ export function CollectionsProvider({
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
     } catch (err: unknown) {
-      console.error("Failed to fetch collections:", err);
+      logger.error({ error: err }, "Failed to fetch collections");
     } finally {
       setIsLoadingApiCollections(false);
     }
@@ -148,12 +149,12 @@ export function CollectionsProvider({
         extraCollectionsPayload,
         token
       );
-      console.log("Extra collections data fetched:", data);
+      logger.debug({ data }, "Extra collections data fetched");
       const items = Array.isArray(data.items) ? data.items : [];
-      console.log("Setting extraCollections to:", items);
+      logger.debug({ items }, "Setting extraCollections");
       setExtraCollections(items);
     } catch (err: unknown) {
-      console.error("Failed to fetch extra collections:", err);
+      logger.error({ error: err }, "Failed to fetch extra collections");
     } finally {
       setIsLoadingExtraCollections(false);
     }
