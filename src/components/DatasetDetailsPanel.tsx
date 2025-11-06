@@ -31,13 +31,13 @@ interface Collection {
   name: string;
 }
 function hasCollections(
-  dataset: Dataset | (Dataset & { collections?: unknown })
+  dataset: Dataset | (Dataset & { collections?: unknown }),
 ): dataset is Dataset & { collections: Collection[] } {
   const maybeCollections = (dataset as { collections?: unknown }).collections;
   return (
     Array.isArray(maybeCollections) &&
     maybeCollections.every(
-      (col: unknown) => col && typeof col === "object" && "name" in col
+      (col: unknown) => col && typeof col === "object" && "name" in col,
     )
   );
 }
@@ -117,7 +117,7 @@ export default function DatasetDetailsPanel({
             "datePublished" in dataset &&
             typeof dataset.datePublished === "string"
             ? dataset.datePublished
-            : undefined
+            : undefined,
         ) || "-",
     },
     {
@@ -142,7 +142,7 @@ export default function DatasetDetailsPanel({
             "mimeType" in dataset &&
             typeof dataset.mimeType === "string"
             ? dataset.mimeType
-            : undefined
+            : undefined,
         ) || "-"
       ).toUpperCase(),
     },

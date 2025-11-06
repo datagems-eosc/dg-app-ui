@@ -31,13 +31,13 @@ interface SelectedDatasetItemProps {
 
 // Helper function to check if dataset has collections (matching DatasetCard logic)
 function hasCollections(
-  dataset: DatasetUnion
+  dataset: DatasetUnion,
 ): dataset is DatasetUnion & { collections: Collection[] } {
   const maybeCollections = (dataset as { collections?: unknown }).collections;
   return (
     Array.isArray(maybeCollections) &&
     maybeCollections.every(
-      (col: unknown) => col && typeof col === "object" && "name" in col
+      (col: unknown) => col && typeof col === "object" && "name" in col,
     )
   );
 }
@@ -105,7 +105,7 @@ export default function SelectedDatasetItem({
           "datePublished" in dataset &&
             typeof dataset.datePublished === "string"
             ? dataset.datePublished
-            : undefined
+            : undefined,
         ) || "-",
     },
     {
@@ -125,7 +125,7 @@ export default function SelectedDatasetItem({
         getMimeTypeName(
           "mimeType" in dataset && typeof dataset.mimeType === "string"
             ? dataset.mimeType
-            : undefined
+            : undefined,
         ) || "-"
       ).toUpperCase(),
     },

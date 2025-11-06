@@ -116,7 +116,7 @@ function ChatPageContent({
   const [hasJustClearedLocalStorage, setHasJustClearedLocalStorage] =
     useState(false);
   const [initialCollectionId, setInitialCollectionId] = useState<string | null>(
-    null
+    null,
   );
   const params = useParams();
   const searchParams = useSearchParams();
@@ -139,7 +139,7 @@ function ChatPageContent({
     if (isMounted && !isResetting) {
       localStorage.setItem(
         "chatSelectedDatasets",
-        JSON.stringify(selectedDatasets)
+        JSON.stringify(selectedDatasets),
       );
     }
   }, [selectedDatasets, isMounted, isResetting]);
@@ -177,11 +177,11 @@ function ChatPageContent({
                   "dataset" in item &&
                   (item as { dataset?: { id?: string } }).dataset?.id &&
                   !datasetIds.includes(
-                    (item as { dataset: { id: string } }).dataset.id
+                    (item as { dataset: { id: string } }).dataset.id,
                   )
                 ) {
                   datasetIds.push(
-                    (item as { dataset: { id: string } }).dataset.id
+                    (item as { dataset: { id: string } }).dataset.id,
                   );
                 }
               });

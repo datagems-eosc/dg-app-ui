@@ -19,7 +19,7 @@ export default function WeatherPage() {
 
   // Filter datasets to show only Weather category
   const weatherDatasets = mockDatasets.filter(
-    (dataset) => dataset.category === "Weather"
+    (dataset) => dataset.category === "Weather",
   );
 
   // On mount: clear any previous chat selection as this is not the chat page
@@ -34,7 +34,7 @@ export default function WeatherPage() {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
     router.push(getNavigationUrl("/chat"));
   };

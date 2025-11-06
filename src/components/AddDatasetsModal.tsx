@@ -19,7 +19,7 @@ export default function AddDatasetsModal({
   onSelectedDatasetsChange,
 }: AddDatasetsModalProps) {
   const [modalSelectedDatasets, setModalSelectedDatasets] = useState<string[]>(
-    []
+    [],
   );
 
   // Reset modal state when it opens

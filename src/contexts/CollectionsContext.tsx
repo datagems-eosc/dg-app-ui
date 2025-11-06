@@ -27,7 +27,7 @@ interface CollectionsContextType {
 }
 
 const CollectionsContext = createContext<CollectionsContextType | undefined>(
-  undefined
+  undefined,
 );
 
 const COLLECTIONS_API_PAYLOAD = {

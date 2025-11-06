@@ -38,7 +38,7 @@ export function decodeJWT(token: string): unknown {
       atob(base64)
         .split("")
         .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
-        .join("")
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
@@ -51,7 +51,7 @@ export function decodeJWT(token: string): unknown {
  * Extracts user information from JWT token
  */
 export function getUserFromToken(
-  token: string
+  token: string,
 ): { name: string; email: string; preferred_username?: string } | null {
   const decoded = decodeJWT(token);
   if (!decoded || typeof decoded !== "object" || decoded === null) return null;
@@ -88,7 +88,7 @@ export function getApiBaseUrl(): string {
  */
 export async function fetchWithAuth(
   input: RequestInfo,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<Response> {
   const response = await fetch(input, init);
   if (response.status === 401 && typeof window !== "undefined") {
@@ -174,7 +174,7 @@ export function formatRelativeTime(date: string | Date): string {
   }
 
   const diffInSeconds = Math.floor(
-    (now.getTime() - targetDate.getTime()) / 1000
+    (now.getTime() - targetDate.getTime()) / 1000,
   );
 
   // Just now (less than 1 minute)

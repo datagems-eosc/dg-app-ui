@@ -36,7 +36,7 @@ export default function BrowsePage() {
     // Persist only when user explicitly opts to chat
     localStorage.setItem(
       "chatSelectedDatasets",
-      JSON.stringify(selectedDatasets)
+      JSON.stringify(selectedDatasets),
     );
     router.push(getNavigationUrl("/chat"));
   };
