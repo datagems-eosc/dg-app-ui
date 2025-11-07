@@ -25,11 +25,11 @@ export type DatasetPlus = Dataset & {
   url?: string;
   version?: string;
   maxSimilarity?: number;
+  hits?: { number: number; text: string; similarity: number }[];
 };
 
 export type DatasetWithCollections = Dataset & { collections?: Collection[] };
-export type Collection = { id: string; name: string, code: string };
-
+export type Collection = { id: string; name: string; code: string };
 
 export const mockDatasets: Dataset[] = [
   {

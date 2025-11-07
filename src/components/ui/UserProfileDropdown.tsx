@@ -1,8 +1,8 @@
-import { Bell, Settings, LogOut } from "lucide-react";
-import { Dropdown, DropdownItem } from "./Dropdown";
-import { Avatar } from "./Avatar";
-import { createUrl } from "@/lib/utils";
+import { Bell, LogOut, Settings } from "lucide-react";
 import { APP_ROUTES } from "@/config/appUrls";
+import { createUrl } from "@/lib/utils";
+import { Avatar } from "./Avatar";
+import { Dropdown, DropdownItem } from "./Dropdown";
 
 interface UserProfileDropdownProps {
   session: any;

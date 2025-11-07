@@ -1,22 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Database, FileText } from "lucide-react";
-import { ChatInput } from "./ui/chat/ChatInput";
+import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Dataset } from "@/data/dataset";
-import SelectedDatasetsPanel from "./SelectedDatasetsPanel";
-import AddDatasetsModal from "./AddDatasetsModal";
-import { Button } from "./ui/Button";
+import React, { useEffect, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
-import { useSession } from "next-auth/react";
+import { useCollections } from "@/contexts/CollectionsContext";
+import type { Dataset } from "@/data/dataset";
+import { useApi } from "@/hooks/useApi";
+import { getNavigationUrl } from "@/lib/utils";
+import type { ApiCollection, Collection } from "@/types/collection";
+import AddDatasetsModal from "./AddDatasetsModal";
+import SelectedDatasetsPanel from "./SelectedDatasetsPanel";
+import { Button } from "./ui/Button";
 import ChatInitialView from "./ui/chat/ChatInitialView";
+import { ChatInput } from "./ui/chat/ChatInput";
 import ChatMessages from "./ui/chat/ChatMessages";
 import DatasetChangeWarning from "./ui/chat/DatasetChangeWarning";
-import { useCollections } from "@/contexts/CollectionsContext";
-import { Collection, ApiCollection } from "@/types/collection";
-import { getLogoutUrl, getNavigationUrl } from "@/lib/utils";
-import { apiClient } from "@/lib/apiClient";
 
 interface Message {
   id: string;
@@ -147,7 +146,7 @@ export default function Chat({
                 relatedDatasetIds = (msg.data.payload as DatasetPayloadItem[])
                   .map((item) => item.dataset?.id)
                   .filter(
-                    (id: string | undefined) => typeof id === "string"
+                    (id: string | undefined) => typeof id === "string",
                   ) as string[];
 
                 if (names.length > 0) {
@@ -195,7 +194,7 @@ export default function Chat({
                   Array.isArray(payload.datasetIds)
                 ) {
                   userDatasetIds = (payload.datasetIds as unknown[]).filter(
-                    (id) => typeof id === "string"
+                    (id) => typeof id === "string",
                   ) as string[];
                 }
               } else {
@@ -259,12 +258,12 @@ export default function Chat({
                   // Create a simple text representation of the table data
                   const table = entries[0].result.table;
                   if (table.columns && table.rows) {
-                    const columnNames = table.columns
+                    const _columnNames = table.columns
                       .map((col: any) => col.name)
                       .join(" | ");
-                    const rowData = table.rows
+                    const _rowData = table.rows
                       .map((row: any) =>
-                        row.cells.map((cell: any) => cell.value).join(" | ")
+                        row.cells.map((cell: any) => cell.value).join(" | "),
                       )
                       .join("\n");
                     content = `Table Results:\n`;
@@ -320,7 +319,7 @@ export default function Chat({
     Record<string, string>
   >({});
   const router = useRouter();
-  const { data: session } = useSession();
+  const api = useApi();
 
   // Determine initial visibility of the right panel responsively (show on >= sm)
   useEffect(() => {
@@ -329,7 +328,7 @@ export default function Chat({
       // For tablets (>=640 and <1024) do NOT open by default; only open by default on >=1024
       setShowSelectedPanel(window.innerWidth >= 1024);
       setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
-      const handler = (e: MediaQueryListEvent) => {
+      const handler = (_e: MediaQueryListEvent) => {
         // Re-evaluate based on current width
         setShowSelectedPanel(window.innerWidth >= 1024);
         setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
@@ -367,15 +366,15 @@ export default function Chat({
     };
     window.addEventListener(
       "sidebarOpenedForTablet",
-      handleSidebarOpenedForTablet
+      handleSidebarOpenedForTablet,
     );
     return () => {
       window.removeEventListener(
         "sidebarOpenedForTablet",
-        handleSidebarOpenedForTablet
+        handleSidebarOpenedForTablet,
       );
     };
-  }, [isTablet, showSelectedPanel]);
+  }, [isTablet, showSelectedPanel, handleClosePanel]);
 
   // Handle initial collection selection from URL parameter
   useEffect(() => {
@@ -386,7 +385,7 @@ export default function Chat({
       // Find the collection by ID in API and extra collections
       const allCollections = [...apiCollections, ...extraCollections];
       const targetCollection = allCollections.find(
-        (collection) => collection.id === initialCollectionId
+        (collection) => collection.id === initialCollectionId,
       );
 
       // Always set the collection if it's different from current selection
@@ -400,7 +399,13 @@ export default function Chat({
       // If no collection in URL but we have a selected collection, clear it
       handleSelectCollection(null);
     }
-  }, [initialCollectionId, apiCollections, extraCollections]);
+  }, [
+    initialCollectionId,
+    apiCollections,
+    extraCollections, // If no collection in URL but we have a selected collection, clear it
+    handleSelectCollection,
+    selectedCollection,
+  ]);
 
   // Add effect to detect collection from messages and set it automatically
   useEffect(() => {
@@ -450,9 +455,10 @@ export default function Chat({
               collection.userDatasetCollections.length > 0
             ) {
               const apiCollection = collection as ApiCollection;
-              collectionDatasetIds = apiCollection
-                .userDatasetCollections!.map((item) => item.dataset?.id)
-                .filter((id): id is string => !!id);
+              collectionDatasetIds =
+                apiCollection.userDatasetCollections
+                  ?.map((item) => item.dataset?.id)
+                  .filter((id): id is string => !!id) || [];
             }
             // Handle API collections with datasets array
             else if (
@@ -461,7 +467,7 @@ export default function Chat({
               collection.datasets.length > 0
             ) {
               collectionDatasetIds = collection.datasets.map(
-                (dataset) => dataset.id
+                (dataset) => dataset.id,
               );
             }
             // Handle user collections with datasetIds array
@@ -478,7 +484,7 @@ export default function Chat({
               collectionDatasetIds.length > 0
             ) {
               const allMatch = selectedDatasets.every((id) =>
-                collectionDatasetIds.includes(id)
+                collectionDatasetIds.includes(id),
               );
               return allMatch;
             }
@@ -505,6 +511,8 @@ export default function Chat({
     extraCollections,
     selectedDatasets,
     conversationId,
+    onSelectedDatasetsChange,
+    selectedCollection,
   ]);
 
   // Add effect to detect dataset changes and show warning
@@ -538,8 +546,7 @@ export default function Chat({
 
       // For existing conversations, use the in-data-explore API directly
       if (conversationId && selectedDatasets.length > 0) {
-        const token = (session as any)?.accessToken;
-        if (!token) {
+        if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
           return;
@@ -558,7 +565,7 @@ export default function Chat({
           datasetIds: selectedDatasets,
         };
 
-        const response = await apiClient.searchInDataExplore(payload, token);
+        const _response = await api.searchInDataExplore(payload);
 
         // Add user message immediately
         const userMessage: Message = {
@@ -596,9 +603,7 @@ export default function Chat({
         // Show generating response state while making API calls
         setIsGeneratingAIResponse(true);
 
-        // next-auth session type does not include accessToken by default
-        const token = (session as any)?.accessToken;
-        if (!token) {
+        if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
           setIsGeneratingAIResponse(false);
@@ -608,10 +613,9 @@ export default function Chat({
         const persistPayload = {
           name: inputValue,
         };
-        const persistData = await apiClient.persistConversation(
+        const persistData = await api.persistConversation(
           persistPayload,
           "?f=id&f=etag",
-          token
         );
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
@@ -643,7 +647,7 @@ export default function Chat({
           query: inputValue,
           resultCount: 100,
         };
-        const data = await apiClient.searchCrossDataset(payload, token);
+        const data = await api.searchCrossDataset(payload);
         if (Array.isArray(data.result)) {
           const results = data.result as CrossDatasetSearchResult[];
           newSelectedDatasets = results
@@ -664,7 +668,7 @@ export default function Chat({
           // Also update localStorage for consistency
           localStorage.setItem(
             "chatSelectedDatasets",
-            JSON.stringify(newSelectedDatasets)
+            JSON.stringify(newSelectedDatasets),
           );
           // Redirect to /chat/conversationId if present in response and not already in a conversation
           if (conversationIdFromPersist && !conversationId) {
@@ -681,9 +685,7 @@ export default function Chat({
         // Show generating response state while making API calls
         setIsGeneratingAIResponse(true);
 
-        // next-auth session type does not include accessToken by default
-        const token = (session as any)?.accessToken;
-        if (!token) {
+        if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
           setIsGeneratingAIResponse(false);
@@ -696,10 +698,9 @@ export default function Chat({
             datasetId: id,
           })),
         };
-        const persistData = await apiClient.persistConversationDeep(
+        const persistData = await api.persistConversationDeep(
           persistPayload,
           "?f=id&f=etag",
-          token
         );
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
@@ -721,7 +722,7 @@ export default function Chat({
           resultCount: 100,
           datasetIds: selectedDatasets, // Add datasetIds for in-data-explore
         };
-        const data = await apiClient.searchInDataExplore(payload, token);
+        const data = await api.searchInDataExplore(payload);
         let newSelectedDatasets = selectedDatasets;
         // Redirect to chat details page with conversationId
         if (conversationIdFromPersist) {
@@ -748,7 +749,7 @@ export default function Chat({
           // Also update localStorage for consistency
           localStorage.setItem(
             "chatSelectedDatasets",
-            JSON.stringify(newSelectedDatasets)
+            JSON.stringify(newSelectedDatasets),
           );
           // Redirect to /chat/conversationId if present in response and not already in a conversation
           if (conversationIdFromPersist && !conversationId) {
@@ -779,7 +780,7 @@ export default function Chat({
         // Also update the names map for sidebar fallback
         const namesMap: Record<string, string> = {};
         newSelectedDatasets.forEach((id, idx) => {
-          if (foundDatasetNames && foundDatasetNames[idx]) {
+          if (foundDatasetNames?.[idx]) {
             namesMap[id] = foundDatasetNames[idx];
           }
         });
@@ -790,7 +791,7 @@ export default function Chat({
             id: (Date.now() + 1).toString(),
             type: "ai",
             content: `Based on your query we found the following datasets: ${foundDatasetNames.join(
-              ", "
+              ", ",
             )}`,
             timestamp: new Date(),
             sources: foundDatasetNames.length,
@@ -804,7 +805,7 @@ export default function Chat({
           inputValue,
           newSelectedDatasets,
           datasets,
-          foundDatasetNames
+          foundDatasetNames,
         );
         setMessages((prev) => [...prev, aiResponse]);
         setIsGeneratingAIResponse(false);
@@ -825,14 +826,14 @@ export default function Chat({
     question: string,
     datasetIds: string[],
     allDatasets: Dataset[],
-    foundDatasetNames?: string[] | null
+    foundDatasetNames?: string[] | null,
   ): Message => {
     if (foundDatasetNames && foundDatasetNames.length > 0) {
       return {
         id: (Date.now() + 2).toString(),
         type: "ai",
         content: `You can now ask questions about these datasets: ${foundDatasetNames.join(
-          ", "
+          ", ",
         )}`,
         timestamp: new Date(),
         sources: foundDatasetNames.length,
@@ -840,26 +841,27 @@ export default function Chat({
       };
     }
     const selectedDatasetList = allDatasets.filter((d) =>
-      datasetIds.includes(d.id)
+      datasetIds.includes(d.id),
     );
 
     // Default response
     return {
       id: (Date.now() + 1).toString(),
       type: "ai",
-      content: `Based on the ${selectedDatasetList.length
-        } dataset(s) you've selected (${selectedDatasetList
-          .map((d) => d.title)
-          .join(
-            ", "
-          )}), I can help you analyze your question: "${question}". However, I need more specific information to provide a detailed answer. Could you please clarify what specific aspects you'd like me to focus on?`,
+      content: `Based on the ${
+        selectedDatasetList.length
+      } dataset(s) you've selected (${selectedDatasetList
+        .map((d) => d.title)
+        .join(
+          ", ",
+        )}), I can help you analyze your question: "${question}". However, I need more specific information to provide a detailed answer. Could you please clarify what specific aspects you'd like me to focus on?`,
       timestamp: new Date(),
       sources: selectedDatasetList.length,
       relatedDatasetIds: datasetIds,
     };
   };
 
-  const handleBackToBrowse = () => {
+  const _handleBackToBrowse = () => {
     router.push(getNavigationUrl("/browse"));
   };
 
@@ -886,8 +888,7 @@ export default function Chat({
     }
   };
 
-  const handleSelectCollection = (collection: Collection | null) => {
-    // Store current datasets as previous before changing them
+  function handleSelectCollection(collection: Collection | null) {
     setPreviousDatasets([...selectedDatasets]);
 
     setSelectedCollection(collection);
@@ -904,9 +905,10 @@ export default function Chat({
         collection.userDatasetCollections.length > 0
       ) {
         const apiCollection = collection as ApiCollection;
-        datasetIds = apiCollection
-          .userDatasetCollections!.map((item) => item.dataset?.id)
-          .filter((id): id is string => !!id); // Filter out any undefined values
+        datasetIds =
+          apiCollection.userDatasetCollections
+            ?.map((item) => item.dataset?.id)
+            .filter((id): id is string => !!id) || [];
       }
       // Check if collection has datasets array (API collections)
       else if (
@@ -938,8 +940,8 @@ export default function Chat({
               collection.userDatasetCollections
             ) {
               const apiCollection = collection as ApiCollection;
-              const userDataset = apiCollection.userDatasetCollections!.find(
-                (item) => item.dataset?.id === id
+              const userDataset = apiCollection.userDatasetCollections?.find(
+                (item) => item.dataset?.id === id,
               );
               if (userDataset?.dataset?.name) {
                 namesMap[id] = userDataset.dataset.name;
@@ -957,7 +959,7 @@ export default function Chat({
         // Update localStorage for consistency
         localStorage.setItem(
           "chatSelectedDatasets",
-          JSON.stringify(datasetIds)
+          JSON.stringify(datasetIds),
         );
       }
     } else {
@@ -968,23 +970,22 @@ export default function Chat({
       // Clear localStorage
       localStorage.removeItem("chatSelectedDatasets");
     }
-  };
+  }
 
-  const handleClosePanel = () => {
-    // Animate panel closing
+  function handleClosePanel() {
     setIsPanelClosing(true);
     setTimeout(() => {
       setShowSelectedPanel(false);
       setIsPanelClosing(false);
       setIsSourcesPanel(false);
     }, 500); // Match the CSS transition duration
-  };
+  }
 
   // Handler for sources button click
   const handleSourcesClick = (messageId: string) => {
     // Find the message and extract related datasets
     const message = messages.find((m) => m.id === messageId);
-    if (message && message.sources && message.relatedDatasetIds) {
+    if (message?.sources && message.relatedDatasetIds) {
       setMessageRelatedDatasets(message.relatedDatasetIds);
       setIsSourcesPanel(true);
       setShowSelectedPanel(true);
@@ -1046,17 +1047,17 @@ export default function Chat({
           {(messages.length > 0 ||
             isMessagesLoading ||
             isGeneratingAIResponse) && (
-              <div className="min-h-0" ref={messagesEndRef}>
-                <ChatMessages
-                  messages={messages}
-                  isMessagesLoading={isMessagesLoading}
-                  isGeneratingAIResponse={isGeneratingAIResponse}
-                  messagesEndRef={messagesEndRef}
-                  onSourcesClick={handleSourcesClick}
-                  showSelectedPanel={showSelectedPanel}
-                />
-              </div>
-            )}
+            <div className="min-h-0" ref={messagesEndRef}>
+              <ChatMessages
+                messages={messages}
+                isMessagesLoading={isMessagesLoading}
+                isGeneratingAIResponse={isGeneratingAIResponse}
+                messagesEndRef={messagesEndRef}
+                onSourcesClick={handleSourcesClick}
+                showSelectedPanel={showSelectedPanel}
+              />
+            </div>
+          )}
         </div>
 
         {/* Centered ChatInitialView for default state */}
@@ -1118,46 +1119,47 @@ export default function Chat({
           messages.length > 0 ||
           isMessagesLoading ||
           isGeneratingAIResponse) && (
-            <div
-              className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
-            >
-              <div className="w-full max-w-md sm:max-w-4xl mx-auto">
-                {/* Dataset Change Warning */}
-                <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
+          <div
+            className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+          >
+            <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+              {/* Dataset Change Warning */}
+              <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
-                <ChatInput
-                  value={inputValue}
-                  onChange={setInputValue}
-                  onSend={handleSendMessage}
-                  onAddDatasets={() => setShowAddDatasetsModal(true)}
-                  collections={{
-                    apiCollections,
-                    collections: [],
-                    extraCollections,
-                    isLoading: isLoadingApiCollections,
-                  }}
-                  selectedCollection={selectedCollection}
-                  onSelectCollection={handleSelectCollection}
-                  isLoading={isLoading}
-                  disabled={isInputDisabled}
-                  error={error}
-                  showAddDatasetsModal={showAddDatasetsModal}
-                />
-              </div>
+              <ChatInput
+                value={inputValue}
+                onChange={setInputValue}
+                onSend={handleSendMessage}
+                onAddDatasets={() => setShowAddDatasetsModal(true)}
+                collections={{
+                  apiCollections,
+                  collections: [],
+                  extraCollections,
+                  isLoading: isLoadingApiCollections,
+                }}
+                selectedCollection={selectedCollection}
+                onSelectCollection={handleSelectCollection}
+                isLoading={isLoading}
+                disabled={isInputDisabled}
+                error={error}
+                showAddDatasetsModal={showAddDatasetsModal}
+              />
             </div>
-          )}
+          </div>
+        )}
       </div>
 
       {/* Selected Datasets Panel - Under header, fixed on right side */}
       {(showSelectedPanel || isPanelClosing) && (
         <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px]">
           <div
-            className={`h-full transition-transform duration-500 ease-out ${isPanelAnimating
-              ? "translate-x-full"
-              : isPanelClosing
+            className={`h-full transition-transform duration-500 ease-out ${
+              isPanelAnimating
                 ? "translate-x-full"
-                : "translate-x-0"
-              }`}
+                : isPanelClosing
+                  ? "translate-x-full"
+                  : "translate-x-0"
+            }`}
           >
             <SelectedDatasetsPanel
               selectedDatasetIds={
@@ -1166,7 +1168,7 @@ export default function Chat({
               datasets={datasets}
               onRemoveDataset={(id) => {
                 const newSelectedDatasets = selectedDatasets.filter(
-                  (datasetId) => datasetId !== id
+                  (datasetId) => datasetId !== id,
                 );
                 onSelectedDatasetsChange(newSelectedDatasets);
 

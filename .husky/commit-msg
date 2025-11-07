@@ -1,0 +1,39 @@
+#!/bin/sh
+
+echo "🔍 Validating commit message..."
+echo ""
+
+npx --no -- commitlint --edit $1 --verbose
+COMMITLINT_EXIT_CODE=$?
+
+if [ $COMMITLINT_EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ COMMIT MESSAGE VALIDATION FAILED"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "📋 Required format:"
+  echo "   DG-XX | Your commit message"
+  echo ""
+  echo "📌 Rules:"
+  echo "   • Must start with task number (DG-XX where XX is a number)"
+  echo "   • Followed by a pipe symbol |"
+  echo "   • Then your commit message (minimum 3 characters)"
+  echo ""
+  echo "✅ Valid examples:"
+  echo "   DG-59 | Add user authentication"
+  echo "   DG-123 | Fix dataset loading issue"
+  echo "   DG-1 | Update documentation"
+  echo "   DG-456 | Refactor API client"
+  echo ""
+  echo "❌ Your commit message:"
+  cat $1
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  exit 1
+fi
+
+echo "✅ Commit message validated"
+echo ""
+

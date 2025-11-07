@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
-import { cn } from "@/lib/utils";
 import { Globe, Lock } from "lucide-react";
+import type React from "react";
+import { cn } from "@/lib/utils";
 
 interface VisibilityOption {
   value: "open" | "restricted";
@@ -51,7 +51,7 @@ export function VisibilityCard({ value, onChange }: VisibilityCardProps) {
             "flex items-start gap-2 p-5 border rounded-lg cursor-pointer transition-colors w-full sm:w-auto",
             value === option.value
               ? "border-blue-850 bg-blue-75"
-              : "border-slate-200 hover:border-slate-350 hover:shadow-s2 bg-white"
+              : "border-slate-200 hover:border-slate-350 hover:shadow-s2 bg-white",
           )}
         >
           <div className="relative mt-0.5">
@@ -68,7 +68,7 @@ export function VisibilityCard({ value, onChange }: VisibilityCardProps) {
             <div
               className={cn(
                 "w-4 h-4 border-1 rounded-full flex items-center justify-center transition-colors",
-                value === option.value ? "border-blue-650" : "border-slate-350"
+                value === option.value ? "border-blue-650" : "border-slate-350",
               )}
             >
               {value === option.value && (

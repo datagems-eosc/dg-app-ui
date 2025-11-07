@@ -1,5 +1,3 @@
-import React from "react";
-
 interface DatasetCardSkeletonProps {
   viewMode?: "grid" | "list";
 }

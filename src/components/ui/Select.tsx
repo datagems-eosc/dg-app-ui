@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface SelectOption {
@@ -80,7 +81,7 @@ export function Select({
               ? "text-gray-650"
               : error
                 ? "text-red-550"
-                : "text-gray-750"
+                : "text-gray-750",
           )}
         >
           {label}
@@ -100,7 +101,7 @@ export function Select({
             error && "border-red-550 focus-visible:ring-red-550",
             disabled &&
               "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-visible:ring-0",
-            selectedOption ? "text-gray-750" : "text-slate-400"
+            selectedOption ? "text-gray-750" : "text-slate-400",
           )}
         >
           <span className="truncate flex items-center gap-2 min-w-0">
@@ -117,7 +118,7 @@ export function Select({
             className={cn(
               "w-4 h-4 transition-transform flex-shrink-0 ml-2",
               isOpen && "rotate-180",
-              disabled ? "text-slate-350" : "text-slate-500"
+              disabled ? "text-slate-350" : "text-slate-500",
             )}
           />
         </button>
@@ -125,7 +126,9 @@ export function Select({
         {isOpen && !disabled && (
           <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-md max-h-60 overflow-y-auto p-1">
             {(
-              groupedOptions ? flatOptions.length === 0 : options.length === 0
+              groupedOptions
+                ? flatOptions.length === 0
+                : options.length === 0
             ) ? (
               <div className="px-3 py-2 text-sm text-slate-400">
                 No options available
@@ -146,7 +149,7 @@ export function Select({
                           "w-full text-left text-sm transition-colors rounded-md group mb-1 last:mb-0",
                           value === option.value
                             ? "bg-slate-200"
-                            : "hover:bg-slate-100"
+                            : "hover:bg-slate-100",
                         )}
                       >
                         <div className="flex items-center pl-4 pr-3 py-2">
@@ -174,7 +177,7 @@ export function Select({
                     "w-full text-left text-sm transition-colors rounded-md group mb-1 last:mb-0",
                     value === option.value
                       ? "bg-slate-200"
-                      : "hover:bg-slate-100"
+                      : "hover:bg-slate-100",
                   )}
                 >
                   <div className="flex items-center px-3 py-2">

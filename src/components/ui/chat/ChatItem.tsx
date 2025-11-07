@@ -1,18 +1,18 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import Link from "next/link";
 import {
   MessageCircleMore,
   MoreVertical,
   TextCursorInput,
   Trash,
 } from "lucide-react";
+import Link from "next/link";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
+import { useApi } from "@/hooks/useApi";
 import { formatRelativeTime } from "@/lib/utils";
-import { Tooltip } from "../Tooltip";
 import { Toast } from "../Toast";
-import { apiClient } from "@/lib/apiClient";
-import { useSession } from "next-auth/react";
+import { Tooltip } from "../Tooltip";
 
 interface ConversationListItem {
   id: string;
@@ -27,11 +27,11 @@ interface ChatItemProps {
   onConversationUpdate?: (
     id: string,
     newName: string,
-    newETag?: string
+    newETag?: string,
   ) => void;
   onDeleteConversation?: (
     conversationId: string,
-    conversationName: string
+    conversationName: string,
   ) => void;
 }
 
@@ -41,7 +41,7 @@ export function ChatItem({
   onConversationUpdate,
   onDeleteConversation,
 }: ChatItemProps) {
-  const { data: session } = useSession();
+  const api = useApi();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(conversation.name || "");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -83,11 +83,14 @@ export function ChatItem({
   };
 
   const handleSaveEdit = async () => {
-    const token = (session as any)?.accessToken;
     const trimmedName = editName.trim();
 
     // Don't send request if no changes or if name is empty
-    if (!trimmedName || !token || trimmedName === (conversation.name || "")) {
+    if (
+      !trimmedName ||
+      !api.hasToken ||
+      trimmedName === (conversation.name || "")
+    ) {
       setIsEditing(false);
       setEditName(conversation.name || "");
       return;
@@ -111,14 +114,10 @@ export function ChatItem({
 
     setIsUpdating(true);
     try {
-      const result = await apiClient.updateConversation(
-        conversation.id,
-        {
-          name: trimmedName,
-          eTag: conversation.eTag,
-        },
-        token
-      );
+      const result = await api.updateConversation(conversation.id, {
+        name: trimmedName,
+        eTag: conversation.eTag,
+      });
       // Update the conversation with new name and eTag
       onConversationUpdate?.(conversation.id, trimmedName, result.eTag);
       setIsEditing(false);

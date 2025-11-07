@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
 import { ArrowUpRight } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import type { ApiCollection, Collection } from "@/types/collection";
 import { Button } from "../Button";
 import { CollectionsDropdown } from "../CollectionsDropdown";
-import { cn } from "@/lib/utils";
-import { Collection, ApiCollection } from "@/types/collection";
 
 interface ChatInputProps {
   value: string;
@@ -40,7 +41,7 @@ export function ChatInput({
   showAddDatasetsModal = false,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [isFocused, setIsFocused] = useState(false);
+  const [_isFocused, setIsFocused] = useState(false);
   const [showTopFade, setShowTopFade] = useState(false);
   const [showBottomFade, setShowBottomFade] = useState(false);
   const hasText = value.trim().length > 0;
@@ -58,7 +59,7 @@ export function ChatInput({
     if (textarea) {
       setShowTopFade(textarea.scrollTop > 0);
       setShowBottomFade(
-        textarea.scrollTop < textarea.scrollHeight - textarea.clientHeight - 1
+        textarea.scrollTop < textarea.scrollHeight - textarea.clientHeight - 1,
       );
     }
   };
@@ -66,7 +67,7 @@ export function ChatInput({
   useEffect(() => {
     adjustHeight();
     setTimeout(checkScroll, 10);
-  }, [value]);
+  }, [adjustHeight, checkScroll]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -86,7 +87,7 @@ export function ChatInput({
         "focus-within:border-slate-350",
         error && "border-red-550 focus-within:border-red-550",
         disabled &&
-          "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-within:ring-0 focus-within:border-slate-200"
+          "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200 focus-within:ring-0 focus-within:border-slate-200",
       )}
       style={{
         width: "100%",
@@ -113,7 +114,7 @@ export function ChatInput({
               "text-gray-750 placeholder-slate-450",
               "focus:outline-none focus:ring-0",
               error && "text-gray-750",
-              disabled && "text-slate-450 cursor-not-allowed"
+              disabled && "text-slate-450 cursor-not-allowed",
             )}
             style={{ minHeight: "52px", maxHeight: "140px" }}
             disabled={disabled}

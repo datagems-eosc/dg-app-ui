@@ -1,5 +1,5 @@
-import React from "react";
 import { Check } from "lucide-react";
+import type React from "react";
 import { cn } from "@/lib/utils";
 
 interface CheckboxProps {
@@ -31,7 +31,7 @@ export function Checkbox({
     <div
       className={cn(
         "flex items-center cursor-pointer transition-colors rounded group",
-        className
+        className,
       )}
       onClick={handleClick}
     >
@@ -51,7 +51,7 @@ export function Checkbox({
             checked
               ? "bg-blue-850 border-blue-850 group-hover:bg-blue-650 group-hover:border-blue-650"
               : "bg-white border-slate-200 group-hover:border-slate-350",
-            disabled && "opacity-50 cursor-not-allowed"
+            disabled && "opacity-50 cursor-not-allowed",
           )}
         >
           {checked && <Check className="w-3 h-3 text-white" />}
@@ -62,7 +62,7 @@ export function Checkbox({
           htmlFor={id}
           className={cn(
             "ml-2 text-sm cursor-pointer select-none",
-            disabled ? "text-gray-400" : "text-gray-750"
+            disabled ? "text-gray-400" : "text-gray-750",
           )}
         >
           {label}
