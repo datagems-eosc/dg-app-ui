@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { TableData } from "@/types/chat";
+import { useState } from "react";
+import type { TableData } from "@/types/chat";
 import { Button } from "../Button";
 
 interface DataTableProps {
@@ -34,14 +34,14 @@ function formatCellValue(value: string | number): string {
     try {
       const date = new Date(value);
       // Check if it's a valid date
-      if (!isNaN(date.getTime())) {
+      if (!Number.isNaN(date.getTime())) {
         return date.toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
           day: "numeric",
         });
       }
-    } catch (e) {
+    } catch (_e) {
       // If parsing fails, return original value
     }
   }

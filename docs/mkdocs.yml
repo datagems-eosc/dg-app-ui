@@ -6,21 +6,21 @@ repo_url: https://github.com/datagems-eosc/dg-app-ui
 nav:
   - Overview: index.md
   - System:
-    - Architecture: architecture.md
-  - Material: 
-    - Onboarding: onboarding.md
-    - Key Features:
-      - Smart Search: smart-search.md 
-    - Design System:
-      - Components: design-system.md
-      - Theming: theming.md
-    - Quality Assurance: 
-      - Testing Methods: qa.md
-      - Login in Tests: CypressLogin.md
+      - Architecture: architecture.md
+  - Material:
+      - Onboarding: onboarding.md
+      - Key Features:
+          - Smart Search: smart-search.md
+      - Design System:
+          - Components: design-system.md
+          - Theming: theming.md
+      - Quality Assurance:
+          - Testing Methods: qa.md
+          - Login in Tests: CypressLogin.md
   - Setup & Monitoring:
-    - Security: security.md
-    - Automations: automations.md
-    - Deployment: deployment.md
+      - Security: security.md
+      - Automations: automations.md
+      - Deployment: deployment.md
     #- Configuration: configuration.md
     #- Logging & Accounting: logging.md
   - License: license.md
@@ -28,7 +28,7 @@ nav:
   - Home: https://datagems-eosc.github.io/
 
 theme:
-  name: 'material'
+  name: "material"
   favicon: images/favicon.jpg
   logo: images/datagems-portal-icon.png
   icon:
@@ -59,7 +59,7 @@ markdown_extensions:
       permalink: true
 
 extra:
-#  generator: false
+  #  generator: false
   version:
     provider: mike
     alias: true

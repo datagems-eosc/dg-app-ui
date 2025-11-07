@@ -24,4 +24,3 @@ export enum ApiError {
   FETCH_DATASET_CONTEXT_GRANTS = "Failed to fetch dataset context grants",
   FETCH_COLLECTION_CONTEXT_GRANTS = "Failed to fetch collection context grants",
 }
-

@@ -1,7 +1,7 @@
-import React from "react";
+import { MessageCircleMore } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { MessageCircleMore } from "lucide-react";
+import type React from "react";
 import { createUrl } from "@/lib/utils";
 
 interface CollectionItemProps {
@@ -49,7 +49,7 @@ export function CollectionItem({
     }
   };
 
-  const handleLinkClick = (e: React.MouseEvent) => {
+  const handleLinkClick = (_e: React.MouseEvent) => {
     if (onClick) {
       onClick();
     }

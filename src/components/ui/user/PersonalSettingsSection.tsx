@@ -1,9 +1,8 @@
 "use client";
 
-import React from "react";
+import { Trash } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Trash } from "lucide-react";
 
 type FormData = {
   name: string;
@@ -41,7 +40,7 @@ export default function PersonalSettingsSection({
               size="large"
               value={formData.name}
               onChange={(e) => updateFormData({ name: e.target.value })}
-              disabled={isLoading}
+              disabled={true}
             />
             <Input
               name="surname"
@@ -49,7 +48,7 @@ export default function PersonalSettingsSection({
               size="large"
               value={formData.surname}
               onChange={(e) => updateFormData({ surname: e.target.value })}
-              disabled={isLoading}
+              disabled={true}
             />
           </div>
         </div>

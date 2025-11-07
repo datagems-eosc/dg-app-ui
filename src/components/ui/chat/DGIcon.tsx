@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 interface DGIconProps extends React.SVGProps<SVGSVGElement> {
   size?: number;
@@ -24,4 +24,4 @@ export default function DGIcon({ size = 24, ...props }: DGIconProps) {
       />
     </svg>
   );
-} 
+}

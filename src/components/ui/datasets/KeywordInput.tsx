@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, KeyboardEvent } from "react";
 import { X } from "lucide-react";
+import type React from "react";
+import { type KeyboardEvent, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface KeywordInputProps {
@@ -93,7 +94,7 @@ export function KeywordInput({
               ? "text-gray-650"
               : error
                 ? "text-red-550"
-                : "text-gray-750"
+                : "text-gray-750",
           )}
         >
           {label}
@@ -110,7 +111,7 @@ export function KeywordInput({
           "focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-850 focus-within:ring-offset-1 focus-within:ring-offset-white",
           error && "border-red-550 focus-within:ring-red-550",
           disabled &&
-            "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200"
+            "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200",
         )}
       >
         <div className="flex flex-wrap gap-1 items-center">

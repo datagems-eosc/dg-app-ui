@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
 import { Search as SearchIcon, X } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "./Input";
 
 interface SearchProps {

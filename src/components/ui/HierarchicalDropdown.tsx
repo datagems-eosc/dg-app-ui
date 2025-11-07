@@ -1,19 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import {
-  Search,
+  Atom,
   ChevronDown,
-  Microscope,
   Cpu,
   HeartPulse,
-  Trees,
+  Microscope,
   PersonStanding,
+  Search,
   Speech,
-  Atom,
+  Trees,
 } from "lucide-react";
-import { Input } from "./Input";
+import { useEffect, useState } from "react";
 import { Checkbox } from "./Checkbox";
+import { Input } from "./Input";
 
 export interface HierarchicalOption {
   value: string;
@@ -54,7 +54,7 @@ export default function HierarchicalDropdown({
     setExpandedCategories((prev) =>
       prev.includes(categoryCode)
         ? prev.filter((code) => code !== categoryCode)
-        : [...prev, categoryCode]
+        : [...prev, categoryCode],
     );
   };
 
@@ -73,8 +73,7 @@ export default function HierarchicalDropdown({
           options: category.options.filter(
             (option) =>
               option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              (option.code &&
-                option.code.toLowerCase().includes(searchTerm.toLowerCase()))
+              option.code?.toLowerCase().includes(searchTerm.toLowerCase()),
           ),
         }))
         .filter((category) => category.options.length > 0)

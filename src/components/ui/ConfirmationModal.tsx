@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
 import { Trash, X } from "lucide-react";
+import type React from "react";
 import { Button } from "./Button";
 
 interface ConfirmationModalProps {

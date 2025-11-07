@@ -3,7 +3,24 @@
 const NextAuth = require("next-auth").default;
 const KeycloakProvider = require("next-auth/providers/keycloak").default;
 
-// Use environment variables consistently
+// Simple logger for Next.js API routes (Pino doesn't work with Next.js runtime)
+const logger = {
+  info: (obj: any, msg?: string) => {
+    const message = msg || JSON.stringify(obj);
+    console.log(`[INFO] ${message}`, obj);
+  },
+  debug: (obj: any, msg?: string) => {
+    if (process.env.NODE_ENV === "development") {
+      const message = msg || JSON.stringify(obj);
+      console.log(`[DEBUG] ${message}`, obj);
+    }
+  },
+  error: (obj: any, msg?: string) => {
+    const message = msg || JSON.stringify(obj);
+    console.error(`[ERROR] ${message}`, obj);
+  },
+};
+
 const appBaseUrl =
   process.env.NEXT_PUBLIC_APP_BASE_URL ?? "http://localhost:3000";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
@@ -47,46 +64,43 @@ const handler = NextAuth({
   },
   callbacks: {
     async signIn({ user, account, profile, email, credentials }) {
-      console.log("SignIn callback:", { user, account, profile });
+      logger.info({ user, account, profile }, "SignIn callback");
       return true;
     },
     async redirect({ url, baseUrl }) {
-      console.log("Redirect callback:", { url, baseUrl });
+      logger.debug({ url, baseUrl }, "Redirect callback");
       const basePathForRedirect = process.env.NEXT_PUBLIC_BASE_PATH || "";
       const fullBaseUrlForRedirect = `${baseUrl}${basePathForRedirect}`;
-      
+
       if (url.startsWith(fullBaseUrlForRedirect)) {
         return url;
       }
-      
+
       if (url.startsWith("/")) {
         return `${fullBaseUrlForRedirect}${url}`;
       }
-      
+
       if (url.startsWith(baseUrl)) {
         return url.replace(baseUrl, fullBaseUrlForRedirect);
       }
-      
+
       return fullBaseUrlForRedirect;
     },
     async session({ session, token, user }) {
-      console.log("Session callback:", { session, token, user });
+      logger.debug({ session, token, user }, "Session callback");
       if (token) {
         session.accessToken = token.access_token;
         session.user = token.user || session.user;
 
-        // Pass through token refresh errors to the client
         if (token.error) {
-          console.error("Session error:", token.error);
+          logger.error({ error: token.error }, "Session error");
           (session as any).error = token.error;
         }
       }
       return session;
     },
     async jwt({ token, account, user, profile }) {
-      console.log("JWT callback:", { token, account, user, profile });
-
-      // Initial sign in
+      logger.debug({ token, account, user, profile }, "JWT callback");
       if (account) {
         token.access_token = account.access_token;
         token.refresh_token = account.refresh_token;
@@ -95,16 +109,17 @@ const handler = NextAuth({
         return token;
       }
 
-      // Return previous token if the access token has not expired yet
-      // Add a 30-second buffer to refresh tokens before they expire
       if (Date.now() < token.expires_at * 1000 - 30000) {
         return token;
       }
 
-      // Access token has expired, try to update it
-      console.log("Access token expired, attempting refresh...");
-      console.log("Token expires at:", new Date(token.expires_at * 1000));
-      console.log("Current time:", new Date());
+      logger.info(
+        {
+          expiresAt: new Date(token.expires_at * 1000),
+          currentTime: new Date(),
+        },
+        "Access token expired, attempting refresh",
+      );
       return refreshAccessToken(token);
     },
   },
@@ -119,7 +134,7 @@ const handler = NextAuth({
 async function refreshAccessToken(token) {
   try {
     const url = `${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/token`;
-    console.log("Refreshing token at:", url);
+    logger.debug({ url }, "Refreshing token");
 
     const response = await fetch(url, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -134,11 +149,11 @@ async function refreshAccessToken(token) {
     const refreshedTokens = await response.json();
 
     if (!response.ok) {
-      console.error("Token refresh failed:", refreshedTokens);
+      logger.error({ refreshedTokens }, "Token refresh failed");
       throw refreshedTokens;
     }
 
-    console.log("Token refresh successful");
+    logger.info("Token refresh successful");
 
     return {
       ...token,
@@ -148,8 +163,7 @@ async function refreshAccessToken(token) {
       // many providers give a new refresh token when you use the old one
     };
   } catch (error) {
-    console.error("Error refreshing access token:", error);
-
+    logger.error({ error }, "Error refreshing access token");
     return {
       ...token,
       error: "RefreshAccessTokenError",

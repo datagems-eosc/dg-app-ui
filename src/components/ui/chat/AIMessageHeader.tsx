@@ -1,9 +1,7 @@
 "use client";
 
-import React from "react";
-import { Database, Download } from "lucide-react";
+import { Bot, Database, Download } from "lucide-react";
 import { Button } from "../Button";
-import { Bot } from "lucide-react";
 
 interface AIMessageHeaderProps {
   sources?: number;

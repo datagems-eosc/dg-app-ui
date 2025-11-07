@@ -1,21 +1,21 @@
 "use client";
-import React, { Suspense } from "react";
 import {
-  Settings,
-  Star,
-  CloudSun,
+  Bot,
   Calculator,
+  CloudSun,
+  FolderSearch,
   GraduationCap,
   Languages,
-  FolderSearch,
-  Bot,
+  Settings,
+  Star,
 } from "lucide-react";
-import { MenuItem } from "./MenuItem";
+import type React from "react";
+import { Suspense } from "react";
+import { APP_ROUTES, generateDashboardUrl } from "@/config/appUrls";
+import type { ApiCollection } from "@/types/collection";
 import { CollectionItem } from "./CollectionItem";
-import { ApiCollection } from "@/types/collection";
 import { ChatHistoryList } from "./chat/ChatHistoryList";
-import { generateDashboardUrl, APP_ROUTES } from "@/config/appUrls";
-import { createUrl } from "@/lib/utils";
+import { MenuItem } from "./MenuItem";
 
 // Component that wraps CollectionItem in Suspense
 function CollectionItemWithSuspense(props: any) {
@@ -120,7 +120,7 @@ interface SidebarContentProps {
   onCollectionAskQuestion: (collectionId: string) => void;
   onDeleteConversation: (
     conversationId: string,
-    conversationName: string
+    conversationName: string,
   ) => void;
   onConversationUpdate: (id: string, newName: string, newETag?: string) => void;
   setConversations: React.Dispatch<React.SetStateAction<any[]>>;
@@ -195,7 +195,7 @@ export function SidebarContent({
                 {finalSortedCollections.map((collection) => {
                   // Check if this collection is from extraCollections (custom collections)
                   const isExtra = extraCollections.some(
-                    (ec) => ec.id === collection.id
+                    (ec) => ec.id === collection.id,
                   );
 
                   return (
