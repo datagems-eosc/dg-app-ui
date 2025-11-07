@@ -2,25 +2,33 @@
 // @ts-nocheck
 const NextAuth = require("next-auth").default;
 const KeycloakProvider = require("next-auth/providers/keycloak").default;
-const pino = require("pino");
 
-const logger = pino({
-  level: process.env.NODE_ENV === "development" ? "debug" : "info",
-  transport:
-    process.env.NODE_ENV === "development"
-      ? {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "HH:MM:ss",
-            ignore: "pid,hostname",
-          },
-        }
-      : undefined,
-});
+// Simple logger for Next.js API routes (Pino doesn't work with Next.js runtime)
+const logger = {
+  info: (obj: any, msg?: string) => {
+    const message = msg || JSON.stringify(obj);
+    console.log(`[INFO] ${message}`, obj);
+  },
+  debug: (obj: any, msg?: string) => {
+    if (process.env.NODE_ENV === "development") {
+      const message = msg || JSON.stringify(obj);
+      console.log(`[DEBUG] ${message}`, obj);
+    }
+  },
+  error: (obj: any, msg?: string) => {
+    const message = msg || JSON.stringify(obj);
+    console.error(`[ERROR] ${message}`, obj);
+  },
+};
 
 const appBaseUrl =
   process.env.NEXT_PUBLIC_APP_BASE_URL ?? "http://localhost:3000";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const fullBaseUrl = `${appBaseUrl}${basePath}`;
+
+if (!process.env.NEXTAUTH_URL) {
+  process.env.NEXTAUTH_URL = fullBaseUrl;
+}
 
 const handler = NextAuth({
   providers: [
@@ -37,7 +45,7 @@ const handler = NextAuth({
         params: {
           scope: "openid dg-app-api offline_access",
           pkce: true,
-          redirect_uri: `${appBaseUrl}/api/auth/callback/keycloak`,
+          redirect_uri: `${fullBaseUrl}/api/auth/callback/keycloak`,
         },
       },
       checks: ["pkce"],
@@ -61,14 +69,22 @@ const handler = NextAuth({
     },
     async redirect({ url, baseUrl }) {
       logger.debug({ url, baseUrl }, "Redirect callback");
-      if (url.startsWith(baseUrl)) {
+      const basePathForRedirect = process.env.NEXT_PUBLIC_BASE_PATH || "";
+      const fullBaseUrlForRedirect = `${baseUrl}${basePathForRedirect}`;
+
+      if (url.startsWith(fullBaseUrlForRedirect)) {
         return url;
       }
-      // Allows relative callback URLs
-      else if (url.startsWith("/")) {
-        return `${baseUrl}${url}`;
+
+      if (url.startsWith("/")) {
+        return `${fullBaseUrlForRedirect}${url}`;
       }
-      return baseUrl;
+
+      if (url.startsWith(baseUrl)) {
+        return url.replace(baseUrl, fullBaseUrlForRedirect);
+      }
+
+      return fullBaseUrlForRedirect;
     },
     async session({ session, token, user }) {
       logger.debug({ session, token, user }, "Session callback");
