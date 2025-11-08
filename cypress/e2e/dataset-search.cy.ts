@@ -22,12 +22,23 @@ describe("Feature: Dataset Search Functionality", () => {
     cy.get("#search").should("be.visible");
 
     // Capture the initial full results count (the "Showing:" counter)
-    cy.contains("Showing:")
-      .parent()
-      .find("span")
+    cy.contains("p.text-body-14-regular.text-gray-650", "Showing:")
+      .find("span.text-body-14-medium.text-gray-750")
+      .should(($span) => {
+        const text = $span.text().trim();
+        const parsed = Number.parseInt(text, 10);
+        expect(
+          Number.isNaN(parsed),
+          "expected dataset counter to be a number before interacting with search"
+        ).to.be.false;
+        expect(
+          parsed,
+          "expected dataset counter to be greater than zero before interacting with search"
+        ).to.be.greaterThan(0);
+      })
       .invoke("text")
       .then((text) => {
-        const initialCount = Number.parseInt(text.trim()) || 0;
+        const initialCount = Number.parseInt(text.trim(), 10) || 0;
 
         // Enter Math and submit the search (press Enter) to show results
         cy.get("#search").type("Math{enter}");
@@ -42,9 +53,8 @@ describe("Feature: Dataset Search Functionality", () => {
         cy.get("#search").should("have.value", "");
 
         // And the full list of datasets should be restored (Showing counter equals initial)
-        cy.contains("Showing:")
-          .parent()
-          .find("span")
+        cy.contains("p.text-body-14-regular.text-gray-650", "Showing:")
+          .find("span.text-body-14-medium.text-gray-750")
           .invoke("text")
           .then((afterText) => {
             const afterCount = Number.parseInt(afterText.trim()) || 0;
@@ -101,6 +111,66 @@ describe("Feature: Dataset Search Functionality", () => {
         matches.length,
         `expected >= 2 dataset cards to contain 'Ency' (case-insensitive), found ${matches.length}`
       ).to.be.gte(2);
+    });
+  });
+
+  it("Scenario: Display message when no datasets match search criteria", () => {
+    // Given the user enters a query that has no matches
+    cy.get("#search").should("be.visible").clear().type("xyz123{enter}");
+
+    // Then a no-results message is displayed
+    cy.contains("No datasets found matching your search criteria.", {
+      timeout: 10000,
+    }).should("be.visible");
+
+    // And the dataset counter shows zero results
+    cy.contains("p.text-body-14-regular.text-gray-650", "Showing:")
+      .find("span.text-body-14-medium.text-gray-750")
+      .should("have.text", "0 results");
+
+    // And no dataset cards are visible
+    cy.get("div.rounded-2xl").should("have.length", 0);
+  });
+
+  it("Scenario: Handle empty search submission", () => {
+    // Given the user leaves the search field empty
+    cy.get("#search").should("be.visible").clear();
+
+    // Capture initial dataset state
+    cy.contains("p.text-body-14-regular.text-gray-650", "Showing:")
+      .find("span.text-body-14-medium.text-gray-750")
+      .should(($span) => {
+        const text = $span.text().trim();
+        const parsed = Number.parseInt(text, 10);
+        expect(
+          Number.isNaN(parsed),
+          "expected dataset counter to be a number before interacting with search"
+        ).to.be.false;
+        expect(
+          parsed,
+          "expected dataset counter to be greater than zero before interacting with search"
+        ).to.be.greaterThan(0);
+      })
+      .invoke("text")
+      .then((text) => {
+        const initialCount = Number.parseInt(text.trim(), 10) || 0;
+
+      // When the user presses Enter without typing anything
+      cy.get("#search").type("{enter}");
+
+      // Then the dataset list should remain unfiltered
+      cy.contains("p.text-body-14-regular.text-gray-650", "Showing:")
+          .find("span.text-body-14-medium.text-gray-750")
+          .invoke("text")
+          .then((afterText) => {
+            const afterCount = Number.parseInt(afterText.trim()) || 0;
+            expect(afterCount).to.equal(initialCount);
+          });
+
+      // And a tooltip with the validation message should appear
+      cy.contains("Search requires at least 3 characters").should(
+        "be.visible"
+      );
     });
   });
 });
