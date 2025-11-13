@@ -4,9 +4,11 @@ describe("Context Grants API", () => {
 
   beforeEach(() => {
     cy.login();
-    
-    apiBaseUrl = Cypress.env("NEXT_PUBLIC_DATAGEMS_API_BASE_URL") || "https://datagems-dev.scayle.es";
-    
+
+    apiBaseUrl =
+      Cypress.env("NEXT_PUBLIC_DATAGEMS_API_BASE_URL") ||
+      "https://datagems-dev.scayle.es";
+
     cy.window().then((win) => {
       return cy
         .request({
@@ -15,19 +17,23 @@ describe("Context Grants API", () => {
           failOnStatusCode: false,
         })
         .then((sessionResponse) => {
-          if (sessionResponse.status === 200 && sessionResponse.body?.accessToken) {
+          if (
+            sessionResponse.status === 200 &&
+            sessionResponse.body?.accessToken
+          ) {
             authToken = sessionResponse.body.accessToken;
           } else {
-            cy.getCookie("next-auth.session-token")
-              .then((cookie) => {
-                if (!cookie) {
-                  cy.getCookie("__Secure-next-auth.session-token").then((secureCookie) => {
+            cy.getCookie("next-auth.session-token").then((cookie) => {
+              if (!cookie) {
+                cy.getCookie("__Secure-next-auth.session-token").then(
+                  (secureCookie) => {
                     if (!secureCookie && !authToken) {
                       cy.log("Warning: No session token found");
                     }
-                  });
-                }
-              });
+                  }
+                );
+              }
+            });
           }
         });
     });
@@ -94,4 +100,3 @@ describe("Context Grants API", () => {
     });
   });
 });
-
