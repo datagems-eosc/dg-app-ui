@@ -4,12 +4,14 @@ import { FileText, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
 import { Input } from "./ui/Input";
+import { Toast } from "./ui/Toast";
 
 interface CreateCollectionModalProps {
   isVisible: boolean;
@@ -36,6 +38,15 @@ export default function CreateCollectionModal({
   );
   const [isCreating, setIsCreating] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const showDatasetAddedToast = () => {
+    const { message, type } = TOAST_MESSAGES.datasetAddedToCollection;
+    setToastType(type);
+    setToastMessage(message);
+    setShowToast(true);
+  };
 
   const {
     extraCollections,
@@ -93,6 +104,7 @@ export default function CreateCollectionModal({
         // Refresh the sidebar to show the newly created collection
         await refreshExtraCollections();
         notifyCollectionModified();
+        showDatasetAddedToast();
 
         if (onCreateCollection) {
           onCreateCollection(collectionName.trim());
@@ -140,6 +152,7 @@ export default function CreateCollectionModal({
       await refreshExtraCollections();
       // Also notify that collections have been modified to refresh sidebar
       notifyCollectionModified();
+      showDatasetAddedToast();
     } catch (error) {
       console.error("Failed to add datasets to collections:", error);
       alert("Failed to add datasets to collections. Please try again.");
@@ -175,9 +188,7 @@ export default function CreateCollectionModal({
     );
   };
 
-  if (!isVisible) return null;
-
-  return (
+  const modalContent = (
     <div
       className="fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center p-4"
       onClick={onClose}
@@ -356,5 +367,17 @@ export default function CreateCollectionModal({
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {isVisible && modalContent}
+      <Toast
+        message={toastMessage}
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
+      />
+    </>
   );
 }
