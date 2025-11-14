@@ -255,9 +255,9 @@ pnpm run test:coverage   # Run tests with coverage
 
 ## CI/CD
 
-The repository includes GitHub Actions workflows for continuous integration:
+The repository includes multiple GitHub Actions workflows for continuous integration, code quality, and security:
 
-### CI Workflow
+### CI Workflow (Code Quality & Build Validation)
 
 Automatically runs on push and pull requests to `main`, `develop`, and `staging` branches:
 
@@ -267,6 +267,29 @@ Automatically runs on push and pull requests to `main`, `develop`, and `staging`
 - **Security Audit**: Checks for known vulnerabilities in dependencies
 
 All checks must pass before code can be merged.
+
+### CodeQL Analysis (Static Code Analysis)
+
+GitHub Code Scanning workflow that performs automated security and quality analysis:
+
+- **Languages**: Analyzes JavaScript and TypeScript code
+- **Queries**: Uses security-and-quality query suite
+- **Triggers**: Runs on push/PR to `main`, `develop`, `staging` branches and weekly schedule
+- **Results**: Findings are displayed in the Security tab of the repository
+
+This workflow helps identify security vulnerabilities, code quality issues, and potential bugs before they reach production.
+
+### Code Metrics
+
+Automated code complexity and metrics calculation:
+
+- **Complexity Analysis**: Uses `complexity-report` to calculate code complexity metrics
+- **Plato Reports**: Generates detailed code quality reports with visualizations
+- **Lines of Code**: Tracks and reports total lines of code and file counts
+- **Artifacts**: Uploads complexity and Plato reports as downloadable artifacts (retained for 30 days)
+- **Triggers**: Runs on push/PR to `main`, `develop`, `staging` branches and can be manually triggered
+
+The metrics help track code quality trends over time and identify areas that may need refactoring.
 
 ## Docker Configuration
 
