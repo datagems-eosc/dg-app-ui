@@ -25,16 +25,16 @@ The application supports serving from a subdirectory (e.g., `http://domain.com/m
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Start development server
-npm run dev
+pnpm run dev
 
 # Build for production
-npm run build
+pnpm run build
 
 # Start production server
-npm start
+pnpm start
 ```
 
 ## Docker Deployment
@@ -136,7 +136,7 @@ location /myapp/ {
 
 1. **Static assets not loading**: Ensure `NEXT_PUBLIC_BASE_PATH` is set correctly
 2. **404 errors**: Check that the base path is consistent across all configuration
-3. **Build failures**: Ensure all dependencies are installed with `npm ci`
+3. **Build failures**: Ensure all dependencies are installed with `pnpm install --frozen-lockfile`
 
 ## Architecture
 
@@ -178,3 +178,160 @@ The application is configured to automatically refresh access tokens before they
 - Use the `useSession`, `signIn`, and `signOut` hooks from `next-auth/react` in your components for authentication state and actions.
 
 For more details, see the [NextAuth.js Keycloak provider docs](https://next-auth.js.org/providers/keycloak).
+
+## Prerequisites
+
+- **Node.js**: Version 20.x or higher (see `.nvmrc` for the exact version)
+- **Package Manager**: This project uses `pnpm` (v10). Corepack is enabled, so `pnpm` will be automatically used.
+
+## Package Manager
+
+This project uses `pnpm` as the package manager. The project is configured to use Corepack, which automatically manages the correct `pnpm` version.
+
+```bash
+# Enable Corepack (if not already enabled)
+corepack enable
+
+# Install dependencies
+pnpm install
+
+# Install with frozen lockfile (for CI/production)
+pnpm install --frozen-lockfile
+```
+
+## Code Quality & Git Hooks
+
+This repository includes enterprise-grade code quality tooling with automated pre-commit checks:
+
+### Pre-commit Hooks
+
+Git hooks are managed by Husky and automatically run before each commit:
+
+1. **Lint-staged**: Runs Biome linter and formatter on staged files
+2. **Biome Check**: Validates code quality and formatting across the entire codebase
+3. **TypeScript Type Check**: Ensures all TypeScript types are correct
+4. **Tests**: Runs the test suite
+
+All checks must pass before a commit is allowed. If any check fails, the commit is blocked with detailed error messages.
+
+### Commit Message Format
+
+Commit messages must follow this format:
+
+```
+DG-XX | Your commit message
+```
+
+**Rules:**
+- Must start with task number: `DG-XX` where `XX` is a number
+- Followed by a pipe symbol: `|`
+- Then your commit message (minimum 3 characters)
+
+**Valid examples:**
+- `DG-59 | Add user authentication`
+- `DG-123 | Fix dataset loading issue`
+- `DG-1 | Update documentation`
+
+The commit-msg hook will automatically validate your commit message format.
+
+### Available Scripts
+
+```bash
+# Development
+pnpm run dev              # Start development server with Turbopack
+pnpm run build           # Build for production
+pnpm start               # Start production server
+
+# Code Quality
+pnpm run lint            # Run Next.js ESLint
+pnpm run lint:biome      # Run Biome linter and auto-fix issues
+pnpm run lint:biome:check # Run Biome linter (check only, no fixes)
+pnpm run format          # Format code with Prettier
+pnpm run format:check    # Check code formatting
+pnpm run type-check      # Run TypeScript type checking
+pnpm test                # Run test suite
+pnpm run test:coverage   # Run tests with coverage
+```
+
+## CI/CD
+
+The repository includes GitHub Actions workflows for continuous integration:
+
+### CI Workflow
+
+Automatically runs on push and pull requests to `main`, `develop`, and `staging` branches:
+
+- **Lint with Biome**: Validates code quality and formatting
+- **Type Check**: Ensures TypeScript types are correct
+- **Tests**: Runs the test suite with coverage
+- **Security Audit**: Checks for known vulnerabilities in dependencies
+
+All checks must pass before code can be merged.
+
+## Docker Configuration
+
+### Port Configuration
+
+The Docker Compose setup supports custom port configuration via the `FRONTEND_PORT` environment variable:
+
+```bash
+# Use default port 3000
+docker-compose up -d
+
+# Use custom port (e.g., 4000)
+FRONTEND_PORT=4000 docker-compose up -d
+```
+
+The port mapping and healthcheck URL will automatically adjust based on the `FRONTEND_PORT` variable.
+
+### Docker Build Requirements
+
+- **Base Image**: Node.js 20 Alpine
+- **Package Manager**: pnpm (automatically enabled via Corepack)
+- **Lock File**: Uses `pnpm-lock.yaml` (not `package-lock.json`)
+
+## Getting Started
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd dg-app-ui
+   ```
+
+2. **Install dependencies**
+   ```bash
+   corepack enable
+   pnpm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env.local  # If .env.example exists
+   # Or create .env.local with required variables (see Keycloak Authentication section)
+   ```
+
+4. **Start development server**
+   ```bash
+   pnpm run dev
+   ```
+
+5. **Verify pre-commit hooks**
+   ```bash
+   # Hooks are automatically installed via `pnpm install` (runs `husky install`)
+   # Test by making a commit with invalid message format
+   git commit -m "test"  # Should fail
+   git commit -m "DG-1 | test"  # Should pass (if other checks pass)
+   ```
+
+## Project Structure
+
+- `src/app/` - Next.js App Router pages and API routes
+- `src/components/` - React components
+- `src/contexts/` - React Context providers
+- `src/hooks/` - Custom React hooks
+- `src/lib/` - Utility functions and services
+- `src/types/` - TypeScript type definitions
+- `.github/workflows/` - GitHub Actions workflows
+- `.husky/` - Git hooks configuration
+- `cypress/` - End-to-end tests
+- `tests/` - Unit and integration tests
