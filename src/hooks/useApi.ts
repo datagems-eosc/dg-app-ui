@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
+import { ApiError } from "@/lib/apiErrors";
 import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
 
 /**
@@ -58,7 +59,7 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch datasets");
+        throw new Error(errorData.error || ApiError.FETCH_DATASETS);
       }
 
       return response.json();
@@ -78,7 +79,7 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch collections");
+        throw new Error(errorData.error || ApiError.FETCH_COLLECTIONS);
       }
 
       return response.json();
@@ -88,36 +89,31 @@ export function useApi() {
 
   const queryUserCollections = useCallback(
     async (payload: any): Promise<any> => {
-      const response = await makeRequest("/user/collection/me/query", {
+      const response = await makeRequest("/collection/query", {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch user collections");
+        throw new Error(errorData.error || ApiError.FETCH_USER_COLLECTIONS);
       }
 
-      const res = await response.json();
-      console.log("queryUserCollections req", payload, "res", res);
-      return res;
+      return response.json();
     },
     [makeRequest],
   );
 
   const createUserCollection = useCallback(
     async (name: string): Promise<any> => {
-      const response = await makeRequest(
-        "/user/collection/me/persist?f=id&f=name&f=user.id&f=user.name&f=userDatasetCollections.id&f=userDatasetCollections.dataset.Id&f=userDatasetCollections.dataset.name",
-        {
-          method: "POST",
-          body: JSON.stringify({ name }),
-        },
-      );
+      const response = await makeRequest("/collection/persist", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to create collection");
+        throw new Error(errorData.error || ApiError.CREATE_COLLECTION);
       }
 
       return response.json();
@@ -128,7 +124,7 @@ export function useApi() {
   const addDatasetToUserCollection = useCallback(
     async (collectionId: string, datasetId: string): Promise<any> => {
       const response = await makeRequest(
-        `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id&f=UserDatasetCollections.id&f=UserDatasetCollections.dataset.id&f=name&f=user.id&f=user.name&f=UserDatasetCollections.dataset.name`,
+        `/collection/${collectionId}/dataset/${datasetId}`,
         {
           method: "POST",
         },
@@ -136,9 +132,7 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || "Failed to add dataset to collection",
-        );
+        throw new Error(errorData.error || ApiError.ADD_DATASET_TO_COLLECTION);
       }
 
       return response.json();
@@ -149,7 +143,7 @@ export function useApi() {
   const removeDatasetFromUserCollection = useCallback(
     async (collectionId: string, datasetId: string): Promise<any> => {
       const response = await makeRequest(
-        `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
+        `/collection/${collectionId}/dataset/${datasetId}`,
         {
           method: "DELETE",
         },
@@ -158,7 +152,7 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.error || "Failed to remove dataset from collection",
+          errorData.error || ApiError.REMOVE_DATASET_FROM_COLLECTION,
         );
       }
 
@@ -169,13 +163,13 @@ export function useApi() {
 
   const deleteUserCollection = useCallback(
     async (collectionId: string): Promise<any> => {
-      const response = await makeRequest(`/user/collection/${collectionId}`, {
+      const response = await makeRequest(`/collection/${collectionId}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to delete collection");
+        throw new Error(errorData.error || ApiError.DELETE_COLLECTION);
       }
 
       return {};
