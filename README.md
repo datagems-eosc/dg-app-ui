@@ -223,11 +223,13 @@ DG-XX | Your commit message
 ```
 
 **Rules:**
+
 - Must start with task number: `DG-XX` where `XX` is a number
 - Followed by a pipe symbol: `|`
 - Then your commit message (minimum 3 characters)
 
 **Valid examples:**
+
 - `DG-59 | Add user authentication`
 - `DG-123 | Fix dataset loading issue`
 - `DG-1 | Update documentation`
@@ -316,24 +318,28 @@ The port mapping and healthcheck URL will automatically adjust based on the `FRO
 ## Getting Started
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd dg-app-ui
    ```
 
 2. **Install dependencies**
+
    ```bash
    corepack enable
    pnpm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env.local  # If .env.example exists
    # Or create .env.local with required variables (see Keycloak Authentication section)
    ```
 
 4. **Start development server**
+
    ```bash
    pnpm run dev
    ```
