@@ -224,7 +224,8 @@ export default function AddDatasetForm() {
       };
 
       if (formData.classification.collection) {
-        payload.collectionIds = [formData.classification.collection];
+        // Use collectionCodes as backend expects code, not ID
+        payload.collectionCodes = [formData.classification.collection];
       }
 
       const response = await api.queryDatasets(payload);

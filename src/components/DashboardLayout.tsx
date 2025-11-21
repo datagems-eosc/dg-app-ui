@@ -127,22 +127,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }),
       );
 
-      const apiCollectionsWithDefaults = apiCollections.map(
-        (collection, index) => ({
+      const extraIds = new Set(extraCollectionsWithDefaults.map((c) => c.id));
+
+      const apiCollectionsWithDefaults = apiCollections
+        .filter((c) => !extraIds.has(c.id))
+        .map((collection, index) => ({
           ...collection,
           isVisible: true,
           order: extraCollectionsWithDefaults.length + index, // Start ordering after custom collections
-        }),
-      );
+        }));
 
       return [...extraCollectionsWithDefaults, ...apiCollectionsWithDefaults];
     }
 
     // When localStorage has settings, use the existing logic but prioritize custom collections
     const customCollections = getSortedAndFilteredCollections(extraCollections);
+    const customIds = new Set(customCollections.map((c) => c.id));
 
-    const sortedApiCollections =
-      getSortedAndFilteredCollections(apiCollections);
+    const sortedApiCollections = getSortedAndFilteredCollections(
+      apiCollections,
+    ).filter((c) => !customIds.has(c.id));
 
     // Combine collections with custom collections first, then API collections
     return [...customCollections, ...sortedApiCollections];

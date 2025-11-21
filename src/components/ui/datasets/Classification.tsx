@@ -204,7 +204,7 @@ export function Classification({
     }
 
     const collectionOptions = apiCollections.map((collection) => ({
-      value: collection.id,
+      value: collection.code || collection.id, // Use code if available, fallback to id
       label: collection.name,
       icon: getCollectionIcon(collection.code),
     }));

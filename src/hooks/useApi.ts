@@ -106,9 +106,16 @@ export function useApi() {
 
   const createUserCollection = useCallback(
     async (name: string): Promise<any> => {
+      // Generate code from name: lowercase, replace spaces with dashes, remove special chars
+      const code = name
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+
       const response = await makeRequest("/collection/persist", {
         method: "POST",
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, code }),
       });
 
       if (!response.ok) {

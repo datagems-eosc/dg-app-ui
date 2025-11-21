@@ -82,7 +82,13 @@ export function CollectionsProvider({
       }
       const data = await api.queryCollections(COLLECTIONS_API_PAYLOAD);
       const items = Array.isArray(data.items) ? data.items : [];
-      setApiCollections(items);
+      // Filter only standard collections (those with datasets field, not userDatasetCollections)
+      const standardCollections = items.filter(
+        (item: any) =>
+          item.datasets !== undefined && !item.userDatasetCollections,
+      );
+      console.log("Standard collections filtered:", standardCollections);
+      setApiCollections(standardCollections);
     } catch (err: unknown) {
       console.error("Failed to fetch collections:", err);
     } finally {
@@ -139,8 +145,12 @@ export function CollectionsProvider({
       const data = await api.queryUserCollections(extraCollectionsPayload);
       console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];
-      console.log("Setting extraCollections to:", items);
-      setExtraCollections(items);
+      // Filter only user collections (those with userDatasetCollections field)
+      const userCollections = items.filter(
+        (item: any) => item.userDatasetCollections !== undefined,
+      );
+      console.log("User collections filtered:", userCollections);
+      setExtraCollections(userCollections);
     } catch (err: unknown) {
       console.error("Failed to fetch extra collections:", err);
     } finally {
@@ -166,10 +176,20 @@ export function CollectionsProvider({
     }, 100);
   }, [refreshAllCollections]);
 
+  // Deduplicate collections by ID
+  const allCollections = [...apiCollections, ...extraCollections];
+  const uniqueCollectionsMap = new Map();
+  allCollections.forEach((c) => {
+    if (!uniqueCollectionsMap.has(c.id)) {
+      uniqueCollectionsMap.set(c.id, c);
+    }
+  });
+  const uniqueCollections = Array.from(uniqueCollectionsMap.values());
+
   return (
     <CollectionsContext.Provider
       value={{
-        collections: [...apiCollections, ...extraCollections],
+        collections: uniqueCollections,
         apiCollections,
         extraCollections,
         isLoadingApiCollections,
