@@ -223,11 +223,13 @@ DG-XX | Your commit message
 ```
 
 **Rules:**
+
 - Must start with task number: `DG-XX` where `XX` is a number
 - Followed by a pipe symbol: `|`
 - Then your commit message (minimum 3 characters)
 
 **Valid examples:**
+
 - `DG-59 | Add user authentication`
 - `DG-123 | Fix dataset loading issue`
 - `DG-1 | Update documentation`
@@ -251,6 +253,10 @@ pnpm run format:check    # Check code formatting
 pnpm run type-check      # Run TypeScript type checking
 pnpm test                # Run test suite
 pnpm run test:coverage   # Run tests with coverage
+
+# Storybook
+pnpm run storybook       # Start Storybook development server
+pnpm run build-storybook # Build Storybook for production
 ```
 
 ## CI/CD
@@ -316,24 +322,28 @@ The port mapping and healthcheck URL will automatically adjust based on the `FRO
 ## Getting Started
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd dg-app-ui
    ```
 
 2. **Install dependencies**
+
    ```bash
    corepack enable
    pnpm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env.local  # If .env.example exists
    # Or create .env.local with required variables (see Keycloak Authentication section)
    ```
 
 4. **Start development server**
+
    ```bash
    pnpm run dev
    ```
@@ -346,14 +356,92 @@ The port mapping and healthcheck URL will automatically adjust based on the `FRO
    git commit -m "DG-1 | test"  # Should pass (if other checks pass)
    ```
 
+## Storybook
+
+This project uses Storybook for component development, documentation, and testing in isolation.
+
+### Getting Started
+
+```bash
+# Start Storybook development server
+pnpm run storybook
+
+# Build Storybook for production deployment
+pnpm run build-storybook
+```
+
+Storybook will be available at `http://localhost:6006` when running the development server.
+
+### Features
+
+- **Component Documentation**: Automatic documentation generation from component props and stories
+- **Accessibility Testing**: Built-in a11y addon for accessibility checks
+- **Visual Testing**: Integration with Chromatic for visual regression testing
+- **Interactive Controls**: Test components with different props and states
+- **Isolated Development**: Develop and test components in isolation from the main application
+
+### Creating Stories
+
+Stories are located next to their components with the `.stories.tsx` extension:
+
+```
+src/components/ui/Button.tsx
+src/components/ui/Button.stories.tsx
+```
+
+Example story structure:
+
+```typescript
+import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { Button } from "./Button";
+
+const meta: Meta<typeof Button> = {
+  title: "UI/Button",
+  component: Button,
+  tags: ["autodocs"],
+};
+
+export default meta;
+type Story = StoryObj<typeof Button>;
+
+export const Primary: Story = {
+  args: {
+    variant: "primary",
+    children: "Button",
+  },
+};
+```
+
+### Available Addons
+
+- **@storybook/addon-docs**: Automatic documentation generation
+- **@storybook/addon-a11y**: Accessibility testing and checks
+- **@storybook/addon-vitest**: Integration with Vitest for component testing
+- **@chromatic-com/storybook**: Visual testing and review workflow
+
+### Configuration
+
+Storybook configuration files are located in `.storybook/`:
+
+- `main.ts` - Main configuration (framework, addons, stories location)
+- `preview.tsx` - Global decorators, parameters, and styling
+
+The configuration includes:
+- Tailwind CSS support
+- Next.js path aliases (`@/` resolves to `src/`)
+- Geist font family setup
+- Light/dark background options
+
 ## Project Structure
 
 - `src/app/` - Next.js App Router pages and API routes
 - `src/components/` - React components
+- `src/components/ui/` - UI component library with Storybook stories
 - `src/contexts/` - React Context providers
 - `src/hooks/` - Custom React hooks
 - `src/lib/` - Utility functions and services
 - `src/types/` - TypeScript type definitions
+- `.storybook/` - Storybook configuration
 - `.github/workflows/` - GitHub Actions workflows
 - `.husky/` - Git hooks configuration
 - `cypress/` - End-to-end tests

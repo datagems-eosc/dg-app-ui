@@ -155,11 +155,11 @@ describe("Feature: Dataset Search Functionality", () => {
       .then((text) => {
         const initialCount = Number.parseInt(text.trim(), 10) || 0;
 
-      // When the user presses Enter without typing anything
-      cy.get("#search").type("{enter}");
+        // When the user presses Enter without typing anything
+        cy.get("#search").type("{enter}");
 
-      // Then the dataset list should remain unfiltered
-      cy.contains("p.text-body-14-regular.text-gray-650", "Showing:")
+        // Then the dataset list should remain unfiltered
+        cy.contains("p.text-body-14-regular.text-gray-650", "Showing:")
           .find("span.text-body-14-medium.text-gray-750")
           .invoke("text")
           .then((afterText) => {
@@ -167,10 +167,10 @@ describe("Feature: Dataset Search Functionality", () => {
             expect(afterCount).to.equal(initialCount);
           });
 
-      // And a tooltip with the validation message should appear
-      cy.contains("Search requires at least 3 characters").should(
-        "be.visible"
-      );
-    });
+        // And a tooltip with the validation message should appear
+        cy.contains("Search requires at least 3 characters").should(
+          "be.visible"
+        );
+      });
   });
 });
