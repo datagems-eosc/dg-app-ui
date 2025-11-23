@@ -129,7 +129,7 @@ describe("Feature: Dashboard Dataset Sorting", () => {
     });
   });
 
-  it.only("Scenario: Sort datasets by size largest to smallest", () => {
+  it("Scenario: Sort datasets by size largest to smallest", () => {
     cy.intercept("POST", "**/dataset/query").as("datasetQuery");
 
     // Given the user opens the sorting dropdown
@@ -141,48 +141,58 @@ describe("Feature: Dashboard Dataset Sorting", () => {
       .find("input[type='radio']")
       .check({ force: true });
 
+    // Wait for API request
     cy.wait("@datasetQuery").then(({ response }) => {
       expect(response?.statusCode).to.eq(200);
-
-      cy.contains("button", "Size (highest first)").should("be.visible");
-
-      cy.get("div.rounded-2xl.border-1")
-        .filter(":visible")
-        .should("have.length.at.least", 1)
-        .then(($cards) => {
-          const sizeRegex = /(\d+[.,]?\d*)\s*(B|KB|MB|GB|TB)/i;
-          const sizes = Array.from($cards)
-            .map((card) => {
-              const text = card.textContent || "";
-              const match = text.match(sizeRegex);
-              return match ? match[0] : "";
-            })
-            .filter(Boolean);
-
-          expect(sizes.length).to.be.at.least(1);
-
-          if (sizes.length < 2) {
-            return;
-          }
-          cy.wait(1000);
-          const sizeInBytes = sizes.map((sizeText) => {
-            const [, value, unit] = sizeText.match(sizeRegex) || [];
-            const numeric = parseFloat(value.replace(",", "."));
-            const unitFactor: Record<string, number> = {
-              B: 1,
-              KB: 1024,
-              MB: 1024 ** 2,
-              GB: 1024 ** 3,
-              TB: 1024 ** 4,
-            };
-            return numeric * (unitFactor[unit.toUpperCase()] || 1);
-          });
-
-          for (let i = 0; i < sizeInBytes.length - 1; i += 1) {
-            expect(sizeInBytes[i]).to.be.at.least(sizeInBytes[i + 1]);
-          }
-        });
     });
+
+    // Wait for button to update
+    cy.contains("button", "Size (highest first)", { timeout: 10000 }).should("be.visible");
+
+    // Wait for cards and verify sorting with retry
+    cy.get("div.rounded-2xl.border-1")
+      .filter(":visible")
+      .should("have.length.at.least", 1)
+      .should(($cards) => {
+        const sizeRegex = /(\d+[.,]?\d*)\s*(B|KB|MB|GB|TB)/i;
+        const sizes = Array.from($cards)
+          .map((card) => {
+            const text = card.textContent || "";
+            const match = text.match(sizeRegex);
+            return match ? match[0] : "";
+          })
+          .filter(Boolean);
+
+        expect(sizes.length).to.be.at.least(1);
+
+        if (sizes.length < 2) {
+          return; // Skip verification if only one dataset
+        }
+
+        const sizeInBytes = sizes.map((sizeText) => {
+          const match = sizeText.match(sizeRegex);
+          if (!match) return 0;
+          const [, value, unit] = match;
+          const numeric = parseFloat(value.replace(",", "."));
+          const unitFactor: Record<string, number> = {
+            B: 1,
+            KB: 1024,
+            MB: 1024 ** 2,
+            GB: 1024 ** 3,
+            TB: 1024 ** 4,
+          };
+          return numeric * (unitFactor[unit.toUpperCase()] || 1);
+        });
+
+        // Verify sorting - this will retry automatically if it fails
+        for (let i = 0; i < sizeInBytes.length - 1; i += 1) {
+          if (sizeInBytes[i] < sizeInBytes[i + 1]) {
+            throw new Error(
+              `Datasets not sorted correctly: position ${i} (${sizes[i]} = ${sizeInBytes[i]} bytes) is smaller than position ${i + 1} (${sizes[i + 1]} = ${sizeInBytes[i + 1]} bytes)`
+            );
+          }
+        }
+      });
   });
 
   it("Scenario: Verify only one sorting criterion can be selected", () => {
