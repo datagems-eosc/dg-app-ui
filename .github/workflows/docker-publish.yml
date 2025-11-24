@@ -35,7 +35,7 @@ jobs:
           images: ${{ env.REGISTRY }}/datagems-eosc/dg-app-ui
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=development,enable={{is_branch}} && {{branch}} == 'development'
+            type=raw,value=development,enable=${{ github.ref == 'refs/heads/development' }}
 
       - name: Build and push Docker image for dg-app-ui
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
