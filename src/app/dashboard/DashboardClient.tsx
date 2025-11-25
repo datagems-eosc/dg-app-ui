@@ -57,25 +57,23 @@ const USER_COLLECTION_API_PAYLOAD = {
       "name",
       "user.id",
       "user.name",
-      "userDatasetCollections.id",
-      "userDatasetCollections.dataset.id",
-      "userDatasetCollections.dataset.code",
-      "userDatasetCollections.dataset.name",
-      "userDatasetCollections.dataset.description",
-      "userDatasetCollections.dataset.license",
-      "userDatasetCollections.dataset.mimeType",
-      "userDatasetCollections.dataset.url",
-      "userDatasetCollections.dataset.version",
-      "userDatasetCollections.dataset.fieldOfScience",
-      "userDatasetCollections.dataset.keywords",
-      "userDatasetCollections.dataset.size",
-      "userDatasetCollections.dataset.datePublished",
-      "userDatasetCollections.dataset.collections.id",
-      "userDatasetCollections.dataset.collections.code",
-      "userDatasetCollections.dataset.collections.name",
-      "userDatasetCollections.dataset.collections.datasetCount",
-      "userDatasetCollections.dataset.permissions.browseDataset",
-      "userDatasetCollections.dataset.permissions.editDataset",
+      "datasets.id",
+      "datasets.code",
+      "datasets.name",
+      "datasets.description",
+      "datasets.license",
+      "datasets.mimeType",
+      "datasets.url",
+      "datasets.version",
+      "datasets.fieldOfScience",
+      "datasets.keywords",
+      "datasets.size",
+      "datasets.datePublished",
+      "datasets.collections.id",
+      "datasets.collections.code",
+      "datasets.collections.name",
+      "datasets.collections.datasetCount",
+      "datasets.permissions",
     ],
   },
   page: {
@@ -182,11 +180,9 @@ function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
   }
 
   const obj = userCollection as Record<string, unknown>;
-  const userDatasetCollections = Array.isArray(obj.userDatasetCollections)
-    ? obj.userDatasetCollections
-    : [];
+  const datasets = Array.isArray(obj.datasets) ? obj.datasets : [];
 
-  return userDatasetCollections.map((item: unknown) => {
+  return datasets.map((item: unknown) => {
     if (typeof item !== "object" || item === null) {
       return {
         id: "",
@@ -203,24 +199,7 @@ function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
       };
     }
 
-    const itemObj = item as Record<string, unknown>;
-    const dataset = itemObj.dataset as Record<string, unknown> | undefined;
-
-    if (!dataset) {
-      return {
-        id: "",
-        title: "Untitled",
-        category: "Math",
-        access: "Restricted",
-        description: "",
-        size: "N/A",
-        lastUpdated: "2024-01-01",
-        tags: [],
-        collections: [],
-        keywords: undefined,
-        fieldsOfScience: undefined,
-      };
-    }
+    const dataset = item as Record<string, unknown>;
 
     // Extract all available dataset fields
     const collections = Array.isArray(dataset.collections)
@@ -343,7 +322,7 @@ export default function DashboardClient() {
       console.log("Fetching favorites collection with token:", api.hasToken);
       const favoritesPayload = {
         project: {
-          fields: ["id", "name", "userDatasetCollections.dataset.id"],
+          fields: ["id", "name", "datasets.id"],
         },
         page: {
           Offset: 0,
@@ -385,24 +364,18 @@ export default function DashboardClient() {
         ),
       );
 
-      if (
-        favoritesCollection &&
-        "userDatasetCollections" in favoritesCollection
-      ) {
-        const userDatasetCollections = Array.isArray(
-          favoritesCollection.userDatasetCollections,
-        )
-          ? favoritesCollection.userDatasetCollections
+      if (favoritesCollection && "datasets" in favoritesCollection) {
+        const datasets = Array.isArray(favoritesCollection.datasets)
+          ? favoritesCollection.datasets
           : [];
 
-        const datasetIds = userDatasetCollections
-          .map((item: any) => {
+        const datasetIds = datasets
+          .map((dataset: any) => {
             if (
-              typeof item === "object" &&
-              item !== null &&
-              "dataset" in item
+              typeof dataset === "object" &&
+              dataset !== null &&
+              "id" in dataset
             ) {
-              const dataset = item.dataset as Record<string, unknown>;
               return typeof dataset.id === "string" ? dataset.id : null;
             }
             return null;
@@ -415,7 +388,7 @@ export default function DashboardClient() {
         setHasFetchedFavorites(true);
         console.log("Setting favorites collection ID:", favoritesCollection.id);
       } else if (favoritesCollection) {
-        // Favorites collection exists but is empty (no userDatasetCollections property)
+        // Favorites collection exists but is empty (no datasets property)
         console.log("Favorites collection exists but is empty");
         setFavoriteDatasetIds([]);
         setFavoritesCollectionId(favoritesCollection.id as string);
@@ -433,7 +406,7 @@ export default function DashboardClient() {
       setFavoritesCollectionId("");
       setHasFetchedFavorites(true);
     }
-  }, [api.hasToken]);
+  }, [api.hasToken, api.queryUserCollections]);
 
   /**
    * Add dataset to favorites collection
@@ -457,16 +430,18 @@ export default function DashboardClient() {
 
         await api.addDatasetToUserCollection(favoritesCollectionId, datasetId);
 
-        console.log("Successfully added dataset to favorites, refreshing...");
+        console.log(
+          "Successfully added dataset to favorites, updating local state...",
+        );
 
-        // Refresh favorites collection to update the UI
-        await fetchFavoritesCollection();
+        // Update local state instead of refetching
+        setFavoriteDatasetIds((prev) => [...prev, datasetId]);
       } catch (err: unknown) {
         console.error("Failed to add dataset to favorites:", err);
         throw err;
       }
     },
-    [api.hasToken, favoritesCollectionId, fetchFavoritesCollection],
+    [api.hasToken, api.addDatasetToUserCollection, favoritesCollectionId],
   );
 
   /**
@@ -498,11 +473,11 @@ export default function DashboardClient() {
         );
 
         console.log(
-          "Successfully removed dataset from favorites, refreshing...",
+          "Successfully removed dataset from favorites, updating local state...",
         );
 
-        // Refresh favorites collection to update the UI
-        await fetchFavoritesCollection();
+        // Update local state instead of refetching
+        setFavoriteDatasetIds((prev) => prev.filter((id) => id !== datasetId));
 
         // If we're currently viewing the favorites collection, remove the dataset from the local state
         if (
@@ -523,8 +498,8 @@ export default function DashboardClient() {
     },
     [
       api.hasToken,
+      api.removeDatasetFromUserCollection,
       favoritesCollectionId,
-      fetchFavoritesCollection,
       selectedCollection,
       isCustomCollection,
     ],
@@ -768,22 +743,22 @@ export default function DashboardClient() {
 
           if (items.length > 0) {
             const collection = items[0];
-            const userDatasetCollections = Array.isArray(
-              collection.userDatasetCollections,
-            )
-              ? collection.userDatasetCollections
+            const datasets = Array.isArray(collection.datasets)
+              ? collection.datasets
               : [];
 
             // Extract dataset IDs from the collection
-            const datasetIds = userDatasetCollections
-              .map((item: unknown) => {
+            const datasetIds = datasets
+              .map((dataset: unknown) => {
                 if (
-                  typeof item === "object" &&
-                  item !== null &&
-                  "dataset" in item
+                  typeof dataset === "object" &&
+                  dataset !== null &&
+                  "id" in dataset
                 ) {
-                  const dataset = item.dataset as Record<string, unknown>;
-                  return typeof dataset.id === "string" ? dataset.id : null;
+                  return typeof (dataset as Record<string, unknown>).id ===
+                    "string"
+                    ? (dataset as Record<string, unknown>).id
+                    : null;
                 }
                 return null;
               })
@@ -1095,15 +1070,15 @@ export default function DashboardClient() {
     }
   }, [selectedCollection]);
 
-  // Fetch favorites collection when token is available
+  // Fetch favorites collection when token is available (only once)
   useEffect(() => {
-    if (api.hasToken) {
+    if (api.hasToken && !hasFetchedFavorites) {
       console.log("Token available, fetching favorites collection...");
       fetchFavoritesCollection();
     } else {
-      console.log("No access token available");
+      console.log("No access token available or already fetched");
     }
-  }, [api.hasToken, fetchFavoritesCollection]);
+  }, [api.hasToken, hasFetchedFavorites, fetchFavoritesCollection]);
 
   // On non-chat pages, ensure chat selection is cleared in localStorage
   useEffect(() => {

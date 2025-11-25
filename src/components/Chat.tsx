@@ -447,17 +447,17 @@ export default function Chat({
           const matchingCollection = allCollections.find((collection) => {
             let collectionDatasetIds: string[] = [];
 
-            // Handle custom collections with userDatasetCollections array
+            // Handle custom collections with datasets array
             if (
-              "userDatasetCollections" in collection &&
-              collection.userDatasetCollections &&
-              Array.isArray(collection.userDatasetCollections) &&
-              collection.userDatasetCollections.length > 0
+              "datasets" in collection &&
+              collection.datasets &&
+              Array.isArray(collection.datasets) &&
+              collection.datasets.length > 0
             ) {
               const apiCollection = collection as ApiCollection;
               collectionDatasetIds =
-                apiCollection.userDatasetCollections
-                  ?.map((item) => item.dataset?.id)
+                apiCollection.datasets
+                  ?.map((dataset) => dataset.id)
                   .filter((id): id is string => !!id) || [];
             }
             // Handle API collections with datasets array
@@ -897,21 +897,8 @@ export default function Chat({
     if (collection) {
       let datasetIds: string[] = [];
 
-      // Check if collection has userDatasetCollections array (custom collections from API)
-      if (
-        "userDatasetCollections" in collection &&
-        collection.userDatasetCollections &&
-        Array.isArray(collection.userDatasetCollections) &&
-        collection.userDatasetCollections.length > 0
-      ) {
-        const apiCollection = collection as ApiCollection;
-        datasetIds =
-          apiCollection.userDatasetCollections
-            ?.map((item) => item.dataset?.id)
-            .filter((id): id is string => !!id) || [];
-      }
       // Check if collection has datasets array (API collections)
-      else if (
+      if (
         "datasets" in collection &&
         collection.datasets &&
         collection.datasets.length > 0
@@ -934,17 +921,14 @@ export default function Chat({
           if (dataset) {
             namesMap[id] = dataset.title;
           } else {
-            // Try to find name from collection's userDatasetCollections
-            if (
-              "userDatasetCollections" in collection &&
-              collection.userDatasetCollections
-            ) {
+            // Try to find name from collection's datasets
+            if ("datasets" in collection && collection.datasets) {
               const apiCollection = collection as ApiCollection;
-              const userDataset = apiCollection.userDatasetCollections?.find(
-                (item) => item.dataset?.id === id,
+              const datasetItem = apiCollection.datasets?.find(
+                (item) => item.id === id,
               );
-              if (userDataset?.dataset?.name) {
-                namesMap[id] = userDataset.dataset.name;
+              if (datasetItem?.name) {
+                namesMap[id] = datasetItem.name;
               } else {
                 namesMap[id] = `${collection.name} Dataset`;
               }

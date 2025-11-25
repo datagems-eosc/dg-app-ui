@@ -88,7 +88,7 @@ export function useApi() {
 
   const queryUserCollections = useCallback(
     async (payload: any): Promise<any> => {
-      const response = await makeRequest("/user/collection/me/query", {
+      const response = await makeRequest("/collection/query", {
         method: "POST",
         body: JSON.stringify(payload),
       });
@@ -107,11 +107,17 @@ export function useApi() {
 
   const createUserCollection = useCallback(
     async (name: string): Promise<any> => {
+      // Generate code from name (lowercase, replace spaces with dashes)
+      const code = name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+
       const response = await makeRequest(
-        "/user/collection/me/persist?f=id&f=name&f=user.id&f=user.name&f=userDatasetCollections.id&f=userDatasetCollections.dataset.Id&f=userDatasetCollections.dataset.name",
+        "/collection/persist?f=id&f=name&f=code&f=datasets.id&f=datasets.name",
         {
           method: "POST",
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({ name, code }),
         },
       );
 
@@ -128,7 +134,7 @@ export function useApi() {
   const addDatasetToUserCollection = useCallback(
     async (collectionId: string, datasetId: string): Promise<any> => {
       const response = await makeRequest(
-        `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id&f=UserDatasetCollections.id&f=UserDatasetCollections.dataset.id&f=name&f=user.id&f=user.name&f=UserDatasetCollections.dataset.name`,
+        `/collection/${collectionId}/dataset/${datasetId}?f=id&f=name&f=datasets.id&f=datasets.name`,
         {
           method: "POST",
         },
@@ -149,7 +155,7 @@ export function useApi() {
   const removeDatasetFromUserCollection = useCallback(
     async (collectionId: string, datasetId: string): Promise<any> => {
       const response = await makeRequest(
-        `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
+        `/collection/${collectionId}/dataset/${datasetId}?f=id`,
         {
           method: "DELETE",
         },
@@ -169,7 +175,7 @@ export function useApi() {
 
   const deleteUserCollection = useCallback(
     async (collectionId: string): Promise<any> => {
-      const response = await makeRequest(`/user/collection/${collectionId}`, {
+      const response = await makeRequest(`/collection/${collectionId}`, {
         method: "DELETE",
       });
 
