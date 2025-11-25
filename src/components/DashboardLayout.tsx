@@ -135,7 +135,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }),
       );
 
-      // Deduplicate by ID
       const byId = new Map();
       [...extraCollectionsWithDefaults, ...apiCollectionsWithDefaults].forEach(
         (collection) => {
@@ -154,7 +153,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const sortedApiCollections =
       getSortedAndFilteredCollections(apiCollections);
 
-    // Combine collections with custom collections first, then API collections, and deduplicate
     const byId = new Map();
     [...customCollections, ...sortedApiCollections].forEach((collection) => {
       if (collection.id && !byId.has(collection.id)) {

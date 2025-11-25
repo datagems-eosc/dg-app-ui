@@ -2,25 +2,19 @@
 
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
+import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
 
-/**
- * Custom hook for API access with automatic token management
- * Centralizes all API calls and provides consistent error handling
- */
 export function useApi() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken;
   const baseUrl = useMemo(() => getApiBaseUrl(), []);
 
-  /**
-   * Make an authenticated API request
-   */
   const makeRequest = useCallback(
     async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
       if (!token) {
-        throw new Error("No authentication token available");
+        throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
       }
 
       const url = `${baseUrl}/gw/api${endpoint}`;
@@ -47,9 +41,6 @@ export function useApi() {
     [token, baseUrl],
   );
 
-  /**
-   * Dataset API methods
-   */
   const queryDatasets = useCallback(
     async (payload: any): Promise<any> => {
       logApiRequest("queryDatasets", {
@@ -68,7 +59,9 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logApiError("queryDatasets", errorData);
-        throw new Error(errorData.error || "Failed to fetch datasets");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_DATASETS_FAILED,
+        );
       }
 
       const result = await response.json();
@@ -81,9 +74,6 @@ export function useApi() {
     [makeRequest],
   );
 
-  /**
-   * Collection API methods
-   */
   const queryCollections = useCallback(
     async (payload: any): Promise<any> => {
       logApiRequest("queryCollections", {
@@ -102,7 +92,9 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logApiError("queryCollections", errorData);
-        throw new Error(errorData.error || "Failed to fetch collections");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_COLLECTIONS_FAILED,
+        );
       }
 
       const result = await response.json();
@@ -133,7 +125,9 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logApiError("queryUserCollections", errorData);
-        throw new Error(errorData.error || "Failed to fetch user collections");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_COLLECTIONS_FAILED,
+        );
       }
 
       const res = await response.json();
@@ -148,7 +142,6 @@ export function useApi() {
 
   const createUserCollection = useCallback(
     async (name: string): Promise<any> => {
-      // Generate code from name (lowercase, replace spaces with dashes)
       const code = name
         .toLowerCase()
         .replace(/\s+/g, "-")
@@ -174,7 +167,9 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logApiError("createUserCollection", errorData);
-        throw new Error(errorData.error || "Failed to create collection");
+        throw new Error(
+          errorData.error || ApiErrorMessage.CREATE_COLLECTION_FAILED,
+        );
       }
 
       const result = await response.json();
@@ -209,7 +204,7 @@ export function useApi() {
           datasetId,
         });
         throw new Error(
-          errorData.error || "Failed to add dataset to collection",
+          errorData.error || ApiErrorMessage.ADD_DATASET_TO_COLLECTION_FAILED,
         );
       }
 
@@ -245,7 +240,8 @@ export function useApi() {
           datasetId,
         });
         throw new Error(
-          errorData.error || "Failed to remove dataset from collection",
+          errorData.error ||
+            ApiErrorMessage.REMOVE_DATASET_FROM_COLLECTION_FAILED,
         );
       }
 
@@ -276,7 +272,9 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logApiError("deleteCollection", errorData, { collectionId });
-        throw new Error(errorData.error || "Failed to delete collection");
+        throw new Error(
+          errorData.error || ApiErrorMessage.DELETE_COLLECTION_FAILED,
+        );
       }
 
       logApiResponse("deleteCollection", { collectionId });
@@ -285,9 +283,6 @@ export function useApi() {
     [makeRequest],
   );
 
-  /**
-   * Search API methods
-   */
   const searchInDataExplore = useCallback(
     async (payload: any): Promise<any> => {
       const response = await makeRequest("/search/in-data-explore", {
@@ -297,7 +292,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to search in data");
+        throw new Error(
+          errorData.error || ApiErrorMessage.SEARCH_IN_DATA_FAILED,
+        );
       }
 
       return response.json();
@@ -314,7 +311,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to search cross dataset");
+        throw new Error(
+          errorData.error || ApiErrorMessage.SEARCH_CROSS_DATASET_FAILED,
+        );
       }
 
       return response.json();
@@ -322,9 +321,6 @@ export function useApi() {
     [makeRequest],
   );
 
-  /**
-   * Conversation API methods
-   */
   const getConversation = useCallback(
     async (id: string, queryParams: string): Promise<any> => {
       const response = await makeRequest(`/conversation/${id}${queryParams}`, {
@@ -333,7 +329,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch conversation");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_CONVERSATION_FAILED,
+        );
       }
 
       return response.json();
@@ -350,7 +348,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch conversations");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_CONVERSATIONS_FAILED,
+        );
       }
 
       return response.json();
@@ -370,7 +370,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to persist conversation");
+        throw new Error(
+          errorData.error || ApiErrorMessage.PERSIST_CONVERSATION_FAILED,
+        );
       }
 
       return response.json();
@@ -391,7 +393,7 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.error || "Failed to persist conversation deep",
+          errorData.error || ApiErrorMessage.PERSIST_CONVERSATION_DEEP_FAILED,
         );
       }
 
@@ -409,7 +411,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch messages");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_MESSAGES_FAILED,
+        );
       }
 
       return response.json();
@@ -436,7 +440,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to update conversation");
+        throw new Error(
+          errorData.error || ApiErrorMessage.UPDATE_CONVERSATION_FAILED,
+        );
       }
 
       return response.json();
@@ -452,7 +458,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to delete conversation");
+        throw new Error(
+          errorData.error || ApiErrorMessage.DELETE_CONVERSATION_FAILED,
+        );
       }
 
       return {};
@@ -460,9 +468,6 @@ export function useApi() {
     [makeRequest],
   );
 
-  /**
-   * Vocabulary API methods
-   */
   const getFieldsOfScience = useCallback(async (): Promise<any> => {
     const response = await makeRequest("/vocabulary/fields-of-science", {
       method: "GET",
@@ -470,7 +475,9 @@ export function useApi() {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch fields of science");
+      throw new Error(
+        errorData.error || ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
+      );
     }
 
     return response.json();
@@ -483,15 +490,12 @@ export function useApi() {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch licenses");
+      throw new Error(errorData.error || ApiErrorMessage.FETCH_LICENSES_FAILED);
     }
 
     return response.json();
   }, [makeRequest]);
 
-  /**
-   * User settings API methods
-   */
   const getUserSettings = useCallback(
     async (settingsKey: string): Promise<any> => {
       const returnFields = ["id", "key", "value", "eTag"];
@@ -509,7 +513,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch user settings");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_SETTINGS_FAILED,
+        );
       }
 
       return response.json();
@@ -532,7 +538,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to save user settings");
+        throw new Error(
+          errorData.error || ApiErrorMessage.SAVE_USER_SETTINGS_FAILED,
+        );
       }
 
       return response.json();
@@ -541,26 +549,17 @@ export function useApi() {
   );
 
   return {
-    // Token info
     hasToken: !!token,
     token,
-
-    // Dataset methods
     queryDatasets,
-
-    // Collection methods
     queryCollections,
     queryUserCollections,
     createUserCollection,
     addDatasetToUserCollection,
     removeDatasetFromUserCollection,
     deleteUserCollection,
-
-    // Search methods
     searchInDataExplore,
     searchCrossDataset,
-
-    // Conversation methods
     getConversation,
     queryConversations,
     persistConversation,
@@ -568,12 +567,8 @@ export function useApi() {
     queryMessages,
     updateConversation,
     deleteConversation,
-
-    // Vocabulary methods
     getFieldsOfScience,
     getLicenses,
-
-    // User settings methods
     getUserSettings,
     saveUserSettings,
   };

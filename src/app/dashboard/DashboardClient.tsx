@@ -105,7 +105,7 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
       description: "",
       size: "N/A",
       lastUpdated: "2024-01-01",
-      tags: [], // Provide empty array for tags
+      tags: [],
       collections: [],
       license: undefined,
       mimeType: undefined,
@@ -132,7 +132,6 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
         )
     : [];
 
-  // Handle fieldsOfScience - could be string or array
   let fieldOfScience: string[] | undefined;
   if (obj.fieldOfScience) {
     if (Array.isArray(obj.fieldOfScience)) {
@@ -182,7 +181,6 @@ function _mapUserCollectionToDatasets(userCollection: unknown): DatasetPlus[] {
   const obj = userCollection as Record<string, unknown>;
   const datasets = Array.isArray(obj.datasets) ? obj.datasets : [];
 
-  // Use Map for deduplication by ID
   const byId = new Map<string, DatasetPlus>();
 
   datasets.forEach((item: unknown) => {
@@ -193,12 +191,10 @@ function _mapUserCollectionToDatasets(userCollection: unknown): DatasetPlus[] {
     const dataset = item as Record<string, unknown>;
     const id = String(dataset.id ?? "");
 
-    // Skip empty IDs and duplicates
     if (!id || byId.has(id)) {
       return;
     }
 
-    // Extract all available dataset fields
     const collections = Array.isArray(dataset.collections)
       ? dataset.collections
           .map((c: unknown) => {
@@ -271,7 +267,6 @@ export default function DashboardClient() {
     fieldsOfScience: [],
     license: [],
   });
-  // Collections & actions (parity with /browse)
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -340,7 +335,6 @@ export default function DashboardClient() {
       const items = Array.isArray(data.items) ? data.items : [];
       console.log("Items from response:", items);
 
-      // Find the "Favorites" collection
       const favoritesCollection = items.find(
         (item: any) =>
           typeof item === "object" &&
@@ -387,7 +381,6 @@ export default function DashboardClient() {
         setHasFetchedFavorites(true);
         console.log("Setting favorites collection ID:", favoritesCollection.id);
       } else if (favoritesCollection) {
-        // Favorites collection exists but is empty (no datasets property)
         console.log("Favorites collection exists but is empty");
         setFavoriteDatasetIds([]);
         setFavoritesCollectionId(favoritesCollection.id as string);
@@ -429,11 +422,6 @@ export default function DashboardClient() {
 
         await api.addDatasetToUserCollection(favoritesCollectionId, datasetId);
 
-        console.log(
-          "Successfully added dataset to favorites, updating local state...",
-        );
-
-        // Update local state instead of refetching
         setFavoriteDatasetIds((prev) => [...prev, datasetId]);
       } catch (err: unknown) {
         console.error("Failed to add dataset to favorites:", err);
@@ -475,10 +463,8 @@ export default function DashboardClient() {
           "Successfully removed dataset from favorites, updating local state...",
         );
 
-        // Update local state instead of refetching
         setFavoriteDatasetIds((prev) => prev.filter((id) => id !== datasetId));
 
-        // If we're currently viewing the favorites collection, remove the dataset from the local state
         if (
           selectedCollection === favoritesCollectionId &&
           isCustomCollection
@@ -520,14 +506,12 @@ export default function DashboardClient() {
           return;
         }
 
-        // Smart Search flow: use cross-dataset search like in Chat.tsx
         if (
           !selectedCollection &&
           isSmartSearchEnabled &&
           searchTerm.trim().length >= 3
         ) {
           try {
-            // 1) Create a lightweight conversation to attach the search to
             const persistPayload = { name: searchTerm };
             const persistData = await api.persistConversation(
               persistPayload,
@@ -539,7 +523,6 @@ export default function DashboardClient() {
               throw new Error("No conversation ID returned from server.");
             }
 
-            // 2) Run cross-dataset search
             const crossDatasetPayload = {
               conversationOptions: {
                 conversationId: conversationIdFromPersist,
@@ -587,7 +570,6 @@ export default function DashboardClient() {
 
             const results = Array.isArray(data.result) ? data.result : [];
 
-            // Map directly from cross-dataset results and deduplicate by dataset.id
             const byId = new Map<string, DatasetPlus>();
             for (const item of results) {
               const ds = (item as any)?.dataset || {};
@@ -598,12 +580,9 @@ export default function DashboardClient() {
                   ? item.maxSimilarity
                   : undefined;
 
-              // Normalize raw hits (unknown[]) into the expected typed shape:
-              // { number: number; text: string; similarity: number; }[]
               const rawHits = Array.isArray((item as any).hits)
                 ? (item as any).hits
                 : [];
-              // only keep the first 3 hits
               const topHits = rawHits.slice(0, 3);
               const hits = topHits.map((h: any, idx: number) => {
                 const text =
@@ -626,7 +605,6 @@ export default function DashboardClient() {
 
               if (!id || byId.has(id)) continue;
 
-              // Determine category based on fieldOfScience
               let category:
                 | "Weather"
                 | "Math"
@@ -725,13 +703,10 @@ export default function DashboardClient() {
             return;
           } catch (smartErr: any) {
             console.error("Smart search failed, falling back:", smartErr);
-            // Fall through to default logic below
           }
         }
 
-        // Check if we should fetch from user collection endpoint
         if (selectedCollection && isCustomCollection) {
-          // Fetch from user collection endpoint to get dataset IDs
           const payload = {
             ...USER_COLLECTION_API_PAYLOAD,
             ids: [selectedCollection],
@@ -746,7 +721,6 @@ export default function DashboardClient() {
               ? collection.datasets
               : [];
 
-            // Extract dataset IDs from the collection
             const datasetIds = datasets
               .map((dataset: unknown) => {
                 if (
@@ -765,7 +739,6 @@ export default function DashboardClient() {
 
             if (datasetIds.length > 0) {
               try {
-                // Fetch detailed dataset information using the IDs
                 const datasetPayload = {
                   project: {
                     fields: [
@@ -807,18 +780,15 @@ export default function DashboardClient() {
                   ? datasetData.items
                   : [];
 
-                // Map the detailed dataset data to our Dataset interface and deduplicate
                 const byId = new Map<string, DatasetPlus>();
 
                 datasets.forEach((apiDataset: any) => {
                   const id = String(apiDataset.id ?? "");
 
-                  // Skip empty IDs and duplicates
                   if (!id || byId.has(id)) {
                     return;
                   }
 
-                  // Determine category based on fieldOfScience or other indicators
                   let category:
                     | "Weather"
                     | "Math"
@@ -894,19 +864,6 @@ export default function DashboardClient() {
                 });
 
                 const uniqueDatasets = Array.from(byId.values());
-                console.log(
-                  "Custom collection - Unique datasets count:",
-                  uniqueDatasets.length,
-                  "Original count:",
-                  datasets.length,
-                );
-                if (datasets.length !== uniqueDatasets.length) {
-                  console.warn("Found duplicate datasets in API response!", {
-                    original: datasets.length,
-                    unique: uniqueDatasets.length,
-                    duplicates: datasets.length - uniqueDatasets.length,
-                  });
-                }
                 setAllDatasets(uniqueDatasets);
               } catch (error) {
                 console.error("Failed to fetch dataset details:", error);
@@ -923,10 +880,8 @@ export default function DashboardClient() {
           return;
         }
 
-        // Regular dataset fetching logic
         let payload: any = { ...API_PAYLOAD };
 
-        // Set order.items based on sortBy
         let orderField = "name";
         let orderDir = "+";
         if (sortBy.startsWith("name")) orderField = "name";
@@ -936,7 +891,6 @@ export default function DashboardClient() {
         if (sortBy.endsWith("desc")) orderDir = "-";
         payload.Order = { Items: [orderDir + orderField] };
 
-        // Add search term if >= 3 characters
         if (searchTerm.length >= 3) {
           payload = {
             ...payload,
@@ -944,10 +898,8 @@ export default function DashboardClient() {
           };
         }
 
-        // Convert frontend filters to backend format
         const backendFilters = convertToBackendFilters(filters);
 
-        // Add backend filters to payload
         if (backendFilters.license && backendFilters.license.length > 0) {
           payload.license = backendFilters.license.join(",");
         }
@@ -965,7 +917,6 @@ export default function DashboardClient() {
           payload.publishedRange = backendFilters.publishedRange;
         }
         if (backendFilters.sizeRange) {
-          // Only include properties that are defined and greater than 0
           const sizeRange: any = {};
           if (
             backendFilters.sizeRange.start !== undefined &&
@@ -980,7 +931,6 @@ export default function DashboardClient() {
             sizeRange.end = backendFilters.sizeRange.end;
           }
 
-          // Only add sizeRange to payload if it has at least one property
           if (Object.keys(sizeRange).length > 0) {
             payload.sizeRange = sizeRange;
           }
@@ -1011,16 +961,13 @@ export default function DashboardClient() {
     isSmartSearchEnabled,
   ]);
 
-  // Filter datasets when selectedCollection changes (frontend filtering for collection)
   useEffect(() => {
     let datasetsToSet: DatasetPlus[] = [];
 
     if (selectedCollection && allDatasets.length > 0) {
-      // For custom collections, the data is already filtered by the API
       if (isCustomCollection) {
         datasetsToSet = allDatasets;
       } else {
-        // For regular collections, filter by collection ID
         datasetsToSet = allDatasets.filter(
           (
             dataset: Dataset & {
@@ -1037,7 +984,6 @@ export default function DashboardClient() {
       datasetsToSet = allDatasets;
     }
 
-    // Deduplicate by ID to prevent React key warnings
     const byId = new Map<string, DatasetPlus>();
     datasetsToSet.forEach((dataset) => {
       if (dataset.id && !byId.has(dataset.id)) {
@@ -1046,14 +992,6 @@ export default function DashboardClient() {
     });
 
     const uniqueFiltered = Array.from(byId.values());
-    if (datasetsToSet.length !== uniqueFiltered.length) {
-      console.warn("Removed duplicate datasets from filteredDatasets", {
-        original: datasetsToSet.length,
-        unique: uniqueFiltered.length,
-        duplicates: datasetsToSet.length - uniqueFiltered.length,
-      });
-    }
-
     setFilteredDatasets(uniqueFiltered);
   }, [selectedCollection, allDatasets, isCustomCollection]);
 
@@ -1078,12 +1016,10 @@ export default function DashboardClient() {
     setFilters(newFilters);
   }, []);
 
-  // Mount flag for safe localStorage access
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Debug: Log Browse props
   useEffect(() => {
     console.log("Browse props:", {
       favoriteDatasetIds,
@@ -1092,20 +1028,17 @@ export default function DashboardClient() {
     });
   }, [favoriteDatasetIds, favoritesCollectionId, handleAddToFavorites]);
 
-  // Debug: Log session info
   useEffect(() => {
     console.log("Session info:", {
       hasToken: api.hasToken,
     });
   }, [api.hasToken]);
 
-  // Reset search input and submitted value on route changes
   useEffect(() => {
     setPendingSearchTerm("");
     setSearchTerm("");
   }, [pathname]);
 
-  // Also reset search when switching to a specific collection via query param
   useEffect(() => {
     if (selectedCollection) {
       setPendingSearchTerm("");
@@ -1113,7 +1046,6 @@ export default function DashboardClient() {
     }
   }, [selectedCollection]);
 
-  // Fetch favorites collection when token is available (only once)
   useEffect(() => {
     if (api.hasToken && !hasFetchedFavorites) {
       console.log("Token available, fetching favorites collection...");
@@ -1123,14 +1055,12 @@ export default function DashboardClient() {
     }
   }, [api.hasToken, hasFetchedFavorites, fetchFavoritesCollection]);
 
-  // On non-chat pages, ensure chat selection is cleared in localStorage
   useEffect(() => {
     if (isMounted) {
       localStorage.removeItem("chatSelectedDatasets");
     }
   }, [isMounted]);
 
-  // Selected panel controls
   const handleCloseSidebar = useCallback(() => {
     setShowSelectedPanel(false);
   }, []);
@@ -1139,7 +1069,6 @@ export default function DashboardClient() {
     setShowSelectedPanel(true);
   }, []);
 
-  // Chat navigation with selected datasets
   const handleChatWithData = useCallback(() => {
     if (isMounted) {
       localStorage.setItem(
@@ -1150,7 +1079,6 @@ export default function DashboardClient() {
     router.push(getNavigationUrl("/chat"));
   }, [router, isMounted, selectedDatasets]);
 
-  // Create collection from selected datasets
   const handleAddToCollection = useCallback(() => {
     if (selectedDatasets.length === 0) {
       alert("Please select some datasets first");

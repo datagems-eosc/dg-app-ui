@@ -447,7 +447,6 @@ export default function Chat({
           const matchingCollection = allCollections.find((collection) => {
             let collectionDatasetIds: string[] = [];
 
-            // Handle custom collections with datasets array
             if (
               "datasets" in collection &&
               collection.datasets &&
@@ -921,7 +920,6 @@ export default function Chat({
           if (dataset) {
             namesMap[id] = dataset.title;
           } else {
-            // Try to find name from collection's datasets
             if ("datasets" in collection && collection.datasets) {
               const apiCollection = collection as ApiCollection;
               const datasetItem = apiCollection.datasets?.find(
