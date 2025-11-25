@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
+import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
 
 /**
@@ -51,17 +52,31 @@ export function useApi() {
    */
   const queryDatasets = useCallback(
     async (payload: any): Promise<any> => {
+      logApiRequest("queryDatasets", {
+        endpoint: "/dataset/query",
+        payload,
+      });
+
       const response = await makeRequest("/dataset/query", {
         method: "POST",
         body: JSON.stringify(payload),
+        headers: {
+          "X-Request-Type": "queryDatasets",
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("queryDatasets", errorData);
         throw new Error(errorData.error || "Failed to fetch datasets");
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("queryDatasets", {
+        count: result.count,
+        itemsCount: result.items?.length,
+      });
+      return result;
     },
     [makeRequest],
   );
@@ -71,35 +86,61 @@ export function useApi() {
    */
   const queryCollections = useCallback(
     async (payload: any): Promise<any> => {
+      logApiRequest("queryCollections", {
+        endpoint: "/collection/query",
+        payload,
+      });
+
       const response = await makeRequest("/collection/query", {
         method: "POST",
         body: JSON.stringify(payload),
+        headers: {
+          "X-Request-Type": "queryCollections",
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("queryCollections", errorData);
         throw new Error(errorData.error || "Failed to fetch collections");
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("queryCollections", {
+        count: result.count,
+        itemsCount: result.items?.length,
+      });
+      return result;
     },
     [makeRequest],
   );
 
   const queryUserCollections = useCallback(
     async (payload: any): Promise<any> => {
+      logApiRequest("queryUserCollections", {
+        endpoint: "/collection/query",
+        payload,
+      });
+
       const response = await makeRequest("/collection/query", {
         method: "POST",
         body: JSON.stringify(payload),
+        headers: {
+          "X-Request-Type": "queryUserCollections",
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("queryUserCollections", errorData);
         throw new Error(errorData.error || "Failed to fetch user collections");
       }
 
       const res = await response.json();
-      console.log("queryUserCollections req", payload, "res", res);
+      logApiResponse("queryUserCollections", {
+        count: res.count,
+        itemsCount: res.items?.length,
+      });
       return res;
     },
     [makeRequest],
@@ -113,77 +154,132 @@ export function useApi() {
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9-]/g, "");
 
+      logApiRequest("createUserCollection", {
+        endpoint: "/collection/persist",
+        name,
+        code,
+      });
+
       const response = await makeRequest(
         "/collection/persist?f=id&f=name&f=code&f=datasets.id&f=datasets.name",
         {
           method: "POST",
           body: JSON.stringify({ name, code }),
+          headers: {
+            "X-Request-Type": "createCollection",
+          },
         },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("createUserCollection", errorData);
         throw new Error(errorData.error || "Failed to create collection");
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("createUserCollection", { collectionId: result.id });
+      return result;
     },
     [makeRequest],
   );
 
   const addDatasetToUserCollection = useCallback(
     async (collectionId: string, datasetId: string): Promise<any> => {
+      logApiRequest("addDatasetToCollection", {
+        endpoint: `/collection/${collectionId}/dataset/${datasetId}`,
+        collectionId,
+        datasetId,
+      });
+
       const response = await makeRequest(
         `/collection/${collectionId}/dataset/${datasetId}?f=id&f=name&f=datasets.id&f=datasets.name`,
         {
           method: "POST",
+          headers: {
+            "X-Request-Type": "addDatasetToCollection",
+          },
         },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("addDatasetToCollection", errorData, {
+          collectionId,
+          datasetId,
+        });
         throw new Error(
           errorData.error || "Failed to add dataset to collection",
         );
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("addDatasetToCollection", { collectionId, datasetId });
+      return result;
     },
     [makeRequest],
   );
 
   const removeDatasetFromUserCollection = useCallback(
     async (collectionId: string, datasetId: string): Promise<any> => {
+      logApiRequest("removeDatasetFromCollection", {
+        endpoint: `/collection/${collectionId}/dataset/${datasetId}`,
+        collectionId,
+        datasetId,
+      });
+
       const response = await makeRequest(
         `/collection/${collectionId}/dataset/${datasetId}?f=id`,
         {
           method: "DELETE",
+          headers: {
+            "X-Request-Type": "removeDatasetFromCollection",
+          },
         },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("removeDatasetFromCollection", errorData, {
+          collectionId,
+          datasetId,
+        });
         throw new Error(
           errorData.error || "Failed to remove dataset from collection",
         );
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("removeDatasetFromCollection", {
+        collectionId,
+        datasetId,
+      });
+      return result;
     },
     [makeRequest],
   );
 
   const deleteUserCollection = useCallback(
     async (collectionId: string): Promise<any> => {
+      logApiRequest("deleteCollection", {
+        endpoint: `/collection/${collectionId}`,
+        collectionId,
+      });
+
       const response = await makeRequest(`/collection/${collectionId}`, {
         method: "DELETE",
+        headers: {
+          "X-Request-Type": "deleteCollection",
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("deleteCollection", errorData, { collectionId });
         throw new Error(errorData.error || "Failed to delete collection");
       }
 
+      logApiResponse("deleteCollection", { collectionId });
       return {};
     },
     [makeRequest],

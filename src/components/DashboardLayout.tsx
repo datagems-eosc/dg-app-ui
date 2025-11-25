@@ -135,7 +135,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }),
       );
 
-      return [...extraCollectionsWithDefaults, ...apiCollectionsWithDefaults];
+      // Deduplicate by ID
+      const byId = new Map();
+      [...extraCollectionsWithDefaults, ...apiCollectionsWithDefaults].forEach(
+        (collection) => {
+          if (collection.id && !byId.has(collection.id)) {
+            byId.set(collection.id, collection);
+          }
+        },
+      );
+
+      return Array.from(byId.values());
     }
 
     // When localStorage has settings, use the existing logic but prioritize custom collections
@@ -144,8 +154,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const sortedApiCollections =
       getSortedAndFilteredCollections(apiCollections);
 
-    // Combine collections with custom collections first, then API collections
-    return [...customCollections, ...sortedApiCollections];
+    // Combine collections with custom collections first, then API collections, and deduplicate
+    const byId = new Map();
+    [...customCollections, ...sortedApiCollections].forEach((collection) => {
+      if (collection.id && !byId.has(collection.id)) {
+        byId.set(collection.id, collection);
+      }
+    });
+
+    return Array.from(byId.values());
   };
 
   // Handle mobile detection and sidebar state

@@ -174,7 +174,7 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
   };
 }
 
-function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
+function _mapUserCollectionToDatasets(userCollection: unknown): DatasetPlus[] {
   if (typeof userCollection !== "object" || userCollection === null) {
     return [];
   }
@@ -182,24 +182,21 @@ function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
   const obj = userCollection as Record<string, unknown>;
   const datasets = Array.isArray(obj.datasets) ? obj.datasets : [];
 
-  return datasets.map((item: unknown) => {
+  // Use Map for deduplication by ID
+  const byId = new Map<string, DatasetPlus>();
+
+  datasets.forEach((item: unknown) => {
     if (typeof item !== "object" || item === null) {
-      return {
-        id: "",
-        title: "Untitled",
-        category: "Math",
-        access: "Restricted",
-        description: "",
-        size: "N/A",
-        lastUpdated: "2024-01-01",
-        tags: [],
-        collections: [],
-        keywords: undefined,
-        fieldsOfScience: undefined,
-      };
+      return;
     }
 
     const dataset = item as Record<string, unknown>;
+    const id = String(dataset.id ?? "");
+
+    // Skip empty IDs and duplicates
+    if (!id || byId.has(id)) {
+      return;
+    }
 
     // Extract all available dataset fields
     const collections = Array.isArray(dataset.collections)
@@ -226,8 +223,8 @@ function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
       ? "Open Access"
       : "Restricted";
 
-    return {
-      id: String(dataset.id ?? ""),
+    byId.set(id, {
+      id,
       title: String(dataset.name ?? dataset.code ?? "Untitled"),
       category: "Math", // Default fallback
       access,
@@ -239,15 +236,17 @@ function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
       keywords: Array.isArray(dataset.keywords)
         ? dataset.keywords.map(String)
         : undefined,
-      fieldsOfScience: Array.isArray(dataset.fieldOfScience)
+      fieldOfScience: Array.isArray(dataset.fieldOfScience)
         ? dataset.fieldOfScience.map(String)
         : undefined,
       license: String(dataset.license ?? ""),
       mimeType: String(dataset.mimeType ?? ""),
       url: String(dataset.url ?? ""),
       version: String(dataset.version ?? ""),
-    };
+    });
   });
+
+  return Array.from(byId.values());
 }
 
 export default function DashboardClient() {
@@ -808,8 +807,17 @@ export default function DashboardClient() {
                   ? datasetData.items
                   : [];
 
-                // Map the detailed dataset data to our Dataset interface
-                const mappedDatasets = datasets.map((apiDataset: any) => {
+                // Map the detailed dataset data to our Dataset interface and deduplicate
+                const byId = new Map<string, DatasetPlus>();
+
+                datasets.forEach((apiDataset: any) => {
+                  const id = String(apiDataset.id ?? "");
+
+                  // Skip empty IDs and duplicates
+                  if (!id || byId.has(id)) {
+                    return;
+                  }
+
                   // Determine category based on fieldOfScience or other indicators
                   let category:
                     | "Weather"
@@ -859,8 +867,8 @@ export default function DashboardClient() {
                     }
                   }
 
-                  return {
-                    id: String(apiDataset.id ?? ""),
+                  byId.set(id, {
+                    id,
                     title: String(apiDataset.name ?? "Untitled"),
                     category,
                     access: "Open Access", // Custom collections always show Open Access
@@ -882,9 +890,24 @@ export default function DashboardClient() {
                       ? apiDataset.fieldOfScience
                       : undefined,
                     url: apiDataset.url,
-                  };
+                  });
                 });
-                setAllDatasets(mappedDatasets);
+
+                const uniqueDatasets = Array.from(byId.values());
+                console.log(
+                  "Custom collection - Unique datasets count:",
+                  uniqueDatasets.length,
+                  "Original count:",
+                  datasets.length,
+                );
+                if (datasets.length !== uniqueDatasets.length) {
+                  console.warn("Found duplicate datasets in API response!", {
+                    original: datasets.length,
+                    unique: uniqueDatasets.length,
+                    duplicates: datasets.length - uniqueDatasets.length,
+                  });
+                }
+                setAllDatasets(uniqueDatasets);
               } catch (error) {
                 console.error("Failed to fetch dataset details:", error);
                 setError("Failed to fetch dataset details. Please try again.");
@@ -990,13 +1013,15 @@ export default function DashboardClient() {
 
   // Filter datasets when selectedCollection changes (frontend filtering for collection)
   useEffect(() => {
+    let datasetsToSet: DatasetPlus[] = [];
+
     if (selectedCollection && allDatasets.length > 0) {
       // For custom collections, the data is already filtered by the API
       if (isCustomCollection) {
-        setFilteredDatasets(allDatasets);
+        datasetsToSet = allDatasets;
       } else {
         // For regular collections, filter by collection ID
-        const filtered = allDatasets.filter(
+        datasetsToSet = allDatasets.filter(
           (
             dataset: Dataset & {
               collections?: { id: string; name: string; code: string }[];
@@ -1007,11 +1032,29 @@ export default function DashboardClient() {
             );
           },
         );
-        setFilteredDatasets(filtered);
       }
     } else {
-      setFilteredDatasets(allDatasets);
+      datasetsToSet = allDatasets;
     }
+
+    // Deduplicate by ID to prevent React key warnings
+    const byId = new Map<string, DatasetPlus>();
+    datasetsToSet.forEach((dataset) => {
+      if (dataset.id && !byId.has(dataset.id)) {
+        byId.set(dataset.id, dataset);
+      }
+    });
+
+    const uniqueFiltered = Array.from(byId.values());
+    if (datasetsToSet.length !== uniqueFiltered.length) {
+      console.warn("Removed duplicate datasets from filteredDatasets", {
+        original: datasetsToSet.length,
+        unique: uniqueFiltered.length,
+        duplicates: datasetsToSet.length - uniqueFiltered.length,
+      });
+    }
+
+    setFilteredDatasets(uniqueFiltered);
   }, [selectedCollection, allDatasets, isCustomCollection]);
 
   const handleSearchTermChange = useCallback((value: string) => {
