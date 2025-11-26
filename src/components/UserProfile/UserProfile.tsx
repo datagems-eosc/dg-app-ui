@@ -1,15 +1,15 @@
 "use client";
 
+import { Toast } from "@ui/Toast";
+import PersonalSettingsSection from "@ui/user/PersonalSettingsSection";
+import PreferencesSection from "@ui/user/PreferencesSection";
+import TabsHeader from "@ui/user/TabsHeader";
+import UserHeader from "@ui/user/UserHeader";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import PersonalSettingsSection from "@/components/ui/user/PersonalSettingsSection";
-import PreferencesSection from "@/components/ui/user/PreferencesSection";
-import TabsHeader from "@/components/ui/user/TabsHeader";
-import UserHeader from "@/components/ui/user/UserHeader";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useUser } from "@/contexts/UserContext";
 import { useApi } from "@/hooks/useApi";
-import { Toast } from "./ui/Toast";
 
 interface UserData {
   id?: string;

@@ -1,11 +1,11 @@
 "use client";
 
+import { Button } from "@ui/Button";
 import { Folder, Plus, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
-import { Button } from "./ui/Button";
 
 interface AddToCollectionModalProps {
   isVisible: boolean;

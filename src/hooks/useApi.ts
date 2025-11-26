@@ -32,6 +32,7 @@ export function useApi() {
       }
 
       headers.Authorization = `Bearer ${token}`;
+      headers.oauth2 = token;
 
       return fetchWithAuth(url, {
         ...options,
@@ -251,6 +252,49 @@ export function useApi() {
         datasetId,
       });
       return result;
+    },
+    [makeRequest],
+  );
+
+  const getCollectionGrants = useCallback(
+    async (collectionId: string): Promise<string[]> => {
+      const response = await makeRequest(
+        `/principal/me/context-grants/collection?id=${collectionId}`,
+        {
+          method: "GET",
+        },
+      );
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      return data.grants || [];
+    },
+    [makeRequest],
+  );
+
+  const grantCollectionPermission = useCallback(
+    async (
+      userId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/collection/${collectionId}/role/${role}`,
+        {
+          method: "POST",
+          headers: {
+            "X-Request-Type": "grantPermission",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to grant permission");
+      }
     },
     [makeRequest],
   );
@@ -557,6 +601,8 @@ export function useApi() {
     createUserCollection,
     addDatasetToUserCollection,
     removeDatasetFromUserCollection,
+    getCollectionGrants,
+    grantCollectionPermission,
     deleteUserCollection,
     searchInDataExplore,
     searchCrossDataset,

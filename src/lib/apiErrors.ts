@@ -20,4 +20,5 @@ export enum ApiErrorMessage {
   FETCH_LICENSES_FAILED = "Failed to fetch licenses",
   FETCH_USER_SETTINGS_FAILED = "Failed to fetch user settings",
   SAVE_USER_SETTINGS_FAILED = "Failed to save user settings",
+  FETCH_GRANTS_FAILED = "Failed to fetch grants",
 }

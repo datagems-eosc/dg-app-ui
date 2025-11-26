@@ -1,7 +1,7 @@
 "use client";
 
+import { Button } from "@ui/Button";
 import { Trash2, X } from "lucide-react";
-import { Button } from "./ui/Button";
 
 interface DeleteCollectionModalProps {
   isVisible: boolean;
@@ -48,10 +48,8 @@ export default function DeleteCollectionModal({
           {/* Message */}
           <div className="text-center mb-6">
             <p className="text-gray-900 font-medium mb-2">
-              Are you sure you want to delete {collectionName}?
-            </p>
-            <p className="text-gray-500 text-sm">
-              This action can&apos;t be undone.
+              This operation will permanently delete the collection. Are you
+              sure?
             </p>
           </div>
 

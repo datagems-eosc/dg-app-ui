@@ -1,8 +1,8 @@
 "use client";
 
-import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
-import { Tooltip } from "@/components/ui/Tooltip";
+import { Avatar } from "@ui/Avatar";
+import { Button } from "@ui/Button";
+import { Tooltip } from "@ui/Tooltip";
 import { Chip } from "../Chip";
 
 type UserData = {

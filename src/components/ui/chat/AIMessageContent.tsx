@@ -1,6 +1,6 @@
 "use client";
 
-import { DataTable } from "@/components/ui/chat/DataTable";
+import { DataTable } from "@ui/chat/DataTable";
 import type { TableData } from "@/types/chat";
 
 interface AIMessageContentProps {
