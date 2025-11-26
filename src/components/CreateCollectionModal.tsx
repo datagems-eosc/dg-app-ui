@@ -292,7 +292,7 @@ export default function CreateCollectionModal({
                         );
                         const itemCount =
                           (collection as any)?.datasetCount ??
-                          (collection as any)?.userDatasetCollections?.length ??
+                          (collection as any)?.datasets?.length ??
                           0;
                         return (
                           <div

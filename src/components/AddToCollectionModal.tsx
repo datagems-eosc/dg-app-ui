@@ -48,11 +48,7 @@ export default function AddToCollectionModal({
     if (!targetCollection) return;
 
     // Check if dataset is already in the collection
-    if (
-      targetCollection.userDatasetCollections?.some(
-        (udc) => udc.id === dataset.id,
-      )
-    ) {
+    if (targetCollection.datasets?.some((ds) => ds.id === dataset.id)) {
       alert(
         `"${dataset.title}" is already in the "${targetCollection.name}" collection.`,
       );
@@ -158,8 +154,7 @@ export default function AddToCollectionModal({
                         </span>
                       </div>
                       <p className="text-descriptions-12-regular text-gray-500 mt-1">
-                        {collection.userDatasetCollections?.length || 0}{" "}
-                        datasets
+                        {collection.datasets?.length || 0} datasets
                       </p>
                     </div>
                   </label>

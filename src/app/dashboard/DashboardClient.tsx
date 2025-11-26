@@ -57,25 +57,23 @@ const USER_COLLECTION_API_PAYLOAD = {
       "name",
       "user.id",
       "user.name",
-      "userDatasetCollections.id",
-      "userDatasetCollections.dataset.id",
-      "userDatasetCollections.dataset.code",
-      "userDatasetCollections.dataset.name",
-      "userDatasetCollections.dataset.description",
-      "userDatasetCollections.dataset.license",
-      "userDatasetCollections.dataset.mimeType",
-      "userDatasetCollections.dataset.url",
-      "userDatasetCollections.dataset.version",
-      "userDatasetCollections.dataset.fieldOfScience",
-      "userDatasetCollections.dataset.keywords",
-      "userDatasetCollections.dataset.size",
-      "userDatasetCollections.dataset.datePublished",
-      "userDatasetCollections.dataset.collections.id",
-      "userDatasetCollections.dataset.collections.code",
-      "userDatasetCollections.dataset.collections.name",
-      "userDatasetCollections.dataset.collections.datasetCount",
-      "userDatasetCollections.dataset.permissions.browseDataset",
-      "userDatasetCollections.dataset.permissions.editDataset",
+      "datasets.id",
+      "datasets.code",
+      "datasets.name",
+      "datasets.description",
+      "datasets.license",
+      "datasets.mimeType",
+      "datasets.url",
+      "datasets.version",
+      "datasets.fieldOfScience",
+      "datasets.keywords",
+      "datasets.size",
+      "datasets.datePublished",
+      "datasets.collections.id",
+      "datasets.collections.code",
+      "datasets.collections.name",
+      "datasets.collections.datasetCount",
+      "datasets.permissions",
     ],
   },
   page: {
@@ -107,7 +105,7 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
       description: "",
       size: "N/A",
       lastUpdated: "2024-01-01",
-      tags: [], // Provide empty array for tags
+      tags: [],
       collections: [],
       license: undefined,
       mimeType: undefined,
@@ -134,7 +132,6 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
         )
     : [];
 
-  // Handle fieldsOfScience - could be string or array
   let fieldOfScience: string[] | undefined;
   if (obj.fieldOfScience) {
     if (Array.isArray(obj.fieldOfScience)) {
@@ -176,53 +173,28 @@ function mapApiDatasetToDataset(api: unknown): Dataset & {
   };
 }
 
-function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
+function _mapUserCollectionToDatasets(userCollection: unknown): DatasetPlus[] {
   if (typeof userCollection !== "object" || userCollection === null) {
     return [];
   }
 
   const obj = userCollection as Record<string, unknown>;
-  const userDatasetCollections = Array.isArray(obj.userDatasetCollections)
-    ? obj.userDatasetCollections
-    : [];
+  const datasets = Array.isArray(obj.datasets) ? obj.datasets : [];
 
-  return userDatasetCollections.map((item: unknown) => {
+  const byId = new Map<string, DatasetPlus>();
+
+  datasets.forEach((item: unknown) => {
     if (typeof item !== "object" || item === null) {
-      return {
-        id: "",
-        title: "Untitled",
-        category: "Math",
-        access: "Restricted",
-        description: "",
-        size: "N/A",
-        lastUpdated: "2024-01-01",
-        tags: [],
-        collections: [],
-        keywords: undefined,
-        fieldsOfScience: undefined,
-      };
+      return;
     }
 
-    const itemObj = item as Record<string, unknown>;
-    const dataset = itemObj.dataset as Record<string, unknown> | undefined;
+    const dataset = item as Record<string, unknown>;
+    const id = String(dataset.id ?? "");
 
-    if (!dataset) {
-      return {
-        id: "",
-        title: "Untitled",
-        category: "Math",
-        access: "Restricted",
-        description: "",
-        size: "N/A",
-        lastUpdated: "2024-01-01",
-        tags: [],
-        collections: [],
-        keywords: undefined,
-        fieldsOfScience: undefined,
-      };
+    if (!id || byId.has(id)) {
+      return;
     }
 
-    // Extract all available dataset fields
     const collections = Array.isArray(dataset.collections)
       ? dataset.collections
           .map((c: unknown) => {
@@ -247,8 +219,8 @@ function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
       ? "Open Access"
       : "Restricted";
 
-    return {
-      id: String(dataset.id ?? ""),
+    byId.set(id, {
+      id,
       title: String(dataset.name ?? dataset.code ?? "Untitled"),
       category: "Math", // Default fallback
       access,
@@ -260,15 +232,17 @@ function _mapUserCollectionToDatasets(userCollection: unknown): Dataset[] {
       keywords: Array.isArray(dataset.keywords)
         ? dataset.keywords.map(String)
         : undefined,
-      fieldsOfScience: Array.isArray(dataset.fieldOfScience)
+      fieldOfScience: Array.isArray(dataset.fieldOfScience)
         ? dataset.fieldOfScience.map(String)
         : undefined,
       license: String(dataset.license ?? ""),
       mimeType: String(dataset.mimeType ?? ""),
       url: String(dataset.url ?? ""),
       version: String(dataset.version ?? ""),
-    };
+    });
   });
+
+  return Array.from(byId.values());
 }
 
 export default function DashboardClient() {
@@ -293,7 +267,6 @@ export default function DashboardClient() {
     fieldsOfScience: [],
     license: [],
   });
-  // Collections & actions (parity with /browse)
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -343,7 +316,7 @@ export default function DashboardClient() {
       console.log("Fetching favorites collection with token:", api.hasToken);
       const favoritesPayload = {
         project: {
-          fields: ["id", "name", "userDatasetCollections.dataset.id"],
+          fields: ["id", "name", "datasets.id"],
         },
         page: {
           Offset: 0,
@@ -362,7 +335,6 @@ export default function DashboardClient() {
       const items = Array.isArray(data.items) ? data.items : [];
       console.log("Items from response:", items);
 
-      // Find the "Favorites" collection
       const favoritesCollection = items.find(
         (item: any) =>
           typeof item === "object" &&
@@ -385,24 +357,18 @@ export default function DashboardClient() {
         ),
       );
 
-      if (
-        favoritesCollection &&
-        "userDatasetCollections" in favoritesCollection
-      ) {
-        const userDatasetCollections = Array.isArray(
-          favoritesCollection.userDatasetCollections,
-        )
-          ? favoritesCollection.userDatasetCollections
+      if (favoritesCollection && "datasets" in favoritesCollection) {
+        const datasets = Array.isArray(favoritesCollection.datasets)
+          ? favoritesCollection.datasets
           : [];
 
-        const datasetIds = userDatasetCollections
-          .map((item: any) => {
+        const datasetIds = datasets
+          .map((dataset: any) => {
             if (
-              typeof item === "object" &&
-              item !== null &&
-              "dataset" in item
+              typeof dataset === "object" &&
+              dataset !== null &&
+              "id" in dataset
             ) {
-              const dataset = item.dataset as Record<string, unknown>;
               return typeof dataset.id === "string" ? dataset.id : null;
             }
             return null;
@@ -415,7 +381,6 @@ export default function DashboardClient() {
         setHasFetchedFavorites(true);
         console.log("Setting favorites collection ID:", favoritesCollection.id);
       } else if (favoritesCollection) {
-        // Favorites collection exists but is empty (no userDatasetCollections property)
         console.log("Favorites collection exists but is empty");
         setFavoriteDatasetIds([]);
         setFavoritesCollectionId(favoritesCollection.id as string);
@@ -433,7 +398,7 @@ export default function DashboardClient() {
       setFavoritesCollectionId("");
       setHasFetchedFavorites(true);
     }
-  }, [api.hasToken]);
+  }, [api.hasToken, api.queryUserCollections]);
 
   /**
    * Add dataset to favorites collection
@@ -457,16 +422,13 @@ export default function DashboardClient() {
 
         await api.addDatasetToUserCollection(favoritesCollectionId, datasetId);
 
-        console.log("Successfully added dataset to favorites, refreshing...");
-
-        // Refresh favorites collection to update the UI
-        await fetchFavoritesCollection();
+        setFavoriteDatasetIds((prev) => [...prev, datasetId]);
       } catch (err: unknown) {
         console.error("Failed to add dataset to favorites:", err);
         throw err;
       }
     },
-    [api.hasToken, favoritesCollectionId, fetchFavoritesCollection],
+    [api.hasToken, api.addDatasetToUserCollection, favoritesCollectionId],
   );
 
   /**
@@ -498,13 +460,11 @@ export default function DashboardClient() {
         );
 
         console.log(
-          "Successfully removed dataset from favorites, refreshing...",
+          "Successfully removed dataset from favorites, updating local state...",
         );
 
-        // Refresh favorites collection to update the UI
-        await fetchFavoritesCollection();
+        setFavoriteDatasetIds((prev) => prev.filter((id) => id !== datasetId));
 
-        // If we're currently viewing the favorites collection, remove the dataset from the local state
         if (
           selectedCollection === favoritesCollectionId &&
           isCustomCollection
@@ -523,8 +483,8 @@ export default function DashboardClient() {
     },
     [
       api.hasToken,
+      api.removeDatasetFromUserCollection,
       favoritesCollectionId,
-      fetchFavoritesCollection,
       selectedCollection,
       isCustomCollection,
     ],
@@ -546,14 +506,12 @@ export default function DashboardClient() {
           return;
         }
 
-        // Smart Search flow: use cross-dataset search like in Chat.tsx
         if (
           !selectedCollection &&
           isSmartSearchEnabled &&
           searchTerm.trim().length >= 3
         ) {
           try {
-            // 1) Create a lightweight conversation to attach the search to
             const persistPayload = { name: searchTerm };
             const persistData = await api.persistConversation(
               persistPayload,
@@ -565,7 +523,6 @@ export default function DashboardClient() {
               throw new Error("No conversation ID returned from server.");
             }
 
-            // 2) Run cross-dataset search
             const crossDatasetPayload = {
               conversationOptions: {
                 conversationId: conversationIdFromPersist,
@@ -613,7 +570,6 @@ export default function DashboardClient() {
 
             const results = Array.isArray(data.result) ? data.result : [];
 
-            // Map directly from cross-dataset results and deduplicate by dataset.id
             const byId = new Map<string, DatasetPlus>();
             for (const item of results) {
               const ds = (item as any)?.dataset || {};
@@ -624,12 +580,9 @@ export default function DashboardClient() {
                   ? item.maxSimilarity
                   : undefined;
 
-              // Normalize raw hits (unknown[]) into the expected typed shape:
-              // { number: number; text: string; similarity: number; }[]
               const rawHits = Array.isArray((item as any).hits)
                 ? (item as any).hits
                 : [];
-              // only keep the first 3 hits
               const topHits = rawHits.slice(0, 3);
               const hits = topHits.map((h: any, idx: number) => {
                 const text =
@@ -652,7 +605,6 @@ export default function DashboardClient() {
 
               if (!id || byId.has(id)) continue;
 
-              // Determine category based on fieldOfScience
               let category:
                 | "Weather"
                 | "Math"
@@ -751,13 +703,10 @@ export default function DashboardClient() {
             return;
           } catch (smartErr: any) {
             console.error("Smart search failed, falling back:", smartErr);
-            // Fall through to default logic below
           }
         }
 
-        // Check if we should fetch from user collection endpoint
         if (selectedCollection && isCustomCollection) {
-          // Fetch from user collection endpoint to get dataset IDs
           const payload = {
             ...USER_COLLECTION_API_PAYLOAD,
             ids: [selectedCollection],
@@ -768,22 +717,21 @@ export default function DashboardClient() {
 
           if (items.length > 0) {
             const collection = items[0];
-            const userDatasetCollections = Array.isArray(
-              collection.userDatasetCollections,
-            )
-              ? collection.userDatasetCollections
+            const datasets = Array.isArray(collection.datasets)
+              ? collection.datasets
               : [];
 
-            // Extract dataset IDs from the collection
-            const datasetIds = userDatasetCollections
-              .map((item: unknown) => {
+            const datasetIds = datasets
+              .map((dataset: unknown) => {
                 if (
-                  typeof item === "object" &&
-                  item !== null &&
-                  "dataset" in item
+                  typeof dataset === "object" &&
+                  dataset !== null &&
+                  "id" in dataset
                 ) {
-                  const dataset = item.dataset as Record<string, unknown>;
-                  return typeof dataset.id === "string" ? dataset.id : null;
+                  return typeof (dataset as Record<string, unknown>).id ===
+                    "string"
+                    ? (dataset as Record<string, unknown>).id
+                    : null;
                 }
                 return null;
               })
@@ -791,7 +739,6 @@ export default function DashboardClient() {
 
             if (datasetIds.length > 0) {
               try {
-                // Fetch detailed dataset information using the IDs
                 const datasetPayload = {
                   project: {
                     fields: [
@@ -833,9 +780,15 @@ export default function DashboardClient() {
                   ? datasetData.items
                   : [];
 
-                // Map the detailed dataset data to our Dataset interface
-                const mappedDatasets = datasets.map((apiDataset: any) => {
-                  // Determine category based on fieldOfScience or other indicators
+                const byId = new Map<string, DatasetPlus>();
+
+                datasets.forEach((apiDataset: any) => {
+                  const id = String(apiDataset.id ?? "");
+
+                  if (!id || byId.has(id)) {
+                    return;
+                  }
+
                   let category:
                     | "Weather"
                     | "Math"
@@ -884,8 +837,8 @@ export default function DashboardClient() {
                     }
                   }
 
-                  return {
-                    id: String(apiDataset.id ?? ""),
+                  byId.set(id, {
+                    id,
                     title: String(apiDataset.name ?? "Untitled"),
                     category,
                     access: "Open Access", // Custom collections always show Open Access
@@ -907,9 +860,11 @@ export default function DashboardClient() {
                       ? apiDataset.fieldOfScience
                       : undefined,
                     url: apiDataset.url,
-                  };
+                  });
                 });
-                setAllDatasets(mappedDatasets);
+
+                const uniqueDatasets = Array.from(byId.values());
+                setAllDatasets(uniqueDatasets);
               } catch (error) {
                 console.error("Failed to fetch dataset details:", error);
                 setError("Failed to fetch dataset details. Please try again.");
@@ -925,10 +880,8 @@ export default function DashboardClient() {
           return;
         }
 
-        // Regular dataset fetching logic
         let payload: any = { ...API_PAYLOAD };
 
-        // Set order.items based on sortBy
         let orderField = "name";
         let orderDir = "+";
         if (sortBy.startsWith("name")) orderField = "name";
@@ -938,7 +891,6 @@ export default function DashboardClient() {
         if (sortBy.endsWith("desc")) orderDir = "-";
         payload.Order = { Items: [orderDir + orderField] };
 
-        // Add search term if >= 3 characters
         if (searchTerm.length >= 3) {
           payload = {
             ...payload,
@@ -946,10 +898,8 @@ export default function DashboardClient() {
           };
         }
 
-        // Convert frontend filters to backend format
         const backendFilters = convertToBackendFilters(filters);
 
-        // Add backend filters to payload
         if (backendFilters.license && backendFilters.license.length > 0) {
           payload.license = backendFilters.license.join(",");
         }
@@ -967,7 +917,6 @@ export default function DashboardClient() {
           payload.publishedRange = backendFilters.publishedRange;
         }
         if (backendFilters.sizeRange) {
-          // Only include properties that are defined and greater than 0
           const sizeRange: any = {};
           if (
             backendFilters.sizeRange.start !== undefined &&
@@ -982,7 +931,6 @@ export default function DashboardClient() {
             sizeRange.end = backendFilters.sizeRange.end;
           }
 
-          // Only add sizeRange to payload if it has at least one property
           if (Object.keys(sizeRange).length > 0) {
             payload.sizeRange = sizeRange;
           }
@@ -1013,15 +961,14 @@ export default function DashboardClient() {
     isSmartSearchEnabled,
   ]);
 
-  // Filter datasets when selectedCollection changes (frontend filtering for collection)
   useEffect(() => {
+    let datasetsToSet: DatasetPlus[] = [];
+
     if (selectedCollection && allDatasets.length > 0) {
-      // For custom collections, the data is already filtered by the API
       if (isCustomCollection) {
-        setFilteredDatasets(allDatasets);
+        datasetsToSet = allDatasets;
       } else {
-        // For regular collections, filter by collection ID
-        const filtered = allDatasets.filter(
+        datasetsToSet = allDatasets.filter(
           (
             dataset: Dataset & {
               collections?: { id: string; name: string; code: string }[];
@@ -1032,11 +979,20 @@ export default function DashboardClient() {
             );
           },
         );
-        setFilteredDatasets(filtered);
       }
     } else {
-      setFilteredDatasets(allDatasets);
+      datasetsToSet = allDatasets;
     }
+
+    const byId = new Map<string, DatasetPlus>();
+    datasetsToSet.forEach((dataset) => {
+      if (dataset.id && !byId.has(dataset.id)) {
+        byId.set(dataset.id, dataset);
+      }
+    });
+
+    const uniqueFiltered = Array.from(byId.values());
+    setFilteredDatasets(uniqueFiltered);
   }, [selectedCollection, allDatasets, isCustomCollection]);
 
   const handleSearchTermChange = useCallback((value: string) => {
@@ -1060,12 +1016,10 @@ export default function DashboardClient() {
     setFilters(newFilters);
   }, []);
 
-  // Mount flag for safe localStorage access
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Debug: Log Browse props
   useEffect(() => {
     console.log("Browse props:", {
       favoriteDatasetIds,
@@ -1074,20 +1028,17 @@ export default function DashboardClient() {
     });
   }, [favoriteDatasetIds, favoritesCollectionId, handleAddToFavorites]);
 
-  // Debug: Log session info
   useEffect(() => {
     console.log("Session info:", {
       hasToken: api.hasToken,
     });
   }, [api.hasToken]);
 
-  // Reset search input and submitted value on route changes
   useEffect(() => {
     setPendingSearchTerm("");
     setSearchTerm("");
   }, [pathname]);
 
-  // Also reset search when switching to a specific collection via query param
   useEffect(() => {
     if (selectedCollection) {
       setPendingSearchTerm("");
@@ -1095,24 +1046,21 @@ export default function DashboardClient() {
     }
   }, [selectedCollection]);
 
-  // Fetch favorites collection when token is available
   useEffect(() => {
-    if (api.hasToken) {
+    if (api.hasToken && !hasFetchedFavorites) {
       console.log("Token available, fetching favorites collection...");
       fetchFavoritesCollection();
     } else {
-      console.log("No access token available");
+      console.log("No access token available or already fetched");
     }
-  }, [api.hasToken, fetchFavoritesCollection]);
+  }, [api.hasToken, hasFetchedFavorites, fetchFavoritesCollection]);
 
-  // On non-chat pages, ensure chat selection is cleared in localStorage
   useEffect(() => {
     if (isMounted) {
       localStorage.removeItem("chatSelectedDatasets");
     }
   }, [isMounted]);
 
-  // Selected panel controls
   const handleCloseSidebar = useCallback(() => {
     setShowSelectedPanel(false);
   }, []);
@@ -1121,7 +1069,6 @@ export default function DashboardClient() {
     setShowSelectedPanel(true);
   }, []);
 
-  // Chat navigation with selected datasets
   const handleChatWithData = useCallback(() => {
     if (isMounted) {
       localStorage.setItem(
@@ -1132,7 +1079,6 @@ export default function DashboardClient() {
     router.push(getNavigationUrl("/chat"));
   }, [router, isMounted, selectedDatasets]);
 
-  // Create collection from selected datasets
   const handleAddToCollection = useCallback(() => {
     if (selectedDatasets.length === 0) {
       alert("Please select some datasets first");

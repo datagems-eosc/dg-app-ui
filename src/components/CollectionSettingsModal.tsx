@@ -179,9 +179,7 @@ export default function CollectionSettingsModal({
           id: collection.id,
           name: collection.name.replace(/ Collection$/i, ""),
           itemCount:
-            collection.datasetCount ||
-            collection.userDatasetCollections?.length ||
-            0,
+            collection.datasetCount || collection.datasets?.length || 0,
           code: collection.code,
           isVisible: saved?.isVisible ?? true,
           order: saved?.order ?? index,

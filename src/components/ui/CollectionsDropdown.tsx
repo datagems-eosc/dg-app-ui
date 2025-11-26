@@ -64,12 +64,8 @@ const CollectionItem = ({
   isCustom = false,
 }: CollectionItemProps) => {
   const getDatasetCount = (collection: Collection | ApiCollection) => {
-    if (
-      isCustom &&
-      "userDatasetCollections" in collection &&
-      collection.userDatasetCollections?.length
-    ) {
-      return collection.userDatasetCollections.length;
+    if (isCustom && "datasets" in collection && collection.datasets?.length) {
+      return collection.datasets.length;
     }
     return collection.datasetCount || collection.datasetIds?.length || 0;
   };
@@ -235,8 +231,7 @@ export function CollectionsDropdown({
 
             {/* Extra Collections (User Collections from API) */}
             {collections.extraCollections.filter(
-              (collection) =>
-                (collection.userDatasetCollections?.length ?? 0) > 0,
+              (collection) => (collection.datasets?.length ?? 0) > 0,
             ).length > 0 && (
               <div className="px-1 pt-2">
                 <div className="text-descriptions-12-medium text-slate-450 uppercase !tracking-wider mb-2 ml-2">
@@ -244,8 +239,7 @@ export function CollectionsDropdown({
                 </div>
                 {collections.extraCollections
                   .filter(
-                    (collection) =>
-                      (collection.userDatasetCollections?.length ?? 0) > 0,
+                    (collection) => (collection.datasets?.length ?? 0) > 0,
                   )
                   .map((collection) => (
                     <CollectionItem
@@ -274,8 +268,7 @@ export function CollectionsDropdown({
               collections.apiCollections.length === 0 &&
               collections.collections.length === 0 &&
               collections.extraCollections.filter(
-                (collection) =>
-                  (collection.userDatasetCollections?.length ?? 0) > 0,
+                (collection) => (collection.datasets?.length ?? 0) > 0,
               ).length === 0 && (
                 <div className="px-3 py-2">
                   <div className="text-center text-gray-400 text-sm py-4">

@@ -1173,9 +1173,9 @@ export default function Browse({
                       : "grid grid-cols-1 gap-4"
                   }
                 >
-                  {filteredDatasets.map((dataset) => (
+                  {filteredDatasets.map((dataset, index) => (
                     <DatasetCard
-                      key={dataset.id}
+                      key={dataset.id || `dataset-${index}`}
                       dataset={dataset}
                       onClick={() => handleDatasetClick(dataset)}
                       isSelected={selectedDataset?.id === dataset.id}
