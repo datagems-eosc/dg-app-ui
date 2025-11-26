@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - development
+      - develop
 
 env:
   REGISTRY: ghcr.io
@@ -35,7 +35,7 @@ jobs:
           images: ${{ env.REGISTRY }}/datagems-eosc/dg-app-ui
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=development,enable=${{ github.ref == 'refs/heads/development' }}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
 
       - name: Build and push Docker image for dg-app-ui
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
