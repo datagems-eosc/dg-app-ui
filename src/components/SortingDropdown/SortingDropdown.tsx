@@ -2,7 +2,7 @@
 
 import { ArrowDownUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Radio } from "./ui/Radio";
+import { Radio } from "../ui/Radio";
 
 interface SortingOption {
   value: string;

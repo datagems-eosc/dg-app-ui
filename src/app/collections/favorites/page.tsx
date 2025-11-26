@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Browse from "@/components/Browse";
-import CreateCollectionModal from "@/components/CreateCollectionModal";
-import DashboardLayout from "@/components/DashboardLayout";
+import Browse from "@/components/Browse/Browse";
+import CreateCollectionModal from "@/components/CreateCollectionModal/CreateCollectionModal";
+import DashboardLayout from "@/components/DashboardLayout/DashboardLayout";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useDataset } from "@/contexts/DatasetContext";
 import { mockDatasets } from "@/data/dataset";

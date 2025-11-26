@@ -8,10 +8,10 @@ import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
-import { Button } from "./ui/Button";
-import { Checkbox } from "./ui/Checkbox";
-import { Input } from "./ui/Input";
-import { Toast } from "./ui/Toast";
+import { Button } from "../ui/Button";
+import { Checkbox } from "../ui/Checkbox";
+import { Input } from "../ui/Input";
+import { Toast } from "../ui/Toast";
 
 interface CreateCollectionModalProps {
   isVisible: boolean;
@@ -292,7 +292,7 @@ export default function CreateCollectionModal({
                         );
                         const itemCount =
                           (collection as any)?.datasetCount ??
-                          (collection as any)?.userDatasetCollections?.length ??
+                          (collection as any)?.datasets?.length ??
                           0;
                         return (
                           <div

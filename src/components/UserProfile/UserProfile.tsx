@@ -9,7 +9,7 @@ import UserHeader from "@/components/ui/user/UserHeader";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useUser } from "@/contexts/UserContext";
 import { useApi } from "@/hooks/useApi";
-import { Toast } from "./ui/Toast";
+import { Toast } from "../ui/Toast";
 
 interface UserData {
   id?: string;

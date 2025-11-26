@@ -14,10 +14,10 @@ import {
 } from "lucide-react";
 import type { Dataset } from "@/data/dataset";
 import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
-import { Button } from "./ui/Button";
-import { Chip } from "./ui/Chip";
-import MetadataItem from "./ui/datasets/MetadataItem";
-import FormattedText from "./ui/FormattedText";
+import { Button } from "../ui/Button";
+import { Chip } from "../ui/Chip";
+import MetadataItem from "../ui/datasets/MetadataItem";
+import FormattedText from "../ui/FormattedText";
 
 interface DatasetDetailsPanelProps {
   dataset: Dataset | null;

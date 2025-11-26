@@ -3,10 +3,10 @@
 import { Edit3, Plus, Save, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import AddDatasetsModal from "@/components/AddDatasetsModal";
-import Browse from "@/components/Browse";
-import CreateCollectionModal from "@/components/CreateCollectionModal";
-import DashboardLayout from "@/components/DashboardLayout";
+import AddDatasetsModal from "@/components/AddDatasetsModal/AddDatasetsModal";
+import Browse from "@/components/Browse/Browse";
+import CreateCollectionModal from "@/components/CreateCollectionModal/CreateCollectionModal";
+import DashboardLayout from "@/components/DashboardLayout/DashboardLayout";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { mockDatasets } from "@/data/dataset";
 import { getNavigationUrl } from "@/lib/utils";

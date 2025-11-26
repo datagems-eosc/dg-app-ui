@@ -9,13 +9,13 @@ import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection, Collection } from "@/types/collection";
-import AddDatasetsModal from "./AddDatasetsModal";
-import SelectedDatasetsPanel from "./SelectedDatasetsPanel";
-import { Button } from "./ui/Button";
-import ChatInitialView from "./ui/chat/ChatInitialView";
-import { ChatInput } from "./ui/chat/ChatInput";
-import ChatMessages from "./ui/chat/ChatMessages";
-import DatasetChangeWarning from "./ui/chat/DatasetChangeWarning";
+import AddDatasetsModal from "../AddDatasetsModal/AddDatasetsModal";
+import SelectedDatasetsPanel from "../SelectedDatasetsPanel/SelectedDatasetsPanel";
+import { Button } from "../ui/Button";
+import ChatInitialView from "../ui/chat/ChatInitialView";
+import { ChatInput } from "../ui/chat/ChatInput";
+import ChatMessages from "../ui/chat/ChatMessages";
+import DatasetChangeWarning from "../ui/chat/DatasetChangeWarning";
 
 interface Message {
   id: string;
@@ -447,17 +447,16 @@ export default function Chat({
           const matchingCollection = allCollections.find((collection) => {
             let collectionDatasetIds: string[] = [];
 
-            // Handle custom collections with userDatasetCollections array
             if (
-              "userDatasetCollections" in collection &&
-              collection.userDatasetCollections &&
-              Array.isArray(collection.userDatasetCollections) &&
-              collection.userDatasetCollections.length > 0
+              "datasets" in collection &&
+              collection.datasets &&
+              Array.isArray(collection.datasets) &&
+              collection.datasets.length > 0
             ) {
               const apiCollection = collection as ApiCollection;
               collectionDatasetIds =
-                apiCollection.userDatasetCollections
-                  ?.map((item) => item.dataset?.id)
+                apiCollection.datasets
+                  ?.map((dataset) => dataset.id)
                   .filter((id): id is string => !!id) || [];
             }
             // Handle API collections with datasets array
@@ -897,21 +896,8 @@ export default function Chat({
     if (collection) {
       let datasetIds: string[] = [];
 
-      // Check if collection has userDatasetCollections array (custom collections from API)
-      if (
-        "userDatasetCollections" in collection &&
-        collection.userDatasetCollections &&
-        Array.isArray(collection.userDatasetCollections) &&
-        collection.userDatasetCollections.length > 0
-      ) {
-        const apiCollection = collection as ApiCollection;
-        datasetIds =
-          apiCollection.userDatasetCollections
-            ?.map((item) => item.dataset?.id)
-            .filter((id): id is string => !!id) || [];
-      }
       // Check if collection has datasets array (API collections)
-      else if (
+      if (
         "datasets" in collection &&
         collection.datasets &&
         collection.datasets.length > 0
@@ -934,17 +920,13 @@ export default function Chat({
           if (dataset) {
             namesMap[id] = dataset.title;
           } else {
-            // Try to find name from collection's userDatasetCollections
-            if (
-              "userDatasetCollections" in collection &&
-              collection.userDatasetCollections
-            ) {
+            if ("datasets" in collection && collection.datasets) {
               const apiCollection = collection as ApiCollection;
-              const userDataset = apiCollection.userDatasetCollections?.find(
-                (item) => item.dataset?.id === id,
+              const datasetItem = apiCollection.datasets?.find(
+                (item) => item.id === id,
               );
-              if (userDataset?.dataset?.name) {
-                namesMap[id] = userDataset.dataset.name;
+              if (datasetItem?.name) {
+                namesMap[id] = datasetItem.name;
               } else {
                 namesMap[id] = `${collection.name} Dataset`;
               }

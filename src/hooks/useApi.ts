@@ -2,24 +2,19 @@
 
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
+import { ApiErrorMessage } from "@/lib/apiErrors";
+import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
 
-/**
- * Custom hook for API access with automatic token management
- * Centralizes all API calls and provides consistent error handling
- */
 export function useApi() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken;
   const baseUrl = useMemo(() => getApiBaseUrl(), []);
 
-  /**
-   * Make an authenticated API request
-   */
   const makeRequest = useCallback(
     async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
       if (!token) {
-        throw new Error("No authentication token available");
+        throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
       }
 
       const url = `${baseUrl}/gw/api${endpoint}`;
@@ -47,60 +42,100 @@ export function useApi() {
     [token, baseUrl],
   );
 
-  /**
-   * Dataset API methods
-   */
   const queryDatasets = useCallback(
     async (payload: any): Promise<any> => {
+      logApiRequest("queryDatasets", {
+        endpoint: "/dataset/query",
+        payload,
+      });
+
       const response = await makeRequest("/dataset/query", {
         method: "POST",
         body: JSON.stringify(payload),
+        headers: {
+          "X-Request-Type": "queryDatasets",
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch datasets");
+        logApiError("queryDatasets", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_DATASETS_FAILED,
+        );
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("queryDatasets", {
+        count: result.count,
+        itemsCount: result.items?.length,
+      });
+      return result;
     },
     [makeRequest],
   );
 
-  /**
-   * Collection API methods
-   */
   const queryCollections = useCallback(
     async (payload: any): Promise<any> => {
+      logApiRequest("queryCollections", {
+        endpoint: "/collection/query",
+        payload,
+      });
+
       const response = await makeRequest("/collection/query", {
         method: "POST",
         body: JSON.stringify(payload),
+        headers: {
+          "X-Request-Type": "queryCollections",
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch collections");
+        logApiError("queryCollections", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_COLLECTIONS_FAILED,
+        );
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("queryCollections", {
+        count: result.count,
+        itemsCount: result.items?.length,
+      });
+      return result;
     },
     [makeRequest],
   );
 
   const queryUserCollections = useCallback(
     async (payload: any): Promise<any> => {
-      const response = await makeRequest("/user/collection/me/query", {
+      logApiRequest("queryUserCollections", {
+        endpoint: "/collection/query",
+        payload,
+      });
+
+      const response = await makeRequest("/collection/query", {
         method: "POST",
         body: JSON.stringify(payload),
+        headers: {
+          "X-Request-Type": "queryUserCollections",
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch user collections");
+        logApiError("queryUserCollections", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_COLLECTIONS_FAILED,
+        );
       }
 
       const res = await response.json();
-      console.log("queryUserCollections req", payload, "res", res);
+      logApiResponse("queryUserCollections", {
+        count: res.count,
+        itemsCount: res.items?.length,
+      });
       return res;
     },
     [makeRequest],
@@ -108,62 +143,115 @@ export function useApi() {
 
   const createUserCollection = useCallback(
     async (name: string): Promise<any> => {
+      const code = name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+
+      logApiRequest("createUserCollection", {
+        endpoint: "/collection/persist",
+        name,
+        code,
+      });
+
       const response = await makeRequest(
-        "/user/collection/me/persist?f=id&f=name&f=user.id&f=user.name&f=userDatasetCollections.id&f=userDatasetCollections.dataset.Id&f=userDatasetCollections.dataset.name",
+        "/collection/persist?f=id&f=name&f=code&f=datasets.id&f=datasets.name",
         {
           method: "POST",
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({ name, code }),
+          headers: {
+            "X-Request-Type": "createCollection",
+          },
         },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to create collection");
+        logApiError("createUserCollection", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.CREATE_COLLECTION_FAILED,
+        );
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("createUserCollection", { collectionId: result.id });
+      return result;
     },
     [makeRequest],
   );
 
   const addDatasetToUserCollection = useCallback(
     async (collectionId: string, datasetId: string): Promise<any> => {
+      logApiRequest("addDatasetToCollection", {
+        endpoint: `/collection/${collectionId}/dataset/${datasetId}`,
+        collectionId,
+        datasetId,
+      });
+
       const response = await makeRequest(
-        `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id&f=UserDatasetCollections.id&f=UserDatasetCollections.dataset.id&f=name&f=user.id&f=user.name&f=UserDatasetCollections.dataset.name`,
+        `/collection/${collectionId}/dataset/${datasetId}?f=id&f=name&f=datasets.id&f=datasets.name`,
         {
           method: "POST",
+          headers: {
+            "X-Request-Type": "addDatasetToCollection",
+          },
         },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("addDatasetToCollection", errorData, {
+          collectionId,
+          datasetId,
+        });
         throw new Error(
-          errorData.error || "Failed to add dataset to collection",
+          errorData.error || ApiErrorMessage.ADD_DATASET_TO_COLLECTION_FAILED,
         );
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("addDatasetToCollection", { collectionId, datasetId });
+      return result;
     },
     [makeRequest],
   );
 
   const removeDatasetFromUserCollection = useCallback(
     async (collectionId: string, datasetId: string): Promise<any> => {
+      logApiRequest("removeDatasetFromCollection", {
+        endpoint: `/collection/${collectionId}/dataset/${datasetId}`,
+        collectionId,
+        datasetId,
+      });
+
       const response = await makeRequest(
-        `/user/collection/dataset/me/${collectionId}/${datasetId}?f=id`,
+        `/collection/${collectionId}/dataset/${datasetId}?f=id`,
         {
           method: "DELETE",
+          headers: {
+            "X-Request-Type": "removeDatasetFromCollection",
+          },
         },
       );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        logApiError("removeDatasetFromCollection", errorData, {
+          collectionId,
+          datasetId,
+        });
         throw new Error(
-          errorData.error || "Failed to remove dataset from collection",
+          errorData.error ||
+            ApiErrorMessage.REMOVE_DATASET_FROM_COLLECTION_FAILED,
         );
       }
 
-      return response.json();
+      const result = await response.json();
+      logApiResponse("removeDatasetFromCollection", {
+        collectionId,
+        datasetId,
+      });
+      return result;
     },
     [makeRequest],
   );
@@ -187,25 +275,58 @@ export function useApi() {
     [makeRequest],
   );
 
+  const grantCollectionPermission = useCallback(
+    async (
+      userId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/collection/${collectionId}/role/${role}`,
+        {
+          method: "POST",
+          headers: {
+            "X-Request-Type": "grantPermission",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to grant permission");
+      }
+    },
+    [makeRequest],
+  );
+
   const deleteUserCollection = useCallback(
     async (collectionId: string): Promise<any> => {
+      logApiRequest("deleteCollection", {
+        endpoint: `/collection/${collectionId}`,
+        collectionId,
+      });
+
       const response = await makeRequest(`/collection/${collectionId}`, {
         method: "DELETE",
+        headers: {
+          "X-Request-Type": "deleteCollection",
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to delete collection");
+        logApiError("deleteCollection", errorData, { collectionId });
+        throw new Error(
+          errorData.error || ApiErrorMessage.DELETE_COLLECTION_FAILED,
+        );
       }
 
+      logApiResponse("deleteCollection", { collectionId });
       return {};
     },
     [makeRequest],
   );
 
-  /**
-   * Search API methods
-   */
   const searchInDataExplore = useCallback(
     async (payload: any): Promise<any> => {
       const response = await makeRequest("/search/in-data-explore", {
@@ -215,7 +336,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to search in data");
+        throw new Error(
+          errorData.error || ApiErrorMessage.SEARCH_IN_DATA_FAILED,
+        );
       }
 
       return response.json();
@@ -232,7 +355,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to search cross dataset");
+        throw new Error(
+          errorData.error || ApiErrorMessage.SEARCH_CROSS_DATASET_FAILED,
+        );
       }
 
       return response.json();
@@ -240,9 +365,6 @@ export function useApi() {
     [makeRequest],
   );
 
-  /**
-   * Conversation API methods
-   */
   const getConversation = useCallback(
     async (id: string, queryParams: string): Promise<any> => {
       const response = await makeRequest(`/conversation/${id}${queryParams}`, {
@@ -251,7 +373,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch conversation");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_CONVERSATION_FAILED,
+        );
       }
 
       return response.json();
@@ -268,7 +392,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch conversations");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_CONVERSATIONS_FAILED,
+        );
       }
 
       return response.json();
@@ -288,7 +414,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to persist conversation");
+        throw new Error(
+          errorData.error || ApiErrorMessage.PERSIST_CONVERSATION_FAILED,
+        );
       }
 
       return response.json();
@@ -309,7 +437,7 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.error || "Failed to persist conversation deep",
+          errorData.error || ApiErrorMessage.PERSIST_CONVERSATION_DEEP_FAILED,
         );
       }
 
@@ -327,7 +455,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch messages");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_MESSAGES_FAILED,
+        );
       }
 
       return response.json();
@@ -354,7 +484,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to update conversation");
+        throw new Error(
+          errorData.error || ApiErrorMessage.UPDATE_CONVERSATION_FAILED,
+        );
       }
 
       return response.json();
@@ -370,7 +502,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to delete conversation");
+        throw new Error(
+          errorData.error || ApiErrorMessage.DELETE_CONVERSATION_FAILED,
+        );
       }
 
       return {};
@@ -378,9 +512,6 @@ export function useApi() {
     [makeRequest],
   );
 
-  /**
-   * Vocabulary API methods
-   */
   const getFieldsOfScience = useCallback(async (): Promise<any> => {
     const response = await makeRequest("/vocabulary/fields-of-science", {
       method: "GET",
@@ -388,7 +519,9 @@ export function useApi() {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch fields of science");
+      throw new Error(
+        errorData.error || ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
+      );
     }
 
     return response.json();
@@ -401,15 +534,12 @@ export function useApi() {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch licenses");
+      throw new Error(errorData.error || ApiErrorMessage.FETCH_LICENSES_FAILED);
     }
 
     return response.json();
   }, [makeRequest]);
 
-  /**
-   * User settings API methods
-   */
   const getUserSettings = useCallback(
     async (settingsKey: string): Promise<any> => {
       const returnFields = ["id", "key", "value", "eTag"];
@@ -427,7 +557,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch user settings");
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_SETTINGS_FAILED,
+        );
       }
 
       return response.json();
@@ -450,7 +582,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to save user settings");
+        throw new Error(
+          errorData.error || ApiErrorMessage.SAVE_USER_SETTINGS_FAILED,
+        );
       }
 
       return response.json();
@@ -459,27 +593,19 @@ export function useApi() {
   );
 
   return {
-    // Token info
     hasToken: !!token,
     token,
-
-    // Dataset methods
     queryDatasets,
-
-    // Collection methods
     queryCollections,
     queryUserCollections,
     createUserCollection,
     addDatasetToUserCollection,
     removeDatasetFromUserCollection,
     getCollectionGrants,
+    grantCollectionPermission,
     deleteUserCollection,
-
-    // Search methods
     searchInDataExplore,
     searchCrossDataset,
-
-    // Conversation methods
     getConversation,
     queryConversations,
     persistConversation,
@@ -487,12 +613,8 @@ export function useApi() {
     queryMessages,
     updateConversation,
     deleteConversation,
-
-    // Vocabulary methods
     getFieldsOfScience,
     getLicenses,
-
-    // User settings methods
     getUserSettings,
     saveUserSettings,
   };

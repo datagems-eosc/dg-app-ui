@@ -20,10 +20,10 @@ import type {
   DatasetWithCollections,
 } from "@/data/dataset";
 import { formatFileSize } from "@/lib/utils";
-import { Button } from "./ui/Button";
-import { Chip } from "./ui/Chip";
-import FormattedText from "./ui/FormattedText";
-import { SmartSearchMatchItem } from "./ui/SmartSearchMatchItem";
+import { Button } from "../ui/Button";
+import { Chip } from "../ui/Chip";
+import FormattedText from "../ui/FormattedText";
+import { SmartSearchMatchItem } from "../ui/SmartSearchMatchItem";
 
 interface Collection {
   id?: string;

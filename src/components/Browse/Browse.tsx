@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "./ui/Search";
+import { Search } from "../ui/Search";
 
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
@@ -23,7 +23,7 @@ import { useRouter } from "next/navigation";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
-import { logger } from "@/lib/logger";
+import logger, { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import {
   type FilterState,
@@ -31,22 +31,22 @@ import {
   processFieldsOfScience,
   processLicenses,
   SORTING_OPTIONS,
-} from "../config/filterOptions";
-import CreateCollectionModal from "./CreateCollectionModal";
-import DatasetCard from "./DatasetCard";
-import DatasetDetailsPanel from "./DatasetDetailsPanel";
-import DeleteCollectionModal from "./DeleteCollectionModal";
-import FilterModal from "./FilterModal";
-import SelectedDatasetsPanel from "./SelectedDatasetsPanel";
-import SortingDropdown from "./SortingDropdown";
-import { Button } from "./ui/Button";
-import { Chip } from "./ui/Chip";
-import DatasetCardSkeleton from "./ui/datasets/DatasetCardSkeleton";
-import type { HierarchicalCategory } from "./ui/HierarchicalDropdown";
-import SmartSearch from "./ui/SmartSearch";
-import SmartSearchExamples from "./ui/SmartSearchExamples";
-import Switch from "./ui/Switch";
-import { Toast } from "./ui/Toast";
+} from "../../config/filterOptions";
+import CreateCollectionModal from "../CreateCollectionModal/CreateCollectionModal";
+import DatasetCard from "../DatasetCard/DatasetCard";
+import DatasetDetailsPanel from "../DatasetDetailsPanel/DatasetDetailsPanel";
+import DeleteCollectionModal from "../DeleteCollectionModal/DeleteCollectionModal";
+import FilterModal from "../FilterModal/FilterModal";
+import SelectedDatasetsPanel from "../SelectedDatasetsPanel/SelectedDatasetsPanel";
+import SortingDropdown from "../SortingDropdown/SortingDropdown";
+import { Button } from "../ui/Button";
+import { Chip } from "../ui/Chip";
+import DatasetCardSkeleton from "../ui/datasets/DatasetCardSkeleton";
+import type { HierarchicalCategory } from "../ui/HierarchicalDropdown";
+import SmartSearch from "../ui/SmartSearch";
+import SmartSearchExamples from "../ui/SmartSearchExamples";
+import Switch from "../ui/Switch";
+import { Toast } from "../ui/Toast";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -325,7 +325,7 @@ export default function Browse({
         router.push(getNavigationUrl("/dashboard"));
       }, 500);
     } catch (error) {
-      logger.error({ error, collectionId }, "Failed to delete collection");
+      logApiError("deleteCollection", error, { collectionId });
       setToastType("error");
       setToastMessage("Failed to delete collection. Please try again.");
       setShowToast(true);
@@ -354,18 +354,15 @@ export default function Browse({
     }
 
     try {
-      // TODO: Implement API call to update collection name
-      console.log("Saving new collection name:", editingName.trim());
-
-      // Call parent handler to update the collection name
       if (onCollectionNameUpdate) {
         onCollectionNameUpdate(editingName.trim());
       }
-
-      // Close edit mode
       setIsEditingName(false);
     } catch (error) {
-      console.error("Failed to update collection name:", error);
+      logger.error(
+        { error, collectionName: editingName.trim() },
+        "Failed to update collection name",
+      );
       alert("Failed to update collection name. Please try again.");
     }
   };
@@ -382,14 +379,6 @@ export default function Browse({
   }, []);
 
   // Debug logging for props
-  useEffect(() => {
-    console.log("Browse component props:", {
-      isCustomCollection,
-      collectionName,
-      collectionId,
-      shouldShowEllipsis: isCustomCollection && collectionName !== "Favorites",
-    });
-  }, [isCustomCollection, collectionName, collectionId]);
 
   // Load viewMode from localStorage only after component mounts
   useEffect(() => {
@@ -413,10 +402,7 @@ export default function Browse({
         const grants = await api.getCollectionGrants(collectionId);
         setCanDeleteCollection(grants.includes("dg_col-delete"));
       } catch (error) {
-        logger.error(
-          { error, collectionId },
-          "Failed to check collection grants",
-        );
+        logApiError("checkCollectionGrants", error, { collectionId });
         setCanDeleteCollection(false);
       }
     };
@@ -450,7 +436,7 @@ export default function Browse({
         setFieldsOfScienceCategories(categories);
       })
       .catch((error) => {
-        console.error("Error fetching fields of science:", error);
+        logger.error({ error }, "Failed to fetch fields of science");
         setFieldsOfScienceCategories([]);
       });
 
@@ -462,7 +448,7 @@ export default function Browse({
         setLicenses(licenseOptions);
       })
       .catch((error) => {
-        console.error("Error fetching licenses:", error);
+        logger.error({ error }, "Failed to fetch licenses");
         setLicenses([]);
       });
   }, [api.hasToken]);
@@ -902,10 +888,7 @@ export default function Browse({
                               e.preventDefault();
                               e.stopPropagation();
                               setShowTitleActionsDropdown(false);
-                              // Select all datasets logic
-                              console.log("Select All clicked");
                               selectAll();
-                              // Open the selected datasets panel when selecting all
                               handleOpenPanel();
                             }}
                             className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
@@ -919,8 +902,6 @@ export default function Browse({
                               e.preventDefault();
                               e.stopPropagation();
                               setShowTitleActionsDropdown(false);
-                              // Rename logic
-                              console.log("Rename clicked");
                               handleStartEditName();
                             }}
                             className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
@@ -1013,12 +994,7 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowActionsDropdown(false);
-                            // Select all datasets logic
-                            console.log(
-                              "Select All clicked (selected datasets)",
-                            );
                             selectAll();
-                            // Open the selected datasets panel when selecting all
                             handleOpenPanel();
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
@@ -1032,8 +1008,6 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowActionsDropdown(false);
-                            // Edit logic
-                            console.log("Edit clicked (selected datasets)");
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                         >
@@ -1046,8 +1020,6 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowActionsDropdown(false);
-                            // Rename logic
-                            console.log("Rename clicked (selected datasets)");
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                         >
@@ -1212,9 +1184,9 @@ export default function Browse({
                       : "grid grid-cols-1 gap-4"
                   }
                 >
-                  {filteredDatasets.map((dataset) => (
+                  {filteredDatasets.map((dataset, index) => (
                     <DatasetCard
-                      key={dataset.id}
+                      key={dataset.id || `dataset-${index}`}
                       dataset={dataset}
                       onClick={() => handleDatasetClick(dataset)}
                       isSelected={selectedDataset?.id === dataset.id}

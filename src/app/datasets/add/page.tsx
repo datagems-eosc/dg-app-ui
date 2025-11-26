@@ -1,7 +1,7 @@
 "use client";
 
-import AddDatasetForm from "@/components/AddDatasetForm";
-import DashboardLayout from "@/components/DashboardLayout";
+import AddDatasetForm from "@/components/AddDatasetForm/AddDatasetForm";
+import DashboardLayout from "@/components/DashboardLayout/DashboardLayout";
 
 export default function AddDatasetPage() {
   return (

@@ -12,7 +12,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { ApiCollection } from "@/types/collection";
-import { Button } from "./ui/Button";
+import { Button } from "../ui/Button";
 
 interface CollectionSettingsModalProps {
   isVisible: boolean;
@@ -179,9 +179,7 @@ export default function CollectionSettingsModal({
           id: collection.id,
           name: collection.name.replace(/ Collection$/i, ""),
           itemCount:
-            collection.datasetCount ||
-            collection.userDatasetCollections?.length ||
-            0,
+            collection.datasetCount || collection.datasets?.length || 0,
           code: collection.code,
           isVisible: saved?.isVisible ?? true,
           order: saved?.order ?? index,

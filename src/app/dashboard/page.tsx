@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import ProtectedPage from "@/components/ProtectedPage";
+import ProtectedPage from "@/components/ProtectedPage/ProtectedPage";
 import DashboardClient from "./DashboardClient";
 
 export default function DashboardPage() {

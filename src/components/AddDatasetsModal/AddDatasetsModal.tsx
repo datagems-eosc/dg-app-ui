@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Dataset } from "@/data/dataset";
-import Browse from "./Browse";
+import Browse from "../Browse/Browse";
 
 interface AddDatasetsModalProps {
   isVisible: boolean;
