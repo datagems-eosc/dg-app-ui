@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { logger } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import {
   type FilterState,
@@ -45,6 +46,7 @@ import type { HierarchicalCategory } from "./ui/HierarchicalDropdown";
 import SmartSearch from "./ui/SmartSearch";
 import SmartSearchExamples from "./ui/SmartSearchExamples";
 import Switch from "./ui/Switch";
+import { Toast } from "./ui/Toast";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -235,6 +237,10 @@ export default function Browse({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [canDeleteCollection, setCanDeleteCollection] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isSmartSearchEnabledLocal, setIsSmartSearchEnabledLocal] =
@@ -305,27 +311,26 @@ export default function Browse({
         throw new Error("No access token available");
       }
 
-      // Delete the collection via API
       await api.deleteUserCollection(collectionId);
-
-      // Force immediate refresh of collections to ensure deleted collection is removed
-      // This prevents the issue where deleted collections still appear in the sidebar
       await refreshExtraCollections();
-
-      // Also dispatch a custom event to force immediate sidebar refresh
       window.dispatchEvent(new CustomEvent("forceCollectionsRefresh"));
-
-      // Notify that collections have been modified to refresh sidebar
       notifyCollectionModified();
 
-      // Close the modal and redirect to dashboard
       setShowDeleteModal(false);
-      router.push(getNavigationUrl("/dashboard"));
+      setToastType("success");
+      setToastMessage("Collection deleted successfully!");
+      setShowToast(true);
+
+      setTimeout(() => {
+        router.push(getNavigationUrl("/dashboard"));
+      }, 500);
     } catch (error) {
-      console.error("Failed to delete collection:", error);
-      alert("Failed to delete collection. Please try again.");
-    } finally {
+      logger.error({ error, collectionId }, "Failed to delete collection");
+      setToastType("error");
+      setToastMessage("Failed to delete collection. Please try again.");
+      setShowToast(true);
       setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -395,6 +400,29 @@ export default function Browse({
       }
     }
   }, [isMounted]);
+
+  // Check if user can delete collection
+  useEffect(() => {
+    const checkDeletePermission = async () => {
+      if (!isCustomCollection || !collectionId || !api.hasToken) {
+        setCanDeleteCollection(false);
+        return;
+      }
+
+      try {
+        const grants = await api.getCollectionGrants(collectionId);
+        setCanDeleteCollection(grants.includes("dg_col-delete"));
+      } catch (error) {
+        logger.error(
+          { error, collectionId },
+          "Failed to check collection grants",
+        );
+        setCanDeleteCollection(false);
+      }
+    };
+
+    checkDeletePermission();
+  }, [isCustomCollection, collectionId, api]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
@@ -905,15 +933,28 @@ export default function Browse({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Delete collection clicked!");
                               setShowTitleActionsDropdown(false);
-                              setShowDeleteModal(true);
                             }}
                             className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                           >
                             <Trash2 className="w-4 h-4 text-icon" />
                             Delete
                           </button>
+                          {canDeleteCollection && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowTitleActionsDropdown(false);
+                                setShowDeleteModal(true);
+                              }}
+                              className="flex items-center gap-3 w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                              Delete Collection
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1019,8 +1060,6 @@ export default function Browse({
                             e.preventDefault();
                             e.stopPropagation();
                             setShowActionsDropdown(false);
-                            // Delete logic
-                            console.log("Delete clicked (selected datasets)");
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                         >
@@ -1283,6 +1322,15 @@ export default function Browse({
         collectionName={collectionName}
         isLoading={isDeleting}
       />
+
+      {/* Toast Notification */}
+      <Toast
+        message={toastMessage}
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+        type={toastType}
+      />
+
       {/* Selected Datasets Panel (right side, under header similar to Chat) */}
       {(showSelectedPanel || isPanelClosing) && (
         <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">

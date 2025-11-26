@@ -37,6 +37,7 @@ export function useApi() {
       }
 
       headers.Authorization = `Bearer ${token}`;
+      headers.oauth2 = token;
 
       return fetchWithAuth(url, {
         ...options,
@@ -167,9 +168,28 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getCollectionGrants = useCallback(
+    async (collectionId: string): Promise<string[]> => {
+      const response = await makeRequest(
+        `/principal/me/context-grants/collection?id=${collectionId}`,
+        {
+          method: "GET",
+        },
+      );
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      return data.grants || [];
+    },
+    [makeRequest],
+  );
+
   const deleteUserCollection = useCallback(
     async (collectionId: string): Promise<any> => {
-      const response = await makeRequest(`/user/collection/${collectionId}`, {
+      const response = await makeRequest(`/collection/${collectionId}`, {
         method: "DELETE",
       });
 
@@ -452,6 +472,7 @@ export function useApi() {
     createUserCollection,
     addDatasetToUserCollection,
     removeDatasetFromUserCollection,
+    getCollectionGrants,
     deleteUserCollection,
 
     // Search methods
