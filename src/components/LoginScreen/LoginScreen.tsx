@@ -1,7 +1,7 @@
 "use client";
 
+import { Button } from "@ui/Button";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { Button } from "../ui/Button";
 
 export default function LoginScreen() {
   const { data: session, status } = useSession();

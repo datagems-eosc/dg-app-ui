@@ -1,5 +1,12 @@
 "use client";
 
+import { Button } from "@ui/Button";
+import HierarchicalDropdown, {
+  type HierarchicalCategory,
+} from "@ui/HierarchicalDropdown";
+import { Input } from "@ui/Input";
+import { MultiSelect } from "@ui/MultiSelect";
+import { Radio } from "@ui/Radio";
 import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -11,13 +18,6 @@ import {
   processLicenses,
   VALIDATION_CONFIG,
 } from "../../config/filterOptions";
-import { Button } from "../ui/Button";
-import HierarchicalDropdown, {
-  type HierarchicalCategory,
-} from "../ui/HierarchicalDropdown";
-import { Input } from "../ui/Input";
-import { MultiSelect } from "../ui/MultiSelect";
-import { Radio } from "../ui/Radio";
 
 export default function FilterModal({
   isVisible,

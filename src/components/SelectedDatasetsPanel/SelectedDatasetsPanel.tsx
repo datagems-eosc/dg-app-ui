@@ -1,12 +1,12 @@
 "use client";
 
+import { Button } from "@ui/Button";
+import MissingDatasetItem from "@ui/datasets/MissingDatasetItem";
+import SelectedDatasetItem from "@ui/datasets/SelectedDatasetItem";
+import { NoData } from "@ui/NoData";
 import { ArrowUp, Bot, Database, PackagePlus, X } from "lucide-react";
 import React from "react";
 import type { DatasetUnion } from "@/types/datasets";
-import { Button } from "../ui/Button";
-import MissingDatasetItem from "../ui/datasets/MissingDatasetItem";
-import SelectedDatasetItem from "../ui/datasets/SelectedDatasetItem";
-import { NoData } from "../ui/NoData";
 
 interface SelectedDatasetsPanelProps {
   selectedDatasetIds: string[];

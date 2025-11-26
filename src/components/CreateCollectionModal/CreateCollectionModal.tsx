@@ -1,5 +1,9 @@
 "use client";
 
+import { Button } from "@ui/Button";
+import { Checkbox } from "@ui/Checkbox";
+import { Input } from "@ui/Input";
+import { Toast } from "@ui/Toast";
 import { FileText, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
@@ -8,10 +12,6 @@ import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
-import { Button } from "../ui/Button";
-import { Checkbox } from "../ui/Checkbox";
-import { Input } from "../ui/Input";
-import { Toast } from "../ui/Toast";
 
 interface CreateCollectionModalProps {
   isVisible: boolean;

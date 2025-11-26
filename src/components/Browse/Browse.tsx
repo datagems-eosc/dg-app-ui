@@ -1,5 +1,6 @@
 "use client";
 
+import { Search } from "@ui/Search";
 import {
   ArrowRightLeft,
   Database,
@@ -14,11 +15,18 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Search } from "../ui/Search";
 
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
 
+import { Button } from "@ui/Button";
+import { Chip } from "@ui/Chip";
+import DatasetCardSkeleton from "@ui/datasets/DatasetCardSkeleton";
+import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
+import SmartSearch from "@ui/SmartSearch";
+import SmartSearchExamples from "@ui/SmartSearchExamples";
+import Switch from "@ui/Switch";
+import { Toast } from "@ui/Toast";
 import { useRouter } from "next/navigation";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
@@ -39,14 +47,6 @@ import DeleteCollectionModal from "../DeleteCollectionModal";
 import FilterModal from "../FilterModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
-import { Button } from "../ui/Button";
-import { Chip } from "../ui/Chip";
-import DatasetCardSkeleton from "../ui/datasets/DatasetCardSkeleton";
-import type { HierarchicalCategory } from "../ui/HierarchicalDropdown";
-import SmartSearch from "../ui/SmartSearch";
-import SmartSearchExamples from "../ui/SmartSearchExamples";
-import Switch from "../ui/Switch";
-import { Toast } from "../ui/Toast";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];

@@ -1,5 +1,10 @@
 "use client";
 
+import { Button } from "@ui/Button";
+import ChatInitialView from "@ui/chat/ChatInitialView";
+import { ChatInput } from "@ui/chat/ChatInput";
+import ChatMessages from "@ui/chat/ChatMessages";
+import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -11,11 +16,6 @@ import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection, Collection } from "@/types/collection";
 import AddDatasetsModal from "../AddDatasetsModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
-import { Button } from "../ui/Button";
-import ChatInitialView from "../ui/chat/ChatInitialView";
-import { ChatInput } from "../ui/chat/ChatInput";
-import ChatMessages from "../ui/chat/ChatMessages";
-import DatasetChangeWarning from "../ui/chat/DatasetChangeWarning";
 
 interface Message {
   id: string;

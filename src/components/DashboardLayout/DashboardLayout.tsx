@@ -1,5 +1,10 @@
 "use client";
 
+import { ConfirmationModal } from "@ui/ConfirmationModal";
+import { MainHeader } from "@ui/MainHeader";
+import { SidebarContent } from "@ui/SidebarContent";
+import { SidebarHeader } from "@ui/SidebarHeader";
+import { Toast } from "@ui/Toast";
 import { Trash } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -11,11 +16,6 @@ import { useApi } from "@/hooks/useApi";
 import { createUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
 import CollectionSettingsModal from "../CollectionSettingsModal";
-import { ConfirmationModal } from "../ui/ConfirmationModal";
-import { MainHeader } from "../ui/MainHeader";
-import { SidebarContent } from "../ui/SidebarContent";
-import { SidebarHeader } from "../ui/SidebarHeader";
-import { Toast } from "../ui/Toast";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@ui/Button";
 import {
   ChevronDown,
   ChevronUp,
@@ -12,7 +13,6 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { ApiCollection } from "@/types/collection";
-import { Button } from "../ui/Button";
 
 interface CollectionSettingsModalProps {
   isVisible: boolean;
