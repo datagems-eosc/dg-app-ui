@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
-import LoginScreen from "@/components/LoginScreen/LoginScreen";
+import LoginScreen from "@/components/LoginScreen";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function Home() {

@@ -2,10 +2,10 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
-import Chat from "@/components/Chat/Chat";
-import DashboardLayout from "@/components/DashboardLayout/DashboardLayout";
+import Chat from "@/components/Chat";
+import DashboardLayout from "@/components/DashboardLayout";
 // import { getApiBaseUrl } from "@/lib/utils"; // No longer needed
-import ProtectedPage from "@/components/ProtectedPage/ProtectedPage";
+import ProtectedPage from "@/components/ProtectedPage";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 

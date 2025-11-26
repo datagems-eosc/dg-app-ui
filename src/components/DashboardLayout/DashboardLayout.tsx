@@ -10,7 +10,7 @@ import { useCollections } from "@/contexts/CollectionsContext";
 import { useApi } from "@/hooks/useApi";
 import { createUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
-import CollectionSettingsModal from "../CollectionSettingsModal/CollectionSettingsModal";
+import CollectionSettingsModal from "../CollectionSettingsModal";
 import { ConfirmationModal } from "../ui/ConfirmationModal";
 import { MainHeader } from "../ui/MainHeader";
 import { SidebarContent } from "../ui/SidebarContent";

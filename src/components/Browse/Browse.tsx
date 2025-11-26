@@ -32,13 +32,13 @@ import {
   processLicenses,
   SORTING_OPTIONS,
 } from "../../config/filterOptions";
-import CreateCollectionModal from "../CreateCollectionModal/CreateCollectionModal";
-import DatasetCard from "../DatasetCard/DatasetCard";
-import DatasetDetailsPanel from "../DatasetDetailsPanel/DatasetDetailsPanel";
-import DeleteCollectionModal from "../DeleteCollectionModal/DeleteCollectionModal";
-import FilterModal from "../FilterModal/FilterModal";
-import SelectedDatasetsPanel from "../SelectedDatasetsPanel/SelectedDatasetsPanel";
-import SortingDropdown from "../SortingDropdown/SortingDropdown";
+import CreateCollectionModal from "../CreateCollectionModal";
+import DatasetCard from "../DatasetCard";
+import DatasetDetailsPanel from "../DatasetDetailsPanel";
+import DeleteCollectionModal from "../DeleteCollectionModal";
+import FilterModal from "../FilterModal";
+import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
+import SortingDropdown from "../SortingDropdown";
 import { Button } from "../ui/Button";
 import { Chip } from "../ui/Chip";
 import DatasetCardSkeleton from "../ui/datasets/DatasetCardSkeleton";

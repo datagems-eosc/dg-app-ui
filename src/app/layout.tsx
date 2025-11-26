@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import SessionProviderWrapper from "@/components/SessionProviderWrapper/SessionProviderWrapper";
+import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 import { CollectionsProvider } from "@/contexts/CollectionsContext";
 import { DatasetProvider } from "@/contexts/DatasetContext";
 import { UserProvider } from "@/contexts/UserContext";

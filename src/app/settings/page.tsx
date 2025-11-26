@@ -1,5 +1,5 @@
-import DashboardLayout from "@/components/DashboardLayout/DashboardLayout";
-import UserProfile from "@/components/UserProfile/UserProfile";
+import DashboardLayout from "@/components/DashboardLayout";
+import UserProfile from "@/components/UserProfile";
 
 export default function SettingsPage() {
   return (
