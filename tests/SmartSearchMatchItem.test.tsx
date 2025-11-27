@@ -36,7 +36,7 @@ test("applies border-b when not last and not when isLast true", () => {
     />,
   );
   const content1 = c1.querySelector(".flex-1");
-  assert.ok(content1 && content1.className.includes("border-b"));
+  assert.ok(content1?.className.includes("border-b"));
 
   const { container: c2 } = render(
     <SmartSearchMatchItem
@@ -51,11 +51,8 @@ test("applies border-b when not last and not when isLast true", () => {
 });
 
 test("Chip text has flex-shrink-0 class present on wrapper", () => {
-  const { container } = render(
-    <SmartSearchMatchItem number={1} description="Desc" matchPercentage="99" />,
-  );
   const chip = screen.getByText("99% match");
   // chip is the text element; its parent should have the class
   const parent = chip.parentElement;
-  assert.ok(parent && parent.className.includes("flex-shrink-0"));
+  assert.ok(parent?.className.includes("flex-shrink-0"));
 });
