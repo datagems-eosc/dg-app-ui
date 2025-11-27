@@ -16,8 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
-    "test": "node --test",
-    "test:coverage": "node --test",
+    "test": "tsx --test",
+    "test:coverage": "tsx --test",
     "prepare": "husky",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
@@ -66,6 +66,7 @@
     "prettier": "^3.6.2",
     "storybook": "^10.0.8",
     "tailwindcss": "^4",
+    "tsx": "4.20.6",
     "typescript": "^5",
     "vitest": "^4.0.10"
   }

@@ -12,6 +12,7 @@ import {
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Collection, Dataset, DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
 
@@ -939,7 +940,11 @@ export default function DashboardClient() {
         const data = await api.queryDatasets(payload);
         const items = Array.isArray(data.items) ? data.items : [];
         const mappedDatasets = items.map(mapApiDatasetToDataset);
-        setAllDatasets(mappedDatasets);
+        const sortedDatasets = sortDatasetsWithSecondaryRules(
+          mappedDatasets,
+          sortBy,
+        );
+        setAllDatasets(sortedDatasets);
       } catch (err: unknown) {
         let message = "An unexpected error occurred";
         if (err instanceof Error) message = err.message;
