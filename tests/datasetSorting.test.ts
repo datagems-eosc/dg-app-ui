@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { sortDatasetsWithSecondaryRules } from "../src/lib/datasetSorting.mjs";
+import { sortDatasetsWithSecondaryRules } from "../src/lib/datasetSorting";
 
-const createMockDataset = (overrides) => ({
+const createMockDataset = (overrides: any) => ({
   id: "1",
   title: "Test Dataset",
   category: "Math",
