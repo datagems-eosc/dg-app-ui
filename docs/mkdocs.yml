@@ -12,8 +12,7 @@ nav:
       - Key Features:
           - Smart Search: smart-search.md
       - Design System:
-          - Components: design-system.md
-          - Theming: theming.md
+          - UI Components: ui-components.md
       - Quality Assurance:
           - Testing Methods: qa.md
           - Login in Tests: CypressLogin.md
@@ -21,9 +20,12 @@ nav:
       - Security: security.md
       - Automations: automations.md
       - Deployment: deployment.md
+      - Code Quality: code-quality.md
     #- Configuration: configuration.md
     #- Logging & Accounting: logging.md
-  - License: license.md
+  - License: 
+      - License: license.md
+      - Licence Report: licence-report.md
   - FAQ & Known Issues: faq.md
   - Home: https://datagems-eosc.github.io/
 

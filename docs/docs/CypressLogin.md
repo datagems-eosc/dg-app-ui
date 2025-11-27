@@ -56,19 +56,6 @@ cy.url().should("include", "/dashboard");
 cy.contains("Add Dataset").should("be.visible");
 ```
 
-## Credentials for tests
-
-- Use `cypress/fixtures/credentials.json` (do not commit sensitive values to the repo). Example fixture shape:
-
-```json
-{
-  "username": "<username>",
-  "password": "<password>"
-}
-```
-
-- Or provide `CYPRESS_USERNAME` and `CYPRESS_PASSWORD` environment variables in CI.
-
 ## Troubleshooting
 
 - If cookies are rejected by the browser, ensure the Cypress browser is launched with the SameSite/third-party cookie flags (see `cypress.config.ts`).
