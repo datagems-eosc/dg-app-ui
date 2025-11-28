@@ -1,8 +1,8 @@
 "use client";
 
-import { AIMessageContent } from "@/components/ui/chat/AIMessageContent";
-import { AIMessageHeader } from "@/components/ui/chat/AIMessageHeader";
-import { TemperatureMap } from "@/components/ui/chat/TemperatureMap";
+import { AIMessageContent } from "@ui/chat/AIMessageContent";
+import { AIMessageHeader } from "@ui/chat/AIMessageHeader";
+import { TemperatureMap } from "@ui/chat/TemperatureMap";
 import type { Message } from "@/types/chat";
 
 interface AIMessageProps {

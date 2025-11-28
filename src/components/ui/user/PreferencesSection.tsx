@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
+import { Button } from "@ui/Button";
+import { Checkbox } from "@ui/Checkbox";
 
 type NotificationSettings = {
   newFeatures: { email: boolean; inApp: boolean };

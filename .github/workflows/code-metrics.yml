@@ -91,4 +91,3 @@ jobs:
           name: plato-report
           path: plato-report/
           retention-days: 30
-
