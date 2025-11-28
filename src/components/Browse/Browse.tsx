@@ -311,7 +311,7 @@ export default function Browse({
         throw new Error("No access token available");
       }
 
-      await api.deleteUserCollection(collectionId);
+      await api.deleteCollection(collectionId);
       await refreshExtraCollections();
       window.dispatchEvent(new CustomEvent("forceCollectionsRefresh"));
       notifyCollectionModified();
@@ -391,24 +391,27 @@ export default function Browse({
   }, [isMounted]);
 
   // Check if user can delete collection
+  // For custom collections (except Favorites), always show delete button
+  // The API will handle permission check when deletion is attempted
   useEffect(() => {
-    const checkDeletePermission = async () => {
-      if (!isCustomCollection || !collectionId || !api.hasToken) {
-        setCanDeleteCollection(false);
-        return;
-      }
+    if (!isCustomCollection) {
+      setCanDeleteCollection(false);
+      return;
+    }
 
-      try {
-        const grants = await api.getCollectionGrants(collectionId);
-        setCanDeleteCollection(grants.includes("dg_col-delete"));
-      } catch (error) {
-        logApiError("checkCollectionGrants", error, { collectionId });
-        setCanDeleteCollection(false);
-      }
-    };
+    // Don't allow deleting Favorites collection
+    if (
+      collectionName === "Favorites" ||
+      collectionName === "Favorites Datasets"
+    ) {
+      setCanDeleteCollection(false);
+      return;
+    }
 
-    checkDeletePermission();
-  }, [isCustomCollection, collectionId, api]);
+    // For all other custom collections, show delete button
+    // API will validate permissions when deletion is attempted
+    setCanDeleteCollection(true);
+  }, [isCustomCollection, collectionName]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
