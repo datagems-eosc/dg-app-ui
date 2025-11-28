@@ -2,66 +2,106 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/CypressLogin/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/architecture/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/automations/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/code-quality/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/component-guidelines/</loc>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/configuration/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/deployment/</loc>
-         <lastmod>2025-10-31</lastmod>
-    </url>
-    <url>
-         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/design-system/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/faq/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/licence-report/</loc>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/licence/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/logging/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/login/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/onboarding/</loc>
-         <lastmod>2025-10-31</lastmod>
-    </url>
-    <url>
-         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/qa/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/security/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
          <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/smart-search/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <lastmod>2025-11-28</lastmod>
     </url>
     <url>
-         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/theming/</loc>
-         <lastmod>2025-10-31</lastmod>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook-chat-components/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook-dataset-components/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook-display-components/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook-form-components/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook-interactive-components/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook-modal-components/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook-navigation-components/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook-specialized-components/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/storybook/</loc>
+         <lastmod>2025-11-28</lastmod>
+    </url>
+    <url>
+         <loc>https://datagems-eosc.github.io/dg-app-ui/v0.0.1/images/storybook/</loc>
+         <lastmod>2025-11-28</lastmod>
     </url>
 </urlset>
