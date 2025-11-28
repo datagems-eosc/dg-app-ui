@@ -220,7 +220,7 @@ export function SidebarContent({
                       }
                       title={
                         isExtra
-                          ? `${collection.userDatasetCollections?.length || 0} datasets`
+                          ? `${collection.datasets?.length || 0} datasets`
                           : `${collection.datasetCount} datasets`
                       }
                       onClick={onMobileSidebarClose}

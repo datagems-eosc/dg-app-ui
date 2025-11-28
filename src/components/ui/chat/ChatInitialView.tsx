@@ -1,4 +1,4 @@
-import DGIcon from "@/components/ui/chat/DGIcon";
+import DGIcon from "@ui/chat/DGIcon";
 
 export default function ChatInitialView() {
   return (

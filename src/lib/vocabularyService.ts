@@ -1,4 +1,4 @@
-import type { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
+import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 
 // Types for the API response
 interface VocabularyItem {

@@ -234,37 +234,10 @@ export default function CustomCollectionPage() {
   return (
     <DashboardLayout>
       <div className="relative p-6">
-        {/* Custom Header */}
-        <div className="mb-6">
-          {isEditMode ? (
-            <input
-              type="text"
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              className="text-H2-24-semibold text-gray-900 bg-transparent border-b-2 border-blue-500 focus:outline-none focus:border-blue-600 mb-2 w-full"
-            />
-          ) : (
-            <h1 className="text-H2-24-semibold text-gray-900">
-              {collection.name}
-            </h1>
-          )}
-          <p className="text-gray-600 mt-1">
-            Custom collection • {displayDatasetIds.length} datasets
-            {"createdAt" in collection && collection.createdAt ? (
-              <>
-                {" "}
-                • Created {(collection.createdAt as Date).toLocaleDateString()}
-              </>
-            ) : (
-              <> - </>
-            )}
-          </p>
-        </div>
-
         <Browse
           datasets={collectionDatasets}
-          title=""
-          subtitle=""
+          title={collection.name}
+          subtitle={`Custom collection • ${displayDatasetIds.length} datasets`}
           showSelectAll={!isEditMode}
           selectedDatasets={selectedDatasets}
           onSelectedDatasetsChange={setSelectedDatasets}
