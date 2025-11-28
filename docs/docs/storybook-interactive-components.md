@@ -6,7 +6,7 @@ Advanced interactive components for rich user experiences.
 
 A switch with two options (like left/right or on/off) with icons.
 
-**Features:**
+#### Features:
 - Left and right icon support
 - Optional labels
 - Active state highlighting
@@ -15,12 +15,12 @@ A switch with two options (like left/right or on/off) with icons.
 - Accessible button implementation
 
 
-**How to use:**
+#### How to use:
 - Click either side to switch between options
 - Active side has a light gray background
 - Icon shows which option is selected
 
-**Example uses:**
+#### Example uses:
 - Switching between list and grid view
 - Toggling Smart Search on/off
 
@@ -40,7 +40,7 @@ A switch with two options (like left/right or on/off) with icons.
 
 Generic dropdown menu component.
 
-**Features:**
+#### Features:
 - Trigger button customization
 - Menu items with icons
 - Dividers between sections
@@ -52,7 +52,7 @@ Generic dropdown menu component.
 
 Specialized dropdown for managing collections.
 
-**Features:**
+#### Features:
 - Collection list
 - Create new collection
 - Add to collection
@@ -63,7 +63,7 @@ Specialized dropdown for managing collections.
 
 User account menu dropdown.
 
-**Features:**
+#### Features:
 - User info display
 - Settings link
 - Logout option

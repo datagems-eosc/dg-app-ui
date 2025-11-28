@@ -6,7 +6,7 @@ Components for application navigation and layout.
 
 Application logo component with consistent styling.
 
-**Features:**
+#### Features:
 - SVG-based logo
 - Responsive sizing
 - Link to home page
@@ -16,14 +16,14 @@ Application logo component with consistent styling.
 
 A menu that appears when you click a trigger (like a button or user avatar).
 
-**How to use:**
+#### How to use:
 1. Click the trigger button
 2. Menu appears below or above
 3. Click a menu item to select it
 4. Menu closes automatically
 5. Click outside to close without selecting
 
-**Example uses:**
+#### Example uses:
 - User profile menu
 - Actions menu (Edit, Delete)
 - Collection selector
@@ -33,7 +33,7 @@ A menu that appears when you click a trigger (like a button or user avatar).
 
 Sidebar navigation item with active state.
 
-**Features:**
+#### Features:
 - Icon support
 - Active state highlighting
 - Hover effects
@@ -44,7 +44,7 @@ Sidebar navigation item with active state.
 
 Top navigation header component.
 
-**Features:**
+#### Features:
 - Logo placement
 - User profile dropdown
 - Navigation items
@@ -55,7 +55,7 @@ Top navigation header component.
 
 Sidebar header with branding and controls.
 
-**Features:**
+#### Features:
 - Logo display
 - Collapse/expand controls
 - Responsive behavior
@@ -65,7 +65,7 @@ Sidebar header with branding and controls.
 
 Main sidebar navigation content.
 
-**Features:**
+#### Features:
 - Collection list
 - Quick actions
 - Chat history
