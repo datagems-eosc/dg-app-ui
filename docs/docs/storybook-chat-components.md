@@ -6,7 +6,7 @@ Components for the AI chat interface.
 
 Text input for chat messages.
 
-**Features:**
+#### Features:
 - Multi-line support
 - Auto-resize
 - Submit button
@@ -18,7 +18,7 @@ Text input for chat messages.
 
 Container for displaying chat conversation.
 
-**Features:**
+#### Features:
 - Auto-scroll to bottom
 - Loading states
 - Empty state handling
@@ -29,7 +29,7 @@ Container for displaying chat conversation.
 
 AI-generated message component.
 
-**Features:**
+#### Features:
 - Markdown rendering
 - Code syntax highlighting
 - Source citations
@@ -40,7 +40,7 @@ AI-generated message component.
 
 User-sent message component.
 
-**Features:**
+#### Features:
 - User avatar
 - Timestamp
 - Edit capability
@@ -51,7 +51,7 @@ User-sent message component.
 
 Table component for displaying data in AI responses.
 
-**Features:**
+#### Features:
 - Sortable columns
 - Responsive design
 - Cell formatting
@@ -62,7 +62,7 @@ Table component for displaying data in AI responses.
 
 Visualization component for temperature data.
 
-**Features:**
+#### Features:
 - Color-coded heatmap
 - Interactive tooltips
 - Legend

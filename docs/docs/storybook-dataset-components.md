@@ -6,7 +6,7 @@ Components specific to dataset management and display.
 
 Card component for displaying dataset information.
 
-**Features:**
+#### Features:
 - Two view modes: grid and list
 - Favorite/star functionality
 - Selection checkbox
@@ -16,7 +16,7 @@ Card component for displaying dataset information.
 - Click to view details
 - Expandable sections
 
-**What's included:**
+#### What's included:
 - Title
 - Description (first few lines)
 - Category chip (colored label)
@@ -26,7 +26,7 @@ Card component for displaying dataset information.
 - Keywords
 - Actions (ADD button, favorite star)
 
-**How to interact:**
+#### How to interact:
 - Click the card to see full details
 - Click ADD to add it to a collection
 - Click star to add to favorites
@@ -37,7 +37,7 @@ Card component for displaying dataset information.
 
 Loading placeholder for dataset cards.
 
-**Features:**
+#### Features:
 - Matches DatasetCard layout
 - Animated loading effect
 - Grid and list variants
@@ -47,7 +47,7 @@ Loading placeholder for dataset cards.
 
 File upload interface for datasets.
 
-**Features:**
+#### Features:
 - Drag and drop support
 - File type validation
 - Progress indicator
@@ -59,7 +59,7 @@ File upload interface for datasets.
 
 License selection for datasets.
 
-**Features:**
+#### Features:
 - License dropdown
 - Description display
 - Custom license option
@@ -69,7 +69,7 @@ License selection for datasets.
 
 Dataset visibility settings.
 
-**Features:**
+#### Features:
 - Public/private toggle
 - Access control options
 - Visual indicators

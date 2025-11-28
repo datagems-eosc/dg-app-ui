@@ -8,12 +8,12 @@ Modals are pop-up windows that appear on top of the main page.
 
 Generic confirmation dialog.
 
-**Confirmation Modal**
+#### Confirmation Modal
 - **Purpose**: Confirm a destructive action (like delete)
 - **Content**: Warning message and question
 - **Actions**: Confirm (red) or Cancel
 
-**Features:**
+#### Features:
 - Title and message
 - Confirm and cancel buttons
 - Customizable actions
@@ -25,7 +25,7 @@ Generic confirmation dialog.
 
 Advanced filtering interface.
 
-**Filter Modal**
+#### Filter Modal
 - **Purpose**: Refine dataset search results
 - **Sections**: 
   - License types (checkboxes)
@@ -34,7 +34,7 @@ Advanced filtering interface.
   - File size range
 - **Actions**: Apply filters, Clear all
 
-**Features:**
+#### Features:
 - Multiple filter types
 - Date range pickers
 - Hierarchical categories
@@ -45,12 +45,12 @@ Advanced filtering interface.
 
 Manage collection visibility and order.
 
-**CollectionSettingsModal**
+#### CollectionSettingsModal
 - **Purpose**: Create custom ordering 
 - **Fields**: 
 - **Actions**: 
 
-**Features:**
+#### Features:
 - Drag and drop reordering
 - Visibility toggle
 - Persist preferences
