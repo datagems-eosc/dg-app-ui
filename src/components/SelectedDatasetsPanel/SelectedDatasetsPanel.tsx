@@ -95,7 +95,7 @@ export default function SelectedDatasetsPanel({
           <NoData
             icon={Database}
             title="Your selected datasets will appear here"
-            description="Your selected datasets will appear here"
+            description="Choose some first"
           />
         ) : (
           <>
