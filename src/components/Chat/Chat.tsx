@@ -4,6 +4,7 @@ import { Button } from "@ui/Button";
 import ChatInitialView from "@ui/chat/ChatInitialView";
 import { ChatInput } from "@ui/chat/ChatInput";
 import ChatMessages from "@ui/chat/ChatMessages";
+import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -991,21 +992,26 @@ export default function Chat({
     <div className="relative">
       {/* Main Chat Area */}
       <div
-        className={`flex-1 flex flex-col relative transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[380px] max-w-[1120px] 2xl:max-w-[1400px] mx-auto" : ""}`}
+        className={`flex-1 flex flex-col relative ${!isMessagesLoading ? "transition-all duration-500 ease-out" : ""} ${showSelectedPanel ? "sm:pr-[380px] max-w-[1120px] 2xl:max-w-[1400px] mx-auto" : ""}`}
+        style={isMessagesLoading ? { transition: "none" } : undefined}
       >
         {/* Header */}
         <div className="bg-white flex-shrink-0 py-6 z-10">
-          {/* Conversation Name (first user message) */}
-          {showConversationName &&
-            conversationId &&
-            messages.length > 0 &&
-            messages[0].type === "user" && (
-              <div className="text-center py-4 px-6 border-b border-gray-100">
-                <h2 className="text-H2-20-semibold text-blue-700 truncate">
-                  {messages[0].content}
-                </h2>
-              </div>
-            )}
+          {/* Conversation Name */}
+          {showConversationName && conversationId && (
+            <div className="text-center py-4 px-6 border-b border-gray-100">
+              {isMessagesLoading ? (
+                <div className="h-6 bg-slate-200 rounded animate-pulse max-w-md mx-auto" />
+              ) : (
+                messages.length > 0 &&
+                messages[0].type === "user" && (
+                  <h2 className="text-H2-20-semibold text-blue-700 truncate">
+                    {messages[0].content}
+                  </h2>
+                )
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-end mx-auto p-4 sm:p-8 h-10">
             {/* Sidebar toggle button */}
             {!showSelectedPanel && (
@@ -1026,83 +1032,52 @@ export default function Chat({
         <div
           className={`flex-1 bg-white ${showDatasetChangeWarning ? "pb-55 md:pb-40" : "pb-35 md:pb-40"}`}
         >
-          {(messages.length > 0 ||
-            isMessagesLoading ||
-            isGeneratingAIResponse) && (
-            <div className="min-h-0" ref={messagesEndRef}>
-              <ChatMessages
-                messages={messages}
-                isMessagesLoading={isMessagesLoading}
-                isGeneratingAIResponse={isGeneratingAIResponse}
-                messagesEndRef={messagesEndRef}
-                onSourcesClick={handleSourcesClick}
-                showSelectedPanel={showSelectedPanel}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Centered ChatInitialView for default state */}
-        {!conversationId &&
-          messages.length === 0 &&
-          !isMessagesLoading &&
-          !isGeneratingAIResponse && (
-            <div
-              className={`fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
-              style={{
-                left: "var(--sidebar-offset)",
-                top: "100px",
-                bottom: "200px",
-              }}
-            >
-              <div className="pointer-events-auto">
-                <ChatInitialView />
-              </div>
-            </div>
-          )}
-
-        {/* Centered ChatInput for default state */}
-        {!conversationId &&
-          messages.length === 0 &&
-          !isMessagesLoading &&
-          !isGeneratingAIResponse && (
-            <div
-              className={`fixed left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
-              style={{ top: "50%", transform: "translateY(50px)" }}
-            >
-              <div className="w-full max-w-md sm:max-w-4xl mx-auto">
-                {/* Dataset Change Warning */}
-                <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
-
-                <ChatInput
-                  value={inputValue}
-                  onChange={setInputValue}
-                  onSend={handleSendMessage}
-                  onAddDatasets={() => setShowAddDatasetsModal(true)}
-                  collections={{
-                    apiCollections,
-                    collections: [],
-                    extraCollections,
-                    isLoading: isLoadingApiCollections,
-                  }}
-                  selectedCollection={selectedCollection}
-                  onSelectCollection={handleSelectCollection}
-                  isLoading={isLoading}
-                  disabled={isInputDisabled}
-                  error={error}
-                  showAddDatasetsModal={showAddDatasetsModal}
+          {isMessagesLoading ? (
+            <ChatMessagesSkeleton />
+          ) : (
+            (messages.length > 0 || isGeneratingAIResponse) && (
+              <div className="min-h-0" ref={messagesEndRef}>
+                <ChatMessages
+                  messages={messages}
+                  isMessagesLoading={isMessagesLoading}
+                  isGeneratingAIResponse={isGeneratingAIResponse}
+                  messagesEndRef={messagesEndRef}
+                  onSourcesClick={handleSourcesClick}
+                  showSelectedPanel={showSelectedPanel}
                 />
               </div>
-            </div>
+            )
           )}
+        </div>
+      </div>
 
-        {/* Chat Input - Fixed at bottom for when messages exist */}
-        {(conversationId ||
-          messages.length > 0 ||
-          isMessagesLoading ||
-          isGeneratingAIResponse) && (
+      {/* Centered ChatInitialView for default state */}
+      {!conversationId &&
+        messages.length === 0 &&
+        !isMessagesLoading &&
+        !isGeneratingAIResponse && (
           <div
-            className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+            className={`fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+            style={{
+              left: "var(--sidebar-offset)",
+              top: "100px",
+              bottom: "200px",
+            }}
+          >
+            <div className="pointer-events-auto">
+              <ChatInitialView />
+            </div>
+          </div>
+        )}
+
+      {/* Centered ChatInput for default state */}
+      {!conversationId &&
+        messages.length === 0 &&
+        !isMessagesLoading &&
+        !isGeneratingAIResponse && (
+          <div
+            className={`fixed left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+            style={{ top: "50%", transform: "translateY(50px)" }}
           >
             <div className="w-full max-w-md sm:max-w-4xl mx-auto">
               {/* Dataset Change Warning */}
@@ -1129,7 +1104,40 @@ export default function Chat({
             </div>
           </div>
         )}
-      </div>
+
+      {/* Chat Input - Fixed at bottom for when messages exist */}
+      {(conversationId ||
+        messages.length > 0 ||
+        isMessagesLoading ||
+        isGeneratingAIResponse) && (
+        <div
+          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+        >
+          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+            {/* Dataset Change Warning */}
+            <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
+
+            <ChatInput
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSendMessage}
+              onAddDatasets={() => setShowAddDatasetsModal(true)}
+              collections={{
+                apiCollections,
+                collections: [],
+                extraCollections,
+                isLoading: isLoadingApiCollections,
+              }}
+              selectedCollection={selectedCollection}
+              onSelectCollection={handleSelectCollection}
+              isLoading={isLoading}
+              disabled={isInputDisabled}
+              error={error}
+              showAddDatasetsModal={showAddDatasetsModal}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Selected Datasets Panel - Under header, fixed on right side */}
       {(showSelectedPanel || isPanelClosing) && (

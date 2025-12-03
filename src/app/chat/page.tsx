@@ -108,8 +108,8 @@ function ChatPageContent({
   const [isMounted, setIsMounted] = useState(false);
   // Removed unused messages state
   const [chatInitialMessages, setChatInitialMessages] = useState<
-    ConversationMessage[]
-  >([]);
+    ConversationMessage[] | undefined
+  >(undefined);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [isResetting, setIsResetting] = useState(false);
@@ -284,7 +284,7 @@ function ChatPageContent({
   // Fetch conversation messages when on /chat/[conversationId]
   useEffect(() => {
     if (!conversationId) return;
-    setChatInitialMessages([]);
+    setChatInitialMessages(undefined);
     const fetchMessages = async () => {
       if (!api.hasToken) return;
       const payload = {
