@@ -3,7 +3,6 @@
 import type React from "react";
 import type { Message } from "@/types/chat";
 import { AIResponseSkeleton } from "./AIResponseSkeleton";
-import { ChatMessagesSkeleton } from "./ChatMessagesSkeleton";
 import MessageItem from "./MessageItem";
 
 interface ChatMessagesProps {
@@ -23,10 +22,6 @@ export default function ChatMessages({
   onSourcesClick,
   showSelectedPanel,
 }: ChatMessagesProps) {
-  if (isMessagesLoading) {
-    return <ChatMessagesSkeleton />;
-  }
-
   // Sort messages by timestamp using ISO 8601 string comparison for microsecond precision
   const sortedMessages = [...messages].sort((a, b) => {
     // Convert both timestamps to ISO strings for lexicographic comparison
