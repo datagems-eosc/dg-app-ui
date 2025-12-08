@@ -1,0 +1,116 @@
+@use '@/styles' as *;
+
+.datasetDetailsPageContent {
+  min-height: 100vh;
+  background: $color-background;
+
+  &__container {
+    max-width: $container-max-width;
+    margin: 0 auto;
+    padding: $spacing-3xl 0;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      padding: $spacing-xl 0;
+    }
+  }
+
+  &__wrapper {
+    @include flex-column;
+    gap: $spacing-3xl;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      gap: $spacing-xl;
+    }
+  }
+
+  &__header {
+    @include flex-column;
+    gap: $spacing-xl;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      gap: $spacing-lg;
+    }
+  }
+
+  &__actions {
+    @include flex-between;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+
+    @media (max-width: $breakpoint-sm - 1px) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__backButton {
+    @include button-base;
+
+    @media (max-width: $breakpoint-sm - 1px) {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  &__backIcon {
+    @include icon-base;
+  }
+
+  &__actionButtons {
+    @include flex-center;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+
+    @media (max-width: $breakpoint-sm - 1px) {
+      width: 100%;
+      justify-content: stretch;
+
+      > * {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+  }
+
+  &__sectionTitle {
+    @include text-2xl;
+    @include text-primary;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      font-size: $font-size-xl;
+    }
+  }
+
+  &__mainContent {
+    display: flex;
+    gap: $spacing-2xl;
+    align-items: flex-start;
+
+    @media (max-width: $breakpoint-lg - 1px) {
+      flex-direction: column;
+      gap: $spacing-xl;
+    }
+  }
+
+  &__leftColumn {
+    flex: 1;
+    min-width: 0;
+    background: $color-background;
+    @include border-base;
+    @include border-radius-lg;
+    padding: $spacing-xl;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      padding: $spacing-lg;
+    }
+  }
+
+  &__sections {
+    @include flex-column;
+    gap: $spacing-2xl;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      gap: $spacing-xl;
+    }
+  }
+}

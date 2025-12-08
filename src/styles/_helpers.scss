@@ -1,0 +1,201 @@
+// ============================================================================
+// SCSS Helpers
+// ----------------------------------------------------------------------------
+// Utility classes and helper functions
+
+@use 'variables' as *;
+
+// ----------------------------------------------------------------------------
+// Helper Functions
+// ----------------------------------------------------------------------------
+
+@function rem($pixels, $base: 16px) {
+  @return ($pixels / $base) * 1rem;
+}
+
+@function em($pixels, $base: 16px) {
+  @return ($pixels / $base) * 1em;
+}
+
+// ----------------------------------------------------------------------------
+// Utility Classes
+// ----------------------------------------------------------------------------
+
+// Text Utilities
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-break {
+  word-break: break-word;
+}
+
+// Display Utilities
+.d-none {
+  display: none;
+}
+
+.d-block {
+  display: block;
+}
+
+.d-flex {
+  display: flex;
+}
+
+.d-inline-flex {
+  display: inline-flex;
+}
+
+// Flexbox Utilities
+.flex-column {
+  flex-direction: column;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-nowrap {
+  flex-wrap: nowrap;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-start {
+  justify-content: flex-start;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+// Gap Utilities
+.gap-xs {
+  gap: 4px;
+}
+
+.gap-sm {
+  gap: 8px;
+}
+
+.gap-md {
+  gap: 12px;
+}
+
+.gap-lg {
+  gap: 16px;
+}
+
+.gap-xl {
+  gap: 24px;
+}
+
+.gap-2xl {
+  gap: 32px;
+}
+
+// Spacing Utilities
+.m-0 {
+  margin: 0;
+}
+
+.p-0 {
+  padding: 0;
+}
+
+// Width Utilities
+.w-full {
+  width: 100%;
+}
+
+.w-auto {
+  width: auto;
+}
+
+// Height Utilities
+.h-full {
+  height: 100%;
+}
+
+.h-auto {
+  height: auto;
+}
+
+// Position Utilities
+.relative {
+  position: relative;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.fixed {
+  position: fixed;
+}
+
+// Overflow Utilities
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
+.overflow-scroll {
+  overflow: scroll;
+}
+
+// Cursor Utilities
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-default {
+  cursor: default;
+}
+
+// User Select Utilities
+.select-none {
+  user-select: none;
+}
+
+.select-text {
+  user-select: text;
+}
+
+// Visibility Utilities
+.visible {
+  visibility: visible;
+}
+
+.invisible {
+  visibility: hidden;
+}
+
