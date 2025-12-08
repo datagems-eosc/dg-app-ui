@@ -12,6 +12,7 @@ interface ChatMessagesProps {
   isGeneratingAIResponse?: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onSourcesClick?: (messageId: string) => void;
+  onRecommendationClick?: (recommendation: string) => void;
   showSelectedPanel?: boolean;
 }
 
@@ -21,6 +22,7 @@ export default function ChatMessages({
   isGeneratingAIResponse = false,
   messagesEndRef,
   onSourcesClick,
+  onRecommendationClick,
   showSelectedPanel,
 }: ChatMessagesProps) {
   if (isMessagesLoading) {
@@ -39,6 +41,10 @@ export default function ChatMessages({
     return aISO.localeCompare(bISO);
   });
 
+  const lastAIMessageId = [...sortedMessages]
+    .reverse()
+    .find((msg) => msg.type === "ai")?.id;
+
   return (
     <div
       className={`px-4 py-4 lg:p-6 3xl:px-0 3xl:py-6 ${
@@ -50,6 +56,10 @@ export default function ChatMessages({
           key={message.id}
           message={message}
           onSourcesClick={onSourcesClick}
+          onRecommendationClick={onRecommendationClick}
+          isLastAIMessage={
+            message.type === "ai" && message.id === lastAIMessageId
+          }
         />
       ))}
 

@@ -592,6 +592,51 @@ export function useApi() {
     [makeRequest],
   );
 
+  // TODO: Uncomment when backend is ready
+  // const getQuestionRecommendations = useCallback(
+  //   async (payload: {
+  //     conversationId: string;
+  //     messageId: string;
+  //   }): Promise<{ questions: string[] }> => {
+  //     const response = await makeRequest("/search/question-recommendation", {
+  //       method: "POST",
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json().catch(() => ({}));
+  //       throw new Error(
+  //         errorData.error || "Failed to fetch question recommendations",
+  //       );
+  //     }
+
+  //     return response.json();
+  //   },
+  //   [makeRequest],
+  // );
+
+  // Mock implementation for testing - remove when backend is ready
+  const getQuestionRecommendations = useCallback(
+    async (payload: {
+      conversationId: string;
+      messageId: string;
+    }): Promise<{ questions: string[] }> => {
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Return mocked recommendations
+      return {
+        questions: [
+          "What are the trends in this dataset?",
+          "Can you show me the statistical summary?",
+          "What patterns can be found in the data?",
+          "How does this compare to other datasets?",
+        ],
+      };
+    },
+    [],
+  );
+
   return {
     hasToken: !!token,
     token,
@@ -617,5 +662,6 @@ export function useApi() {
     getLicenses,
     getUserSettings,
     saveUserSettings,
+    getQuestionRecommendations,
   };
 }

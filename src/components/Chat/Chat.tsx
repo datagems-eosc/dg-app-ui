@@ -2,7 +2,7 @@
 
 import { Button } from "@ui/Button";
 import ChatInitialView from "@ui/chat/ChatInitialView";
-import { ChatInput } from "@ui/chat/ChatInput";
+import { ChatInput, type ChatInputRef } from "@ui/chat/ChatInput";
 import ChatMessages from "@ui/chat/ChatMessages";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { Database } from "lucide-react";
@@ -32,6 +32,8 @@ interface Message {
       cells: Array<{ column: string; value: string | number }>;
     }>;
   };
+  recommendations?: string[];
+  recommendationsLoading?: boolean;
 }
 
 interface ChatProps {
@@ -309,6 +311,27 @@ export default function Chat({
       setHasInitialized(true);
     }
   }, [initialMessages, conversationId, hasInitialized]);
+
+  // Fetch recommendations for the last AI message when messages are loaded
+  useEffect(() => {
+    if (
+      messages.length > 0 &&
+      conversationId &&
+      hasInitialized &&
+      !isMessagesLoading
+    ) {
+      // Find the last AI message
+      const lastAIMessage = [...messages]
+        .reverse()
+        .find((msg) => msg.type === "ai");
+
+      if (lastAIMessage && !lastAIMessage.recommendations) {
+        // Fetch recommendations for the last AI message
+        fetchRecommendationsForMessage(conversationId, lastAIMessage.id);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, conversationId, hasInitialized, isMessagesLoading]);
   const [inputValue, setInputValue] = useState("");
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
   // On mobile, do not show SelectedDatasetsPanel by default
@@ -579,9 +602,10 @@ export default function Chat({
         setIsGeneratingAIResponse(true);
 
         // Simulate AI response after a short delay
-        setTimeout(() => {
+        setTimeout(async () => {
+          const aiMessageId = (Date.now() + 1).toString();
           const aiResponse: Message = {
-            id: (Date.now() + 1).toString(),
+            id: aiMessageId,
             type: "ai",
             content: `I've analyzed your question "${inputValue}" using the selected datasets. Here's what I found...`,
             timestamp: new Date(),
@@ -590,6 +614,13 @@ export default function Chat({
           };
           setMessages((prev) => [...prev, aiResponse]);
           setIsGeneratingAIResponse(false);
+
+          // Fetch recommendations after AI response is rendered
+          // TODO: Only fetch when conversationId exists when backend is ready
+          // For now, fetch for testing even without conversationId
+          // Wait a bit longer to ensure message is in state
+          await new Promise((resolve) => setTimeout(resolve, 600));
+          fetchRecommendationsForMessage(conversationId || null, aiMessageId);
         }, 2000);
 
         setInputValue("");
@@ -799,15 +830,21 @@ export default function Chat({
       }
 
       // Simulate AI response after a short delay
-      setTimeout(() => {
+      setTimeout(async () => {
         const aiResponse = generateAIResponse(
           inputValue,
           newSelectedDatasets,
           datasets,
           foundDatasetNames,
         );
+        const aiMessageId = aiResponse.id;
         setMessages((prev) => [...prev, aiResponse]);
         setIsGeneratingAIResponse(false);
+
+        // Fetch recommendations after AI response is rendered
+        // Wait a bit to ensure message is in state
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        fetchRecommendationsForMessage(null, aiMessageId);
       }, 1000);
       setInputValue("");
     } catch (err: unknown) {
@@ -980,6 +1017,124 @@ export default function Chat({
     }
   };
 
+  // Ref for ChatInput to focus and set cursor position
+  const chatInputRef = React.useRef<ChatInputRef>(null);
+
+  // Handler for recommendation click - inserts recommendation text into input field
+  const handleRecommendationClick = (recommendation: string) => {
+    setInputValue(recommendation);
+    // Focus input and set cursor to end after state update
+    setTimeout(() => {
+      chatInputRef.current?.setCursorToEnd();
+    }, 0);
+  };
+
+  // Fetch recommendations for a message and update it
+  const fetchRecommendationsForMessage = async (
+    targetConversationId: string | null,
+    messageId: string,
+  ) => {
+    try {
+      // Set loading state
+      setMessages((prev) => {
+        const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+        if (messageIndex === -1) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[messageIndex] = {
+          ...updated[messageIndex],
+          recommendationsLoading: true,
+        };
+        return updated;
+      });
+
+      // TODO: Uncomment when backend is ready
+      // if (!api.hasToken) return;
+
+      // Mock implementation for testing - remove when backend is ready
+      // const recommendationsResponse = await api.getQuestionRecommendations({
+      //   conversationId: targetConversationId,
+      //   messageId: messageId,
+      // });
+
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Mock recommendations data
+      const mockRecommendations = [
+        "What are the trends in this dataset?",
+        "Can you show me the statistical summary?",
+        "What patterns can be found in the data?",
+        "How does this compare to other datasets?",
+      ];
+
+      if (mockRecommendations.length > 0) {
+        // Use a function to ensure we get the latest state
+        setMessages((prev) => {
+          const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+          if (messageIndex === -1) {
+            // Message not found, retry after a delay
+            setTimeout(() => {
+              setMessages((current) => {
+                const idx = current.findIndex((msg) => msg.id === messageId);
+                if (idx !== -1) {
+                  const updated = [...current];
+                  updated[idx] = {
+                    ...updated[idx],
+                    recommendations: mockRecommendations,
+                    recommendationsLoading: false,
+                  };
+                  return updated;
+                }
+                return current;
+              });
+            }, 500);
+            return prev;
+          }
+
+          // Message found, update it
+          const updated = [...prev];
+          updated[messageIndex] = {
+            ...updated[messageIndex],
+            recommendations: mockRecommendations,
+            recommendationsLoading: false,
+          };
+          return updated;
+        });
+      } else {
+        // No recommendations, clear loading state
+        setMessages((prev) => {
+          const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+          if (messageIndex === -1) {
+            return prev;
+          }
+          const updated = [...prev];
+          updated[messageIndex] = {
+            ...updated[messageIndex],
+            recommendationsLoading: false,
+          };
+          return updated;
+        });
+      }
+    } catch (error) {
+      // Silently fail - recommendations are optional, but clear loading state
+      console.warn("Failed to fetch recommendations:", error);
+      setMessages((prev) => {
+        const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+        if (messageIndex === -1) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[messageIndex] = {
+          ...updated[messageIndex],
+          recommendationsLoading: false,
+        };
+        return updated;
+      });
+    }
+  };
+
   // Helper: Only disable input when loading or generating AI response
   const isInputDisabled = isLoading || isGeneratingAIResponse;
 
@@ -1036,6 +1191,7 @@ export default function Chat({
                 isGeneratingAIResponse={isGeneratingAIResponse}
                 messagesEndRef={messagesEndRef}
                 onSourcesClick={handleSourcesClick}
+                onRecommendationClick={handleRecommendationClick}
                 showSelectedPanel={showSelectedPanel}
               />
             </div>
@@ -1075,6 +1231,7 @@ export default function Chat({
                 <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
                 <ChatInput
+                  ref={chatInputRef}
                   value={inputValue}
                   onChange={setInputValue}
                   onSend={handleSendMessage}
@@ -1109,6 +1266,7 @@ export default function Chat({
               <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
               <ChatInput
+                ref={chatInputRef}
                 value={inputValue}
                 onChange={setInputValue}
                 onSend={handleSendMessage}

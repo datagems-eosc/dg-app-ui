@@ -8,6 +8,8 @@ export interface Message {
   tableData?: TableData;
   latitude?: number;
   longitude?: number;
+  recommendations?: string[];
+  recommendationsLoading?: boolean;
 }
 
 export interface TableData {
