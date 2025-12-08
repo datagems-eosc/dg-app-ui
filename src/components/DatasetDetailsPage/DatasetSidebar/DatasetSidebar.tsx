@@ -1,19 +1,5 @@
 "use client";
 
-import { Button } from "@ui/Button";
-import { Chip } from "@ui/Chip";
-import {
-  Box,
-  Copy,
-  Eye,
-  FileLock,
-  Globe,
-  Languages,
-  Lock,
-  Plus,
-  Quote,
-  Settings,
-} from "lucide-react";
 import { useState } from "react";
 import AddToCollectionModal from "@/components/AddToCollectionModal";
 import type { DatasetPlus } from "@/data/dataset";
