@@ -1,0 +1,39 @@
+@use '@/styles' as *;
+
+.datasetUseCasesSection {
+  @include section-base;
+
+  &__title {
+    @include section-title;
+  }
+
+  &__content {
+    @include section-content;
+  }
+
+  &__text {
+    word-break: break-word;
+  }
+
+  &__list {
+    list-style: disc;
+    padding-left: 20px;
+    @include flex-column;
+    gap: $spacing-sm;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      padding-left: 16px;
+    }
+  }
+
+  &__item {
+    @include text-md;
+    @include text-secondary;
+  }
+
+  &__itemTitle {
+    @include font-medium;
+    @include text-md;
+    @include text-primary;
+  }
+}

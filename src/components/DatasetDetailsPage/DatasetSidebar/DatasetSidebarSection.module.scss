@@ -1,0 +1,83 @@
+@use '@/styles' as *;
+
+.datasetSidebarSection {
+  @include section-base;
+
+  &__header {
+    @include flex-between;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+
+    @media (max-width: $breakpoint-sm - 1px) {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
+  &__headerLeft {
+    @include flex-center;
+    gap: $spacing-sm;
+  }
+
+  &__icon {
+    @include icon-base;
+  }
+
+  &__title {
+    @include font-medium;
+    @include text-md;
+    @include text-primary;
+  }
+
+  &__button {
+    @include flex-center;
+    gap: $spacing-xs;
+  }
+
+  &__buttonIcon {
+    @include icon-base;
+  }
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+  }
+
+  &__link {
+    @include text-base;
+    @include text-primary;
+    text-decoration: underline;
+    word-break: break-all;
+  }
+
+  &__badge {
+    display: inline-block;
+    @include border-base;
+    @include border-radius-sm;
+    padding: 2px $spacing-sm;
+  }
+
+  &__badgeText {
+    @include font-medium;
+    @include text-base;
+    @include text-primary;
+  }
+
+  &__citation {
+    background: $color-background-secondary;
+    @include border-radius-md;
+    padding: $spacing-lg;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      padding: $spacing-md;
+    }
+  }
+
+  &__citationText {
+    @include text-base;
+    @include text-primary;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

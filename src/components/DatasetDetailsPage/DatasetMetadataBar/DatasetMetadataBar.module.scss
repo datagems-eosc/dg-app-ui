@@ -1,0 +1,73 @@
+@use '@/styles' as *;
+
+.datasetMetadataBar {
+  display: flex;
+  align-items: center;
+  background: $color-background;
+  @include border-base;
+  @include border-radius-lg;
+  width: 100%;
+
+  &__item {
+    flex: 1 0 0;
+    display: flex;
+    gap: $spacing-md;
+    align-items: center;
+    padding: $spacing-lg $spacing-xl;
+    min-width: 0;
+  }
+
+  &__icon {
+    @include icon-md;
+    flex-shrink: 0;
+  }
+
+  &__content {
+    flex: 1 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-sm;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  &__label {
+    @include font-medium;
+    @include text-base;
+    @include text-primary;
+    flex-shrink: 0;
+  }
+
+  &__value {
+    @include text-base;
+    @include text-secondary;
+    flex-shrink: 0;
+  }
+
+  &__separator {
+    width: 1px;
+    height: 53px;
+    background: $color-border;
+    flex-shrink: 0;
+  }
+
+  @include respond-to(sm) {
+    flex-wrap: nowrap;
+  }
+
+  @media (max-width: $breakpoint-sm - 1px) {
+    flex-direction: column;
+    align-items: stretch;
+
+    &__item {
+      flex: none;
+      width: 100%;
+    }
+
+    &__separator {
+      width: 100%;
+      height: 1px;
+    }
+  }
+}

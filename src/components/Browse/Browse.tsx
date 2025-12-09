@@ -42,7 +42,6 @@ import {
 } from "../../config/filterOptions";
 import CreateCollectionModal from "../CreateCollectionModal";
 import DatasetCard from "../DatasetCard";
-import DatasetDetailsPanel from "../DatasetDetailsPanel";
 import DeleteCollectionModal from "../DeleteCollectionModal";
 import FilterModal from "../FilterModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
@@ -207,8 +206,6 @@ export default function Browse({
   const router = useRouter();
   const [localSelectedDatasets, setLocalSelectedDatasets] =
     useState<string[]>(selectedDatasets);
-  const [selectedDataset, setSelectedDataset] =
-    useState<DatasetWithCollections | null>(null);
   const [filters, setFilters] = useState<FilterState>(
     propFilters || defaultFilters,
   );
@@ -228,8 +225,6 @@ export default function Browse({
   );
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
-  const [isDetailsPanelAnimating, setIsDetailsPanelAnimating] = useState(false);
-  const [isDetailsPanelClosing, setIsDetailsPanelClosing] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
     useState(false);
@@ -272,10 +267,6 @@ export default function Browse({
   useEffect(() => {
     const handleSidebarOpenedForTablet = () => {
       if (isTablet) {
-        // Close both details and selected datasets panels
-        if (selectedDataset) {
-          setSelectedDataset(null);
-        }
         if (showSelectedPanel) {
           handleClosePanel();
         }
@@ -292,7 +283,7 @@ export default function Browse({
         handleSidebarOpenedForTablet,
       );
     };
-  }, [isTablet, selectedDataset, showSelectedPanel, handleClosePanel]);
+  }, [isTablet, showSelectedPanel, handleClosePanel]);
 
   // Use controlled or local state for selected datasets
   const currentSelectedDatasets = onSelectedDatasetsChange
@@ -528,14 +519,6 @@ export default function Browse({
     }, 500);
   }
 
-  const handleCloseDetailsPanel = () => {
-    setIsDetailsPanelClosing(true);
-    setTimeout(() => {
-      setSelectedDataset(null);
-      setIsDetailsPanelClosing(false);
-    }, 500);
-  };
-
   // Only apply access filter on frontend, all other filtering is done on backend
   const filteredDatasets = useMemo(() => {
     return datasets.filter((dataset) => {
@@ -595,48 +578,11 @@ export default function Browse({
 
   const handleDatasetClick = (dataset: DatasetWithCollections) => {
     if (!isModal) {
-      // Close selected datasets panel when opening details panel
-      if (showSelectedPanel && onCloseSidebar) {
-        onCloseSidebar();
-      }
-
-      // Toggle the details panel - close if same dataset clicked, open if different
-      if (selectedDataset?.id === dataset.id) {
-        handleCloseDetailsPanel();
-      } else {
-        // If a different dataset is already selected, close it first then open the new one
-        if (selectedDataset) {
-          handleCloseDetailsPanel();
-          // Wait for close animation to complete, then open new panel
-          setTimeout(() => {
-            setSelectedDataset(dataset);
-            setIsDetailsPanelAnimating(true);
-            setTimeout(() => setIsDetailsPanelAnimating(false), 50);
-          }, 500);
-        } else {
-          // No dataset selected, open directly with animation
-          setSelectedDataset(dataset);
-          setIsDetailsPanelAnimating(true);
-          setTimeout(() => setIsDetailsPanelAnimating(false), 50);
-        }
-        // On tablets, request sidebar to close when opening details panel
-        if (isTablet) {
-          window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
-        }
-      }
+      router.push(getNavigationUrl(`/datasets/${dataset.id}`));
     }
-  };
-
-  const closeDetailsPanel = () => {
-    handleCloseDetailsPanel();
   };
 
   const handleDatasetSelect = (datasetId: string, isSelected: boolean) => {
-    // Close details panel when selecting datasets
-    if (selectedDataset) {
-      handleCloseDetailsPanel();
-    }
-
     if (isSelected) {
       setCurrentSelectedDatasets([...currentSelectedDatasets, datasetId]);
       // Open the SelectedDatasetsPanel when a dataset is selected
@@ -784,7 +730,6 @@ export default function Browse({
   }, [filters, fieldsOfScienceCategories, licenses]);
 
   const isPanelVisible = showSelectedPanel || isPanelClosing;
-  const isDetailsPanelVisible = selectedDataset || isDetailsPanelClosing;
   const shouldShowSmartExamples =
     showSearchAndFilters !== false &&
     isSmartSearchEnabled &&
@@ -794,11 +739,7 @@ export default function Browse({
     <div className="flex relative min-h-screen">
       <div
         className={`flex-1 transition-all duration-500 ease-out ${
-          isPanelVisible
-            ? "sm:pr-[388px]"
-            : isDetailsPanelVisible
-              ? "sm:pr-[384px]"
-              : ""
+          isPanelVisible ? "sm:pr-[388px]" : ""
         }`}
       >
         <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out py-4 sm:py-10">
@@ -1192,7 +1133,6 @@ export default function Browse({
                       key={dataset.id || `dataset-${index}`}
                       dataset={dataset}
                       onClick={() => handleDatasetClick(dataset)}
-                      isSelected={selectedDataset?.id === dataset.id}
                       isMultiSelected={currentSelectedDatasets.includes(
                         dataset.id,
                       )}
@@ -1214,10 +1154,7 @@ export default function Browse({
                       onAddToFavorites={onAddToFavorites}
                       hasFetchedFavorites={hasFetchedFavorites}
                       onRemoveFromFavorites={onRemoveFromFavorites}
-                      hasSidePanelOpen={
-                        (!!selectedDataset && !isDetailsPanelClosing) ||
-                        (showSelectedPanel && !isPanelClosing)
-                      }
+                      hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
                       isSmartSearchEnabled={isSmartSearchEnabled}
                     />
                   ))}
@@ -1235,31 +1172,6 @@ export default function Browse({
                   </p>
                 </div>
               )}
-            </div>
-          )}
-          {/* Dataset Details Panel */}
-          {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (
-            <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
-              <div
-                className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
-                  isDetailsPanelAnimating
-                    ? "translate-x-full"
-                    : isDetailsPanelClosing
-                      ? "translate-x-full"
-                      : "translate-x-0"
-                }`}
-              >
-                <DatasetDetailsPanel
-                  dataset={selectedDataset}
-                  onClose={closeDetailsPanel}
-                  isVisible={!!selectedDataset}
-                  onAddToCollection={
-                    selectedDataset
-                      ? () => handleAddToCollection(selectedDataset)
-                      : undefined
-                  }
-                />
-              </div>
             </div>
           )}
         </div>
