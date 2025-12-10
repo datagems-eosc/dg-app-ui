@@ -1,0 +1,15 @@
+@use '@/styles' as *;
+
+.datasetTagsSection {
+  @include section-base;
+
+  &__title {
+    @include section-title;
+  }
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+  }
+}
