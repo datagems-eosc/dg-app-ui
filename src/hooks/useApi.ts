@@ -3,8 +3,9 @@
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { getApiBaseUrl } from "@/lib/env";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
-import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
+import { fetchWithAuth } from "@/lib/utils";
 
 export function useApi() {
   const { data: session } = useSession();

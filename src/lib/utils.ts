@@ -68,17 +68,6 @@ export function getUserFromToken(
 }
 
 /**
- * Returns the DataGEMS API base URL from environment variables.
- * Falls back to 'https://datagems-dev.scayle.es' if not set.
- */
-export function getApiBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_DATAGEMS_API_BASE_URL ||
-    "https://datagems-dev.scayle.es"
-  );
-}
-
-/**
  * Wrapper for fetch that logs out the user (redirects to /logout) on 401 Unauthorized.
  * Use this for all authenticated API calls in the browser.
  *

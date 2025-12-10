@@ -37,8 +37,8 @@ ENV NODE_ENV=production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install curl for healthcheck and bash for env.sh
+RUN apk add --no-cache curl bash
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -54,6 +54,11 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy environment scripts
+COPY --chown=nextjs:nodejs env.sh ./env.sh
+COPY --chown=nextjs:nodejs env.defaults.sh ./env.defaults.sh
+RUN chmod +x ./env.sh
+
 USER nextjs
 
 EXPOSE 3000
@@ -64,6 +69,9 @@ ENV HOSTNAME="0.0.0.0"
 # Health check configuration
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:3000/healthz || exit 1
+
+# env.sh generates runtime env vars, then executes CMD
+ENTRYPOINT ["./env.sh"]
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output

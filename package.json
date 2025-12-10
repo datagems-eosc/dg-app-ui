@@ -7,9 +7,11 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "./env.sh next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "start:env": "./env.sh pnpm start",
+    "env:generate": "./env.sh echo 'Environment generated'",
     "lint": "next lint",
     "lint:biome": "npx @biomejs/biome check --write .",
     "lint:biome:check": "npx @biomejs/biome check .",

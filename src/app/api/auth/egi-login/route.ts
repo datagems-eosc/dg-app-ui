@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getApiBaseUrl } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/env";
 
 /**
  * Proxies EGI Check-in login requests to the OAuth endpoint to avoid CORS issues.

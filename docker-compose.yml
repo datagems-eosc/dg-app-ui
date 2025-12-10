@@ -7,13 +7,20 @@ services:
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
+      # === Core settings ===
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+
+      # === PUBLIC_* variables (exposed to browser via window.__env) ===
+      - PUBLIC_APP_NAME=DataGEMS
+      - PUBLIC_APP_BASE_URL=http://localhost:${FRONTEND_PORT:-3000}
+      - PUBLIC_DATAGEMS_API_BASE_URL=https://datagems-dev.scayle.es
+
+      # === Server-only variables (NOT exposed to browser) ===
       - KEYCLOAK_AUTH_GRAND_TYPE=PKCE
       - KEYCLOAK_CLIENT_ID=dg-app-ui
       - KEYCLOAK_CLIENT_SECRET="" # (empty string, not used)
       - KEYCLOAK_ISSUER=https://datagems-dev.scayle.es/oauth/realms/dev
-      - NEXT_PUBLIC_APP_BASE_URL=http://localhost:${FRONTEND_PORT:-3000}
       - NEXTAUTH_URL=http://localhost:${FRONTEND_PORT:-3000}
       - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
     restart: unless-stopped
