@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DatasetDetailsPageContent from "@/components/DatasetDetailsPage/DatasetDetailsPageContent";
+import { APP_ROUTES } from "@/config/appUrls";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { logApiError } from "@/lib/logger";
@@ -150,7 +151,7 @@ export default function DatasetDetailsPage() {
                 "The dataset you're looking for doesn't exist or has been removed."}
             </p>
             <button
-              onClick={() => router.push(getNavigationUrl("/browse"))}
+              onClick={() => router.push(getNavigationUrl(APP_ROUTES.BROWSE))}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
             >
               Go to Browse

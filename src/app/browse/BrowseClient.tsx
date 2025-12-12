@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
+import { APP_ROUTES, generateChatUrl } from "@/config/appUrls";
 import {
   convertToBackendFilters,
   type FilterState,
@@ -246,7 +247,7 @@ function _mapUserCollectionToDatasets(userCollection: unknown): DatasetPlus[] {
   return Array.from(byId.values());
 }
 
-export default function DashboardClient() {
+export default function BrowseClient() {
   const api = useApi();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1081,7 +1082,7 @@ export default function DashboardClient() {
         JSON.stringify(selectedDatasets),
       );
     }
-    router.push(getNavigationUrl("/chat"));
+    router.push(getNavigationUrl(APP_ROUTES.CHAT));
   }, [router, isMounted, selectedDatasets]);
 
   const handleAddToCollection = useCallback(() => {

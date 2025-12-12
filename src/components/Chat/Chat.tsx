@@ -10,6 +10,7 @@ import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
+import { APP_ROUTES } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
@@ -650,7 +651,7 @@ export default function Chat({
   };
 
   const _handleBackToBrowse = () => {
-    router.push(getNavigationUrl("/browse"));
+    router.push(getNavigationUrl(APP_ROUTES.BROWSE));
   };
 
   const toggleSidebar = () => {

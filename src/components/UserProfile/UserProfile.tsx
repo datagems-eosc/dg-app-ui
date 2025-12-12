@@ -154,7 +154,7 @@ export default function UserProfile() {
   };
 
   const handleCancel = () => {
-    router.push(APP_ROUTES.DASHBOARD);
+    router.push(APP_ROUTES.BROWSE);
   };
 
   const handleImageSelect = async (file: File) => {
