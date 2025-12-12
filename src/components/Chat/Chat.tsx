@@ -13,6 +13,11 @@ import type { ConversationMessage } from "@/app/chat/page";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
+import {
+  parseConversationMessage,
+  parseSearchInDataExploreResponse,
+} from "@/lib/messageUtils";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection, Collection } from "@/types/collection";
 import AddDatasetsModal from "../AddDatasetsModal";
@@ -33,6 +38,8 @@ interface Message {
       cells: Array<{ column: string; value: string | number }>;
     }>;
   };
+  latitude?: number;
+  longitude?: number;
 }
 
 interface ChatProps {
@@ -54,12 +61,6 @@ interface CrossDatasetSearchResult {
     name: string;
   };
 }
-
-interface DatasetPayloadItem {
-  dataset?: { id?: string; code?: string; name?: string };
-}
-
-type MessageType = "user" | "ai";
 
 export default function Chat({
   selectedDatasets,
@@ -113,203 +114,36 @@ export default function Chat({
       setIsMessagesLoading(true);
     }
 
-    // If initialMessages is provided (even as an empty array), treat loading as complete
     if (Array.isArray(initialMessages)) {
       if (initialMessages.length > 0) {
         const parsed = initialMessages
           .filter((msg) => msg.kind >= 0 && msg.kind <= 3)
-          .map((msg, idx) => {
-            let content = "";
-            let tableData: Message["tableData"] | undefined;
+          .map((msg, idx) => parseConversationMessage(msg, idx));
 
-            if (msg.kind === 0) {
-              // User message (old format) - extract query
-              const payload = msg.data?.payload;
-              if (
-                payload &&
-                typeof payload === "object" &&
-                !Array.isArray(payload) &&
-                "query" in payload
-              ) {
-                content = (payload as { query?: string }).query || "";
-              } else {
-                content = "";
-              }
-            } else if (msg.kind === 1) {
-              // AI message (old format) - extract dataset names from payload array
-              let relatedDatasetIds: string[] = [];
-              if (Array.isArray(msg.data?.payload)) {
-                const names = (msg.data.payload as DatasetPayloadItem[])
-                  .map((item) => item.dataset?.name)
-                  .filter((n: string | undefined) => typeof n === "string");
+        setMessages((prevMessages) => {
+          const newAIMessages = detectNewAIMessages(parsed, prevMessages);
 
-                // Extract dataset IDs
-                relatedDatasetIds = (msg.data.payload as DatasetPayloadItem[])
-                  .map((item) => item.dataset?.id)
-                  .filter(
-                    (id: string | undefined) => typeof id === "string",
-                  ) as string[];
+          if (newAIMessages.length > 0 && isGeneratingAIResponse) {
+            setIsGeneratingAIResponse(false);
+          }
 
-                if (names.length > 0) {
-                  if (names.length === 1) {
-                    content = `Given your question, the following dataset might be useful: ${names[0]}`;
-                  } else {
-                    content = `Given your question, the following datasets might be useful:\n\n${names
-                      .map((n) => `• ${n}`)
-                      .join("\n")}`;
-                  }
-                } else {
-                  content =
-                    "Given your question, some datasets might be useful, but no names were found.";
-                }
-              } else {
-                content =
-                  typeof msg.data?.payload === "string"
-                    ? msg.data.payload
-                    : JSON.stringify(msg.data?.payload);
-              }
+          const merged = mergeMessages(parsed, prevMessages);
 
-              return {
-                id: msg.id || getMessageId(msg, idx),
-                type: "ai" as MessageType,
-                content,
-                timestamp: msg.createdAt,
-                tableData,
-                sources: relatedDatasetIds.length,
-                relatedDatasetIds,
-              };
-            } else if (msg.kind === 2) {
-              // User message (new format) - extract question and datasetIds
-              const payload = msg.data?.payload;
-              let userDatasetIds: string[] = [];
-              if (
-                payload &&
-                typeof payload === "object" &&
-                !Array.isArray(payload) &&
-                "question" in payload
-              ) {
-                content = (payload as { question?: string }).question || "";
-                // Extract datasetIds if present
-                if (
-                  "datasetIds" in payload &&
-                  Array.isArray(payload.datasetIds)
-                ) {
-                  userDatasetIds = (payload.datasetIds as unknown[]).filter(
-                    (id) => typeof id === "string",
-                  ) as string[];
-                }
-              } else {
-                content = "";
-              }
-
-              return {
-                id: msg.id || getMessageId(msg, idx),
-                type: "user" as MessageType,
-                content,
-                timestamp: msg.createdAt,
-                datasetIds: userDatasetIds,
-              };
-            } else if (msg.kind === 3) {
-              // AI message (new format) - extract table data if available
-              const payload = msg.data?.payload;
-              const relatedDatasetIds: string[] = [];
-              let latitude: number | undefined;
-              let longitude: number | undefined;
-
-              // Extract coordinates from InputParams if available
-              if (
-                payload &&
-                typeof payload === "object" &&
-                !Array.isArray(payload) &&
-                "data" in payload &&
-                payload.data &&
-                typeof payload.data === "object" &&
-                "InputParams" in payload.data &&
-                Array.isArray(payload.data.InputParams)
-              ) {
-                const inputParams = payload.data.InputParams;
-                // Look for the first InputParam with lat/lon values
-                for (const param of inputParams) {
-                  if (
-                    param &&
-                    typeof param === "object" &&
-                    "lat" in param &&
-                    "lon" in param
-                  ) {
-                    latitude =
-                      typeof param.lat === "number" ? param.lat : undefined;
-                    longitude =
-                      typeof param.lon === "number" ? param.lon : undefined;
-                    break;
-                  }
-                }
-              }
-
-              if (
-                payload &&
-                typeof payload === "object" &&
-                !Array.isArray(payload) &&
-                "entries" in payload
-              ) {
-                const entries = (
-                  payload as { entries?: Array<{ result?: { table?: any } }> }
-                ).entries;
-                if (entries && entries.length > 0 && entries[0].result?.table) {
-                  tableData = entries[0].result.table;
-                  // Create a simple text representation of the table data
-                  const table = entries[0].result.table;
-                  if (table.columns && table.rows) {
-                    const _columnNames = table.columns
-                      .map((col: any) => col.name)
-                      .join(" | ");
-                    const _rowData = table.rows
-                      .map((row: any) =>
-                        row.cells.map((cell: any) => cell.value).join(" | "),
-                      )
-                      .join("\n");
-                    content = `Table Results:\n`;
-                  } else {
-                    content = "Data analysis completed.";
-                  }
-                } else {
-                  content = "Analysis completed.";
-                }
-              } else {
-                content = "Analysis completed.";
-              }
-
-              return {
-                id: msg.id || getMessageId(msg, idx),
-                type: "ai" as MessageType,
-                content,
-                timestamp: msg.createdAt,
-                tableData,
-                sources: relatedDatasetIds.length,
-                relatedDatasetIds,
-                latitude,
-                longitude,
-              };
-            }
-
-            return {
-              id: msg.id || getMessageId(msg, idx),
-              type: ((msg as any)?.kind % 2 === 0
-                ? "user"
-                : "ai") as MessageType,
-              content,
-              timestamp: (msg as any)?.createdAt,
-              tableData,
-            };
-          });
-        setMessages(parsed);
+          return merged;
+        });
       } else {
-        // No messages were returned; clear any existing messages
         setMessages([]);
       }
       setIsMessagesLoading(false);
       setHasInitialized(true);
     }
-  }, [initialMessages, conversationId, hasInitialized]);
+  }, [
+    initialMessages,
+    conversationId,
+    hasInitialized,
+    isGeneratingAIResponse,
+    messages.length,
+  ]);
   const [inputValue, setInputValue] = useState("");
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
   // On mobile, do not show SelectedDatasetsPanel by default
@@ -534,6 +368,8 @@ export default function Chat({
     if (!inputValue.trim()) return;
     setError(null);
     setIsLoading(true);
+    // Show spinner immediately when user sends a message
+    setIsGeneratingAIResponse(true);
 
     // Store current datasets as previous before sending
     setPreviousDatasets([...selectedDatasets]);
@@ -546,9 +382,23 @@ export default function Chat({
 
       // For existing conversations, use the in-data-explore API directly
       if (conversationId && selectedDatasets.length > 0) {
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          type: "user",
+          content: inputValue,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => {
+          const updated = [...prev, userMessage];
+          return updated;
+        });
+
+        setInputValue("");
+
         if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
           setIsLoading(false);
+          setIsGeneratingAIResponse(false);
           return;
         }
 
@@ -560,47 +410,34 @@ export default function Chat({
           project: {
             fields: ["question", "data", "status", "entries"],
           },
-          query: inputValue,
+          query: userMessage.content,
           resultCount: 100,
           datasetIds: selectedDatasets,
         };
 
-        const _response = await api.searchInDataExplore(payload);
+        const apiResponse = await api.searchInDataExplore(payload);
 
-        // Add user message immediately
-        const userMessage: Message = {
-          id: Date.now().toString(),
-          type: "user",
-          content: inputValue,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, userMessage]);
+        // Process the API response directly to create AI message
+        const aiMessage = parseSearchInDataExploreResponse(
+          apiResponse,
+          selectedDatasets,
+        );
 
-        // Show skeleton while generating AI response
-        setIsGeneratingAIResponse(true);
+        if (aiMessage) {
+          // Add AI message to state
+          setMessages((prev) => [...prev, aiMessage]);
 
-        // Simulate AI response after a short delay
-        setTimeout(() => {
-          const aiResponse: Message = {
-            id: (Date.now() + 1).toString(),
-            type: "ai",
-            content: `I've analyzed your question "${inputValue}" using the selected datasets. Here's what I found...`,
-            timestamp: new Date(),
-            sources: selectedDatasets.length,
-            relatedDatasetIds: selectedDatasets,
-          };
-          setMessages((prev) => [...prev, aiResponse]);
+          // Turn off spinner
           setIsGeneratingAIResponse(false);
-        }, 2000);
+        }
 
-        setInputValue("");
         setIsLoading(false);
         return;
       }
 
       // If no datasets are selected, call persist first, then cross-dataset search API
       if (selectedDatasets.length === 0) {
-        // Show generating response state while making API calls
+        // Show spinner while making API calls (no datasets selected path)
         setIsGeneratingAIResponse(true);
 
         if (!api.hasToken) {
@@ -682,7 +519,7 @@ export default function Chat({
         }
       } else if (!conversationId) {
         // If datasets are selected and not already in a conversation, create a new conversation and then search
-        // Show generating response state while making API calls
+        // Show spinner while making API calls (new conversation with datasets path)
         setIsGeneratingAIResponse(true);
 
         if (!api.hasToken) {
@@ -772,7 +609,7 @@ export default function Chat({
       };
       setMessages([userMessage]);
 
-      // Show skeleton while generating AI response
+      // Show spinner while generating AI response
       setIsGeneratingAIResponse(true);
 
       // If datasets were found via cross-dataset search, show a system message
@@ -785,31 +622,21 @@ export default function Chat({
           }
         });
         setSelectedDatasetNamesMap(namesMap);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            type: "ai",
-            content: `Based on your query we found the following datasets: ${foundDatasetNames.join(
-              ", ",
-            )}`,
-            timestamp: new Date(),
-            sources: foundDatasetNames.length,
-          },
-        ]);
+        const datasetFoundMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: "ai",
+          content: `Based on your query we found the following datasets: ${foundDatasetNames.join(
+            ", ",
+          )}`,
+          timestamp: new Date(),
+          sources: foundDatasetNames.length,
+        };
+        setMessages((prev) => {
+          const updated = [...prev, datasetFoundMessage];
+          return updated;
+        });
       }
 
-      // Simulate AI response after a short delay
-      setTimeout(() => {
-        const aiResponse = generateAIResponse(
-          inputValue,
-          newSelectedDatasets,
-          datasets,
-          foundDatasetNames,
-        );
-        setMessages((prev) => [...prev, aiResponse]);
-        setIsGeneratingAIResponse(false);
-      }, 1000);
       setInputValue("");
     } catch (err: unknown) {
       let message = "An unexpected error occurred";
@@ -820,45 +647,6 @@ export default function Chat({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const generateAIResponse = (
-    question: string,
-    datasetIds: string[],
-    allDatasets: Dataset[],
-    foundDatasetNames?: string[] | null,
-  ): Message => {
-    if (foundDatasetNames && foundDatasetNames.length > 0) {
-      return {
-        id: (Date.now() + 2).toString(),
-        type: "ai",
-        content: `You can now ask questions about these datasets: ${foundDatasetNames.join(
-          ", ",
-        )}`,
-        timestamp: new Date(),
-        sources: foundDatasetNames.length,
-        relatedDatasetIds: datasetIds,
-      };
-    }
-    const selectedDatasetList = allDatasets.filter((d) =>
-      datasetIds.includes(d.id),
-    );
-
-    // Default response
-    return {
-      id: (Date.now() + 1).toString(),
-      type: "ai",
-      content: `Based on the ${
-        selectedDatasetList.length
-      } dataset(s) you've selected (${selectedDatasetList
-        .map((d) => d.title)
-        .join(
-          ", ",
-        )}), I can help you analyze your question: "${question}". However, I need more specific information to provide a detailed answer. Could you please clarify what specific aspects you'd like me to focus on?`,
-      timestamp: new Date(),
-      sources: selectedDatasetList.length,
-      relatedDatasetIds: datasetIds,
-    };
   };
 
   const _handleBackToBrowse = () => {
@@ -1036,7 +824,9 @@ export default function Chat({
             <ChatMessagesSkeleton />
           ) : (
             (messages.length > 0 || isGeneratingAIResponse) && (
-              <div className="min-h-0" ref={messagesEndRef}>
+              <div
+                className={`${messages.length === 0 && isGeneratingAIResponse ? "min-h-[200px]" : "min-h-0"}`}
+              >
                 <ChatMessages
                   messages={messages}
                   isMessagesLoading={isMessagesLoading}
@@ -1198,16 +988,4 @@ function arraysEqual(a: string[], b: string[]): boolean {
   const sortedA = [...a].sort();
   const sortedB = [...b].sort();
   return sortedA.every((val, index) => val === sortedB[index]);
-}
-
-function getMessageId(msg: unknown, idx: number): string {
-  if (
-    msg &&
-    typeof msg === "object" &&
-    "id" in msg &&
-    typeof (msg as { id?: unknown }).id === "string"
-  ) {
-    return (msg as { id: string }).id;
-  }
-  return String(idx);
 }
