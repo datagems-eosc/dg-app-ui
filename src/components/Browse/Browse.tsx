@@ -21,6 +21,7 @@ type DatasetWithCollections = Dataset & { collections?: Collection[] };
 
 import { Button } from "@ui/Button";
 import { Chip } from "@ui/Chip";
+import { ConfirmationModal } from "@ui/ConfirmationModal";
 import DatasetCardSkeleton from "@ui/datasets/DatasetCardSkeleton";
 import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import SmartSearch from "@ui/SmartSearch";
@@ -28,6 +29,9 @@ import SmartSearchExamples from "@ui/SmartSearchExamples";
 import Switch from "@ui/Switch";
 import { Toast } from "@ui/Toast";
 import { useRouter } from "next/navigation";
+import { APP_ROUTES } from "@/config/appUrls";
+import { UI_CONSTANTS } from "@/config/uiConstants";
+import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
@@ -42,7 +46,6 @@ import {
 } from "../../config/filterOptions";
 import CreateCollectionModal from "../CreateCollectionModal";
 import DatasetCard from "../DatasetCard";
-import DeleteCollectionModal from "../DeleteCollectionModal";
 import FilterModal from "../FilterModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
@@ -292,13 +295,29 @@ export default function Browse({
   const setCurrentSelectedDatasets =
     onSelectedDatasetsChange || setLocalSelectedDatasets;
 
-  // Handle delete collection
   const handleDeleteCollection = async () => {
-    if (!isCustomCollection || !collectionName || !collectionId) return;
+    if (!isCustomCollection || !collectionName || !collectionId) {
+      logger.warn(
+        {
+          isCustomCollection,
+          hasCollectionName: !!collectionName,
+          hasCollectionId: !!collectionId,
+        },
+        "Attempted to delete collection without required parameters",
+      );
+      return;
+    }
 
     setIsDeleting(true);
     try {
       if (!api.hasToken) {
+        logApiError(
+          "deleteCollection",
+          new Error("No access token available"),
+          {
+            collectionId,
+          },
+        );
         throw new Error("No access token available");
       }
 
@@ -307,21 +326,71 @@ export default function Browse({
       window.dispatchEvent(new CustomEvent("forceCollectionsRefresh"));
       notifyCollectionModified();
 
+      logger.info(
+        {
+          collectionId,
+          collectionName,
+          timestamp: new Date().toISOString(),
+          operation: "deleteCollection",
+          status: "success",
+        },
+        "Collection deleted successfully",
+      );
+
       setShowDeleteModal(false);
-      setToastType("success");
-      setToastMessage("Collection deleted successfully!");
+      setToastType(TOAST_MESSAGES.collectionDeleted.type);
+      setToastMessage(TOAST_MESSAGES.collectionDeleted.message);
       setShowToast(true);
 
       setTimeout(() => {
-        router.push(getNavigationUrl("/dashboard"));
-      }, 500);
+        router.push(getNavigationUrl(APP_ROUTES.DASHBOARD));
+      }, UI_CONSTANTS.NAVIGATION_DELAY_MS);
     } catch (error) {
+      const errorDetails = {
+        collectionId,
+        collectionName,
+        timestamp: new Date().toISOString(),
+        operation: "deleteCollection",
+        status: "failed",
+        errorType:
+          error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        hasToken: !!api.hasToken,
+      };
+
+      if (error && typeof error === "object") {
+        const errorObj = error as Record<string, unknown>;
+        if ("response" in errorObj) {
+          const response = errorObj.response as Record<string, unknown>;
+          Object.assign(errorDetails, {
+            responseStatus: response.status,
+            responseStatusText: response.statusText,
+            responseData: response.data,
+            responseHeaders: response.headers,
+          });
+        }
+        if ("code" in errorObj) {
+          Object.assign(errorDetails, { errorCode: errorObj.code });
+        }
+        if ("config" in errorObj) {
+          const config = errorObj.config as Record<string, unknown>;
+          Object.assign(errorDetails, {
+            requestUrl: config.url,
+            requestMethod: config.method,
+          });
+        }
+      }
+
+      logger.error(errorDetails, "Failed to delete collection");
       logApiError("deleteCollection", error, { collectionId });
-      setToastType("error");
-      setToastMessage("Failed to delete collection. Please try again.");
+
+      setToastType(TOAST_MESSAGES.collectionDeleteFailed.type);
+      setToastMessage(TOAST_MESSAGES.collectionDeleteFailed.message);
       setShowToast(true);
-      setIsDeleting(false);
       setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1201,12 +1270,17 @@ export default function Browse({
         datasets={datasets}
       />
 
-      {/* Delete Collection Modal */}
-      <DeleteCollectionModal
+      <ConfirmationModal
         isVisible={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteCollection}
-        collectionName={collectionName}
+        title="Delete Collection"
+        message1="This operation will permanently delete the collection. Are you sure?"
+        message2=""
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        icon={<Trash2 className="w-8 h-8 text-red-500" />}
         isLoading={isDeleting}
       />
 
