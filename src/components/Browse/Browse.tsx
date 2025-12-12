@@ -20,7 +20,6 @@ type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
 
 import { Button } from "@ui/Button";
-import { Chip } from "@ui/Chip";
 import { ConfirmationModal } from "@ui/ConfirmationModal";
 import DatasetCardSkeleton from "@ui/datasets/DatasetCardSkeleton";
 import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
@@ -49,6 +48,7 @@ import DatasetCard from "../DatasetCard";
 import FilterModal from "../FilterModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
+import ActiveFilters from "./ActiveFilters";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -701,103 +701,6 @@ export default function Browse({
     }
   };
 
-  // Generate active filter tags
-  const activeFilterTags = useMemo(() => {
-    const tags = [];
-
-    if (filters.access && filters.access !== "") {
-      tags.push({
-        key: "access",
-        label: "Access",
-        value: filters.access === "open" ? "Open" : "Restricted",
-      });
-    }
-
-    if (filters.creationYear.start || filters.creationYear.end) {
-      const from = filters.creationYear.start || "...";
-      const to = filters.creationYear.end || "...";
-      tags.push({
-        key: "creationYear",
-        label: "Creation Year",
-        value: `${from}-${to}`,
-      });
-    }
-
-    if (filters.datasetSize.start || filters.datasetSize.end) {
-      const min = filters.datasetSize.start
-        ? `${filters.datasetSize.start} MB`
-        : "0 MB";
-      const max = filters.datasetSize.end
-        ? `${filters.datasetSize.end} MB`
-        : "∞";
-
-      tags.push({
-        key: "datasetSize",
-        label: "Dataset Size",
-        value: `${min} - ${max}`,
-      });
-    }
-
-    if (filters.fieldsOfScience.length > 0) {
-      // Get the exact names of selected fields of science
-      const selectedFieldNames = filters.fieldsOfScience.map((fieldCode) => {
-        for (const category of fieldsOfScienceCategories) {
-          const option = category.options.find(
-            (opt) => opt.value === fieldCode,
-          );
-          if (option) {
-            return option.label;
-          }
-        }
-        return fieldCode; // fallback to code if not found
-      });
-
-      // If more than 2 fields selected, show first 2 + count of remaining
-      if (selectedFieldNames.length > 2) {
-        const firstTwo = selectedFieldNames.slice(0, 2).join(", ");
-        const remaining = selectedFieldNames.length - 2;
-        tags.push({
-          key: "fieldsOfScience",
-          label: "Field of Science",
-          value: `${firstTwo} +${remaining} more`,
-        });
-      } else {
-        tags.push({
-          key: "fieldsOfScience",
-          label: "Field of Science",
-          value: selectedFieldNames.join(", "),
-        });
-      }
-    }
-
-    if (filters.license.length > 0) {
-      // Get the exact names of selected licenses
-      const selectedLicenseNames = filters.license.map((licenseCode) => {
-        const licenseOption = licenses.find((opt) => opt.value === licenseCode);
-        return licenseOption ? licenseOption.label : licenseCode; // fallback to code if not found
-      });
-
-      // If more than 2 licenses selected, show first 2 + count of remaining
-      if (selectedLicenseNames.length > 2) {
-        const firstTwo = selectedLicenseNames.slice(0, 2).join(", ");
-        const remaining = selectedLicenseNames.length - 2;
-        tags.push({
-          key: "license",
-          label: "License",
-          value: `${firstTwo} +${remaining} more`,
-        });
-      } else {
-        tags.push({
-          key: "license",
-          label: "License",
-          value: selectedLicenseNames.join(", "),
-        });
-      }
-    }
-
-    return tags;
-  }, [filters, fieldsOfScienceCategories, licenses]);
-
   const isPanelVisible = showSelectedPanel || isPanelClosing;
   const shouldShowSmartExamples =
     showSearchAndFilters !== false &&
@@ -1134,25 +1037,13 @@ export default function Browse({
             />
           )}
           {/* Active Filters */}
-          {showSearchAndFilters !== false && activeFilterTags.length > 0 && (
-            <div className="flex gap-2 mb-4 flex-nowrap sm:flex-wrap overflow-x-auto pl-4 sm:px-6">
-              {activeFilterTags.map((tag) => (
-                <Chip
-                  key={tag.key}
-                  className="flex-none"
-                  color="grey"
-                  onRemove={() => removeFilter(tag.key as keyof FilterState)}
-                >
-                  <span className="text-descriptions-12-medium text-gray-650">
-                    {tag.label}:
-                  </span>
-                  <span className="text-descriptions-12-medium ml-1 text-gray-750">
-                    {tag.value}
-                  </span>
-                </Chip>
-              ))}
-            </div>
-          )}
+          <ActiveFilters
+            filters={filters}
+            fieldsOfScienceCategories={fieldsOfScienceCategories}
+            licenses={licenses}
+            onRemoveFilter={removeFilter}
+            showSearchAndFilters={showSearchAndFilters}
+          />
           {/* Results count and sorting */}
           {showSearchAndFilters !== false && !shouldShowSmartExamples && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
