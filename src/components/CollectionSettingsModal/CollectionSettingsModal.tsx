@@ -24,6 +24,7 @@ interface CollectionSettings {
   name: string;
   itemCount: number;
   code?: string;
+  type: "api" | "extra";
   isVisible: boolean;
   order: number;
 }
@@ -35,9 +36,35 @@ interface CollectionSettingsItemProps {
   onDragStart: (e: React.DragEvent, index: number) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, index: number) => void;
+  onDragEnd: () => void;
   onVisibilityToggle: (index: number) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
+}
+
+type TypedCollection = ApiCollection & { type: "api" | "extra" };
+
+function buildCollectionsForSettings(
+  apiCollections: ApiCollection[],
+  extraCollections: ApiCollection[],
+): TypedCollection[] {
+  const seenIds = new Set<string>();
+  const allCollections: TypedCollection[] = [];
+
+  apiCollections.forEach((collection) => {
+    if (!collection.id || seenIds.has(collection.id)) return;
+    seenIds.add(collection.id);
+    allCollections.push({ ...collection, type: "api" });
+  });
+
+  extraCollections.forEach((collection) => {
+    const hasDatasets = (collection.datasets?.length ?? 0) > 0;
+    if (!collection.id || !hasDatasets || seenIds.has(collection.id)) return;
+    seenIds.add(collection.id);
+    allCollections.push({ ...collection, type: "extra" });
+  });
+
+  return allCollections;
 }
 
 const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
@@ -47,6 +74,7 @@ const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
   onDragStart,
   onDragOver,
   onDrop,
+  onDragEnd,
   onVisibilityToggle,
   onMoveUp,
   onMoveDown,
@@ -57,8 +85,30 @@ const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
     <div
       draggable
       onDragStart={(e) => onDragStart(e, index)}
-      onDragOver={onDragOver}
-      onDrop={(e) => onDrop(e, index)}
+      onDragOver={(e) => {
+        onDragOver(e);
+        const container = e.currentTarget;
+        if (container instanceof HTMLElement) {
+          container.style.border = "1px dashed #94A3B8";
+          container.style.backgroundColor = "#F8FAFC";
+        }
+      }}
+      onDragLeave={(e) => {
+        const container = e.currentTarget;
+        if (container instanceof HTMLElement) {
+          container.style.border = "";
+          container.style.backgroundColor = "";
+        }
+      }}
+      onDrop={(e) => {
+        onDrop(e, index);
+        const container = e.currentTarget;
+        if (container instanceof HTMLElement) {
+          container.style.border = "";
+          container.style.backgroundColor = "";
+        }
+      }}
+      onDragEnd={onDragEnd}
       className={`px-4 py-2.75 flex items-center gap-2 rounded-lg transition-all duration-200 border border-transparent group ${
         draggedItem === index ? "opacity-60" : ""
       }`}
@@ -154,10 +204,10 @@ export default function CollectionSettingsModal({
   useEffect(() => {
     if (!isVisible) return;
 
-    const allCollections: (ApiCollection & { type: "api" | "extra" })[] = [
-      ...apiCollections.map((c) => ({ ...c, type: "api" as const })),
-      ...extraCollections.map((c) => ({ ...c, type: "extra" as const })),
-    ];
+    const allCollections = buildCollectionsForSettings(
+      apiCollections,
+      extraCollections,
+    );
 
     // Get saved settings from localStorage
     const savedSettings = localStorage.getItem("collectionSettings");
@@ -182,6 +232,7 @@ export default function CollectionSettingsModal({
             collection.datasetCount || collection.datasets?.length || 0,
           code: collection.code,
           isVisible: saved?.isVisible ?? true,
+          type: collection.type,
           order: saved?.order ?? index,
         };
       },
@@ -226,6 +277,9 @@ export default function CollectionSettingsModal({
     }));
 
     setCollectionSettings(updatedSettings);
+  };
+
+  const handleDragEnd = () => {
     setDraggedItem(null);
   };
 
@@ -344,6 +398,7 @@ export default function CollectionSettingsModal({
                     onDragStart={handleDragStart}
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
+                    onDragEnd={handleDragEnd}
                     onVisibilityToggle={handleVisibilityToggle}
                     onMoveUp={handleMoveUp}
                     onMoveDown={handleMoveDown}
