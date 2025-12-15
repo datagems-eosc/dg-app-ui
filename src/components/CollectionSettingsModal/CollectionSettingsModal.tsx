@@ -80,6 +80,7 @@ const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
   onMoveDown,
 }) => {
   const isVisible = setting.isVisible;
+  const [isDraggedOver, setIsDraggedOver] = useState(false);
 
   return (
     <div
@@ -87,31 +88,27 @@ const CollectionSettingsItem: React.FC<CollectionSettingsItemProps> = ({
       onDragStart={(e) => onDragStart(e, index)}
       onDragOver={(e) => {
         onDragOver(e);
-        const container = e.currentTarget;
-        if (container instanceof HTMLElement) {
-          container.style.border = "1px dashed #94A3B8";
-          container.style.backgroundColor = "#F8FAFC";
-        }
+        setIsDraggedOver(true);
       }}
-      onDragLeave={(e) => {
-        const container = e.currentTarget;
-        if (container instanceof HTMLElement) {
-          container.style.border = "";
-          container.style.backgroundColor = "";
-        }
+      onDragLeave={() => {
+        setIsDraggedOver(false);
       }}
       onDrop={(e) => {
         onDrop(e, index);
-        const container = e.currentTarget;
-        if (container instanceof HTMLElement) {
-          container.style.border = "";
-          container.style.backgroundColor = "";
-        }
+        setIsDraggedOver(false);
       }}
-      onDragEnd={onDragEnd}
+      onDragEnd={() => {
+        onDragEnd();
+        setIsDraggedOver(false);
+      }}
       className={`px-4 py-2.75 flex items-center gap-2 rounded-lg transition-all duration-200 border border-transparent group ${
         draggedItem === index ? "opacity-60" : ""
       }`}
+      style={
+        isDraggedOver
+          ? { border: "1px dashed #94A3B8", backgroundColor: "#F8FAFC" }
+          : undefined
+      }
     >
       {/* Drag Handle */}
       <GripVertical
