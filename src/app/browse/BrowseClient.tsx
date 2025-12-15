@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
-import { APP_ROUTES, generateChatUrl } from "@/config/appUrls";
+import { APP_ROUTES } from "@/config/appUrls";
 import {
   convertToBackendFilters,
   type FilterState,
