@@ -13,6 +13,7 @@ import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 
 interface CreateCollectionModalProps {
   isVisible: boolean;
@@ -121,7 +122,7 @@ export default function CreateCollectionModal({
         );
       }
     } catch (error) {
-      console.error("Failed to create collection:", error);
+      logError("Failed to create collection", error);
       alert("Failed to create collection. Please try again.");
     } finally {
       setIsCreating(false);
@@ -157,7 +158,7 @@ export default function CreateCollectionModal({
       notifyCollectionModified();
       showDatasetAddedToast();
     } catch (error) {
-      console.error("Failed to add datasets to collections:", error);
+      logError("Failed to add datasets to collections", error);
       alert("Failed to add datasets to collections. Please try again.");
     } finally {
       setIsAdding(false);

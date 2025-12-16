@@ -2,6 +2,7 @@
 
 import { SessionProvider, signIn, useSession } from "next-auth/react";
 import { type ReactNode, useEffect } from "react";
+import { logDebug } from "@/lib/logger";
 
 // Get the base URL including the base path for NextAuth
 const _getBaseUrl = () => {
@@ -18,7 +19,7 @@ function SessionErrorHandler({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if there's a session error that requires re-authentication
     if (session && (session as any).error === "RefreshAccessTokenError") {
-      console.log("Token refresh failed, triggering re-authentication...");
+      logDebug("Token refresh failed, triggering re-authentication");
       signIn("keycloak");
     }
   }, [session]);

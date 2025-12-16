@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedPage from "@/components/ProtectedPage";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 
 // API fetch payload (copied from dashboard)
 const API_DATASETS_PAYLOAD = {
@@ -220,7 +221,7 @@ function ChatPageContent({
             setSelectedDatasets(parsed);
           }
         } catch (error) {
-          console.error("Error loading selected datasets:", error);
+          logError("Error loading selected datasets", error);
         }
       }
     }

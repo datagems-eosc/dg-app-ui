@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useUser } from "@/contexts/UserContext";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 
 interface UserData {
   id?: string;
@@ -88,7 +89,7 @@ export default function UserProfile() {
       try {
         await loadNotificationSettings();
       } catch (err) {
-        console.error("Failed loading user settings:", err);
+        logError("Failed loading user settings", err);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -118,7 +119,7 @@ export default function UserProfile() {
         eTag: notificationSettings[lastIndex].eTag,
       });
     } catch (err) {
-      console.error("Failed to load notificationSettings", err);
+      logError("Failed to load notificationSettings", err);
     }
   }
 
@@ -161,8 +162,7 @@ export default function UserProfile() {
     try {
       await setProfilePicture(file);
     } catch (error) {
-      console.error("Error uploading profile picture:", error);
-      // You could show a toast error here
+      logError("Error uploading profile picture", error);
     }
   };
 
@@ -170,8 +170,7 @@ export default function UserProfile() {
     try {
       await setProfilePicture(null);
     } catch (error) {
-      console.error("Error removing profile picture:", error);
-      // You could show a toast error here
+      logError("Error removing profile picture", error);
     }
   };
 
@@ -186,13 +185,13 @@ export default function UserProfile() {
     }));
   };
 
-  const hasUserDataChanges = useMemo(() => {
-    return (
-      (backupUserData?.name || "") !== (personalSettings?.name || "") ||
-      (backupUserData?.surname || "") !== (personalSettings?.surname || "")
-    );
-  }, [backupUserData, personalSettings]);
+  // Simple comparisons don't need memoization - prefer readable code
+  const hasUserDataChanges =
+    (backupUserData?.name || "") !== (personalSettings?.name || "") ||
+    (backupUserData?.surname || "") !== (personalSettings?.surname || "");
 
+  // JSON.stringify is relatively expensive, but for small objects it's acceptable
+  // Keeping this as is since notification objects can be complex
   const hasNotificationChanges = useMemo(() => {
     return (
       JSON.stringify(backupNotifications) !== JSON.stringify(notifications)

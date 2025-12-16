@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Dataset } from "@/data/dataset";
+import { logDebug } from "@/lib/logger";
 import Browse from "../Browse";
 
 interface AddDatasetsModalProps {
@@ -30,7 +31,9 @@ export default function AddDatasetsModal({
   }, [isVisible]);
 
   const handleAddSelected = () => {
-    console.log("Datasets added from modal:", modalSelectedDatasets);
+    logDebug("Datasets added from modal", {
+      count: modalSelectedDatasets.length,
+    });
     onSelectedDatasetsChange(modalSelectedDatasets);
     onClose();
   };
