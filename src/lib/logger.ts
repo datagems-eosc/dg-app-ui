@@ -59,4 +59,31 @@ export const logApiError = (
   );
 };
 
+// Helper functions for different log levels
+export const logInfo = (message: string, details?: Record<string, any>) => {
+  logger.info(details || {}, message);
+};
+
+export const logError = (
+  message: string,
+  error?: any,
+  details?: Record<string, any>,
+) => {
+  logger.error(
+    {
+      error: error?.message || error,
+      ...details,
+    },
+    message,
+  );
+};
+
+export const logWarn = (message: string, details?: Record<string, any>) => {
+  logger.warn(details || {}, message);
+};
+
+export const logDebug = (message: string, details?: Record<string, any>) => {
+  logger.debug(details || {}, message);
+};
+
 export default logger;

@@ -12,6 +12,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { logError } from "@/lib/logger";
 import type { ApiCollection } from "@/types/collection";
 
 interface CollectionSettingsModalProps {
@@ -214,7 +215,7 @@ export default function CollectionSettingsModal({
       try {
         savedData = JSON.parse(savedSettings);
       } catch (error) {
-        console.error("Error parsing collection settings:", error);
+        logError("Error parsing collection settings", error);
       }
     }
 

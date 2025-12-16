@@ -11,6 +11,7 @@ import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 import {
   ACCESS_OPTIONS,
   type FilterState,
@@ -78,7 +79,7 @@ export default function FilterModal({
           setFieldsOfScienceCategories(categories);
         })
         .catch((error) => {
-          console.error("Error fetching fields of science:", error);
+          logError("Error fetching fields of science", error);
           setFieldsOfScienceCategories([]);
         })
         .finally(() => {
@@ -94,7 +95,7 @@ export default function FilterModal({
           setLicenses(licenseOptions);
         })
         .catch((error) => {
-          console.error("Error fetching licenses:", error);
+          logError("Error fetching licenses", error);
           setLicenses([]);
         })
         .finally(() => {
@@ -245,7 +246,6 @@ export default function FilterModal({
   }
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    console.log("backdrop clicked");
     if (e.target === e.currentTarget) {
       handleCancel();
     }
