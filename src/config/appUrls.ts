@@ -10,8 +10,7 @@ export const APP_ROUTES = {
 
   // Main pages
   HOME: "/",
-  DASHBOARD: "/dashboard",
-  BROWSE: "/browse", // Alias for dashboard
+  BROWSE: "/browse",
   SETTINGS: "/settings",
 
   // Chat
@@ -30,13 +29,13 @@ export const APP_ROUTES = {
 } as const;
 
 /**
- * Generate URLs with query parameters for dashboard/browse pages
+ * Generate URLs with query parameters for browse pages
  */
-export const generateDashboardUrl = (params?: {
+export const generateBrowseUrl = (params?: {
   collection?: string;
   isCustom?: boolean;
 }): string => {
-  const baseUrl = APP_ROUTES.DASHBOARD;
+  const baseUrl = APP_ROUTES.BROWSE;
   if (!params) return baseUrl;
 
   const searchParams = new URLSearchParams();

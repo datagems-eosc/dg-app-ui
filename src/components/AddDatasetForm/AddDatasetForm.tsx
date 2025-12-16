@@ -335,7 +335,7 @@ export default function AddDatasetForm() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push(APP_ROUTES.DASHBOARD)}
+          onClick={() => router.push(APP_ROUTES.BROWSE)}
           className="w-full sm:w-auto order-2 sm:order-1"
         >
           Cancel

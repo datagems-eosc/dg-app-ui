@@ -35,9 +35,9 @@ export function CollectionItem({
   const currentCollectionId = searchParams?.get("collection");
   const hrefCollectionId = getCollectionIdFromHref(href);
 
-  // Mark active ONLY on dashboard when the collection param matches
+  // Mark active ONLY on browse when the collection param matches
   const isActive =
-    pathname.startsWith("/dashboard") &&
+    pathname.startsWith("/browse") &&
     !!currentCollectionId &&
     hrefCollectionId === currentCollectionId;
 

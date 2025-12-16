@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import LoginScreen from "@/components/LoginScreen";
+import { APP_ROUTES } from "@/config/appUrls";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function Home() {
@@ -12,7 +13,7 @@ export default function Home() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace(getNavigationUrl("/dashboard"));
+      router.replace(getNavigationUrl(APP_ROUTES.BROWSE));
     }
   }, [status, router]);
 

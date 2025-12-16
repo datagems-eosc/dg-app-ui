@@ -200,8 +200,8 @@ Cypress.Commands.add("login", (opts = {}) => {
         .click();
     });
 
-    // After returning from cy.origin the app should redirect back to dashboard
-    cy.url({ timeout: 30000 }).should("include", "/dashboard");
+    // After returning from cy.origin the app should redirect back to browse
+    cy.url({ timeout: 30000 }).should("include", "/browse");
     cy.contains(/Add Dataset/i, { timeout: 10000 }).should("be.visible");
   });
 });

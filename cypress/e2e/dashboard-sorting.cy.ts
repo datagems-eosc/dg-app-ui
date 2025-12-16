@@ -1,7 +1,7 @@
 describe("Feature: Dashboard Dataset Sorting", () => {
   beforeEach(() => {
     cy.login();
-    cy.visit("/dashboard");
+    cy.visit("/browse");
     cy.wait(2000);
   });
 

@@ -8,6 +8,7 @@ import { FileText, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { generateBrowseUrl } from "@/config/appUrls";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
@@ -115,7 +116,9 @@ export default function CreateCollectionModal({
 
         onClose();
 
-        router.push(`/dashboard?collection=${response.id}&isCustom=true`);
+        router.push(
+          generateBrowseUrl({ collection: response.id, isCustom: true }),
+        );
       }
     } catch (error) {
       console.error("Failed to create collection:", error);
