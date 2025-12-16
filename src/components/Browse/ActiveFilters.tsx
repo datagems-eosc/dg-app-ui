@@ -21,34 +21,41 @@ export default function ActiveFilters({
   onRemoveFilter,
   showSearchAndFilters = true,
 }: ActiveFiltersProps) {
-  // Generate active filter tags
-  const activeFilterTags = useMemo(() => {
-    const tags: Array<{
+  const tagBuilders: Array<
+    () => {
       key: string;
       label: string;
       value: string;
       fullValue?: string;
-    }> = [];
+    } | null
+  > = [
+    () =>
+      filters.access && filters.access !== ""
+        ? {
+            key: "access",
+            label: "Access",
+            value: filters.access === "open" ? "Open" : "Restricted",
+          }
+        : null,
+    () => {
+      if (!filters.creationYear.start && !filters.creationYear.end) {
+        return null;
+      }
 
-    if (filters.access && filters.access !== "") {
-      tags.push({
-        key: "access",
-        label: "Access",
-        value: filters.access === "open" ? "Open" : "Restricted",
-      });
-    }
-
-    if (filters.creationYear.start || filters.creationYear.end) {
       const from = filters.creationYear.start || "...";
       const to = filters.creationYear.end || "...";
-      tags.push({
+
+      return {
         key: "creationYear",
         label: "Creation Year",
         value: `${from}-${to}`,
-      });
-    }
+      };
+    },
+    () => {
+      if (!filters.datasetSize.start && !filters.datasetSize.end) {
+        return null;
+      }
 
-    if (filters.datasetSize.start || filters.datasetSize.end) {
       const min = filters.datasetSize.start
         ? `${filters.datasetSize.start} MB`
         : "0 MB";
@@ -56,14 +63,17 @@ export default function ActiveFilters({
         ? `${filters.datasetSize.end} MB`
         : "∞";
 
-      tags.push({
+      return {
         key: "datasetSize",
         label: "Dataset Size",
         value: `${min} - ${max}`,
-      });
-    }
+      };
+    },
+    () => {
+      if (filters.fieldsOfScience.length === 0) {
+        return null;
+      }
 
-    if (filters.fieldsOfScience.length > 0) {
       // Get the exact names of selected fields of science
       const selectedFieldNames = filters.fieldsOfScience.map((fieldCode) => {
         for (const category of fieldsOfScienceCategories) {
@@ -83,22 +93,25 @@ export default function ActiveFilters({
       if (selectedFieldNames.length > 2) {
         const firstTwo = selectedFieldNames.slice(0, 2).join(", ");
         const remaining = selectedFieldNames.length - 2;
-        tags.push({
+        return {
           key: "fieldsOfScience",
           label: "Field of Science",
           value: `${firstTwo} +${remaining} more`,
           fullValue,
-        });
-      } else {
-        tags.push({
-          key: "fieldsOfScience",
-          label: "Field of Science",
-          value: fullValue,
-        });
+        };
       }
-    }
 
-    if (filters.license.length > 0) {
+      return {
+        key: "fieldsOfScience",
+        label: "Field of Science",
+        value: fullValue,
+      };
+    },
+    () => {
+      if (filters.license.length === 0) {
+        return null;
+      }
+
       // Get the exact names of selected licenses
       const selectedLicenseNames = filters.license.map((licenseCode) => {
         const licenseOption = licenses.find((opt) => opt.value === licenseCode);
@@ -111,23 +124,38 @@ export default function ActiveFilters({
       if (selectedLicenseNames.length > 2) {
         const firstTwo = selectedLicenseNames.slice(0, 2).join(", ");
         const remaining = selectedLicenseNames.length - 2;
-        tags.push({
+        return {
           key: "license",
           label: "License",
           value: `${firstTwo} +${remaining} more`,
           fullValue,
-        });
-      } else {
-        tags.push({
-          key: "license",
-          label: "License",
-          value: fullValue,
-        });
+        };
       }
-    }
 
-    return tags;
-  }, [filters, fieldsOfScienceCategories, licenses]);
+      return {
+        key: "license",
+        label: "License",
+        value: fullValue,
+      };
+    },
+  ];
+
+  const activeFilterTags = useMemo(
+    () =>
+      tagBuilders
+        .map((build) => build())
+        .filter(
+          (
+            tag,
+          ): tag is {
+            key: string;
+            label: string;
+            value: string;
+            fullValue?: string;
+          } => Boolean(tag),
+        ),
+    [filters, fieldsOfScienceCategories, licenses],
+  );
 
   if (showSearchAndFilters === false || activeFilterTags.length === 0) {
     return null;
@@ -155,28 +183,25 @@ export default function ActiveFilters({
           </Chip>
         );
 
-        // Show tooltip only if the value is truncated (has fullValue that differs from displayed value)
-        if (tag.fullValue && tag.fullValue !== tag.value) {
-          return (
-            <div
-              key={tag.key}
-              role="listitem"
-              aria-label={`${tag.label}: ${tag.fullValue}`}
-            >
-              <Tooltip content={tag.fullValue} position="top" delay={300}>
-                {chipContent}
-              </Tooltip>
-            </div>
-          );
-        }
+        const shouldShowTooltip = tag.fullValue && tag.fullValue !== tag.value;
 
         return (
           <div
             key={tag.key}
             role="listitem"
-            aria-label={`${tag.label}: ${tag.value}`}
+            aria-label={`${tag.label}: ${shouldShowTooltip ? tag.fullValue : tag.value}`}
           >
-            {chipContent}
+            {shouldShowTooltip ? (
+              <Tooltip
+                content={tag.fullValue as string}
+                position="top"
+                delay={300}
+              >
+                {chipContent}
+              </Tooltip>
+            ) : (
+              chipContent
+            )}
           </div>
         );
       })}
