@@ -12,6 +12,8 @@ import type React from "react";
 import { useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useApi } from "@/hooks/useApi";
+import { ApiErrorMessage } from "@/lib/apiErrors";
+import { logDebug, logError } from "@/lib/logger";
 
 interface UploadedFile {
   id: string;
@@ -190,7 +192,7 @@ export default function AddDatasetForm() {
 
     try {
       if (!api.hasToken) {
-        throw new Error("No access token available");
+        throw new Error(ApiErrorMessage.NO_ACCESS_TOKEN);
       }
 
       const files = formData.files || [];
@@ -229,13 +231,13 @@ export default function AddDatasetForm() {
 
       const response = await api.queryDatasets(payload);
 
-      console.log("/dataset/query response", response);
+      logDebug("/dataset/query response", { response });
       alert("Dataset submitted successfully!");
 
       setFormData(initialFormData);
       setErrors(initialErrors);
     } catch (error) {
-      console.error("Error submitting dataset:", error);
+      logError("Error submitting dataset", error);
       alert("Error submitting dataset. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -335,7 +337,7 @@ export default function AddDatasetForm() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push(APP_ROUTES.DASHBOARD)}
+          onClick={() => router.push(APP_ROUTES.BROWSE)}
           className="w-full sm:w-auto order-2 sm:order-1"
         >
           Cancel

@@ -343,7 +343,7 @@ export default function Browse({
       setShowToast(true);
 
       setTimeout(() => {
-        router.push(getNavigationUrl(APP_ROUTES.DASHBOARD));
+        router.push(getNavigationUrl(APP_ROUTES.BROWSE));
       }, UI_CONSTANTS.NAVIGATION_DELAY_MS);
     } catch (error) {
       const errorDetails = {

@@ -10,6 +10,7 @@ import Link from "next/link";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 import { formatRelativeTime } from "@/lib/utils";
 import { Toast } from "../Toast";
 import { Tooltip } from "../Tooltip";
@@ -98,7 +99,7 @@ export function ChatItem({
 
     // Validate name length (max 300 characters)
     if (trimmedName.length > 300) {
-      console.error("Conversation name cannot exceed 300 characters");
+      logError("Conversation name cannot exceed 300 characters");
       setEditName(conversation.name || "");
       setIsEditing(false);
       return;
@@ -106,7 +107,7 @@ export function ChatItem({
 
     // Check if ETag is available - it's required by the backend
     if (!conversation.eTag) {
-      console.error("ETag is required to update conversation");
+      logError("ETag is required to update conversation");
       setEditName(conversation.name || "");
       setIsEditing(false);
       return;
@@ -125,7 +126,7 @@ export function ChatItem({
       setToastMessage("Conversation name updated successfully!");
       setShowToast(true);
     } catch (error) {
-      console.error("Failed to update conversation:", error);
+      logError("Failed to update conversation", error);
       setEditName(conversation.name || "");
       setIsEditing(false); // Always exit edit mode on error
       setToastType("error");

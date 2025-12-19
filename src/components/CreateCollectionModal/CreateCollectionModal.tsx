@@ -8,10 +8,12 @@ import { FileText, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { generateBrowseUrl } from "@/config/appUrls";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 
 interface CreateCollectionModalProps {
   isVisible: boolean;
@@ -115,10 +117,12 @@ export default function CreateCollectionModal({
 
         onClose();
 
-        router.push(`/dashboard?collection=${response.id}&isCustom=true`);
+        router.push(
+          generateBrowseUrl({ collection: response.id, isCustom: true }),
+        );
       }
     } catch (error) {
-      console.error("Failed to create collection:", error);
+      logError("Failed to create collection", error);
       alert("Failed to create collection. Please try again.");
     } finally {
       setIsCreating(false);
@@ -154,7 +158,7 @@ export default function CreateCollectionModal({
       notifyCollectionModified();
       showDatasetAddedToast();
     } catch (error) {
-      console.error("Failed to add datasets to collections:", error);
+      logError("Failed to add datasets to collections", error);
       alert("Failed to add datasets to collections. Please try again.");
     } finally {
       setIsAdding(false);

@@ -7,6 +7,7 @@ import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { mockDatasets } from "@/data/dataset";
+import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function LifelongLearningPage() {
@@ -32,7 +33,7 @@ export default function LifelongLearningPage() {
           setSelectedDatasets(parsed);
         }
       } catch (error) {
-        console.error("Error loading selected datasets:", error);
+        logError("Error loading selected datasets", error);
       }
     }
     setIsLoaded(true); // Mark as loaded
@@ -70,7 +71,6 @@ export default function LifelongLearningPage() {
   const handleCreateCollection = (_name: string) => {
     // Collections are now created via API in the CreateCollectionModal
     // This function is kept for backward compatibility but doesn't do anything
-    console.log("Collection creation handled by CreateCollectionModal");
   };
 
   return (
