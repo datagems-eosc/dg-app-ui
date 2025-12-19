@@ -3,6 +3,7 @@
 .datasetSidebarSection {
   @include flex-column;
   gap: $spacing-lg;
+  width: 100%;
 
   &__header {
     @include flex-between;
@@ -19,6 +20,7 @@
   &__headerLeft {
     @include flex-center;
     gap: $spacing-sm;
+    flex-shrink: 0;
   }
 
   &__icon {
@@ -32,6 +34,7 @@
     @include text-primary;
     line-height: 1.5;
     margin: 0;
+    white-space: nowrap;
   }
 
   &__button {
@@ -59,13 +62,15 @@
     word-break: break-all;
     line-height: 1.5;
     width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &__badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    @include border-base;
+    border: 1px solid $color-border;
     @include border-radius-sm;
     padding: 2px $spacing-sm;
     flex-shrink: 0;
@@ -83,9 +88,6 @@
     @include border-radius-md;
     padding: $spacing-lg;
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   &__citationText {

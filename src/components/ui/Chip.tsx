@@ -61,8 +61,8 @@ export function Chip({
       outline: "border-gray-200 bg-gray-50 text-gray-700",
     },
     grey: {
-      regular: "border-slate-100 bg-slate-100 text-slate-600",
-      outline: "border-slate-300 bg-slate-100 text-slate-600",
+      regular: "border-slate-100 bg-slate-100 text-gray-650",
+      outline: "border-slate-300 bg-slate-100 text-gray-650",
     },
     "smart-search": {
       regular: "border-emerald-400 bg-white text-emerald-800",
