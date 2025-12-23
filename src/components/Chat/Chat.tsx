@@ -302,16 +302,18 @@ export default function Chat({
               collection.datasets &&
               collection.datasets.length > 0
             ) {
-              collectionDatasetIds = collection.datasets.map(
-                (dataset) => dataset.id,
-              );
+              collectionDatasetIds = collection.datasets
+                .map((dataset) => dataset.id)
+                .filter((id): id is string => !!id);
             }
             // Handle user collections with datasetIds array
             else if (
               collection.datasetIds &&
               collection.datasetIds.length > 0
             ) {
-              collectionDatasetIds = collection.datasetIds;
+              collectionDatasetIds = collection.datasetIds.filter(
+                (id): id is string => !!id,
+              );
             }
 
             // Check if the current selected datasets match this collection exactly
@@ -693,11 +695,13 @@ export default function Chat({
         collection.datasets &&
         collection.datasets.length > 0
       ) {
-        datasetIds = collection.datasets.map((dataset) => dataset.id);
+        datasetIds = collection.datasets
+          .map((dataset) => dataset.id)
+          .filter((id): id is string => !!id);
       }
       // Check if collection has datasetIds array (user collections)
       else if (collection.datasetIds && collection.datasetIds.length > 0) {
-        datasetIds = collection.datasetIds;
+        datasetIds = collection.datasetIds.filter((id): id is string => !!id);
       }
 
       // Update selected datasets with collection datasets
