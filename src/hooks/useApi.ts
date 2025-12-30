@@ -59,10 +59,24 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("queryDatasets", errorData);
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_DATASETS_FAILED,
-        );
+        const errorMessage =
+          errorData.error ||
+          errorData.message ||
+          ApiErrorMessage.FETCH_DATASETS_FAILED;
+
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("queryDatasets", {
+            ...errorData,
+            statusCode: response.status,
+          });
+        }
+
+        const enhancedMessage =
+          response.status >= 500
+            ? `Server error (${response.status}): ${errorMessage}. Please contact support if the issue persists.`
+            : errorMessage;
+
+        throw new Error(enhancedMessage);
       }
 
       const result = await response.json();
@@ -92,7 +106,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("queryCollections", errorData);
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("queryCollections", errorData);
+        }
         throw new Error(
           errorData.error || ApiErrorMessage.FETCH_COLLECTIONS_FAILED,
         );
@@ -125,7 +141,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("queryUserCollections", errorData);
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("queryUserCollections", errorData);
+        }
         throw new Error(
           errorData.error || ApiErrorMessage.FETCH_USER_COLLECTIONS_FAILED,
         );
@@ -167,7 +185,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("createUserCollection", errorData);
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("createUserCollection", errorData);
+        }
         throw new Error(
           errorData.error || ApiErrorMessage.CREATE_COLLECTION_FAILED,
         );
@@ -200,10 +220,12 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("addDatasetToCollection", errorData, {
-          collectionId,
-          datasetId,
-        });
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("addDatasetToCollection", errorData, {
+            collectionId,
+            datasetId,
+          });
+        }
         throw new Error(
           errorData.error || ApiErrorMessage.ADD_DATASET_TO_COLLECTION_FAILED,
         );
@@ -236,10 +258,12 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("removeDatasetFromCollection", errorData, {
-          collectionId,
-          datasetId,
-        });
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("removeDatasetFromCollection", errorData, {
+            collectionId,
+            datasetId,
+          });
+        }
         throw new Error(
           errorData.error ||
             ApiErrorMessage.REMOVE_DATASET_FROM_COLLECTION_FAILED,
@@ -326,7 +350,9 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("deleteCollection", errorData, { collectionId });
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("deleteCollection", errorData, { collectionId });
+        }
         const errorMessage =
           errorData.error ||
           errorData.message ||
