@@ -30,7 +30,7 @@ export function Chip({
 
   const sizes = {
     xs: "px-2 py-0.5",
-    sm: "px-3 py-0.5",
+    sm: "px-3 h-8",
     md: "px-3 py-1.5",
   };
 
@@ -49,8 +49,8 @@ export function Chip({
       outline: "border-slate-200 bg-white text-slate-850",
     },
     success: {
-      regular: "border-green-50 bg-green-50 text-emerald-800",
-      outline: "border-green-200 bg-green-50 text-emerald-800",
+      regular: "border-emerald-50 bg-emerald-50 text-emerald-800",
+      outline: "border-emerald-200 bg-emerald-50 text-emerald-800",
     },
     error: {
       regular: "border-red-50 bg-red-50 text-red-700",
@@ -61,8 +61,8 @@ export function Chip({
       outline: "border-gray-200 bg-gray-50 text-gray-700",
     },
     grey: {
-      regular: "border-gray-100 bg-gray-100 text-gray-650",
-      outline: "border-gray-300 bg-gray-100 text-gray-650",
+      regular: "border-slate-100 bg-slate-100 text-gray-650",
+      outline: "border-slate-300 bg-slate-100 text-gray-650",
     },
     "smart-search": {
       regular: "border-emerald-400 bg-white text-emerald-800",

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { DatasetPlus } from "@/data/dataset";
 import DatasetDescriptionSection from "./DatasetDescriptionSection/DatasetDescriptionSection";
 import styles from "./DatasetDetailsPageContent.module.scss";
+import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetHeader from "./DatasetHeader/DatasetHeader";
 import DatasetMetadataBar from "./DatasetMetadataBar/DatasetMetadataBar";
 import DatasetSidebar from "./DatasetSidebar/DatasetSidebar";
@@ -100,6 +101,7 @@ export default function DatasetDetailsPageContent({
                     items={dataset.keywords}
                   />
                 )}
+                <DatasetFilesTree />
               </div>
             </div>
 
