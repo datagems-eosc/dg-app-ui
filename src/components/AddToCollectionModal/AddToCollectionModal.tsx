@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
+import { logError } from "@/lib/logger";
 
 interface AddToCollectionModalProps {
   isVisible: boolean;
@@ -67,7 +68,7 @@ export default function AddToCollectionModal({
       );
       onClose();
     } catch (error) {
-      console.error("Failed to add dataset to collection:", error);
+      logError("Failed to add dataset to collection", error);
       alert("Failed to add dataset to collection. Please try again.");
     }
   };

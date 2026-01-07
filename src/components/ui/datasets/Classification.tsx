@@ -15,6 +15,7 @@ import {
 } from "@/config/filterOptions";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 import HierarchicalDropdown, {
   type HierarchicalCategory,
 } from "../HierarchicalDropdown";
@@ -113,7 +114,7 @@ export function Classification({
         setFieldsOfScienceCategories(categories);
       })
       .catch((error) => {
-        console.error("Error fetching fields of science:", error);
+        logError("Error fetching fields of science", error);
         setFieldsOfScienceCategories([]);
       })
       .finally(() => {
@@ -132,7 +133,7 @@ export function Classification({
         ]);
       })
       .catch((error) => {
-        console.error("Error fetching licenses:", error);
+        logError("Error fetching licenses", error);
         // Use mock data as fallback
         setLicenses(mockLicensesWithDescriptions);
       })

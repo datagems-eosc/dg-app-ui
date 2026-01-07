@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { generateChatUrl } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 import { createUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
 import CollectionSettingsModal from "../CollectionSettingsModal";
@@ -90,7 +91,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       try {
         settingsData = JSON.parse(savedSettings);
       } catch (error) {
-        console.error("Error parsing collection settings:", error);
+        logError("Error parsing collection settings", error);
       }
     }
 
@@ -282,7 +283,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         setToastMessage("Conversation deleted successfully!");
         setShowToast(true);
       } catch (error) {
-        console.error("Failed to delete conversation:", error);
+        logError("Failed to delete conversation", error);
         // Show error toast
         setToastType("error");
         setToastMessage("Failed to delete conversation");

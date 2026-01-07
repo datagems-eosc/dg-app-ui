@@ -1,5 +1,6 @@
 "use client";
 
+import { Chip } from "@ui/Chip";
 import { FileLock } from "lucide-react";
 import styles from "./DatasetSidebarSection.module.scss";
 
@@ -18,9 +19,9 @@ export default function DatasetLicenseSection({
           <h3 className={styles.datasetSidebarSection__title}>License</h3>
         </div>
       </div>
-      <a href="#" className={styles.datasetSidebarSection__link}>
+      <Chip color="success" variant="regular" size="sm">
         {license || "Apache License 2.0"}
-      </a>
+      </Chip>
     </div>
   );
 }

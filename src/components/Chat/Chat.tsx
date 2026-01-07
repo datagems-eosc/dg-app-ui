@@ -14,6 +14,7 @@ import { APP_ROUTES } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { ApiErrorMessage } from "@/lib/apiErrors";
 import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
 import {
   parseConversationMessage,
@@ -442,7 +443,7 @@ export default function Chat({
         setIsGeneratingAIResponse(true);
 
         if (!api.hasToken) {
-          setError("No authentication token found. Please log in again.");
+          setError(ApiErrorMessage.NO_AUTH_TOKEN_FOUND);
           setIsLoading(false);
           setIsGeneratingAIResponse(false);
           return;
@@ -457,7 +458,7 @@ export default function Chat({
         );
         const conversationIdFromPersist = persistData.id;
         if (!conversationIdFromPersist) {
-          setError("No conversation ID returned from server.");
+          setError(ApiErrorMessage.NO_CONVERSATION_ID);
           setIsLoading(false);
           setIsGeneratingAIResponse(false);
           return;
@@ -640,7 +641,7 @@ export default function Chat({
 
       setInputValue("");
     } catch (err: unknown) {
-      let message = "An unexpected error occurred";
+      let message: string = ApiErrorMessage.UNEXPECTED_ERROR;
       if (err instanceof Error) message = err.message;
       else if (typeof err === "string") message = err;
       setError(message);
