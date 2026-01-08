@@ -605,49 +605,45 @@ export function useApi() {
     [makeRequest],
   );
 
-  // TODO: Uncomment when backend is ready
-  // const getQuestionRecommendations = useCallback(
-  //   async (payload: {
-  //     conversationId: string;
-  //     messageId: string;
-  //   }): Promise<{ questions: string[] }> => {
-  //     const response = await makeRequest("/search/question-recommendation", {
-  //       method: "POST",
-  //       body: JSON.stringify(payload),
-  //     });
+  const getRecommendNextQueries = useCallback(
+    async (
+      query: string,
+    ): Promise<{
+      next_queries: string[];
+    }> => {
+      if (!token) {
+        throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
+      }
 
-  //     if (!response.ok) {
-  //       const errorData = await response.json().catch(() => ({}));
-  //       throw new Error(
-  //         errorData.error || "Failed to fetch question recommendations",
-  //       );
-  //     }
+      logApiRequest("getRecommendNextQueries", {
+        endpoint: "/search/recommend",
+        query,
+      });
 
-  //     return response.json();
-  //   },
-  //   [makeRequest],
-  // );
-
-  // Mock implementation for testing - remove when backend is ready
-  const getQuestionRecommendations = useCallback(
-    async (payload: {
-      conversationId: string;
-      messageId: string;
-    }): Promise<{ questions: string[] }> => {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Return mocked recommendations
-      return {
-        questions: [
-          "What are the trends in this dataset?",
-          "Can you show me the statistical summary?",
-          "What patterns can be found in the data?",
-          "How does this compare to other datasets?",
-        ],
+      const requestPayload = {
+        query: query,
       };
+
+      const response = await makeRequest("/search/recommend", {
+        method: "POST",
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("getRecommendNextQueries", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_RECOMMENDATIONS_FAILED,
+        );
+      }
+
+      const result = await response.json();
+      logApiResponse("getRecommendNextQueries", {
+        queriesCount: result.next_queries?.length || 0,
+      });
+      return result;
     },
-    [],
+    [makeRequest, token],
   );
 
   return {
@@ -675,6 +671,6 @@ export function useApi() {
     getLicenses,
     getUserSettings,
     saveUserSettings,
-    getQuestionRecommendations,
+    getRecommendNextQueries,
   };
 }

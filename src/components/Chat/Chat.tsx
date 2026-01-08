@@ -8,7 +8,7 @@ import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
@@ -103,11 +103,14 @@ export default function Chat({
   >([]);
   const [isSourcesPanel, setIsSourcesPanel] = useState(false);
 
+  const fetchedRecommendationsRef = useRef<Set<string>>(new Set());
+
   // Reset initialization state when conversationId changes
   useEffect(() => {
     if (conversationId) {
       setHasInitialized(false);
       setIsMessagesLoading(true);
+      fetchedRecommendationsRef.current.clear();
     }
   }, [conversationId]);
 
@@ -158,13 +161,36 @@ export default function Chat({
       !isMessagesLoading
     ) {
       // Find the last AI message
-      const lastAIMessage = [...messages]
+      const lastAIMessageIndex = [...messages]
         .reverse()
-        .find((msg) => msg.type === "ai");
+        .findIndex((msg) => msg.type === "ai");
 
-      if (lastAIMessage && !lastAIMessage.recommendations) {
-        // Fetch recommendations for the last AI message
-        fetchRecommendationsForMessage(conversationId, lastAIMessage.id);
+      if (lastAIMessageIndex !== -1) {
+        const actualIndex = messages.length - 1 - lastAIMessageIndex;
+        const lastAIMessage = messages[actualIndex];
+
+        if (
+          lastAIMessage &&
+          !lastAIMessage.recommendations &&
+          !lastAIMessage.recommendationsLoading &&
+          !fetchedRecommendationsRef.current.has(lastAIMessage.id)
+        ) {
+          const userMessage =
+            actualIndex > 0 ? messages[actualIndex - 1] : null;
+          const currentQuery =
+            userMessage && userMessage.type === "user"
+              ? userMessage.content
+              : null;
+
+          if (currentQuery) {
+            fetchedRecommendationsRef.current.add(lastAIMessage.id);
+            fetchRecommendationsForMessage(
+              conversationId,
+              lastAIMessage.id,
+              currentQuery,
+            );
+          }
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -810,6 +836,7 @@ export default function Chat({
   const fetchRecommendationsForMessage = async (
     targetConversationId: string | null,
     messageId: string,
+    currentQuery: string,
   ) => {
     try {
       // Set loading state
@@ -826,32 +853,17 @@ export default function Chat({
         return updated;
       });
 
-      // TODO: Uncomment when backend is ready
-      // if (!api.hasToken) return;
+      if (!api.hasToken) return;
 
-      // Mock implementation for testing - remove when backend is ready
-      // const recommendationsResponse = await api.getQuestionRecommendations({
-      //   conversationId: targetConversationId,
-      //   messageId: messageId,
-      // });
+      const recommendationsResponse =
+        await api.getRecommendNextQueries(currentQuery);
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const recommendations = recommendationsResponse.next_queries || [];
 
-      // Mock recommendations data
-      const mockRecommendations = [
-        "What are the trends in this dataset?",
-        "Can you show me the statistical summary?",
-        "What patterns can be found in the data?",
-        "How does this compare to other datasets?",
-      ];
-
-      if (mockRecommendations.length > 0) {
-        // Use a function to ensure we get the latest state
+      if (recommendations.length > 0) {
         setMessages((prev) => {
           const messageIndex = prev.findIndex((msg) => msg.id === messageId);
           if (messageIndex === -1) {
-            // Message not found, retry after a delay
             setTimeout(() => {
               setMessages((current) => {
                 const idx = current.findIndex((msg) => msg.id === messageId);
@@ -859,7 +871,7 @@ export default function Chat({
                   const updated = [...current];
                   updated[idx] = {
                     ...updated[idx],
-                    recommendations: mockRecommendations,
+                    recommendations,
                     recommendationsLoading: false,
                   };
                   return updated;
@@ -874,7 +886,7 @@ export default function Chat({
           const updated = [...prev];
           updated[messageIndex] = {
             ...updated[messageIndex],
-            recommendations: mockRecommendations,
+            recommendations,
             recommendationsLoading: false,
           };
           return updated;
@@ -894,9 +906,7 @@ export default function Chat({
           return updated;
         });
       }
-    } catch (error) {
-      // Silently fail - recommendations are optional, but clear loading state
-      console.warn("Failed to fetch recommendations:", error);
+    } catch (_error) {
       setMessages((prev) => {
         const messageIndex = prev.findIndex((msg) => msg.id === messageId);
         if (messageIndex === -1) {
