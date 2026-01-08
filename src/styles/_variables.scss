@@ -1,0 +1,138 @@
+// ============================================================================
+// SCSS Variables
+// ============================================================================
+// Design tokens and variables following best practices for frontend development
+
+// ----------------------------------------------------------------------------
+// Colors
+// ----------------------------------------------------------------------------
+
+// Primary Colors
+$color-primary: #1d293d;
+$color-primary-text: #314158;
+$color-secondary-text: #5b708f;
+$color-tertiary-text: #8095ad;
+$color-icon: #566b88;
+
+// Background Colors
+$color-background: #ffffff;
+$color-background-secondary: #fafbfc;
+$color-background-tertiary: #f8fafc;
+
+// Border Colors
+$color-border: #e2e8f0;
+$color-border-secondary: #cad5e2;
+
+// Status Colors
+$color-success: #006045;
+$color-success-bg: #ecfdf5;
+$color-warning: #eb5a38;
+$color-warning-bg: #fff7ed;
+$color-error: #fb2c36;
+$color-error-bg: #fef2f2;
+$color-info: #2b7fff;
+$color-info-bg: #f5f9ff;
+
+// ----------------------------------------------------------------------------
+// Typography
+// ----------------------------------------------------------------------------
+
+$font-family-base: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+$font-family-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+// Font Sizes
+$font-size-xs: 10px;
+$font-size-sm: 12px;
+$font-size-base: 14px;
+$font-size-md: 16px;
+$font-size-lg: 18px;
+$font-size-xl: 20px;
+$font-size-2xl: 24px;
+$font-size-3xl: 32px;
+$font-size-4xl: 40px;
+
+// Font Weights
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+// Line Heights
+$line-height-tight: 140%;
+$line-height-normal: 150%;
+
+// Letter Spacing
+$letter-spacing-normal: 0;
+$letter-spacing-wide: 0.12px;
+$letter-spacing-wider: 0.6px;
+
+// ----------------------------------------------------------------------------
+// Spacing
+// ----------------------------------------------------------------------------
+
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 16px;
+$spacing-xl: 24px;
+$spacing-2xl: 32px;
+$spacing-3xl: 40px;
+
+// ----------------------------------------------------------------------------
+// Border Radius
+// ----------------------------------------------------------------------------
+
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 16px;
+$border-radius-full: 40px;
+$border-radius-round: 360px;
+
+// ----------------------------------------------------------------------------
+// Shadows
+// ----------------------------------------------------------------------------
+
+$shadow-s1: 0px 1px 1px 0px rgba(213, 218, 227, 0.3);
+$shadow-s2: 0px 2px 2px 0px rgba(213, 218, 227, 0.4);
+$shadow-s3: 0px 4px 10px 0px rgba(29, 41, 61, 0.1);
+
+// ----------------------------------------------------------------------------
+// Transitions
+// ----------------------------------------------------------------------------
+
+$transition-fast: 0.15s;
+$transition-base: 0.2s;
+$transition-slow: 0.3s;
+$transition-ease: ease;
+
+// ----------------------------------------------------------------------------
+// Layout
+// ----------------------------------------------------------------------------
+
+$container-max-width: 1200px;
+$sidebar-width: 330px;
+
+// ----------------------------------------------------------------------------
+// Z-Index Scale
+// ----------------------------------------------------------------------------
+
+$z-index-base: 1;
+$z-index-dropdown: 100;
+$z-index-sticky: 200;
+$z-index-fixed: 300;
+$z-index-modal-backdrop: 400;
+$z-index-modal: 500;
+$z-index-popover: 600;
+$z-index-tooltip: 700;
+
+// ----------------------------------------------------------------------------
+// Breakpoints
+// ----------------------------------------------------------------------------
+
+$breakpoint-sm: 640px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+$breakpoint-2xl: 1536px;
+$breakpoint-3xl: 1650px;
+

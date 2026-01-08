@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
+import { APP_ROUTES } from "@/config/appUrls";
 import {
   convertToBackendFilters,
   type FilterState,
@@ -12,7 +13,9 @@ import {
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Collection, Dataset, DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { ApiErrorMessage } from "@/lib/apiErrors";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
+import { logDebug, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
 
@@ -246,7 +249,7 @@ function _mapUserCollectionToDatasets(userCollection: unknown): DatasetPlus[] {
   return Array.from(byId.values());
 }
 
-export default function DashboardClient() {
+export default function BrowseClient() {
   const api = useApi();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -307,14 +310,14 @@ export default function DashboardClient() {
    * Fetch favorites collection to get dataset IDs for favorite state
    */
   const fetchFavoritesCollection = useCallback(async () => {
-    console.log("fetchFavoritesCollection called");
+    logDebug("fetchFavoritesCollection called");
     try {
       if (!api.hasToken) {
-        console.log("No token available for fetchFavoritesCollection");
+        logDebug("No token available for fetchFavoritesCollection");
         return;
       }
 
-      console.log("Fetching favorites collection with token:", api.hasToken);
+      logDebug("Fetching favorites collection", { hasToken: api.hasToken });
       const favoritesPayload = {
         project: {
           fields: ["id", "name", "datasets.id"],
@@ -332,9 +335,9 @@ export default function DashboardClient() {
       };
 
       const data = await api.queryUserCollections(favoritesPayload);
-      console.log("Favorites collection response:", data);
+      logDebug("Favorites collection response", { response: data });
       const items = Array.isArray(data.items) ? data.items : [];
-      console.log("Items from response:", items);
+      logDebug("Items from response", { itemsCount: items.length });
 
       const favoritesCollection = items.find(
         (item: any) =>
@@ -348,15 +351,14 @@ export default function DashboardClient() {
             item.name.toLowerCase().includes("favorite")),
       );
 
-      console.log("Found favorites collection:", favoritesCollection);
-      console.log(
-        "All collection names:",
-        items.map((item: any) =>
+      logDebug("Found favorites collection", {
+        found: !!favoritesCollection,
+        collectionNames: items.map((item: any) =>
           typeof item === "object" && item !== null && "name" in item
             ? item.name
             : "unknown",
         ),
-      );
+      });
 
       if (favoritesCollection && "datasets" in favoritesCollection) {
         const datasets = Array.isArray(favoritesCollection.datasets)
@@ -376,25 +378,32 @@ export default function DashboardClient() {
           })
           .filter((id: any): id is string => id !== null);
 
-        console.log("Setting favorite dataset IDs:", datasetIds);
+        logDebug("Setting favorite dataset IDs", {
+          datasetIds,
+          count: datasetIds.length,
+        });
         setFavoriteDatasetIds(datasetIds);
         setFavoritesCollectionId(favoritesCollection.id as string);
         setHasFetchedFavorites(true);
-        console.log("Setting favorites collection ID:", favoritesCollection.id);
+        logDebug("Setting favorites collection ID", {
+          id: favoritesCollection.id,
+        });
       } else if (favoritesCollection) {
-        console.log("Favorites collection exists but is empty");
+        logDebug("Favorites collection exists but is empty");
         setFavoriteDatasetIds([]);
         setFavoritesCollectionId(favoritesCollection.id as string);
         setHasFetchedFavorites(true);
-        console.log("Setting favorites collection ID:", favoritesCollection.id);
+        logDebug("Setting favorites collection ID", {
+          id: favoritesCollection.id,
+        });
       } else {
-        console.log("No favorites collection found");
+        logDebug("No favorites collection found");
         setFavoriteDatasetIds([]);
         setFavoritesCollectionId("");
         setHasFetchedFavorites(true);
       }
     } catch (err: unknown) {
-      console.error("Failed to fetch favorites collection:", err);
+      logError("Failed to fetch favorites collection", err);
       setFavoriteDatasetIds([]);
       setFavoritesCollectionId("");
       setHasFetchedFavorites(true);
@@ -406,17 +415,17 @@ export default function DashboardClient() {
    */
   const handleAddToFavorites = useCallback(
     async (datasetId: string) => {
-      console.log("handleAddToFavorites called with datasetId:", datasetId);
+      logDebug("handleAddToFavorites called", { datasetId });
       try {
         if (!api.hasToken || !favoritesCollectionId) {
-          console.log("Token or favoritesCollectionId missing:", {
+          logDebug("Token or favoritesCollectionId missing", {
             hasToken: api.hasToken,
             favoritesCollectionId,
           });
           throw new Error("No authentication token or favorites collection ID");
         }
 
-        console.log("Adding dataset to favorites collection:", {
+        logDebug("Adding dataset to favorites collection", {
           collectionId: favoritesCollectionId,
           datasetId,
         });
@@ -425,7 +434,7 @@ export default function DashboardClient() {
 
         setFavoriteDatasetIds((prev) => [...prev, datasetId]);
       } catch (err: unknown) {
-        console.error("Failed to add dataset to favorites:", err);
+        logError("Failed to add dataset to favorites", err);
         throw err;
       }
     },
@@ -437,20 +446,17 @@ export default function DashboardClient() {
    */
   const handleRemoveFromFavorites = useCallback(
     async (datasetId: string) => {
-      console.log(
-        "handleRemoveFromFavorites called with datasetId:",
-        datasetId,
-      );
+      logDebug("handleRemoveFromFavorites called", { datasetId });
       try {
         if (!api.hasToken || !favoritesCollectionId) {
-          console.log("Token or favoritesCollectionId missing:", {
+          logDebug("Token or favoritesCollectionId missing", {
             hasToken: api.hasToken,
             favoritesCollectionId,
           });
-          throw new Error("No authentication token or favorites collection ID");
+          throw new Error(ApiErrorMessage.NO_AUTH_TOKEN_OR_FAVORITES_ID);
         }
 
-        console.log("Removing dataset from favorites collection:", {
+        logDebug("Removing dataset from favorites collection", {
           collectionId: favoritesCollectionId,
           datasetId,
         });
@@ -460,8 +466,8 @@ export default function DashboardClient() {
           datasetId,
         );
 
-        console.log(
-          "Successfully removed dataset from favorites, updating local state...",
+        logDebug(
+          "Successfully removed dataset from favorites, updating local state",
         );
 
         setFavoriteDatasetIds((prev) => prev.filter((id) => id !== datasetId));
@@ -470,7 +476,7 @@ export default function DashboardClient() {
           selectedCollection === favoritesCollectionId &&
           isCustomCollection
         ) {
-          console.log(
+          logDebug(
             "Removing dataset from local state since we're on favorites collection page",
           );
           setAllDatasets((prevDatasets) =>
@@ -478,7 +484,7 @@ export default function DashboardClient() {
           );
         }
       } catch (err: unknown) {
-        console.error("Failed to remove dataset from favorites:", err);
+        logError("Failed to remove dataset from favorites", err);
         throw err;
       }
     },
@@ -703,7 +709,7 @@ export default function DashboardClient() {
             setIsLoading(false);
             return;
           } catch (smartErr: any) {
-            console.error("Smart search failed, falling back:", smartErr);
+            logError("Smart search failed, falling back", smartErr);
           }
         }
 
@@ -867,8 +873,8 @@ export default function DashboardClient() {
                 const uniqueDatasets = Array.from(byId.values());
                 setAllDatasets(uniqueDatasets);
               } catch (error) {
-                console.error("Failed to fetch dataset details:", error);
-                setError("Failed to fetch dataset details. Please try again.");
+                logError("Failed to fetch dataset details", error);
+                setError(ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED);
                 setAllDatasets([]);
               }
             } else {
@@ -946,7 +952,7 @@ export default function DashboardClient() {
         );
         setAllDatasets(sortedDatasets);
       } catch (err: unknown) {
-        let message = "An unexpected error occurred";
+        let message: string = ApiErrorMessage.UNEXPECTED_ERROR;
         if (err instanceof Error) message = err.message;
         else if (typeof err === "string") message = err;
         setError(message);
@@ -1026,7 +1032,7 @@ export default function DashboardClient() {
   }, []);
 
   useEffect(() => {
-    console.log("Browse props:", {
+    logDebug("Browse props", {
       favoriteDatasetIds,
       favoritesCollectionId,
       hasOnAddToFavorites: !!handleAddToFavorites,
@@ -1034,7 +1040,7 @@ export default function DashboardClient() {
   }, [favoriteDatasetIds, favoritesCollectionId, handleAddToFavorites]);
 
   useEffect(() => {
-    console.log("Session info:", {
+    logDebug("Session info", {
       hasToken: api.hasToken,
     });
   }, [api.hasToken]);
@@ -1053,10 +1059,10 @@ export default function DashboardClient() {
 
   useEffect(() => {
     if (api.hasToken && !hasFetchedFavorites) {
-      console.log("Token available, fetching favorites collection...");
+      logDebug("Token available, fetching favorites collection");
       fetchFavoritesCollection();
     } else {
-      console.log("No access token available or already fetched");
+      logDebug("No access token available or already fetched");
     }
   }, [api.hasToken, hasFetchedFavorites, fetchFavoritesCollection]);
 
@@ -1081,7 +1087,7 @@ export default function DashboardClient() {
         JSON.stringify(selectedDatasets),
       );
     }
-    router.push(getNavigationUrl("/chat"));
+    router.push(getNavigationUrl(APP_ROUTES.CHAT));
   }, [router, isMounted, selectedDatasets]);
 
   const handleAddToCollection = useCallback(() => {

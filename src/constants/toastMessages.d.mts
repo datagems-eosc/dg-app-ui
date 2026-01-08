@@ -7,4 +7,6 @@ export interface ToastConfig {
 
 export const TOAST_MESSAGES: {
   readonly datasetAddedToCollection: ToastConfig;
+  readonly collectionDeleted: ToastConfig;
+  readonly collectionDeleteFailed: ToastConfig;
 };

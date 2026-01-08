@@ -4,6 +4,7 @@ import { Button } from "@ui/Button";
 import MissingDatasetItem from "@ui/datasets/MissingDatasetItem";
 import SelectedDatasetItem from "@ui/datasets/SelectedDatasetItem";
 import { NoData } from "@ui/NoData";
+import { Tooltip } from "@ui/Tooltip";
 import { ArrowUp, Bot, Database, PackagePlus, X } from "lucide-react";
 import React from "react";
 import type { DatasetUnion } from "@/types/datasets";
@@ -65,13 +66,14 @@ export default function SelectedDatasetsPanel({
           <div className="flex items-center gap-2">
             {/* Close Panel button */}
             {onClose && (
-              <button
-                onClick={onClose}
-                className="p-1 hover:bg-slate-75 rounded-sm transition-colors"
-                title="Close panel"
-              >
-                <X className="w-5 h-5 text-icon" />
-              </button>
+              <Tooltip content="Close panel" position="bottom" delay={300}>
+                <button
+                  onClick={onClose}
+                  className="p-1 hover:bg-slate-75 rounded-sm transition-colors"
+                >
+                  <X className="w-5 h-5 text-icon" />
+                </button>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -95,7 +97,7 @@ export default function SelectedDatasetsPanel({
           <NoData
             icon={Database}
             title="Your selected datasets will appear here"
-            description="Your selected datasets will appear here"
+            description="Choose some first"
           />
         ) : (
           <>

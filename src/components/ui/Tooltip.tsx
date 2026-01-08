@@ -1,7 +1,8 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface TooltipProps {
   children: React.ReactNode;
@@ -40,8 +41,8 @@ export function Tooltip({
     setIsVisible(false);
   };
 
-  useEffect(() => {
-    if (isVisible && tooltipRef.current && containerRef.current) {
+  const updateTooltipPosition = useCallback(() => {
+    if (tooltipRef.current && containerRef.current) {
       const container = containerRef.current;
       const containerRect = container.getBoundingClientRect();
 
@@ -50,14 +51,14 @@ export function Tooltip({
       switch (position) {
         case "top":
           style = {
-            left: containerRect.left + containerRect.width / 4 + 20,
+            left: containerRect.left + containerRect.width / 2,
             top: containerRect.top - 8,
             transform: "translateX(-50%) translateY(-100%)",
           };
           break;
         case "bottom":
           style = {
-            left: containerRect.left + containerRect.width / 4 + 20,
+            left: containerRect.left + containerRect.width / 2,
             top: containerRect.bottom + 8,
             transform: "translateX(-50%)",
           };
@@ -80,7 +81,21 @@ export function Tooltip({
 
       setTooltipStyle(style);
     }
-  }, [isVisible, position]);
+  }, [position]);
+
+  useEffect(() => {
+    if (isVisible) {
+      updateTooltipPosition();
+
+      window.addEventListener("scroll", updateTooltipPosition, true);
+      window.addEventListener("resize", updateTooltipPosition);
+
+      return () => {
+        window.removeEventListener("scroll", updateTooltipPosition, true);
+        window.removeEventListener("resize", updateTooltipPosition);
+      };
+    }
+  }, [isVisible, updateTooltipPosition]);
 
   useEffect(() => {
     return () => {
@@ -90,6 +105,40 @@ export function Tooltip({
     };
   }, []);
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const tooltipContent =
+    isVisible && content && mounted ? (
+      <div
+        ref={tooltipRef}
+        className="fixed z-[700] px-2 py-1 text-sm text-white bg-gray-800 rounded-md shadow-lg pointer-events-none"
+        style={{
+          ...tooltipStyle,
+          maxWidth: "340px",
+          wordWrap: "break-word",
+          whiteSpace: "normal",
+        }}
+      >
+        {content}
+        {/* Arrow */}
+        <div
+          className={`absolute w-2 h-2 bg-gray-800 transform rotate-45 ${
+            position === "top"
+              ? "top-full left-1/2 -translate-x-1/2 -mt-1"
+              : position === "bottom"
+                ? "bottom-full left-1/2 -translate-x-1/2 -mb-1"
+                : position === "left"
+                  ? "left-full top-1/2 -translate-y-1/2 -ml-1"
+                  : "right-full top-1/2 -translate-y-1/2 -mr-1"
+          }`}
+        />
+      </div>
+    ) : null;
+
   return (
     <div
       className={`relative inline-block ${className}`}
@@ -98,32 +147,7 @@ export function Tooltip({
       onMouseLeave={hideTooltip}
     >
       {children}
-      {isVisible && content && (
-        <div
-          ref={tooltipRef}
-          className="fixed z-[70] px-2 py-1 text-sm text-white bg-gray-800 rounded-md shadow-lg pointer-events-none"
-          style={{
-            ...tooltipStyle,
-            maxWidth: "340px",
-            wordWrap: "break-word",
-            whiteSpace: "normal",
-          }}
-        >
-          {content}
-          {/* Arrow */}
-          <div
-            className={`absolute w-2 h-2 bg-gray-800 transform rotate-45 ${
-              position === "top"
-                ? "top-full left-1/2 -translate-x-1/2 -mt-1"
-                : position === "bottom"
-                  ? "bottom-full left-1/2 -translate-x-1/2 -mb-1"
-                  : position === "left"
-                    ? "left-full top-1/2 -translate-y-1/2 -ml-1"
-                    : "right-full top-1/2 -translate-y-1/2 -mr-1"
-            }`}
-          />
-        </div>
-      )}
+      {mounted && tooltipContent && createPortal(tooltipContent, document.body)}
     </div>
   );
 }

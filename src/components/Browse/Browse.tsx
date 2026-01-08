@@ -20,7 +20,7 @@ type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
 
 import { Button } from "@ui/Button";
-import { Chip } from "@ui/Chip";
+import { ConfirmationModal } from "@ui/ConfirmationModal";
 import DatasetCardSkeleton from "@ui/datasets/DatasetCardSkeleton";
 import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import SmartSearch from "@ui/SmartSearch";
@@ -28,6 +28,9 @@ import SmartSearchExamples from "@ui/SmartSearchExamples";
 import Switch from "@ui/Switch";
 import { Toast } from "@ui/Toast";
 import { useRouter } from "next/navigation";
+import { APP_ROUTES } from "@/config/appUrls";
+import { UI_CONSTANTS } from "@/config/uiConstants";
+import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
@@ -42,11 +45,10 @@ import {
 } from "../../config/filterOptions";
 import CreateCollectionModal from "../CreateCollectionModal";
 import DatasetCard from "../DatasetCard";
-import DatasetDetailsPanel from "../DatasetDetailsPanel";
-import DeleteCollectionModal from "../DeleteCollectionModal";
 import FilterModal from "../FilterModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
+import ActiveFilters from "./ActiveFilters";
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -207,8 +209,6 @@ export default function Browse({
   const router = useRouter();
   const [localSelectedDatasets, setLocalSelectedDatasets] =
     useState<string[]>(selectedDatasets);
-  const [selectedDataset, setSelectedDataset] =
-    useState<DatasetWithCollections | null>(null);
   const [filters, setFilters] = useState<FilterState>(
     propFilters || defaultFilters,
   );
@@ -228,8 +228,6 @@ export default function Browse({
   );
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
-  const [isDetailsPanelAnimating, setIsDetailsPanelAnimating] = useState(false);
-  const [isDetailsPanelClosing, setIsDetailsPanelClosing] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
     useState(false);
@@ -272,10 +270,6 @@ export default function Browse({
   useEffect(() => {
     const handleSidebarOpenedForTablet = () => {
       if (isTablet) {
-        // Close both details and selected datasets panels
-        if (selectedDataset) {
-          setSelectedDataset(null);
-        }
         if (showSelectedPanel) {
           handleClosePanel();
         }
@@ -292,7 +286,7 @@ export default function Browse({
         handleSidebarOpenedForTablet,
       );
     };
-  }, [isTablet, selectedDataset, showSelectedPanel, handleClosePanel]);
+  }, [isTablet, showSelectedPanel, handleClosePanel]);
 
   // Use controlled or local state for selected datasets
   const currentSelectedDatasets = onSelectedDatasetsChange
@@ -301,36 +295,102 @@ export default function Browse({
   const setCurrentSelectedDatasets =
     onSelectedDatasetsChange || setLocalSelectedDatasets;
 
-  // Handle delete collection
   const handleDeleteCollection = async () => {
-    if (!isCustomCollection || !collectionName || !collectionId) return;
+    if (!isCustomCollection || !collectionName || !collectionId) {
+      logger.warn(
+        {
+          isCustomCollection,
+          hasCollectionName: !!collectionName,
+          hasCollectionId: !!collectionId,
+        },
+        "Attempted to delete collection without required parameters",
+      );
+      return;
+    }
 
     setIsDeleting(true);
     try {
       if (!api.hasToken) {
+        logApiError(
+          "deleteCollection",
+          new Error("No access token available"),
+          {
+            collectionId,
+          },
+        );
         throw new Error("No access token available");
       }
 
-      await api.deleteUserCollection(collectionId);
+      await api.deleteCollection(collectionId);
       await refreshExtraCollections();
       window.dispatchEvent(new CustomEvent("forceCollectionsRefresh"));
       notifyCollectionModified();
 
+      logger.info(
+        {
+          collectionId,
+          collectionName,
+          timestamp: new Date().toISOString(),
+          operation: "deleteCollection",
+          status: "success",
+        },
+        "Collection deleted successfully",
+      );
+
       setShowDeleteModal(false);
-      setToastType("success");
-      setToastMessage("Collection deleted successfully!");
+      setToastType(TOAST_MESSAGES.collectionDeleted.type);
+      setToastMessage(TOAST_MESSAGES.collectionDeleted.message);
       setShowToast(true);
 
       setTimeout(() => {
-        router.push(getNavigationUrl("/dashboard"));
-      }, 500);
+        router.push(getNavigationUrl(APP_ROUTES.BROWSE));
+      }, UI_CONSTANTS.NAVIGATION_DELAY_MS);
     } catch (error) {
+      const errorDetails = {
+        collectionId,
+        collectionName,
+        timestamp: new Date().toISOString(),
+        operation: "deleteCollection",
+        status: "failed",
+        errorType:
+          error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        hasToken: !!api.hasToken,
+      };
+
+      if (error && typeof error === "object") {
+        const errorObj = error as Record<string, unknown>;
+        if ("response" in errorObj) {
+          const response = errorObj.response as Record<string, unknown>;
+          Object.assign(errorDetails, {
+            responseStatus: response.status,
+            responseStatusText: response.statusText,
+            responseData: response.data,
+            responseHeaders: response.headers,
+          });
+        }
+        if ("code" in errorObj) {
+          Object.assign(errorDetails, { errorCode: errorObj.code });
+        }
+        if ("config" in errorObj) {
+          const config = errorObj.config as Record<string, unknown>;
+          Object.assign(errorDetails, {
+            requestUrl: config.url,
+            requestMethod: config.method,
+          });
+        }
+      }
+
+      logger.error(errorDetails, "Failed to delete collection");
       logApiError("deleteCollection", error, { collectionId });
-      setToastType("error");
-      setToastMessage("Failed to delete collection. Please try again.");
+
+      setToastType(TOAST_MESSAGES.collectionDeleteFailed.type);
+      setToastMessage(TOAST_MESSAGES.collectionDeleteFailed.message);
       setShowToast(true);
-      setIsDeleting(false);
       setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -391,24 +451,27 @@ export default function Browse({
   }, [isMounted]);
 
   // Check if user can delete collection
+  // For custom collections (except Favorites), always show delete button
+  // The API will handle permission check when deletion is attempted
   useEffect(() => {
-    const checkDeletePermission = async () => {
-      if (!isCustomCollection || !collectionId || !api.hasToken) {
-        setCanDeleteCollection(false);
-        return;
-      }
+    if (!isCustomCollection) {
+      setCanDeleteCollection(false);
+      return;
+    }
 
-      try {
-        const grants = await api.getCollectionGrants(collectionId);
-        setCanDeleteCollection(grants.includes("dg_col-delete"));
-      } catch (error) {
-        logApiError("checkCollectionGrants", error, { collectionId });
-        setCanDeleteCollection(false);
-      }
-    };
+    // Don't allow deleting Favorites collection
+    if (
+      collectionName === "Favorites" ||
+      collectionName === "Favorites Datasets"
+    ) {
+      setCanDeleteCollection(false);
+      return;
+    }
 
-    checkDeletePermission();
-  }, [isCustomCollection, collectionId, api]);
+    // For all other custom collections, show delete button
+    // API will validate permissions when deletion is attempted
+    setCanDeleteCollection(true);
+  }, [isCustomCollection, collectionName]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
@@ -525,14 +588,6 @@ export default function Browse({
     }, 500);
   }
 
-  const handleCloseDetailsPanel = () => {
-    setIsDetailsPanelClosing(true);
-    setTimeout(() => {
-      setSelectedDataset(null);
-      setIsDetailsPanelClosing(false);
-    }, 500);
-  };
-
   // Only apply access filter on frontend, all other filtering is done on backend
   const filteredDatasets = useMemo(() => {
     return datasets.filter((dataset) => {
@@ -592,48 +647,11 @@ export default function Browse({
 
   const handleDatasetClick = (dataset: DatasetWithCollections) => {
     if (!isModal) {
-      // Close selected datasets panel when opening details panel
-      if (showSelectedPanel && onCloseSidebar) {
-        onCloseSidebar();
-      }
-
-      // Toggle the details panel - close if same dataset clicked, open if different
-      if (selectedDataset?.id === dataset.id) {
-        handleCloseDetailsPanel();
-      } else {
-        // If a different dataset is already selected, close it first then open the new one
-        if (selectedDataset) {
-          handleCloseDetailsPanel();
-          // Wait for close animation to complete, then open new panel
-          setTimeout(() => {
-            setSelectedDataset(dataset);
-            setIsDetailsPanelAnimating(true);
-            setTimeout(() => setIsDetailsPanelAnimating(false), 50);
-          }, 500);
-        } else {
-          // No dataset selected, open directly with animation
-          setSelectedDataset(dataset);
-          setIsDetailsPanelAnimating(true);
-          setTimeout(() => setIsDetailsPanelAnimating(false), 50);
-        }
-        // On tablets, request sidebar to close when opening details panel
-        if (isTablet) {
-          window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
-        }
-      }
+      router.push(getNavigationUrl(`/datasets/${dataset.id}`));
     }
-  };
-
-  const closeDetailsPanel = () => {
-    handleCloseDetailsPanel();
   };
 
   const handleDatasetSelect = (datasetId: string, isSelected: boolean) => {
-    // Close details panel when selecting datasets
-    if (selectedDataset) {
-      handleCloseDetailsPanel();
-    }
-
     if (isSelected) {
       setCurrentSelectedDatasets([...currentSelectedDatasets, datasetId]);
       // Open the SelectedDatasetsPanel when a dataset is selected
@@ -683,105 +701,7 @@ export default function Browse({
     }
   };
 
-  // Generate active filter tags
-  const activeFilterTags = useMemo(() => {
-    const tags = [];
-
-    if (filters.access && filters.access !== "") {
-      tags.push({
-        key: "access",
-        label: "Access",
-        value: filters.access === "open" ? "Open" : "Restricted",
-      });
-    }
-
-    if (filters.creationYear.start || filters.creationYear.end) {
-      const from = filters.creationYear.start || "...";
-      const to = filters.creationYear.end || "...";
-      tags.push({
-        key: "creationYear",
-        label: "Creation Year",
-        value: `${from}-${to}`,
-      });
-    }
-
-    if (filters.datasetSize.start || filters.datasetSize.end) {
-      const min = filters.datasetSize.start
-        ? `${filters.datasetSize.start} MB`
-        : "0 MB";
-      const max = filters.datasetSize.end
-        ? `${filters.datasetSize.end} MB`
-        : "∞";
-
-      tags.push({
-        key: "datasetSize",
-        label: "Dataset Size",
-        value: `${min} - ${max}`,
-      });
-    }
-
-    if (filters.fieldsOfScience.length > 0) {
-      // Get the exact names of selected fields of science
-      const selectedFieldNames = filters.fieldsOfScience.map((fieldCode) => {
-        for (const category of fieldsOfScienceCategories) {
-          const option = category.options.find(
-            (opt) => opt.value === fieldCode,
-          );
-          if (option) {
-            return option.label;
-          }
-        }
-        return fieldCode; // fallback to code if not found
-      });
-
-      // If more than 2 fields selected, show first 2 + count of remaining
-      if (selectedFieldNames.length > 2) {
-        const firstTwo = selectedFieldNames.slice(0, 2).join(", ");
-        const remaining = selectedFieldNames.length - 2;
-        tags.push({
-          key: "fieldsOfScience",
-          label: "Field of Science",
-          value: `${firstTwo} +${remaining} more`,
-        });
-      } else {
-        tags.push({
-          key: "fieldsOfScience",
-          label: "Field of Science",
-          value: selectedFieldNames.join(", "),
-        });
-      }
-    }
-
-    if (filters.license.length > 0) {
-      // Get the exact names of selected licenses
-      const selectedLicenseNames = filters.license.map((licenseCode) => {
-        const licenseOption = licenses.find((opt) => opt.value === licenseCode);
-        return licenseOption ? licenseOption.label : licenseCode; // fallback to code if not found
-      });
-
-      // If more than 2 licenses selected, show first 2 + count of remaining
-      if (selectedLicenseNames.length > 2) {
-        const firstTwo = selectedLicenseNames.slice(0, 2).join(", ");
-        const remaining = selectedLicenseNames.length - 2;
-        tags.push({
-          key: "license",
-          label: "License",
-          value: `${firstTwo} +${remaining} more`,
-        });
-      } else {
-        tags.push({
-          key: "license",
-          label: "License",
-          value: selectedLicenseNames.join(", "),
-        });
-      }
-    }
-
-    return tags;
-  }, [filters, fieldsOfScienceCategories, licenses]);
-
   const isPanelVisible = showSelectedPanel || isPanelClosing;
-  const isDetailsPanelVisible = selectedDataset || isDetailsPanelClosing;
   const shouldShowSmartExamples =
     showSearchAndFilters !== false &&
     isSmartSearchEnabled &&
@@ -791,11 +711,7 @@ export default function Browse({
     <div className="flex relative min-h-screen">
       <div
         className={`flex-1 transition-all duration-500 ease-out ${
-          isPanelVisible
-            ? "sm:pr-[388px]"
-            : isDetailsPanelVisible
-              ? "sm:pr-[384px]"
-              : ""
+          isPanelVisible ? "sm:pr-[388px]" : ""
         }`}
       >
         <div className="max-w-5xl mx-auto relative transition-all duration-500 ease-out py-4 sm:py-10">
@@ -1121,25 +1037,13 @@ export default function Browse({
             />
           )}
           {/* Active Filters */}
-          {showSearchAndFilters !== false && activeFilterTags.length > 0 && (
-            <div className="flex gap-2 mb-4 flex-nowrap sm:flex-wrap overflow-x-auto pl-4 sm:px-6">
-              {activeFilterTags.map((tag) => (
-                <Chip
-                  key={tag.key}
-                  className="flex-none"
-                  color="grey"
-                  onRemove={() => removeFilter(tag.key as keyof FilterState)}
-                >
-                  <span className="text-descriptions-12-medium text-gray-650">
-                    {tag.label}:
-                  </span>
-                  <span className="text-descriptions-12-medium ml-1 text-gray-750">
-                    {tag.value}
-                  </span>
-                </Chip>
-              ))}
-            </div>
-          )}
+          <ActiveFilters
+            filters={filters}
+            fieldsOfScienceCategories={fieldsOfScienceCategories}
+            licenses={licenses}
+            onRemoveFilter={removeFilter}
+            showSearchAndFilters={showSearchAndFilters}
+          />
           {/* Results count and sorting */}
           {showSearchAndFilters !== false && !shouldShowSmartExamples && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
@@ -1189,7 +1093,6 @@ export default function Browse({
                       key={dataset.id || `dataset-${index}`}
                       dataset={dataset}
                       onClick={() => handleDatasetClick(dataset)}
-                      isSelected={selectedDataset?.id === dataset.id}
                       isMultiSelected={currentSelectedDatasets.includes(
                         dataset.id,
                       )}
@@ -1211,10 +1114,7 @@ export default function Browse({
                       onAddToFavorites={onAddToFavorites}
                       hasFetchedFavorites={hasFetchedFavorites}
                       onRemoveFromFavorites={onRemoveFromFavorites}
-                      hasSidePanelOpen={
-                        (!!selectedDataset && !isDetailsPanelClosing) ||
-                        (showSelectedPanel && !isPanelClosing)
-                      }
+                      hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
                       isSmartSearchEnabled={isSmartSearchEnabled}
                     />
                   ))}
@@ -1232,31 +1132,6 @@ export default function Browse({
                   </p>
                 </div>
               )}
-            </div>
-          )}
-          {/* Dataset Details Panel */}
-          {!isModal && (isDetailsPanelVisible || isDetailsPanelClosing) && (
-            <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px] will-change-transform pointer-events-none">
-              <div
-                className={`h-full transition-transform duration-500 ease-out pointer-events-auto ${
-                  isDetailsPanelAnimating
-                    ? "translate-x-full"
-                    : isDetailsPanelClosing
-                      ? "translate-x-full"
-                      : "translate-x-0"
-                }`}
-              >
-                <DatasetDetailsPanel
-                  dataset={selectedDataset}
-                  onClose={closeDetailsPanel}
-                  isVisible={!!selectedDataset}
-                  onAddToCollection={
-                    selectedDataset
-                      ? () => handleAddToCollection(selectedDataset)
-                      : undefined
-                  }
-                />
-              </div>
             </div>
           )}
         </div>
@@ -1286,12 +1161,17 @@ export default function Browse({
         datasets={datasets}
       />
 
-      {/* Delete Collection Modal */}
-      <DeleteCollectionModal
+      <ConfirmationModal
         isVisible={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteCollection}
-        collectionName={collectionName}
+        title="Delete Collection"
+        message1="This operation will permanently delete the collection. Are you sure?"
+        message2=""
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        icon={<Trash2 className="w-8 h-8 text-red-500" />}
         isLoading={isDeleting}
       />
 

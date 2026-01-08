@@ -4,7 +4,7 @@ describe("Delete Custom Collection", () => {
   });
 
   it("should delete a custom collection from 3 dots menu", () => {
-    cy.visit("/dashboard");
+    cy.visit("/browse");
     cy.wait(1000);
 
     cy.get('nav[aria-label="Collections"]').within(() => {
@@ -25,11 +25,11 @@ describe("Delete Custom Collection", () => {
       "be.visible",
     );
 
-    cy.url().should("include", "/dashboard");
+    cy.url().should("include", "/browse");
   });
 
   it("should show error toast when deletion fails", () => {
-    cy.visit("/dashboard");
+    cy.visit("/browse");
     cy.wait(1000);
 
     cy.intercept("DELETE", "**/collection/**", {
@@ -67,7 +67,7 @@ describe("Delete Custom Collection", () => {
       body: { grants: [] },
     }).as("getGrants");
 
-    cy.visit("/dashboard");
+    cy.visit("/browse");
     cy.wait(1000);
 
     cy.get('nav[aria-label="Collections"]').within(() => {
@@ -87,7 +87,7 @@ describe("Delete Custom Collection", () => {
   });
 
   it("should allow canceling deletion", () => {
-    cy.visit("/dashboard");
+    cy.visit("/browse");
     cy.wait(1000);
 
     cy.get('nav[aria-label="Collections"]').within(() => {

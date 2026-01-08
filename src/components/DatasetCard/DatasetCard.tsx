@@ -4,6 +4,7 @@ import { Button } from "@ui/Button";
 import { Chip } from "@ui/Chip";
 import FormattedText from "@ui/FormattedText";
 import { SmartSearchMatchItem } from "@ui/SmartSearchMatchItem";
+import { Tooltip } from "@ui/Tooltip";
 import {
   CalendarCheck2,
   Check,
@@ -23,6 +24,7 @@ import type {
   DatasetPlus,
   DatasetWithCollections,
 } from "@/data/dataset";
+import { logDebug, logError } from "@/lib/logger";
 import { formatFileSize } from "@/lib/utils";
 
 interface Collection {
@@ -139,7 +141,7 @@ export default function DatasetCard({
   const handleStarClick = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click when starring
 
-    console.log("Star clicked!", {
+    logDebug("Star clicked", {
       datasetId: dataset.id,
       propIsFavorite,
       favoritesCollectionId,
@@ -167,27 +169,27 @@ export default function DatasetCard({
       onRemoveFromFavorites &&
       hasFetchedFavorites
     ) {
-      console.log("Using API-based favorites");
+      logDebug("Using API-based favorites");
       try {
         setIsFavoriteLoading(true);
         if (!isStarred) {
           // Add to favorites via API
-          console.log("Adding to favorites via API...");
+          logDebug("Adding to favorites via API");
           await onAddToFavorites(dataset.id);
-          console.log("Successfully added to favorites");
+          logDebug("Successfully added to favorites");
         } else {
           // Remove from favorites via API
-          console.log("Removing from favorites via API...");
+          logDebug("Removing from favorites via API");
           await onRemoveFromFavorites(dataset.id);
-          console.log("Successfully removed from favorites");
+          logDebug("Successfully removed from favorites");
         }
       } catch (error) {
-        console.error("Failed to modify favorites:", error);
+        logError("Failed to modify favorites", error);
       } finally {
         setIsFavoriteLoading(false);
       }
     } else {
-      console.log("Using local hook behavior");
+      logDebug("Using local hook behavior");
       // Fall back to local hook behavior
       toggleFavorite(dataset.id);
     }
@@ -236,13 +238,14 @@ export default function DatasetCard({
     >
       {/* Edit mode remove button */}
       {isEditMode && onRemove && (
-        <button
-          onClick={handleRemoveClick}
-          className="absolute top-2 right-2 p-1 bg-red-100 hover:bg-red-200 rounded-full text-red-600 hover:text-red-700 transition-colors z-10"
-          title="Remove from collection"
-        >
-          <X className="w-4 h-4 text-icon" />
-        </button>
+        <Tooltip content="Remove from collection" position="top" delay={300}>
+          <button
+            onClick={handleRemoveClick}
+            className="absolute top-2 right-2 p-1 bg-red-100 hover:bg-red-200 rounded-full text-red-600 hover:text-red-700 transition-colors z-10"
+          >
+            <X className="w-4 h-4 text-icon" />
+          </button>
+        </Tooltip>
       )}
 
       {/* Header with title and star */}

@@ -15,7 +15,7 @@ export function Logo({
 
   return (
     <Link
-      href={createUrl(APP_ROUTES.DASHBOARD)}
+      href={createUrl(APP_ROUTES.BROWSE)}
       className="flex items-center gap-2"
     >
       <img

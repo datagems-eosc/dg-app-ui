@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useApi } from "@/hooks/useApi";
+import logger, { logApiError } from "@/lib/logger";
 import type { ApiCollection } from "@/types/collection";
 
 interface CollectionsContextType {
@@ -78,13 +79,18 @@ export function CollectionsProvider({
     setIsLoadingApiCollections(true);
     try {
       if (!api.hasToken) {
+        logger.debug("Skipping fetchApiCollections - no token available");
         return;
       }
       const data = await api.queryCollections(COLLECTIONS_API_PAYLOAD);
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
+      logger.debug(
+        { count: items.length },
+        "Successfully fetched API collections",
+      );
     } catch (err: unknown) {
-      console.error("Failed to fetch collections:", err);
+      logApiError("fetchApiCollections", err);
     } finally {
       setIsLoadingApiCollections(false);
     }
@@ -94,6 +100,7 @@ export function CollectionsProvider({
     setIsLoadingExtraCollections(true);
     try {
       if (!api.hasToken) {
+        logger.debug("Skipping fetchExtraCollections - no token available");
         return;
       }
       const extraCollectionsPayload = {
@@ -135,12 +142,14 @@ export function CollectionsProvider({
         _cacheBust: Math.random().toString(36).substring(7),
       };
       const data = await api.queryUserCollections(extraCollectionsPayload);
-      console.log("Extra collections data fetched:", data);
       const items = Array.isArray(data.items) ? data.items : [];
-      console.log("Setting extraCollections to:", items);
       setExtraCollections(items);
+      logger.debug(
+        { count: items.length },
+        "Successfully fetched extra collections",
+      );
     } catch (err: unknown) {
-      console.error("Failed to fetch extra collections:", err);
+      logApiError("fetchExtraCollections", err);
     } finally {
       setIsLoadingExtraCollections(false);
     }

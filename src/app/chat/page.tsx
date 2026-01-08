@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedPage from "@/components/ProtectedPage";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 
 // API fetch payload (copied from dashboard)
 const API_DATASETS_PAYLOAD = {
@@ -108,8 +109,8 @@ function ChatPageContent({
   const [isMounted, setIsMounted] = useState(false);
   // Removed unused messages state
   const [chatInitialMessages, setChatInitialMessages] = useState<
-    ConversationMessage[]
-  >([]);
+    ConversationMessage[] | undefined
+  >(undefined);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [isResetting, setIsResetting] = useState(false);
@@ -220,7 +221,7 @@ function ChatPageContent({
             setSelectedDatasets(parsed);
           }
         } catch (error) {
-          console.error("Error loading selected datasets:", error);
+          logError("Error loading selected datasets", error);
         }
       }
     }
@@ -284,7 +285,7 @@ function ChatPageContent({
   // Fetch conversation messages when on /chat/[conversationId]
   useEffect(() => {
     if (!conversationId) return;
-    setChatInitialMessages([]);
+    setChatInitialMessages(undefined);
     const fetchMessages = async () => {
       if (!api.hasToken) return;
       const payload = {

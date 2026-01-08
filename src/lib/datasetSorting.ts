@@ -31,9 +31,12 @@ const compareName = (
   a: Dataset | DatasetPlus,
   b: Dataset | DatasetPlus,
 ): number => {
-  const nameA = (a.title || (a as any).name || "").toLowerCase();
-  const nameB = (b.title || (b as any).name || "").toLowerCase();
-  return nameA.localeCompare(nameB);
+  const nameA = (a.title || (a as any).name || "").toLowerCase().trim();
+  const nameB = (b.title || (b as any).name || "").toLowerCase().trim();
+  return nameA.localeCompare(nameB, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
 };
 
 const compareDatePublished = (

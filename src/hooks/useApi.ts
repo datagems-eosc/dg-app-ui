@@ -258,6 +258,11 @@ export function useApi() {
 
   const getCollectionGrants = useCallback(
     async (collectionId: string): Promise<string[]> => {
+      logApiRequest("getCollectionGrants", {
+        endpoint: `/principal/me/context-grants/collection?id=${collectionId}`,
+        collectionId,
+      });
+
       const response = await makeRequest(
         `/principal/me/context-grants/collection?id=${collectionId}`,
         {
@@ -266,10 +271,16 @@ export function useApi() {
       );
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("getCollectionGrants", errorData, { collectionId });
         return [];
       }
 
       const data = await response.json();
+      logApiResponse("getCollectionGrants", {
+        collectionId,
+        grants: data.grants || [],
+      });
       return data.grants || [];
     },
     [makeRequest],
@@ -299,7 +310,7 @@ export function useApi() {
     [makeRequest],
   );
 
-  const deleteUserCollection = useCallback(
+  const deleteCollection = useCallback(
     async (collectionId: string): Promise<any> => {
       logApiRequest("deleteCollection", {
         endpoint: `/collection/${collectionId}`,
@@ -316,9 +327,11 @@ export function useApi() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logApiError("deleteCollection", errorData, { collectionId });
-        throw new Error(
-          errorData.error || ApiErrorMessage.DELETE_COLLECTION_FAILED,
-        );
+        const errorMessage =
+          errorData.error ||
+          errorData.message ||
+          ApiErrorMessage.DELETE_COLLECTION_FAILED;
+        throw new Error(errorMessage);
       }
 
       logApiResponse("deleteCollection", { collectionId });
@@ -648,7 +661,7 @@ export function useApi() {
     removeDatasetFromUserCollection,
     getCollectionGrants,
     grantCollectionPermission,
-    deleteUserCollection,
+    deleteCollection,
     searchInDataExplore,
     searchCrossDataset,
     getConversation,

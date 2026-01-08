@@ -178,11 +178,11 @@ describe("Browse - Delete Collection Feature", () => {
     });
   });
 
-  it("should call deleteUserCollection API and show success toast", async () => {
+  it("should call deleteCollection API and show success toast", async () => {
     const mockGetCollectionGrants = vi
       .fn()
       .mockResolvedValue(["dg_col-delete"]);
-    const mockDeleteUserCollection = vi.fn().mockResolvedValue({});
+    const mockDeleteCollection = vi.fn().mockResolvedValue({});
     const mockRefreshExtraCollections = vi.fn();
     const mockNotifyCollectionModified = vi.fn();
     const mockPush = vi.fn();
@@ -190,7 +190,7 @@ describe("Browse - Delete Collection Feature", () => {
     mockUseApi.mockReturnValue({
       hasToken: true,
       getCollectionGrants: mockGetCollectionGrants,
-      deleteUserCollection: mockDeleteUserCollection,
+      deleteCollection: mockDeleteCollection,
     });
 
     mockUseRouter.mockReturnValue({
@@ -231,7 +231,7 @@ describe("Browse - Delete Collection Feature", () => {
     await userEvent.click(confirmDeleteButton);
 
     await waitFor(() => {
-      expect(mockDeleteUserCollection).toHaveBeenCalledWith("123");
+      expect(mockDeleteCollection).toHaveBeenCalledWith("123");
       expect(mockRefreshExtraCollections).toHaveBeenCalled();
       expect(mockNotifyCollectionModified).toHaveBeenCalled();
     });
@@ -247,14 +247,14 @@ describe("Browse - Delete Collection Feature", () => {
     const mockGetCollectionGrants = vi
       .fn()
       .mockResolvedValue(["dg_col-delete"]);
-    const mockDeleteUserCollection = vi
+    const mockDeleteCollection = vi
       .fn()
       .mockRejectedValue(new Error("API Error"));
 
     mockUseApi.mockReturnValue({
       hasToken: true,
       getCollectionGrants: mockGetCollectionGrants,
-      deleteUserCollection: mockDeleteUserCollection,
+      deleteCollection: mockDeleteCollection,
     });
 
     render(
