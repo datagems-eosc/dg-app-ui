@@ -1,8 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIResponseSkeleton } from "../AIResponseSkeleton";
 
 describe("AIResponseSkeleton", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should render the skeleton component", () => {
     const { container } = render(<AIResponseSkeleton />);
 

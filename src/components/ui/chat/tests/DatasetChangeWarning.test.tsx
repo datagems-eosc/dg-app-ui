@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import DatasetChangeWarning from "../DatasetChangeWarning";
 
 vi.mock("lucide-react", () => ({
@@ -11,6 +11,10 @@ vi.mock("lucide-react", () => ({
 }));
 
 describe("DatasetChangeWarning", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should not render when isVisible is false", () => {
     const { container } = render(<DatasetChangeWarning isVisible={false} />);
 

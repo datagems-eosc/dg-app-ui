@@ -271,7 +271,7 @@ describe("ChatItem", () => {
     const input = screen.getByDisplayValue("Test Conversation");
     await user.clear(input);
     await user.type(input, "Updated Name");
-    await user.tab(); // Blur the input
+    await user.tab();
 
     await waitFor(() => {
       expect(mockUpdateConversation).toHaveBeenCalledWith("conv-1", {
@@ -298,8 +298,7 @@ describe("ChatItem", () => {
     const renameButton = screen.getByText("Rename");
     await user.click(renameButton);
 
-    const input = screen.getByDisplayValue("Test Conversation");
-    await user.tab(); // Blur without changes
+    await user.tab();
 
     await waitFor(() => {
       expect(mockUpdateConversation).not.toHaveBeenCalled();

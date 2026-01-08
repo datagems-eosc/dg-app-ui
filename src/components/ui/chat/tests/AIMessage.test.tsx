@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "@/types/chat";
 import { AIMessage } from "../AIMessage";
 
@@ -52,6 +52,10 @@ describe("AIMessage", () => {
     latitude: 10,
     longitude: 20,
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("should render header, temperature map and content", () => {
     render(<AIMessage message={defaultMessage} />);

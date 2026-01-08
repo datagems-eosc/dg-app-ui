@@ -1,8 +1,12 @@
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatMessagesSkeleton } from "../ChatMessagesSkeleton";
 
 describe("ChatMessagesSkeleton", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should render skeleton structure with multiple elements", () => {
     const { container } = render(<ChatMessagesSkeleton />);
 

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TableData } from "@/types/chat";
 import { DataTable } from "../DataTable";
 
@@ -47,6 +47,10 @@ describe("DataTable", () => {
       })),
     };
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("should render table with columns and rows", () => {
     const tableData = createMockTableData(["name", "age"], 2);

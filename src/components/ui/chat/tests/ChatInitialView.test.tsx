@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChatInitialView from "../ChatInitialView";
 
 vi.mock("@ui/chat/DGIcon", () => ({
@@ -11,6 +11,10 @@ vi.mock("@ui/chat/DGIcon", () => ({
 }));
 
 describe("ChatInitialView", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should render the component with all required elements", () => {
     render(<ChatInitialView />);
 

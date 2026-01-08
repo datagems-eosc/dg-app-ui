@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIMessageHeader } from "../AIMessageHeader";
 
 describe("AIMessageHeader", () => {
@@ -8,6 +8,10 @@ describe("AIMessageHeader", () => {
     sources: undefined,
     onSourcesClick: undefined,
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("should render title and download button", () => {
     render(<AIMessageHeader {...defaultProps} />);

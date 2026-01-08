@@ -1,8 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import DGIcon from "../DGIcon";
 
 describe("DGIcon", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should render an SVG element", () => {
     const { container } = render(<DGIcon />);
     const svg = container.querySelector("svg");

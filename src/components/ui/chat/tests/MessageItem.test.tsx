@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "@/types/chat";
 import MessageItem from "../MessageItem";
 
@@ -42,6 +42,10 @@ describe("MessageItem", () => {
     content: "I'm doing well, thank you!",
     timestamp: new Date().toISOString(),
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("should render UserMessage for user type messages", () => {
     render(<MessageItem message={defaultUserMessage} />);

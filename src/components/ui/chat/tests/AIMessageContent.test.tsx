@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TableData } from "@/types/chat";
 import { AIMessageContent } from "../AIMessageContent";
 
@@ -15,6 +15,10 @@ describe("AIMessageContent", () => {
   const defaultProps = {
     content: "Hello world",
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("should render message content", () => {
     render(<AIMessageContent {...defaultProps} />);

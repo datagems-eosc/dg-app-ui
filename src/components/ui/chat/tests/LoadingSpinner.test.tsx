@@ -1,8 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoadingSpinner } from "../LoadingSpinner";
 
 describe("LoadingSpinner", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should render loading message and spinner", () => {
     render(<LoadingSpinner />);
 
