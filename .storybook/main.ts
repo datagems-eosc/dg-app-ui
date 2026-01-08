@@ -53,10 +53,10 @@ const config: StorybookConfig = {
                 if (filePath && existsSync(filePath)) {
                   return filePath;
                 }
-              } catch (e) {
+              } catch (_e) {
                 // If URL parsing fails, try to extract path manually
                 const match = id.match(/file:\/\/(.+)/);
-                if (match && match[1]) {
+                if (match && match?.[1]) {
                   const extractedPath = decodeURIComponent(match[1]);
                   if (existsSync(extractedPath)) {
                     return extractedPath;

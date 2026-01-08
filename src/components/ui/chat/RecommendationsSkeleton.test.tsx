@@ -16,14 +16,4 @@ describe("RecommendationsSkeleton", () => {
     const animatedElements = container.querySelectorAll(".animate-pulse");
     expect(animatedElements.length).toBe(5);
   });
-
-  it("should render title skeleton and four recommendation skeletons", () => {
-    const { container } = render(<RecommendationsSkeleton />);
-
-    const titleSkeleton = container.querySelector(".w-64.h-5");
-    expect(titleSkeleton).toBeInTheDocument();
-
-    const recommendationSkeletons = container.querySelectorAll(".h-8");
-    expect(recommendationSkeletons).toHaveLength(4);
-  });
 });

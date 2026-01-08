@@ -152,7 +152,6 @@ export default function Chat({
     messages.length,
   ]);
 
-  // Fetch recommendations for the last AI message when messages are loaded
   useEffect(() => {
     if (
       messages.length > 0 &&
@@ -160,7 +159,6 @@ export default function Chat({
       hasInitialized &&
       !isMessagesLoading
     ) {
-      // Find the last AI message
       const lastAIMessageIndex = [...messages]
         .reverse()
         .findIndex((msg) => msg.type === "ai");
@@ -820,26 +818,21 @@ export default function Chat({
     }
   };
 
-  // Ref for ChatInput to focus and set cursor position
   const chatInputRef = React.useRef<ChatInputRef>(null);
 
-  // Handler for recommendation click - inserts recommendation text into input field
   const handleRecommendationClick = (recommendation: string) => {
     setInputValue(recommendation);
-    // Focus input and set cursor to end after state update
     setTimeout(() => {
       chatInputRef.current?.setCursorToEnd();
     }, 0);
   };
 
-  // Fetch recommendations for a message and update it
   const fetchRecommendationsForMessage = async (
     targetConversationId: string | null,
     messageId: string,
     currentQuery: string,
   ) => {
     try {
-      // Set loading state
       setMessages((prev) => {
         const messageIndex = prev.findIndex((msg) => msg.id === messageId);
         if (messageIndex === -1) {
@@ -882,7 +875,6 @@ export default function Chat({
             return prev;
           }
 
-          // Message found, update it
           const updated = [...prev];
           updated[messageIndex] = {
             ...updated[messageIndex],
@@ -892,7 +884,6 @@ export default function Chat({
           return updated;
         });
       } else {
-        // No recommendations, clear loading state
         setMessages((prev) => {
           const messageIndex = prev.findIndex((msg) => msg.id === messageId);
           if (messageIndex === -1) {
