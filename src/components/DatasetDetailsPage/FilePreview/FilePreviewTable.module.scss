@@ -1,0 +1,135 @@
+@use '@/styles' as *;
+
+.filePreviewTable {
+  @include flex-column;
+  gap: 0;
+
+  &__header {
+    padding: $spacing-md $spacing-xl;
+    @include flex-between;
+    align-items: center;
+    background: $color-background;
+  }
+
+  &__columnToggle {
+    @include text-xs;
+    @include font-medium;
+    @include text-secondary;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    @include transition-base;
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    &:hover {
+      color: $color-primary-text;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+      border-radius: $border-radius-sm;
+    }
+  }
+
+  &__wrapper {
+    overflow: auto;
+    max-height: 600px;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  &__thead {
+    position: sticky;
+    top: 0;
+    background: $color-background;
+    z-index: 1;
+  }
+
+  &__th {
+    @include text-xs;
+    @include font-medium;
+    @include text-primary;
+    padding: $spacing-sm $spacing-md;
+    text-align: left;
+    border-bottom: 1px solid $color-border;
+    background: $color-background-secondary;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-tertiary;
+    }
+  }
+
+  &__thContent {
+    @include flex-between;
+    gap: $spacing-sm;
+  }
+
+  &__sortIcons {
+    @include flex-center;
+    width: 16px;
+    height: 16px;
+  }
+
+  &__sortIcon {
+    @include icon-base;
+    color: $color-info;
+  }
+
+  &__tbody {
+  }
+
+  &__tr {
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-secondary;
+    }
+  }
+
+  &__td {
+    @include text-sm;
+    @include text-secondary;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid $color-border;
+    white-space: nowrap;
+  }
+
+  &__footer {
+    padding: $spacing-lg;
+    @include flex-center;
+    border-top: 1px solid $color-border;
+  }
+
+  &__loadMore {
+    @include text-base;
+    @include font-medium;
+    color: $color-info;
+    background: none;
+    border: 1px solid $color-info;
+    padding: $spacing-sm $spacing-lg;
+    border-radius: $border-radius-md;
+    cursor: pointer;
+    @include transition-base;
+
+    &:hover {
+      background: $color-info-bg;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+    }
+  }
+}
+

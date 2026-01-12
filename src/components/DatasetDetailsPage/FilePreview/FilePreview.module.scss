@@ -1,0 +1,25 @@
+@use '@/styles' as *;
+
+.filePreview {
+  width: 100%;
+  min-width: 0;
+  background: $color-background;
+  border: 1px solid $color-border;
+  border-radius: $border-radius-lg;
+  @include flex-column;
+  gap: 0;
+  overflow: hidden;
+
+  &__content {
+    @include flex-column;
+    gap: 0;
+  }
+
+  &__empty {
+    @include flex-center;
+    padding: $spacing-xl * 3;
+    @include text-secondary;
+    @include text-lg;
+  }
+}
+

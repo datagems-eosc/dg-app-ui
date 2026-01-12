@@ -1,0 +1,175 @@
+@use '@/styles' as *;
+
+.dataQualityTab {
+  @include flex-column;
+  gap: 0;
+
+  &__grid {
+    @include flex-column;
+    gap: 0;
+  }
+
+  &__card {
+    @include flex-column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    border-bottom: 1px solid $color-border;
+    background: $color-background;
+  }
+
+  &__cardHeader {
+    @include flex-between;
+    gap: $spacing-md;
+  }
+
+  &__cardTitle {
+    @include flex-center;
+    gap: $spacing-xs;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__columnIcon {
+    @include icon-base;
+    color: $color-icon;
+    flex-shrink: 0;
+  }
+
+  &__columnName {
+    @include text-md;
+    @include font-semibold;
+    @include text-primary;
+    margin: 0;
+  }
+
+  &__cardMeta {
+    @include flex-center;
+    gap: $spacing-md;
+  }
+
+  &__issueTag {
+    @include flex-center;
+    gap: $spacing-sm;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $border-radius-full;
+  }
+
+  &__issueIcon {
+    @include icon-base;
+    color: $color-error;
+    flex-shrink: 0;
+  }
+
+  &__issueText {
+    @include text-sm;
+    @include font-medium;
+    @include text-primary;
+  }
+
+  &__expandButton {
+    @include flex-center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: $border-radius-sm;
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-secondary;
+    }
+  }
+
+  &__expandIcon {
+    @include icon-base;
+    color: $color-icon;
+  }
+
+  &__metrics {
+    @include flex-column;
+    gap: $spacing-md;
+  }
+
+  &__errorDescription {
+    @include flex-column;
+    gap: $spacing-xs;
+  }
+
+  &__errorLabel {
+    @include text-xs;
+    @include text-secondary;
+  }
+
+  &__errorText {
+    @include text-sm;
+    @include font-medium;
+    @include text-primary;
+    margin: 0;
+  }
+
+  &__errorTable {
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+    overflow: hidden;
+  }
+
+  &__errorTableHeader {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    background: $color-background-secondary;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__errorTableCol {
+    @include text-xs;
+    @include font-medium;
+    @include text-primary;
+    padding: $spacing-sm $spacing-md;
+
+    &:not(:last-child) {
+      border-right: 1px solid $color-border;
+    }
+  }
+
+  &__errorTableRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 1px solid $color-border;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__errorTableCell {
+    @include text-sm;
+    @include text-secondary;
+    padding: $spacing-sm $spacing-md;
+
+    &:not(:last-child) {
+      border-right: 1px solid $color-border;
+    }
+
+    &:nth-child(2),
+    &:nth-child(3) {
+      text-align: right;
+    }
+  }
+
+  &__errorSummary {
+    @include flex-center;
+    gap: $spacing-xs;
+    @include text-sm;
+  }
+
+  &__errorSummaryLabel {
+    font-weight: $font-weight-normal;
+    @include text-primary;
+  }
+
+  &__errorSummaryValue {
+    @include font-medium;
+    @include text-primary;
+  }
+}

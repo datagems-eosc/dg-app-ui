@@ -1,0 +1,94 @@
+@use '@/styles' as *;
+
+.extendedModal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  @include flex-center;
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  &__content {
+    position: relative;
+    background: $color-background;
+    width: 95vw;
+    height: 95vh;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-s3;
+    @include flex-column;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  &__header {
+    @include flex-between;
+    padding: $spacing-lg $spacing-xl;
+    border-bottom: 1px solid $color-border;
+    gap: $spacing-lg;
+    flex-shrink: 0;
+  }
+
+  &__headerInfo {
+    @include flex-center;
+    gap: $spacing-md;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__filename {
+    @include text-xl;
+    @include font-semibold;
+    @include text-primary;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__filesize {
+    @include text-base;
+    @include text-secondary;
+    flex-shrink: 0;
+  }
+
+  &__headerActions {
+    @include flex-center;
+    gap: $spacing-sm;
+  }
+
+  &__iconButton {
+    @include flex-center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: $border-radius-sm;
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-secondary;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+    }
+  }
+
+  &__icon {
+    @include icon-base;
+    color: $color-icon;
+  }
+
+  &__body {
+    flex: 1;
+    overflow: auto;
+    @include flex-column;
+    gap: 0;
+  }
+}
+

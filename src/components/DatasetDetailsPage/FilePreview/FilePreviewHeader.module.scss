@@ -1,0 +1,60 @@
+@use '@/styles' as *;
+
+.filePreviewHeader {
+  @include flex-between;
+  padding: $spacing-xl;
+  gap: $spacing-lg;
+
+  &__info {
+    @include flex-column;
+    gap: $spacing-xs;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__filename {
+    @include text-xl;
+    @include font-semibold;
+    @include text-primary;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__filesize {
+    @include text-xs;
+    @include font-medium;
+    @include text-secondary;
+  }
+
+  &__actions {
+    @include flex-center;
+    gap: $spacing-sm;
+  }
+
+  &__iconButton {
+    @include flex-center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: $border-radius-sm;
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-secondary;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+    }
+  }
+
+  &__icon {
+    @include icon-base;
+    color: $color-icon;
+  }
+}
+

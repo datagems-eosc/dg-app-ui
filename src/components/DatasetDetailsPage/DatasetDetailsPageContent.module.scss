@@ -113,4 +113,20 @@
       gap: $spacing-xl;
     }
   }
+
+  &__filePreviewSection {
+    width: 100%;
+  }
+
+  &__filePreviewContainer {
+    display: grid;
+    grid-template-columns: 1fr 330px;
+    gap: $spacing-2xl;
+    align-items: flex-start;
+
+    @media (max-width: $breakpoint-lg - 1px) {
+      grid-template-columns: 1fr;
+      flex-direction: column-reverse;
+    }
+  }
 }

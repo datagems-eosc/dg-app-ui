@@ -1,0 +1,72 @@
+@use '@/styles' as *;
+
+.statisticsTab {
+  padding: $spacing-xl;
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: $spacing-lg;
+  }
+
+  &__card {
+    @include flex-column;
+    gap: $spacing-md;
+    padding: $spacing-lg;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    background: $color-background;
+  }
+
+  &__columnName {
+    @include text-md;
+    @include font-semibold;
+    @include text-primary;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__metrics {
+    @include flex-column;
+    gap: $spacing-sm;
+  }
+
+  &__metric {
+    @include flex-between;
+    gap: $spacing-md;
+  }
+
+  &__metricLabel {
+    @include text-sm;
+    @include text-secondary;
+  }
+
+  &__metricValue {
+    @include text-sm;
+    @include font-medium;
+    @include text-primary;
+  }
+
+  &__topValues {
+    @include flex-column;
+    gap: $spacing-sm;
+    padding-top: $spacing-sm;
+    border-top: 1px solid $color-border;
+  }
+
+  &__topValuesList {
+    @include flex-column;
+    gap: $spacing-xs;
+  }
+
+  &__topValue {
+    @include flex-between;
+    @include text-sm;
+    @include text-primary;
+  }
+
+  &__topValueCount {
+    @include text-secondary;
+  }
+}
+

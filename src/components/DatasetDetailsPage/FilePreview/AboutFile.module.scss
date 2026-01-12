@@ -1,0 +1,53 @@
+@use '@/styles' as *;
+
+.aboutFile {
+  @include flex-column;
+  gap: $spacing-md;
+  padding: $spacing-md $spacing-xl;
+  background: $color-background-secondary;
+  border-bottom: 1px solid $color-border;
+
+  &__title {
+    @include text-md;
+    @include font-semibold;
+    @include text-primary;
+  }
+
+  &__text {
+    @include text-sm;
+    @include text-secondary;
+    line-height: $line-height-normal;
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    &--truncated {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
+
+  &__toggle {
+    @include text-sm;
+    @include font-medium;
+    color: $color-info;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    @include transition-base;
+    align-self: flex-start;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+      border-radius: $border-radius-sm;
+    }
+  }
+}
+
