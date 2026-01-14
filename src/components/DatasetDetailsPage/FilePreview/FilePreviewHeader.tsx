@@ -20,7 +20,7 @@ export default function FilePreviewHeader({
     <div className={styles.filePreviewHeader}>
       <div className={styles.filePreviewHeader__info}>
         <h3 className={styles.filePreviewHeader__filename}>{filename}</h3>
-        <span className={styles.filePreviewHeader__filesize}>{fileSize}</span>
+        <span className={styles.filePreviewHeader__filesize}>({fileSize})</span>
       </div>
       <div className={styles.filePreviewHeader__actions}>
         <button

@@ -1,14 +1,9 @@
 @use '@/styles' as *;
 
 .datasetFilesTree {
-  width: 330px;
-  flex-shrink: 0;
+  width: 100%;
   @include flex-column;
   gap: $spacing-md;
-
-  @media (max-width: $breakpoint-lg - 1px) {
-    width: 100%;
-  }
 
   &__header {
     @include flex-center;

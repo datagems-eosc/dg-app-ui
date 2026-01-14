@@ -1,8 +1,9 @@
 export interface FileColumn {
   id: string;
   name: string;
-  type: "text" | "number" | "date" | "boolean";
+  type: "text" | "number" | "date" | "boolean" | "numeric" | "categorical";
   visible: boolean;
+  description?: string;
 }
 
 export interface FileRow {
@@ -46,6 +47,7 @@ export interface FilePreviewData {
   columns: FileColumn[];
   rows: FileRow[];
   totalRows: number;
+  totalMissingPercentage?: number;
   statistics: ColumnStatistics[];
   dataQuality: DataQualityMetric[];
 }

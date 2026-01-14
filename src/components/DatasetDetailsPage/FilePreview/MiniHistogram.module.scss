@@ -1,0 +1,53 @@
+@use 'sass:color';
+@use '@/styles' as *;
+
+.miniHistogram {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: flex-start;
+  min-height: 222px;
+
+  &__yAxis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 175.5px;
+    padding-top: 9px;
+  }
+
+  &__yLabel {
+    @include text-xs;
+    @include text-secondary;
+    line-height: 18px;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+  }
+
+  &__chart {
+    flex: 1;
+  }
+
+  &__svg {
+    display: block;
+  }
+
+  &__gridLine {
+    stroke: $color-border;
+    stroke-width: 1px;
+  }
+
+  &__bar {
+    fill: $color-info;
+    transition: fill $transition-fast $transition-ease;
+
+    &:hover {
+      fill: color.adjust($color-info, $lightness: -10%);
+    }
+  }
+
+  &__xLabel {
+    @include text-xs;
+    fill: $color-secondary-text;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+  }
+}
+

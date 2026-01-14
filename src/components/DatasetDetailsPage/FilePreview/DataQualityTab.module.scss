@@ -12,7 +12,7 @@
   &__card {
     @include flex-column;
     gap: $spacing-md;
-    padding: $spacing-md;
+    padding: $spacing-lg; // 16px as per Figma
     border-bottom: 1px solid $color-border;
     background: $color-background;
   }
@@ -99,6 +99,8 @@
   &__errorLabel {
     @include text-xs;
     @include text-secondary;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    font-weight: $font-weight-normal;
   }
 
   &__errorText {
@@ -126,6 +128,7 @@
     @include font-medium;
     @include text-primary;
     padding: $spacing-sm $spacing-md;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
 
     &:not(:last-child) {
       border-right: 1px solid $color-border;

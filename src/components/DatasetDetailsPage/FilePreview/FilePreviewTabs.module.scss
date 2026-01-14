@@ -17,7 +17,7 @@
     cursor: pointer;
     @include transition-base;
     position: relative;
-    height: 55px;
+    height: 55px; // 55px as per Figma
     display: flex;
     align-items: center;
     gap: $spacing-xs;

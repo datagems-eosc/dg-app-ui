@@ -2,14 +2,15 @@
 
 .filePreviewHeader {
   @include flex-between;
-  padding: $spacing-xl;
+  padding: $spacing-xl $spacing-lg; // py-24px px-16px as per Figma
   gap: $spacing-lg;
 
   &__info {
-    @include flex-column;
+    display: flex;
     gap: $spacing-xs;
     flex: 1;
     min-width: 0;
+    align-items: baseline;
   }
 
   &__filename {
@@ -19,12 +20,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    line-height: 28px; // 28px as per Figma
   }
 
   &__filesize {
     @include text-xs;
     @include font-medium;
     @include text-secondary;
+    line-height: 18px; // 18px as per Figma
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    flex-shrink: 0;
   }
 
   &__actions {

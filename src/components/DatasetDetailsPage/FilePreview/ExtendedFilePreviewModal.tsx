@@ -90,6 +90,7 @@ export default function ExtendedFilePreviewModal({
                   columns={columns}
                   rows={visibleRows}
                   totalRows={fileData.totalRows}
+                  statistics={fileData.statistics}
                   onShowColumnsClick={() => setShowColumnsModal(true)}
                   onLoadMore={
                     displayedRows < fileData.totalRows ? onLoadMore : undefined

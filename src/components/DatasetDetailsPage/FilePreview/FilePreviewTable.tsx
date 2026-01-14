@@ -2,13 +2,19 @@
 
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { FileColumn, FileRow } from "@/types/filePreview";
+import type {
+  ColumnStatistics,
+  FileColumn,
+  FileRow,
+} from "@/types/filePreview";
 import styles from "./FilePreviewTable.module.scss";
+import MiniHistogram from "./MiniHistogram";
 
 interface FilePreviewTableProps {
   columns: FileColumn[];
   rows: FileRow[];
   totalRows: number;
+  statistics: ColumnStatistics[];
   onShowColumnsClick: () => void;
   onLoadMore?: () => void;
 }
@@ -19,6 +25,7 @@ export default function FilePreviewTable({
   columns,
   rows,
   totalRows,
+  statistics,
   onShowColumnsClick,
   onLoadMore,
 }: FilePreviewTableProps) {
@@ -89,7 +96,8 @@ export default function FilePreviewTable({
       <div className={styles.filePreviewTable__wrapper}>
         <table className={styles.filePreviewTable__table}>
           <thead className={styles.filePreviewTable__thead}>
-            <tr>
+            {/* Row 1: Column names with sort icons */}
+            <tr className={styles.filePreviewTable__headerRow}>
               {visibleColumns.map((column) => (
                 <th
                   key={column.id}
@@ -97,7 +105,9 @@ export default function FilePreviewTable({
                   onClick={() => handleSort(column.id)}
                 >
                   <div className={styles.filePreviewTable__thContent}>
-                    <span>{column.name}</span>
+                    <span className={styles.filePreviewTable__colName}>
+                      {column.name}
+                    </span>
                     <div className={styles.filePreviewTable__sortIcons}>
                       {sortColumn === column.id ? (
                         sortDirection === "asc" ? (
@@ -114,6 +124,62 @@ export default function FilePreviewTable({
                   </div>
                 </th>
               ))}
+            </tr>
+            {/* Row 2: Descriptions, histograms, and statistics */}
+            <tr className={styles.filePreviewTable__statsRow}>
+              {visibleColumns.map((column, index) => {
+                const stats = statistics.find((s) => s.columnId === column.id);
+                const isNumeric =
+                  column.type === "numeric" || column.type === "number";
+                const isFirstColumn = index === 0;
+
+                return (
+                  <th
+                    key={`stats-${column.id}`}
+                    className={styles.filePreviewTable__statsCell}
+                  >
+                    {isFirstColumn && stats ? (
+                      <div
+                        className={styles.filePreviewTable__firstColumnStats}
+                      >
+                        <div className={styles.filePreviewTable__largeNumber}>
+                          {stats.uniqueValues || totalRows}
+                        </div>
+                        <div className={styles.filePreviewTable__description}>
+                          {column.description || "Unique values in this column"}
+                        </div>
+                      </div>
+                    ) : isNumeric &&
+                      stats?.distribution &&
+                      stats.min !== undefined &&
+                      stats.max !== undefined ? (
+                      <div
+                        className={styles.filePreviewTable__histogramContainer}
+                      >
+                        <MiniHistogram
+                          values={stats.distribution}
+                          min={
+                            typeof stats.min === "number"
+                              ? stats.min
+                              : Number.parseFloat(String(stats.min))
+                          }
+                          max={
+                            typeof stats.max === "number"
+                              ? stats.max
+                              : Number.parseFloat(String(stats.max))
+                          }
+                          minLabel={`${stats.min}°C`}
+                          maxLabel={`${stats.max}°C`}
+                        />
+                      </div>
+                    ) : (
+                      <div className={styles.filePreviewTable__description}>
+                        {column.description || "Column description"}
+                      </div>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className={styles.filePreviewTable__tbody}>

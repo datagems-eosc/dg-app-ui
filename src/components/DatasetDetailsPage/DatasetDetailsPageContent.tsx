@@ -98,7 +98,7 @@ export default function DatasetDetailsPageContent({
             Dataset Details
           </h2>
 
-          <div className={styles.datasetDetailsPageContent__mainContent}>
+          <div className={styles.datasetDetailsPageContent__contentWrapper}>
             <div className={styles.datasetDetailsPageContent__leftColumn}>
               <div className={styles.datasetDetailsPageContent__sections}>
                 <DatasetDescriptionSection
@@ -123,30 +123,26 @@ export default function DatasetDetailsPageContent({
                 )}
               </div>
 
-              <div
-                className={styles.datasetDetailsPageContent__filePreviewSection}
-              >
-                <div
-                  className={
-                    styles.datasetDetailsPageContent__filePreviewContainer
-                  }
-                >
-                  <FilePreview fileData={filePreviewData} />
-                  <DatasetFilesTree onFileSelect={handleFileSelect} />
-                </div>
-              </div>
+              <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
+                File Preview
+              </h2>
+
+              <FilePreview fileData={filePreviewData} />
             </div>
 
-            <DatasetSidebar
-              dataset={dataset}
-              displayCategory={displayCategory}
-              displayAccess={displayAccess}
-              permissions={permissions}
-              hasBrowsePermission={hasBrowsePermission}
-              hasEditPermission={hasEditPermission}
-              hasDownloadPermission={hasDownloadPermission}
-              hasManagePermission={hasManagePermission}
-            />
+            <div className={styles.datasetDetailsPageContent__rightColumn}>
+              <DatasetSidebar
+                dataset={dataset}
+                displayCategory={displayCategory}
+                displayAccess={displayAccess}
+                permissions={permissions}
+                hasBrowsePermission={hasBrowsePermission}
+                hasEditPermission={hasEditPermission}
+                hasDownloadPermission={hasDownloadPermission}
+                hasManagePermission={hasManagePermission}
+              />
+              <DatasetFilesTree onFileSelect={handleFileSelect} />
+            </div>
           </div>
         </div>
       </div>

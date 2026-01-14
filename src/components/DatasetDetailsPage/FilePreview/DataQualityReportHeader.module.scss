@@ -2,7 +2,7 @@
 
 .reportHeader {
   @include flex-between;
-  padding: $spacing-md;
+  padding: $spacing-md $spacing-lg; // py-12px px-16px as per Figma
   gap: $spacing-lg;
   background: $color-background-secondary;
   border-bottom: 1px solid $color-border;
@@ -46,7 +46,7 @@
 
 .totalErrors {
   @include flex-between;
-  padding: $spacing-md;
+  padding: $spacing-md $spacing-lg; // py-12px px-16px as per Figma
   background: $color-background;
   border-bottom: 1px solid $color-border;
 

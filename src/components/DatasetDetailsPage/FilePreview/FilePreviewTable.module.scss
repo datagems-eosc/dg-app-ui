@@ -5,7 +5,7 @@
   gap: 0;
 
   &__header {
-    padding: $spacing-md $spacing-xl;
+    padding: $spacing-md $spacing-lg; // py-12px px-16px as per Figma
     @include flex-between;
     align-items: center;
     background: $color-background;
@@ -52,38 +52,96 @@
     z-index: 1;
   }
 
+  &__headerRow {
+    background: $color-background-secondary;
+  }
+
   &__th {
     @include text-xs;
     @include font-medium;
     @include text-primary;
     padding: $spacing-sm $spacing-md;
     text-align: left;
-    border-bottom: 1px solid $color-border;
+    border-bottom: none;
     background: $color-background-secondary;
     cursor: pointer;
     user-select: none;
     white-space: nowrap;
     @include transition-base;
+    vertical-align: top;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    height: 56px; // 56px as per Figma
 
     &:hover {
       background: $color-background-tertiary;
     }
   }
 
+  &__colName {
+    @include text-xs;
+    @include font-medium;
+  }
+
   &__thContent {
     @include flex-between;
     gap: $spacing-sm;
+    align-items: flex-start;
   }
 
   &__sortIcons {
     @include flex-center;
     width: 16px;
     height: 16px;
+    flex-shrink: 0;
   }
 
   &__sortIcon {
     @include icon-base;
     color: $color-info;
+  }
+
+  &__statsRow {
+    background: $color-background-secondary;
+  }
+
+  &__statsCell {
+    padding: $spacing-md;
+    text-align: left;
+    border-bottom: 1px solid $color-border;
+    background: $color-background-secondary;
+    vertical-align: top;
+    height: 88px; // 88px as per Figma (second row with histogram)
+  }
+
+  &__firstColumnStats {
+    @include flex-column;
+    gap: $spacing-xs;
+    align-items: flex-start;
+  }
+
+  &__largeNumber {
+    font-size: $font-size-md; // 16px as per Figma (not 24px!)
+    font-weight: $font-weight-semibold;
+    color: $color-primary-text;
+    line-height: 1.5; // 24px line-height
+  }
+
+  &__histogramContainer {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-height: 80px;
+  }
+
+  &__description {
+    @include text-xs;
+    @include text-secondary;
+    line-height: 1.5;
+    max-width: 180px;
+    word-wrap: break-word;
+    white-space: normal;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    font-weight: $font-weight-normal; // font-normal as per Figma
   }
 
   &__tbody {

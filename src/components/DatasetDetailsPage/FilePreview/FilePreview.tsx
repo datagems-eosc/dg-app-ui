@@ -100,6 +100,7 @@ export default function FilePreview({
                 columns={columns}
                 rows={visibleRows}
                 totalRows={fileData.totalRows}
+                statistics={fileData.statistics}
                 onShowColumnsClick={() => setShowColumnsModal(true)}
                 onLoadMore={
                   displayedRows < fileData.totalRows
@@ -111,7 +112,12 @@ export default function FilePreview({
           )}
 
           {activeTab === "statistics" && (
-            <StatisticsTab statistics={fileData.statistics} columns={columns} />
+            <StatisticsTab
+              statistics={fileData.statistics}
+              columns={columns}
+              totalRows={fileData.totalRows}
+              totalMissingPercentage={fileData.totalMissingPercentage}
+            />
           )}
 
           {activeTab === "dataQuality" && (

@@ -3,7 +3,7 @@
 .aboutFile {
   @include flex-column;
   gap: $spacing-md;
-  padding: $spacing-md $spacing-xl;
+  padding: $spacing-md $spacing-lg; // py-12px px-16px as per Figma
   background: $color-background-secondary;
   border-bottom: 1px solid $color-border;
 
