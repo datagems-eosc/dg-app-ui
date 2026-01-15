@@ -16,7 +16,6 @@ interface FilePreviewTableProps {
   totalRows: number;
   statistics: ColumnStatistics[];
   onShowColumnsClick: () => void;
-  onLoadMore?: () => void;
 }
 
 type SortDirection = "asc" | "desc" | null;
@@ -27,7 +26,6 @@ export default function FilePreviewTable({
   totalRows,
   statistics,
   onShowColumnsClick,
-  onLoadMore,
 }: FilePreviewTableProps) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -75,8 +73,6 @@ export default function FilePreviewTable({
     }
   };
 
-  const hasMoreRows = rows.length < totalRows;
-
   return (
     <div className={styles.filePreviewTable}>
       <div className={styles.filePreviewTable__header}>
@@ -96,7 +92,7 @@ export default function FilePreviewTable({
       <div className={styles.filePreviewTable__wrapper}>
         <table className={styles.filePreviewTable__table}>
           <thead className={styles.filePreviewTable__thead}>
-            {/* Row 1: Column names with sort icons */}
+            {/* Row 1: Column names with sort icons + descriptions */}
             <tr className={styles.filePreviewTable__headerRow}>
               {visibleColumns.map((column) => (
                 <th
@@ -105,40 +101,48 @@ export default function FilePreviewTable({
                   onClick={() => handleSort(column.id)}
                 >
                   <div className={styles.filePreviewTable__thContent}>
-                    <span className={styles.filePreviewTable__colName}>
+                    {/* Line 1: Column name + sort icon */}
+                    <div className={styles.filePreviewTable__colName}>
                       {column.name}
-                    </span>
-                    <div className={styles.filePreviewTable__sortIcons}>
-                      {sortColumn === column.id ? (
-                        sortDirection === "asc" ? (
-                          <ArrowUp
-                            className={styles.filePreviewTable__sortIcon}
-                          />
-                        ) : (
-                          <ArrowDown
-                            className={styles.filePreviewTable__sortIcon}
-                          />
-                        )
-                      ) : null}
+                      {sortColumn === column.id && (
+                        <div className={styles.filePreviewTable__sortIcons}>
+                          {sortDirection === "asc" ? (
+                            <ArrowDown
+                              className={styles.filePreviewTable__sortIcon}
+                            />
+                          ) : (
+                            <ArrowUp
+                              className={styles.filePreviewTable__sortIcon}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {/* Line 2: Column description */}
+                    <div className={styles.filePreviewTable__colDescription}>
+                      {column.description || ""}
                     </div>
                   </div>
                 </th>
               ))}
             </tr>
-            {/* Row 2: Descriptions, histograms, and statistics */}
+            {/* Row 2: Histograms and statistics */}
             <tr className={styles.filePreviewTable__statsRow}>
               {visibleColumns.map((column, index) => {
                 const stats = statistics.find((s) => s.columnId === column.id);
                 const isNumeric =
                   column.type === "numeric" || column.type === "number";
-                const isFirstColumn = index === 0;
+                const isCategorical = column.type === "categorical";
+
+                const cellClass = `${styles.filePreviewTable__statsCell} ${
+                  isNumeric
+                    ? styles["filePreviewTable__statsCell--numeric"]
+                    : styles["filePreviewTable__statsCell--categorical"]
+                }`;
 
                 return (
-                  <th
-                    key={`stats-${column.id}`}
-                    className={styles.filePreviewTable__statsCell}
-                  >
-                    {isFirstColumn && stats ? (
+                  <th key={`stats-${column.id}`} className={cellClass}>
+                    {isCategorical && stats ? (
                       <div
                         className={styles.filePreviewTable__firstColumnStats}
                       >
@@ -146,7 +150,7 @@ export default function FilePreviewTable({
                           {stats.uniqueValues || totalRows}
                         </div>
                         <div className={styles.filePreviewTable__description}>
-                          {column.description || "Unique values in this column"}
+                          Unique values
                         </div>
                       </div>
                     ) : isNumeric &&
@@ -172,11 +176,7 @@ export default function FilePreviewTable({
                           maxLabel={`${stats.max}°C`}
                         />
                       </div>
-                    ) : (
-                      <div className={styles.filePreviewTable__description}>
-                        {column.description || "Column description"}
-                      </div>
-                    )}
+                    ) : null}
                   </th>
                 );
               })}
@@ -198,18 +198,6 @@ export default function FilePreviewTable({
           </tbody>
         </table>
       </div>
-
-      {hasMoreRows && (
-        <div className={styles.filePreviewTable__footer}>
-          <button
-            type="button"
-            onClick={onLoadMore}
-            className={styles.filePreviewTable__loadMore}
-          >
-            Show more
-          </button>
-        </div>
-      )}
     </div>
   );
 }

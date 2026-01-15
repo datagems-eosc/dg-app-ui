@@ -144,10 +144,27 @@ export default function DatasetFilesTree({
   defaultExpanded = [],
   onFileSelect,
 }: DatasetFilesTreeProps) {
+  const initialExpanded =
+    defaultExpanded.length > 0
+      ? defaultExpanded
+      : [
+          "csv-folder",
+          "csv-file2",
+          "excel-folder",
+          "excel-file1",
+          "table1",
+          "table2",
+          "table3",
+          "database-folder",
+          "meteo-db",
+          "schema1",
+          "schema2",
+        ];
+
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
-    new Set(defaultExpanded),
+    new Set(initialExpanded),
   );
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>("csv-file2");
 
   const toggleNode = (nodeId: string) => {
     setExpandedNodes((prev) => {

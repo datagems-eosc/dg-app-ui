@@ -4,6 +4,31 @@
   @include flex-column;
   gap: 0;
 
+  &__totalErrors {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-lg; // 16px
+    border-bottom: 1px solid $color-border;
+    background: $color-background;
+  }
+
+  &__totalLabel {
+    @include text-sm; // 14px
+    @include font-medium;
+    @include text-primary;
+  }
+
+  &__totalValue {
+    @include text-sm;
+    @include font-medium;
+    @include text-primary;
+  }
+
+  &__totalValueHighlight {
+    color: $color-error; // red highlight
+  }
+
   &__grid {
     @include flex-column;
     gap: 0;
@@ -11,20 +36,23 @@
 
   &__card {
     @include flex-column;
-    gap: $spacing-md;
-    padding: $spacing-lg; // 16px as per Figma
+    gap: $spacing-lg; // 16px
+    padding: $spacing-lg; // 16px
     border-bottom: 1px solid $color-border;
     background: $color-background;
   }
 
   &__cardHeader {
-    @include flex-between;
-    gap: $spacing-md;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: $spacing-sm;
+    align-items: center;
   }
 
   &__cardTitle {
-    @include flex-center;
-    gap: $spacing-xs;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
     flex: 1;
     min-width: 0;
   }
@@ -43,15 +71,18 @@
   }
 
   &__cardMeta {
-    @include flex-center;
+    display: flex;
+    align-items: center;
     gap: $spacing-md;
   }
 
   &__issueTag {
-    @include flex-center;
-    gap: $spacing-sm;
-    padding: $spacing-xs $spacing-sm;
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-sm; // 8px 8px (closest token)
     border-radius: $border-radius-full;
+    background: $color-background-secondary; // subtle bg
   }
 
   &__issueIcon {
@@ -161,9 +192,11 @@
   }
 
   &__errorSummary {
-    @include flex-center;
+    display: flex;
+    align-items: center;
     gap: $spacing-xs;
-    @include text-sm;
+    @include text-sm; // 14px
+    padding-top: $spacing-sm;
   }
 
   &__errorSummaryLabel {

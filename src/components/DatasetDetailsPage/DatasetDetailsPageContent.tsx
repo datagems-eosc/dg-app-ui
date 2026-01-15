@@ -94,12 +94,12 @@ export default function DatasetDetailsPageContent({
 
           <DatasetMetadataBar dataset={dataset} />
 
-          <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
-            Dataset Details
-          </h2>
-
-          <div className={styles.datasetDetailsPageContent__contentWrapper}>
-            <div className={styles.datasetDetailsPageContent__leftColumn}>
+          {/* Row 1: Dataset Details (Description sections) + Metadata Sidebar */}
+          <div className={styles.datasetDetailsPageContent__row}>
+            <div className={styles.datasetDetailsPageContent__rowLeft}>
+              <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
+                Dataset Details
+              </h2>
               <div className={styles.datasetDetailsPageContent__sections}>
                 <DatasetDescriptionSection
                   description={dataset.description || ""}
@@ -122,15 +122,9 @@ export default function DatasetDetailsPageContent({
                   />
                 )}
               </div>
-
-              <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
-                File Preview
-              </h2>
-
-              <FilePreview fileData={filePreviewData} />
             </div>
 
-            <div className={styles.datasetDetailsPageContent__rightColumn}>
+            <div className={styles.datasetDetailsPageContent__rowRight}>
               <DatasetSidebar
                 dataset={dataset}
                 displayCategory={displayCategory}
@@ -141,6 +135,19 @@ export default function DatasetDetailsPageContent({
                 hasDownloadPermission={hasDownloadPermission}
                 hasManagePermission={hasManagePermission}
               />
+            </div>
+          </div>
+
+          {/* Row 2: File Preview + Dataset Files Tree */}
+          <div className={styles.datasetDetailsPageContent__row}>
+            <div className={styles.datasetDetailsPageContent__rowLeft}>
+              <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
+                File Preview
+              </h2>
+              <FilePreview fileData={filePreviewData} />
+            </div>
+
+            <div className={styles.datasetDetailsPageContent__rowRight}>
               <DatasetFilesTree onFileSelect={handleFileSelect} />
             </div>
           </div>

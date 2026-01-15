@@ -8,7 +8,7 @@
 
   &__tableSummary {
     display: flex;
-    padding: $spacing-md $spacing-lg;
+    padding: $spacing-lg $spacing-lg; // 16px y/x as per Figma
     background: $color-background-secondary;
     border-bottom: 1px solid $color-border;
     gap: $spacing-lg;
@@ -16,8 +16,8 @@
   }
 
   &__summaryLabel {
-    @include text-md;
-    @include font-medium;
+    @include text-sm; // 14px
+    @include font-semibold; // semibold as per Figma
     @include text-primary;
     min-width: 120px;
   }
@@ -29,40 +29,40 @@
 
   &__summaryItem {
     @include flex-column;
-    gap: $spacing-xs;
+    gap: $spacing-xs; // use defined spacing token
   }
 
   &__summaryTitle {
-    @include text-xs;
+    @include text-xs; // 12px
     @include text-secondary;
-    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    letter-spacing: $letter-spacing-wide;
     font-weight: $font-weight-normal;
   }
 
   &__summaryValue {
-    @include text-lg;
-    font-weight: $font-weight-semibold;
+    @include text-md; // 16px
+    font-weight: $font-weight-semibold; // semibold
     @include text-primary;
   }
 
   &__colStats {
-    padding: $spacing-lg;
+    padding: $spacing-lg; // 16px
     border-bottom: 1px solid $color-border;
     @include flex-column;
-    gap: $spacing-lg;
+    gap: $spacing-lg; // 16px vertical spacing
   }
 
   &__colHeader {
     @include flex-column;
-    gap: $spacing-sm;
+    gap: $spacing-xs; // 4px
   }
 
   &__colName {
-    @include flex-center;
+    display: inline-flex;
     gap: $spacing-xs;
     align-items: center;
-    @include text-md;
-    @include font-medium;
+    @include text-md; // 16px
+    @include font-semibold; // semibold as per Figma
     @include text-primary;
   }
 
@@ -71,10 +71,9 @@
   }
 
   &__colDescription {
-    @include text-xs;
+    @include text-sm; // 14px
     @include text-secondary;
     line-height: 1.5;
-    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
     font-weight: $font-weight-normal;
   }
 
@@ -87,7 +86,7 @@
 
   &__metrics {
     @include flex-column;
-    gap: $spacing-md;
+    gap: $spacing-lg; // 16px between rows
   }
 
   &__metricsRow {
@@ -114,8 +113,9 @@
   }
 
   &__metricValue {
-    @include text-sm;
+    @include text-sm; // 14px
     @include text-primary;
+    font-weight: $font-weight-medium;
   }
 
   &__visual {
@@ -127,21 +127,27 @@
 
   &__largeNumber {
     @include flex-column;
-    gap: $spacing-sm;
+    gap: $spacing-xs;
     align-items: center;
     justify-content: center;
     text-align: center;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-lg;
+    padding: $spacing-xl; // 24px
+    min-width: 170px;
+    min-height: 140px;
+    background: $color-background;
   }
 
   &__largeNumberLabel {
-    @include text-sm;
+    @include text-sm; // 14px
     @include text-secondary;
     max-width: 200px;
   }
 
   &__largeNumberValue {
-    font-size: 45px;
-    line-height: 1;
+    font-size: 32px; // H2 32 Semibold as per Figma
+    line-height: 1.4;
     font-weight: $font-weight-semibold;
     @include text-primary;
   }

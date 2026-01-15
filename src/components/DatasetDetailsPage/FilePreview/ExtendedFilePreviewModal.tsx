@@ -20,11 +20,9 @@ interface ExtendedFilePreviewModalProps {
   fileData: FilePreviewData;
   activeTab: FilePreviewTab;
   columns: FileColumn[];
-  displayedRows: number;
   onClose: () => void;
   onTabChange: (tab: FilePreviewTab) => void;
   onDownload: () => void;
-  onLoadMore: () => void;
   onSaveColumns: (columns: FileColumn[]) => void;
 }
 
@@ -33,18 +31,16 @@ export default function ExtendedFilePreviewModal({
   fileData,
   activeTab,
   columns,
-  displayedRows,
   onClose,
   onTabChange,
   onDownload,
-  onLoadMore,
   onSaveColumns,
 }: ExtendedFilePreviewModalProps) {
   const [showColumnsModal, setShowColumnsModal] = useState(false);
 
   if (!isOpen) return null;
 
-  const visibleRows = fileData.rows.slice(0, displayedRows);
+  const visibleRows = fileData.rows;
 
   return (
     <>
@@ -92,9 +88,6 @@ export default function ExtendedFilePreviewModal({
                   totalRows={fileData.totalRows}
                   statistics={fileData.statistics}
                   onShowColumnsClick={() => setShowColumnsModal(true)}
-                  onLoadMore={
-                    displayedRows < fileData.totalRows ? onLoadMore : undefined
-                  }
                 />
               </>
             )}

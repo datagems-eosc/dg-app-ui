@@ -57,19 +57,15 @@
   }
 
   &__th {
-    @include text-xs;
-    @include font-medium;
-    @include text-primary;
-    padding: $spacing-sm $spacing-md;
+    padding: $spacing-sm $spacing-lg; // 8px 16px as per Figma
     text-align: left;
-    border-bottom: none;
+    border: 1px solid $color-border; // Border on all sides
+    border-bottom: none; // Will be handled by statsCell
     background: $color-background-secondary;
     cursor: pointer;
     user-select: none;
-    white-space: nowrap;
     @include transition-base;
     vertical-align: top;
-    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
     height: 56px; // 56px as per Figma
 
     &:hover {
@@ -80,24 +76,31 @@
   &__colName {
     @include text-xs;
     @include font-medium;
+    @include text-primary;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    line-height: 1.5;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
   }
 
   &__thContent {
-    @include flex-between;
-    gap: $spacing-sm;
+    @include flex-column;
+    gap: $spacing-xs; // 4px gap between col name and description
     align-items: flex-start;
   }
 
   &__sortIcons {
     @include flex-center;
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
     flex-shrink: 0;
   }
 
   &__sortIcon {
-    @include icon-base;
-    color: $color-info;
+    width: 12px; // 12px as per Figma
+    height: 12px; // 12px as per Figma
+    color: $color-icon; // #566B88 as per Figma
   }
 
   &__statsRow {
@@ -105,12 +108,22 @@
   }
 
   &__statsCell {
-    padding: $spacing-md;
+    padding: $spacing-sm $spacing-lg $spacing-md $spacing-lg; // 8px 16px 12px 16px as per Figma
     text-align: left;
-    border-bottom: 1px solid $color-border;
-    background: $color-background-secondary;
-    vertical-align: top;
+    border: 1px solid $color-border; // Border on all sides
+    border-top: none; // Connects to header row
+    vertical-align: bottom; // Align to bottom for histogram
     height: 88px; // 88px as per Figma (second row with histogram)
+
+    // Categorical columns (with numbers) - keep secondary background
+    &--categorical {
+      background: $color-background-secondary;
+    }
+
+    // Numeric columns (with histogram) - white background
+    &--numeric {
+      background: $color-background; // WHITE background for histogram!
+    }
   }
 
   &__firstColumnStats {
@@ -133,13 +146,20 @@
     min-height: 80px;
   }
 
+  &__colDescription {
+    @include text-xs;
+    @include text-secondary;
+    font-weight: $font-weight-normal;
+    line-height: 1.5;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    white-space: normal;
+    word-wrap: break-word;
+  }
+
   &__description {
     @include text-xs;
     @include text-secondary;
     line-height: 1.5;
-    max-width: 180px;
-    word-wrap: break-word;
-    white-space: normal;
     letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
     font-weight: $font-weight-normal; // font-normal as per Figma
   }
@@ -158,8 +178,11 @@
   &__td {
     @include text-sm;
     @include text-secondary;
-    padding: $spacing-sm $spacing-md;
-    border-bottom: 1px solid $color-border;
+    font-weight: $font-weight-normal; // 14px Regular as per Figma
+    line-height: 1.5;
+    padding: $spacing-md $spacing-lg; // 12px 16px as per Figma
+    border: 1px solid $color-border; // Border on all sides
+    border-top: none; // No top border
     white-space: nowrap;
   }
 

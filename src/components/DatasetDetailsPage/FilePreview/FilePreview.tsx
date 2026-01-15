@@ -21,22 +21,18 @@ interface FilePreviewProps {
   onDownload?: () => void;
 }
 
-const RECORDS_PER_PAGE = 100;
-
 export default function FilePreview({
   fileData,
   onDownload,
 }: FilePreviewProps) {
   const [activeTab, setActiveTab] = useState<FilePreviewTab>("preview");
   const [columns, setColumns] = useState<FileColumn[]>([]);
-  const [displayedRows, setDisplayedRows] = useState(RECORDS_PER_PAGE);
   const [showColumnsModal, setShowColumnsModal] = useState(false);
   const [extendedViewOpen, setExtendedViewOpen] = useState(false);
 
   useEffect(() => {
     if (fileData) {
       setColumns(fileData.columns);
-      setDisplayedRows(RECORDS_PER_PAGE);
       setActiveTab("preview");
     }
   }, [fileData]);
@@ -68,17 +64,12 @@ export default function FilePreview({
     }
   };
 
-  const handleLoadMore = () => {
-    setDisplayedRows((prev) =>
-      Math.min(prev + RECORDS_PER_PAGE, fileData.totalRows),
-    );
-  };
-
   const handleSaveColumns = (updatedColumns: FileColumn[]) => {
     setColumns(updatedColumns);
   };
 
-  const visibleRows = fileData.rows.slice(0, displayedRows);
+  // Show all rows (no "Show more" button needed)
+  const visibleRows = fileData.rows;
 
   return (
     <>
@@ -102,11 +93,6 @@ export default function FilePreview({
                 totalRows={fileData.totalRows}
                 statistics={fileData.statistics}
                 onShowColumnsClick={() => setShowColumnsModal(true)}
-                onLoadMore={
-                  displayedRows < fileData.totalRows
-                    ? handleLoadMore
-                    : undefined
-                }
               />
             </>
           )}
@@ -141,11 +127,9 @@ export default function FilePreview({
         fileData={fileData}
         activeTab={activeTab}
         columns={columns}
-        displayedRows={displayedRows}
         onClose={() => setExtendedViewOpen(false)}
         onTabChange={setActiveTab}
         onDownload={handleDownload}
-        onLoadMore={handleLoadMore}
         onSaveColumns={handleSaveColumns}
       />
     </>

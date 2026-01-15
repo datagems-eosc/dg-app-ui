@@ -50,14 +50,14 @@
     }
 
     &--selected {
-      background-color: $color-info-bg;
+      background-color: $color-info-bg; // blue/50 (#F5F9FF)
       
       .datasetFilesTree__icon {
-        color: $color-info;
+        color: $color-info; // blue/500
       }
       
       .datasetFilesTree__name {
-        color: $color-info;
+        color: $color-info; // blue/500
       }
     }
 

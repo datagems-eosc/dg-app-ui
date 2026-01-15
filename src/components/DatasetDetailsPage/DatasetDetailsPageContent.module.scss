@@ -75,30 +75,53 @@
   &__sectionTitle {
     @include text-2xl;
     @include text-primary;
+    margin-bottom: $spacing-2xl; // Add margin below title
 
     @media (max-width: $breakpoint-md - 1px) {
       font-size: $font-size-xl;
+      margin-bottom: $spacing-xl;
     }
   }
 
-  &__contentWrapper {
+  &__row {
     display: flex;
     gap: $spacing-2xl; // 32px gap between columns
     align-items: flex-start;
+    margin-bottom: $spacing-3xl; // Gap between rows
 
     @media (max-width: $breakpoint-lg - 1px) {
       flex-direction: column;
+      margin-bottom: $spacing-2xl;
+    }
+
+    @media (max-width: $breakpoint-md - 1px) {
+      margin-bottom: $spacing-xl;
+    }
+
+    &:last-child {
+      margin-bottom: 0; // Remove margin from last row
     }
   }
 
-  &__leftColumn {
+  &__rowLeft {
     flex: 1;
     @include flex-column;
-    gap: $spacing-2xl;
+    gap: 0; // No gap, title has margin-bottom
     min-width: 0; // Allow flex item to shrink
 
-    @media (max-width: $breakpoint-md - 1px) {
-      gap: $spacing-xl;
+    @media (max-width: $breakpoint-lg - 1px) {
+      width: 100%;
+    }
+  }
+
+  &__rowRight {
+    width: 330px;
+    flex-shrink: 0;
+    @include flex-column;
+    gap: 0;
+
+    @media (max-width: $breakpoint-lg - 1px) {
+      width: 100%;
     }
   }
 
@@ -113,22 +136,6 @@
     @media (max-width: $breakpoint-md - 1px) {
       gap: $spacing-xl;
       padding: $spacing-lg;
-    }
-  }
-
-  &__rightColumn {
-    width: 330px;
-    flex-shrink: 0;
-    @include flex-column;
-    gap: $spacing-2xl;
-    align-self: flex-start; // Align to top with File Preview
-
-    @media (max-width: $breakpoint-lg - 1px) {
-      width: 100%;
-    }
-
-    @media (max-width: $breakpoint-md - 1px) {
-      gap: $spacing-xl;
     }
   }
 }
