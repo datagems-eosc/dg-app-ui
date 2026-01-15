@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { Suspense } from "react";
-import { APP_ROUTES, generateDashboardUrl } from "@/config/appUrls";
+import { APP_ROUTES, generateBrowseUrl } from "@/config/appUrls";
 import type { ApiCollection } from "@/types/collection";
 import { CollectionItem } from "./CollectionItem";
 import { ChatHistoryList } from "./chat/ChatHistoryList";
@@ -94,7 +94,7 @@ const menuItems = [
   {
     id: "browse",
     label: "Browse",
-    href: APP_ROUTES.DASHBOARD,
+    href: APP_ROUTES.BROWSE,
     icon: FolderSearch,
   },
   {
@@ -210,17 +210,17 @@ export function SidebarContent({
                       icon={getCollectionIcon(collection.code)}
                       href={
                         isExtra
-                          ? generateDashboardUrl({
+                          ? generateBrowseUrl({
                               collection: collection.id,
                               isCustom: true,
                             })
-                          : generateDashboardUrl({
+                          : generateBrowseUrl({
                               collection: collection.id,
                             })
                       }
                       title={
                         isExtra
-                          ? `${collection.userDatasetCollections?.length || 0} datasets`
+                          ? `${collection.datasets?.length || 0} datasets`
                           : `${collection.datasetCount} datasets`
                       }
                       onClick={onMobileSidebarClose}

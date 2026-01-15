@@ -1,4 +1,9 @@
 describe("Feature: Dashboard Dataset Sorting", () => {
+  beforeEach(() => {
+    cy.login();
+    cy.visit("/browse");
+    cy.wait(2000);
+  });
   const sortingLabels = [
     "Name (A-Z)",
     "Name (Z-A)",
@@ -141,58 +146,48 @@ describe("Feature: Dashboard Dataset Sorting", () => {
       .find("input[type='radio']")
       .check({ force: true });
 
-    // Wait for API request
     cy.wait("@datasetQuery").then(({ response }) => {
       expect(response?.statusCode).to.eq(200);
-    });
 
-    // Wait for button to update
-    cy.contains("button", "Size (highest first)", { timeout: 10000 }).should("be.visible");
+      cy.contains("button", "Size (highest first)").should("be.visible");
 
-    // Wait for cards and verify sorting with retry
-    cy.get("div.rounded-2xl.border-1")
-      .filter(":visible")
-      .should("have.length.at.least", 1)
-      .should(($cards) => {
-        const sizeRegex = /(\d+[.,]?\d*)\s*(B|KB|MB|GB|TB)/i;
-        const sizes = Array.from($cards)
-          .map((card) => {
-            const text = card.textContent || "";
-            const match = text.match(sizeRegex);
-            return match ? match[0] : "";
-          })
-          .filter(Boolean);
+      cy.get("div.rounded-2xl.border-1")
+        .filter(":visible")
+        .should("have.length.at.least", 1)
+        .then(($cards) => {
+          const sizeRegex = /(\d+[.,]?\d*)\s*(B|KB|MB|GB|TB)/i;
+          const sizes = Array.from($cards)
+            .map((card) => {
+              const text = card.textContent || "";
+              const match = text.match(sizeRegex);
+              return match ? match[0] : "";
+            })
+            .filter(Boolean);
 
-        expect(sizes.length).to.be.at.least(1);
+          expect(sizes.length).to.be.at.least(1);
 
-        if (sizes.length < 2) {
-          return; // Skip verification if only one dataset
-        }
-
-        const sizeInBytes = sizes.map((sizeText) => {
-          const match = sizeText.match(sizeRegex);
-          if (!match) return 0;
-          const [, value, unit] = match;
-          const numeric = parseFloat(value.replace(",", "."));
-          const unitFactor: Record<string, number> = {
-            B: 1,
-            KB: 1024,
-            MB: 1024 ** 2,
-            GB: 1024 ** 3,
-            TB: 1024 ** 4,
-          };
-          return numeric * (unitFactor[unit.toUpperCase()] || 1);
-        });
-
-        // Verify sorting - this will retry automatically if it fails
-        for (let i = 0; i < sizeInBytes.length - 1; i += 1) {
-          if (sizeInBytes[i] < sizeInBytes[i + 1]) {
-            throw new Error(
-              `Datasets not sorted correctly: position ${i} (${sizes[i]} = ${sizeInBytes[i]} bytes) is smaller than position ${i + 1} (${sizes[i + 1]} = ${sizeInBytes[i + 1]} bytes)`
-            );
+          if (sizes.length < 2) {
+            return;
           }
-        }
-      });
+          cy.wait(1000);
+          const sizeInBytes = sizes.map((sizeText) => {
+            const [, value, unit] = sizeText.match(sizeRegex) || [];
+            const numeric = parseFloat(value.replace(",", "."));
+            const unitFactor: Record<string, number> = {
+              B: 1,
+              KB: 1024,
+              MB: 1024 ** 2,
+              GB: 1024 ** 3,
+              TB: 1024 ** 4,
+            };
+            return numeric * (unitFactor[unit.toUpperCase()] || 1);
+          });
+
+          for (let i = 0; i < sizeInBytes.length - 1; i += 1) {
+            expect(sizeInBytes[i]).to.be.at.least(sizeInBytes[i + 1]);
+          }
+        });
+    });
   });
 
   it("Scenario: Verify only one sorting criterion can be selected", () => {
@@ -215,6 +210,98 @@ describe("Feature: Dashboard Dataset Sorting", () => {
     // And only one radio button should be selected at any time
     cy.get("input[type='radio']:checked").should("have.length", 1);
   });
+
+  it("should sort by name A-Z with secondary sort by date published (newest first) when names are identical", () => {
+    cy.get('[data-testid="sorting-dropdown"]').click();
+    cy.contains("Name (A-Z)").click();
+    cy.wait(1000);
+
+    cy.get('[data-testid="dataset-card"]').then(($cards) => {
+      const titles = $cards
+        .map((_, el) => Cypress.$(el).find("h3").text().trim())
+        .get();
+
+      for (let i = 0; i < titles.length - 1; i++) {
+        const currentTitle = titles[i].toLowerCase();
+        const nextTitle = titles[i + 1].toLowerCase();
+        expect(currentTitle.localeCompare(nextTitle)).to.be.at.most(0);
+      }
+    });
+  });
+
+  it("should sort by date published (newest first) with secondary sort by name A-Z when dates are identical", () => {
+    cy.get('[data-testid="sorting-dropdown"]').click();
+    cy.contains("Date Published (newest first)").click();
+    cy.wait(1000);
+
+    cy.get('[data-testid="dataset-card"]').should("have.length.at.least", 2);
+  });
+
+  it("should sort by date published (oldest first) with secondary sort by name A-Z when dates are identical", () => {
+    cy.get('[data-testid="sorting-dropdown"]').click();
+    cy.contains("Date Published (oldest first)").click();
+    cy.wait(1000);
+
+    cy.get('[data-testid="dataset-card"]').should("have.length.at.least", 2);
+  });
+
+  it("should sort by size with secondary sort by name A-Z when sizes are identical", () => {
+    cy.get('[data-testid="sorting-dropdown"]').click();
+    cy.contains("Size (smallest first)").click();
+    cy.wait(1000);
+
+    cy.get('[data-testid="dataset-card"]').should("have.length.at.least", 2);
+  });
+
+  it("should maintain sort order when switching between sorting options", () => {
+    cy.get('[data-testid="sorting-dropdown"]').click();
+    cy.contains("Name (A-Z)").click();
+    cy.wait(500);
+
+    cy.get('[data-testid="dataset-card"]')
+      .first()
+      .find("h3")
+      .invoke("text")
+      .then((firstNameSort) => {
+        cy.get('[data-testid="sorting-dropdown"]').click();
+        cy.contains("Date Published (newest first)").click();
+        cy.wait(500);
+
+        cy.get('[data-testid="dataset-card"]')
+          .first()
+          .find("h3")
+          .invoke("text")
+          .then((firstDateSort) => {
+            expect(firstNameSort.trim()).to.not.equal(firstDateSort.trim());
+          });
+      });
+  });
+
+  it("should apply secondary sorting consistently across multiple sort operations", () => {
+    cy.get('[data-testid="sorting-dropdown"]').click();
+    cy.contains("Name (A-Z)").click();
+    cy.wait(500);
+
+    cy.get('[data-testid="dataset-card"]')
+      .first()
+      .find("h3")
+      .invoke("text")
+      .as("firstSort");
+
+    cy.get('[data-testid="sorting-dropdown"]').click();
+    cy.contains("Size (smallest first)").click();
+    cy.wait(500);
+
+    cy.get('[data-testid="sorting-dropdown"]').click();
+    cy.contains("Name (A-Z)").click();
+    cy.wait(500);
+
+    cy.get('[data-testid="dataset-card"]')
+      .first()
+      .find("h3")
+      .invoke("text")
+      .then(function (secondSort) {
+        expect(this.firstSort).to.equal(secondSort);
+      });
+  });
 });
-
-

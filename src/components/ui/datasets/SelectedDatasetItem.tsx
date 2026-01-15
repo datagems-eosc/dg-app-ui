@@ -14,6 +14,7 @@ import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
 import type { DatasetUnion } from "@/types/datasets";
 import { Button } from "../Button";
 import { Chip } from "../Chip";
+import { Tooltip } from "../Tooltip";
 import MetadataItem from "./MetadataItem";
 
 interface Collection {
@@ -144,17 +145,22 @@ export default function SelectedDatasetItem({
               {displayName}
             </h3>
           </button>
-          <button
-            onClick={() => onToggleExpanded(dataset.id)}
-            className="flex-shrink-0 p-1 rounded-md transition-colors ml-2 hover:bg-gray-200"
-            title={isExpanded ? "Show less" : "Show more"}
+          <Tooltip
+            content={isExpanded ? "Show less" : "Show more"}
+            position="top"
+            delay={300}
           >
-            {isExpanded ? (
-              <ChevronUp className="w-5 h-5 text-icon" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-icon" />
-            )}
-          </button>
+            <button
+              onClick={() => onToggleExpanded(dataset.id)}
+              className="flex-shrink-0 p-1 rounded-md transition-colors ml-2 hover:bg-gray-200"
+            >
+              {isExpanded ? (
+                <ChevronUp className="w-5 h-5 text-icon" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-icon" />
+              )}
+            </button>
+          </Tooltip>
         </div>
 
         {(displayCategory || displayAccess) && (

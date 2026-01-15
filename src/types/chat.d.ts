@@ -5,6 +5,7 @@ export interface Message {
   timestamp: Date | string;
   sources?: number;
   relatedDatasetIds?: string[];
+  datasetIds?: string[];
   tableData?: TableData;
   latitude?: number;
   longitude?: number;

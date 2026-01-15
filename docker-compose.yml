@@ -18,13 +18,7 @@ services:
       - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${FRONTEND_PORT:-3000}/ui",
-        ]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3

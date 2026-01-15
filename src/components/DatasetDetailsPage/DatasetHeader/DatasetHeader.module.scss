@@ -1,0 +1,27 @@
+@use '@/styles' as *;
+
+.datasetHeader {
+  @include section-base;
+
+  &__title {
+    @include text-3xl;
+    @include text-primary;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      font-size: $font-size-2xl;
+    }
+
+    @media (max-width: $breakpoint-sm - 1px) {
+      font-size: $font-size-xl;
+    }
+  }
+
+  &__description {
+    @include text-xl;
+    @include text-secondary;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      font-size: $font-size-md;
+    }
+  }
+}

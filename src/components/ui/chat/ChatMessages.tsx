@@ -1,10 +1,21 @@
 "use client";
 
 import type React from "react";
+import { useEffect } from "react";
+import { scrollToBottom } from "@/lib/scrollUtils";
 import type { Message } from "@/types/chat";
-import { AIResponseSkeleton } from "./AIResponseSkeleton";
-import { ChatMessagesSkeleton } from "./ChatMessagesSkeleton";
 import MessageItem from "./MessageItem";
+
+function SendingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-8">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Generating response...</p>
+      </div>
+    </div>
+  );
+}
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -23,10 +34,27 @@ export default function ChatMessages({
   onSourcesClick,
   showSelectedPanel,
 }: ChatMessagesProps) {
-  if (isMessagesLoading) {
-    return <ChatMessagesSkeleton />;
-  }
+  // Auto-scroll to bottom when generating AI response
+  useEffect(() => {
+    if (isGeneratingAIResponse && messagesEndRef.current) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom(messagesEndRef.current);
+        });
+      });
+    }
+  }, [isGeneratingAIResponse, messagesEndRef]);
 
+  // Also scroll when new messages are added
+  useEffect(() => {
+    if (messages.length > 0 && messagesEndRef.current) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom(messagesEndRef.current);
+        });
+      });
+    }
+  }, [messages.length, messagesEndRef]);
   // Sort messages by timestamp using ISO 8601 string comparison for microsecond precision
   const sortedMessages = [...messages].sort((a, b) => {
     // Convert both timestamps to ISO strings for lexicographic comparison
@@ -53,8 +81,8 @@ export default function ChatMessages({
         />
       ))}
 
-      {/* AI Response Skeleton */}
-      {isGeneratingAIResponse && <AIResponseSkeleton />}
+      {/* AI Response Loading Spinner */}
+      {isGeneratingAIResponse && <SendingSpinner />}
 
       {/* Dummy div for scroll-to-bottom */}
       <div ref={messagesEndRef} />

@@ -35,7 +35,7 @@ The project provides a set of helpers to simplify login in E2E tests:
   - clears cookies and local storage
   - visits the app root and clicks the Sign in control
   - performs cross-origin IdP interactions using `cy.origin()` and submits username/password
-  - waits for redirect back to `/dashboard` and asserts presence of a dashboard-specific UI element
+  - waits for redirect back to `/browse` and asserts presence of a browse-specific UI element
 
 The `cy.login()` command is intended for tests that need to start in an authenticated state. There is also a global `beforeEach` in `cypress/support/e2e.ts` which calls `cy.login()` by default; this can be disabled by running Cypress with `AUTO_LOGIN=false`.
 
@@ -52,22 +52,9 @@ cy.origin("https://<keycloak-host>", { args: creds }, (creds) => {
   cy.get('input[name="password"]').type(creds.password, { log: false });
   cy.get('button[type="submit"]').click();
 });
-cy.url().should("include", "/dashboard");
+cy.url().should("include", "/browse");
 cy.contains("Add Dataset").should("be.visible");
 ```
-
-## Credentials for tests
-
-- Use `cypress/fixtures/credentials.json` (do not commit sensitive values to the repo). Example fixture shape:
-
-```json
-{
-  "username": "<username>",
-  "password": "<password>"
-}
-```
-
-- Or provide `CYPRESS_USERNAME` and `CYPRESS_PASSWORD` environment variables in CI.
 
 ## Troubleshooting
 

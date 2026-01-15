@@ -10,20 +10,31 @@ nav:
   - Material:
       - Onboarding: onboarding.md
       - Key Features:
-          - Smart Search: smart-search.md
+        - Smart Search: smart-search.md
       - Design System:
-          - Components: design-system.md
-          - Theming: theming.md
-      - Quality Assurance:
-          - Testing Methods: qa.md
-          - Login in Tests: CypressLogin.md
+        - Storybook: storybook.md
+        - UI Components:
+          - Form Components: storybook-form-components.md
+          - Navigation Components: storybook-navigation-components.md
+          - Display Components: storybook-display-components.md
+          - Interactive Components: storybook-interactive-components.md
+          - Specialized Components: storybook-specialized-components.md
+          - Dataset Components: storybook-dataset-components.md
+          - Chat Components: storybook-chat-components.md
+          - Modal Components: storybook-modal-components.md
+          - Component Guidelines: component-guidelines.md
   - Setup & Monitoring:
       - Security: security.md
-      - Automations: automations.md
+      #- Automations: automations.md
       - Deployment: deployment.md
+      - Code Quality: code-quality.md
+      - Quality Assurance:
+        - Login in Tests: CypressLogin.md
     #- Configuration: configuration.md
     #- Logging & Accounting: logging.md
-  - License: license.md
+  - License: 
+    - License: licence.md
+    - Licence Report: licence-report.md
   - FAQ & Known Issues: faq.md
   - Home: https://datagems-eosc.github.io/
 

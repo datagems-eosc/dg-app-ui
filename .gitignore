@@ -45,3 +45,6 @@ memory-shard/
 ../memory-shard/
 
 .vscode
+
+*storybook.log
+storybook-static

@@ -1,0 +1,14 @@
+@use '@/styles' as *;
+
+.datasetDescriptionSection {
+  @include section-base;
+
+  &__title {
+    @include section-title;
+  }
+
+  &__text {
+    @include section-content;
+    word-break: break-word;
+  }
+}

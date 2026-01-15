@@ -1,0 +1,283 @@
+// ============================================================================
+// SCSS Mixins
+// ----------------------------------------------------------------------------
+// Reusable mixins to avoid code duplication
+
+@use 'variables' as *;
+
+// ----------------------------------------------------------------------------
+// Typography Mixins
+// ----------------------------------------------------------------------------
+
+@mixin font-base {
+  font-family: $font-family-base;
+  font-weight: $font-weight-normal;
+  line-height: $line-height-normal;
+}
+
+@mixin font-medium {
+  font-family: $font-family-base;
+  font-weight: $font-weight-medium;
+  line-height: $line-height-normal;
+}
+
+@mixin font-semibold {
+  font-family: $font-family-base;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-tight;
+}
+
+@mixin text-xs {
+  @include font-base;
+  font-size: $font-size-xs;
+}
+
+@mixin text-sm {
+  @include font-base;
+  font-size: $font-size-sm;
+}
+
+@mixin text-base {
+  @include font-base;
+  font-size: $font-size-base;
+}
+
+@mixin text-md {
+  @include font-base;
+  font-size: $font-size-md;
+}
+
+@mixin text-lg {
+  @include font-base;
+  font-size: $font-size-lg;
+}
+
+@mixin text-xl {
+  @include font-base;
+  font-size: $font-size-xl;
+  line-height: $line-height-tight;
+}
+
+@mixin text-2xl {
+  @include font-semibold;
+  font-size: $font-size-2xl;
+}
+
+@mixin text-3xl {
+  @include font-semibold;
+  font-size: $font-size-3xl;
+}
+
+@mixin text-4xl {
+  @include font-semibold;
+  font-size: $font-size-4xl;
+}
+
+// ----------------------------------------------------------------------------
+// Color Mixins
+// ----------------------------------------------------------------------------
+
+@mixin text-primary {
+  color: $color-primary-text;
+}
+
+@mixin text-secondary {
+  color: $color-secondary-text;
+}
+
+@mixin text-tertiary {
+  color: $color-tertiary-text;
+}
+
+@mixin text-icon {
+  color: $color-icon;
+}
+
+// ----------------------------------------------------------------------------
+// Layout Mixins
+// ----------------------------------------------------------------------------
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+@mixin flex-column-center {
+  @include flex-column;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin container {
+  max-width: $container-max-width;
+  margin: 0 auto;
+  padding: 0 $spacing-xl;
+}
+
+// ----------------------------------------------------------------------------
+// Border Mixins
+// ----------------------------------------------------------------------------
+
+@mixin border-base {
+  border: 1px solid $color-border;
+}
+
+@mixin border-secondary {
+  border: 1px solid $color-border-secondary;
+}
+
+@mixin border-radius-sm {
+  border-radius: $border-radius-sm;
+}
+
+@mixin border-radius-md {
+  border-radius: $border-radius-md;
+}
+
+@mixin border-radius-lg {
+  border-radius: $border-radius-lg;
+}
+
+@mixin border-radius-full {
+  border-radius: $border-radius-full;
+}
+
+// ----------------------------------------------------------------------------
+// Shadow Mixins
+// ----------------------------------------------------------------------------
+
+@mixin shadow-s1 {
+  box-shadow: $shadow-s1;
+}
+
+@mixin shadow-s2 {
+  box-shadow: $shadow-s2;
+}
+
+@mixin shadow-s3 {
+  box-shadow: $shadow-s3;
+}
+
+// ----------------------------------------------------------------------------
+// Transition Mixins
+// ----------------------------------------------------------------------------
+
+@mixin transition-base {
+  transition: all $transition-base $transition-ease;
+}
+
+@mixin transition-fast {
+  transition: all $transition-fast $transition-ease;
+}
+
+@mixin transition-slow {
+  transition: all $transition-slow $transition-ease;
+}
+
+// ----------------------------------------------------------------------------
+// Button Mixins
+// ----------------------------------------------------------------------------
+
+@mixin button-base {
+  @include flex-center;
+  @include font-medium;
+  @include text-sm;
+  @include border-secondary;
+  @include border-radius-full;
+  @include shadow-s1;
+  @include transition-base;
+  gap: $spacing-sm;
+  padding: 0 $spacing-lg;
+  height: 40px;
+  background: $color-background;
+  color: $color-primary-text;
+  cursor: pointer;
+
+  &:hover {
+    background: $color-background-tertiary;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Icon Mixins
+// ----------------------------------------------------------------------------
+
+@mixin icon-base {
+  width: 16px;
+  height: 16px;
+  color: $color-icon;
+  flex-shrink: 0;
+}
+
+@mixin icon-md {
+  width: 20px;
+  height: 20px;
+  color: $color-icon;
+  flex-shrink: 0;
+}
+
+// ----------------------------------------------------------------------------
+// Responsive Mixins
+// ----------------------------------------------------------------------------
+
+@mixin respond-to($breakpoint) {
+  @if $breakpoint == sm {
+    @media (min-width: $breakpoint-sm) {
+      @content;
+    }
+  } @else if $breakpoint == md {
+    @media (min-width: $breakpoint-md) {
+      @content;
+    }
+  } @else if $breakpoint == lg {
+    @media (min-width: $breakpoint-lg) {
+      @content;
+    }
+  } @else if $breakpoint == xl {
+    @media (min-width: $breakpoint-xl) {
+      @content;
+    }
+  } @else if $breakpoint == 2xl {
+    @media (min-width: $breakpoint-2xl) {
+      @content;
+    }
+  } @else if $breakpoint == 3xl {
+    @media (min-width: $breakpoint-3xl) {
+      @content;
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Section Mixins
+// ----------------------------------------------------------------------------
+
+@mixin section-base {
+  @include flex-column;
+  gap: $spacing-lg;
+}
+
+@mixin section-title {
+  @include font-semibold;
+  @include text-xl;
+  @include text-primary;
+}
+
+@mixin section-content {
+  @include font-base;
+  @include text-md;
+  @include text-secondary;
+}
+
