@@ -7,6 +7,7 @@ import AddDatasetsModal from "@/components/AddDatasetsModal";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
+import { APP_ROUTES } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { mockDatasets } from "@/data/dataset";
 import { getNavigationUrl } from "@/lib/utils";
@@ -55,7 +56,7 @@ export default function CustomCollectionPage() {
               The collection you&apos;re looking for doesn&apos;t exist.
             </p>
             <button
-              onClick={() => router.push(getNavigationUrl("/browse"))}
+              onClick={() => router.push(getNavigationUrl(APP_ROUTES.BROWSE))}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
             >
               Go to Browse
@@ -220,7 +221,7 @@ export default function CustomCollectionPage() {
               The collection you&apos;re looking for doesn&apos;t exist.
             </p>
             <button
-              onClick={() => router.push(getNavigationUrl("/browse"))}
+              onClick={() => router.push(getNavigationUrl(APP_ROUTES.BROWSE))}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
             >
               Go to Browse
@@ -234,37 +235,10 @@ export default function CustomCollectionPage() {
   return (
     <DashboardLayout>
       <div className="relative p-6">
-        {/* Custom Header */}
-        <div className="mb-6">
-          {isEditMode ? (
-            <input
-              type="text"
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              className="text-H2-24-semibold text-gray-900 bg-transparent border-b-2 border-blue-500 focus:outline-none focus:border-blue-600 mb-2 w-full"
-            />
-          ) : (
-            <h1 className="text-H2-24-semibold text-gray-900">
-              {collection.name}
-            </h1>
-          )}
-          <p className="text-gray-600 mt-1">
-            Custom collection • {displayDatasetIds.length} datasets
-            {"createdAt" in collection && collection.createdAt ? (
-              <>
-                {" "}
-                • Created {(collection.createdAt as Date).toLocaleDateString()}
-              </>
-            ) : (
-              <> - </>
-            )}
-          </p>
-        </div>
-
         <Browse
           datasets={collectionDatasets}
-          title=""
-          subtitle=""
+          title={collection.name}
+          subtitle={`Custom collection • ${displayDatasetIds.length} datasets`}
           showSelectAll={!isEditMode}
           selectedDatasets={selectedDatasets}
           onSelectedDatasetsChange={setSelectedDatasets}

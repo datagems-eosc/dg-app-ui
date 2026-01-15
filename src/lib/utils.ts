@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { logError } from "./logger";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -42,7 +43,7 @@ export function decodeJWT(token: string): unknown {
     );
     return JSON.parse(jsonPayload);
   } catch (error) {
-    console.error("Failed to decode JWT token:", error);
+    logError("Failed to decode JWT token", error);
     return null;
   }
 }

@@ -1,0 +1,993 @@
+"use client";
+
+import { Button } from "@ui/Button";
+import ChatInitialView from "@ui/chat/ChatInitialView";
+import { ChatInput } from "@ui/chat/ChatInput";
+import ChatMessages from "@ui/chat/ChatMessages";
+import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
+import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
+import { Database } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import type { ConversationMessage } from "@/app/chat/page";
+import { APP_ROUTES } from "@/config/appUrls";
+import { useCollections } from "@/contexts/CollectionsContext";
+import type { Dataset } from "@/data/dataset";
+import { useApi } from "@/hooks/useApi";
+import { ApiErrorMessage } from "@/lib/apiErrors";
+import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
+import {
+  parseConversationMessage,
+  parseSearchInDataExploreResponse,
+} from "@/lib/messageUtils";
+import { getNavigationUrl } from "@/lib/utils";
+import type { ApiCollection, Collection } from "@/types/collection";
+import AddDatasetsModal from "../AddDatasetsModal";
+import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
+
+interface Message {
+  id: string;
+  type: "user" | "ai";
+  content: string;
+  timestamp: Date | string;
+  sources?: number;
+  relatedDatasetIds?: string[];
+  datasetIds?: string[];
+  tableData?: {
+    columns: Array<{ columnNumber: number; name: string }>;
+    rows: Array<{
+      rowNumber: number;
+      cells: Array<{ column: string; value: string | number }>;
+    }>;
+  };
+  latitude?: number;
+  longitude?: number;
+}
+
+interface ChatProps {
+  selectedDatasets: string[];
+  datasets: Dataset[];
+  onSelectedDatasetsChange: (selected: string[]) => void;
+  conversationId?: string | null;
+  initialMessages?: ConversationMessage[]; // undefined while loading, [] when loaded and empty
+  showConversationName?: boolean;
+  hideCollectionActions?: boolean;
+  initialCollectionId?: string | null; // Collection ID from URL parameter
+}
+
+// Add type for cross-dataset search result
+interface CrossDatasetSearchResult {
+  dataset: {
+    id: string;
+    code: string;
+    name: string;
+  };
+}
+
+export default function Chat({
+  selectedDatasets,
+  datasets,
+  onSelectedDatasetsChange,
+  conversationId,
+  initialMessages,
+  showConversationName = true,
+  hideCollectionActions = false,
+  initialCollectionId = null,
+}: ChatProps) {
+  // Store only Message[] for UI rendering
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
+  const [isGeneratingAIResponse, setIsGeneratingAIResponse] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  // Collections state
+  const { apiCollections, extraCollections, isLoadingApiCollections } =
+    useCollections();
+  const [selectedCollection, setSelectedCollection] =
+    useState<Collection | null>(null);
+
+  // Add state for tracking previous datasets to detect changes
+  const [previousDatasets, setPreviousDatasets] = useState<string[]>([]);
+  const [showDatasetChangeWarning, setShowDatasetChangeWarning] =
+    useState(false);
+
+  const [isPanelAnimating, setIsPanelAnimating] = useState(false);
+  const [isPanelClosing, setIsPanelClosing] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+
+  // State for sources panel
+  const [messageRelatedDatasets, setMessageRelatedDatasets] = useState<
+    string[]
+  >([]);
+  const [isSourcesPanel, setIsSourcesPanel] = useState(false);
+
+  // Reset initialization state when conversationId changes
+  useEffect(() => {
+    if (conversationId) {
+      setHasInitialized(false);
+      setIsMessagesLoading(true);
+    }
+  }, [conversationId]);
+
+  // Sync messages with initialMessages when it changes
+  useEffect(() => {
+    // Set loading to true when we have a conversationId but haven't initialized yet
+    if (conversationId && !hasInitialized) {
+      setIsMessagesLoading(true);
+    }
+
+    if (Array.isArray(initialMessages)) {
+      if (initialMessages.length > 0) {
+        const parsed = initialMessages
+          .filter((msg) => msg.kind >= 0 && msg.kind <= 3)
+          .map((msg, idx) => parseConversationMessage(msg, idx));
+
+        setMessages((prevMessages) => {
+          const newAIMessages = detectNewAIMessages(parsed, prevMessages);
+
+          if (newAIMessages.length > 0 && isGeneratingAIResponse) {
+            setIsGeneratingAIResponse(false);
+          }
+
+          const merged = mergeMessages(parsed, prevMessages);
+
+          return merged;
+        });
+      } else {
+        setMessages([]);
+      }
+      setIsMessagesLoading(false);
+      setHasInitialized(true);
+    }
+  }, [
+    initialMessages,
+    conversationId,
+    hasInitialized,
+    isGeneratingAIResponse,
+    messages.length,
+  ]);
+  const [inputValue, setInputValue] = useState("");
+  const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
+  // On mobile, do not show SelectedDatasetsPanel by default
+  const [showSelectedPanel, setShowSelectedPanel] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDatasetNamesMap, setSelectedDatasetNamesMap] = useState<
+    Record<string, string>
+  >({});
+  const router = useRouter();
+  const api = useApi();
+
+  // Determine initial visibility of the right panel responsively (show on >= sm)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const mq = window.matchMedia("(min-width: 640px)");
+      // For tablets (>=640 and <1024) do NOT open by default; only open by default on >=1024
+      setShowSelectedPanel(window.innerWidth >= 1024);
+      setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      const handler = (_e: MediaQueryListEvent) => {
+        // Re-evaluate based on current width
+        setShowSelectedPanel(window.innerWidth >= 1024);
+        setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      };
+      try {
+        mq.addEventListener("change", handler);
+        return () => mq.removeEventListener("change", handler);
+      } catch {
+        // Safari fallback
+        mq.addListener(handler as any);
+        return () => mq.removeListener(handler as any);
+      }
+    }
+  }, []);
+
+  // Keep isTablet updated on resize
+  useEffect(() => {
+    const onResize = () => {
+      setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
+      // Keep default auto-open only for >=1024
+      setShowSelectedPanel(window.innerWidth >= 1024);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Close right-side panel when sidebar opens on tablets
+  useEffect(() => {
+    const handleSidebarOpenedForTablet = () => {
+      if (isTablet) {
+        if (showSelectedPanel) {
+          handleClosePanel();
+        }
+      }
+    };
+    window.addEventListener(
+      "sidebarOpenedForTablet",
+      handleSidebarOpenedForTablet,
+    );
+    return () => {
+      window.removeEventListener(
+        "sidebarOpenedForTablet",
+        handleSidebarOpenedForTablet,
+      );
+    };
+  }, [isTablet, showSelectedPanel, handleClosePanel]);
+
+  // Handle initial collection selection from URL parameter
+  useEffect(() => {
+    if (
+      initialCollectionId &&
+      (apiCollections.length > 0 || extraCollections.length > 0)
+    ) {
+      // Find the collection by ID in API and extra collections
+      const allCollections = [...apiCollections, ...extraCollections];
+      const targetCollection = allCollections.find(
+        (collection) => collection.id === initialCollectionId,
+      );
+
+      // Always set the collection if it's different from current selection
+      if (
+        targetCollection &&
+        (!selectedCollection || selectedCollection.id !== targetCollection.id)
+      ) {
+        handleSelectCollection(targetCollection);
+      }
+    } else if (!initialCollectionId && selectedCollection) {
+      // If no collection in URL but we have a selected collection, clear it
+      handleSelectCollection(null);
+    }
+  }, [
+    initialCollectionId,
+    apiCollections,
+    extraCollections, // If no collection in URL but we have a selected collection, clear it
+    handleSelectCollection,
+    selectedCollection,
+  ]);
+
+  // Add effect to detect collection from messages and set it automatically
+  useEffect(() => {
+    if (
+      messages.length > 0 &&
+      (apiCollections.length > 0 || extraCollections.length > 0)
+    ) {
+      // Find the last message with dataset information (either AI with relatedDatasetIds or user with datasetIds)
+      const lastMessageWithDatasets = [...messages].reverse().find((msg) => {
+        const hasAIDatasets =
+          msg.type === "ai" &&
+          msg.relatedDatasetIds &&
+          msg.relatedDatasetIds.length > 0;
+        const hasUserDatasets =
+          msg.type === "user" && msg.datasetIds && msg.datasetIds.length > 0;
+
+        return hasAIDatasets || hasUserDatasets;
+      });
+
+      if (lastMessageWithDatasets) {
+        // Get dataset IDs from either relatedDatasetIds (AI) or datasetIds (user)
+        const messageDatasetIds =
+          lastMessageWithDatasets.type === "ai"
+            ? lastMessageWithDatasets.relatedDatasetIds
+            : lastMessageWithDatasets.datasetIds;
+
+        if (messageDatasetIds && messageDatasetIds.length > 0) {
+          // Only update selected datasets if they don't match message datasets AND we're not in an existing conversation
+          // In existing conversations, preserve user's dataset selection
+          if (
+            !conversationId &&
+            !arraysEqual(selectedDatasets, messageDatasetIds)
+          ) {
+            onSelectedDatasetsChange(messageDatasetIds);
+          }
+
+          // Try to find a matching collection
+          const allCollections = [...apiCollections, ...extraCollections];
+          const matchingCollection = allCollections.find((collection) => {
+            let collectionDatasetIds: string[] = [];
+
+            if (
+              "datasets" in collection &&
+              collection.datasets &&
+              Array.isArray(collection.datasets) &&
+              collection.datasets.length > 0
+            ) {
+              const apiCollection = collection as ApiCollection;
+              collectionDatasetIds =
+                apiCollection.datasets
+                  ?.map((dataset) => dataset.id)
+                  .filter((id): id is string => !!id) || [];
+            }
+            // Handle API collections with datasets array
+            else if (
+              "datasets" in collection &&
+              collection.datasets &&
+              collection.datasets.length > 0
+            ) {
+              collectionDatasetIds = collection.datasets.map(
+                (dataset) => dataset.id,
+              );
+            }
+            // Handle user collections with datasetIds array
+            else if (
+              collection.datasetIds &&
+              collection.datasetIds.length > 0
+            ) {
+              collectionDatasetIds = collection.datasetIds;
+            }
+
+            // Check if the current selected datasets match this collection exactly
+            if (
+              collectionDatasetIds.length === selectedDatasets.length &&
+              collectionDatasetIds.length > 0
+            ) {
+              const allMatch = selectedDatasets.every((id) =>
+                collectionDatasetIds.includes(id),
+              );
+              return allMatch;
+            }
+            return false;
+          });
+
+          // Only auto-set collection if none is currently selected
+          if (matchingCollection && !selectedCollection) {
+            setSelectedCollection(matchingCollection);
+          } else if (
+            !matchingCollection &&
+            selectedCollection &&
+            !conversationId
+          ) {
+            // Only show warning for new conversations when collection doesn't match
+            setShowDatasetChangeWarning(true);
+          }
+        }
+      }
+    }
+  }, [
+    messages,
+    apiCollections,
+    extraCollections,
+    selectedDatasets,
+    conversationId,
+    onSelectedDatasetsChange,
+    selectedCollection,
+  ]);
+
+  // Add effect to detect dataset changes and show warning
+  useEffect(() => {
+    if (messages.length > 0 && previousDatasets.length > 0) {
+      const hasChanged = !arraysEqual(selectedDatasets, previousDatasets);
+
+      // Only show warning if:
+      // 1. Datasets actually changed
+      // 2. We're in an existing conversation (conversationId exists)
+      // 3. There are messages that would be affected by the change
+      if (hasChanged && conversationId && messages.length > 0) {
+        setShowDatasetChangeWarning(true);
+      }
+    }
+  }, [selectedDatasets, previousDatasets, messages.length, conversationId]);
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim()) return;
+    setError(null);
+    setIsLoading(true);
+    // Show spinner immediately when user sends a message
+    setIsGeneratingAIResponse(true);
+
+    // Store current datasets as previous before sending
+    setPreviousDatasets([...selectedDatasets]);
+    // Clear any dataset change warning since user is proceeding
+    setShowDatasetChangeWarning(false);
+
+    try {
+      let newSelectedDatasets = selectedDatasets;
+      let foundDatasetNames: string[] | null = null;
+
+      // For existing conversations, use the in-data-explore API directly
+      if (conversationId && selectedDatasets.length > 0) {
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          type: "user",
+          content: inputValue,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => {
+          const updated = [...prev, userMessage];
+          return updated;
+        });
+
+        setInputValue("");
+
+        if (!api.hasToken) {
+          setError("No authentication token found. Please log in again.");
+          setIsLoading(false);
+          setIsGeneratingAIResponse(false);
+          return;
+        }
+
+        const payload = {
+          conversationOptions: {
+            conversationId: conversationId,
+            autoCreateConversation: false,
+          },
+          project: {
+            fields: ["question", "data", "status", "entries"],
+          },
+          query: userMessage.content,
+          resultCount: 100,
+          datasetIds: selectedDatasets,
+        };
+
+        const apiResponse = await api.searchInDataExplore(payload);
+
+        // Process the API response directly to create AI message
+        const aiMessage = parseSearchInDataExploreResponse(
+          apiResponse,
+          selectedDatasets,
+        );
+
+        if (aiMessage) {
+          // Add AI message to state
+          setMessages((prev) => [...prev, aiMessage]);
+
+          // Turn off spinner
+          setIsGeneratingAIResponse(false);
+        }
+
+        setIsLoading(false);
+        return;
+      }
+
+      // If no datasets are selected, call persist first, then cross-dataset search API
+      if (selectedDatasets.length === 0) {
+        // Show spinner while making API calls (no datasets selected path)
+        setIsGeneratingAIResponse(true);
+
+        if (!api.hasToken) {
+          setError(ApiErrorMessage.NO_AUTH_TOKEN_FOUND);
+          setIsLoading(false);
+          setIsGeneratingAIResponse(false);
+          return;
+        }
+        // Step 1: Create conversation
+        const persistPayload = {
+          name: inputValue,
+        };
+        const persistData = await api.persistConversation(
+          persistPayload,
+          "?f=id&f=etag",
+        );
+        const conversationIdFromPersist = persistData.id;
+        if (!conversationIdFromPersist) {
+          setError(ApiErrorMessage.NO_CONVERSATION_ID);
+          setIsLoading(false);
+          setIsGeneratingAIResponse(false);
+          return;
+        }
+        // Step 2: Call cross-dataset search with conversationId
+        const payload = {
+          conversationOptions: {
+            conversationId: conversationIdFromPersist,
+            autoCreateConversation: false,
+          },
+          project: {
+            fields: [
+              "conversationId",
+              "content",
+              "useCase",
+              "dataset.id",
+              "dataset.code",
+              "dataset.name",
+              "sourceId",
+              "chunkId",
+              "language",
+              "distance",
+            ],
+          },
+          query: inputValue,
+          resultCount: 100,
+        };
+        const data = await api.searchCrossDataset(payload);
+        if (Array.isArray(data.result)) {
+          const results = data.result as CrossDatasetSearchResult[];
+          newSelectedDatasets = results
+            .map((item) => item.dataset?.id)
+            .filter((id: string | undefined) => typeof id === "string");
+          foundDatasetNames = results
+            .map((item) => item.dataset?.name)
+            .filter((name: string | undefined) => typeof name === "string");
+          // Build a map of id -> name for sidebar fallback
+          const namesMap: Record<string, string> = {};
+          results.forEach((item) => {
+            if (item.dataset?.id && item.dataset?.name) {
+              namesMap[item.dataset.id] = item.dataset.name;
+            }
+          });
+          setSelectedDatasetNamesMap(namesMap);
+          onSelectedDatasetsChange(newSelectedDatasets);
+          // Also update localStorage for consistency
+          localStorage.setItem(
+            "chatSelectedDatasets",
+            JSON.stringify(newSelectedDatasets),
+          );
+          // Redirect to /chat/conversationId if present in response and not already in a conversation
+          if (conversationIdFromPersist && !conversationId) {
+            router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
+          }
+        } else {
+          setError("No datasets found for your query.");
+          setIsLoading(false);
+          setIsGeneratingAIResponse(false);
+          return;
+        }
+      } else if (!conversationId) {
+        // If datasets are selected and not already in a conversation, create a new conversation and then search
+        // Show spinner while making API calls (new conversation with datasets path)
+        setIsGeneratingAIResponse(true);
+
+        if (!api.hasToken) {
+          setError("No authentication token found. Please log in again.");
+          setIsLoading(false);
+          setIsGeneratingAIResponse(false);
+          return;
+        }
+        // Step 1: Create conversation with datasets
+        const persistPayload = {
+          name: inputValue,
+          conversationDatasets: selectedDatasets.map((id) => ({
+            datasetId: id,
+          })),
+        };
+        const persistData = await api.persistConversationDeep(
+          persistPayload,
+          "?f=id&f=etag",
+        );
+        const conversationIdFromPersist = persistData.id;
+        if (!conversationIdFromPersist) {
+          setError("No conversation ID returned from server.");
+          setIsLoading(false);
+          setIsGeneratingAIResponse(false);
+          return;
+        }
+        // Step 2: Call in-data-explore search with conversationId
+        const payload = {
+          conversationOptions: {
+            conversationId: conversationIdFromPersist,
+            autoCreateConversation: false,
+          },
+          project: {
+            fields: ["question", "data", "status", "entries"],
+          },
+          query: inputValue,
+          resultCount: 100,
+          datasetIds: selectedDatasets, // Add datasetIds for in-data-explore
+        };
+        const data = await api.searchInDataExplore(payload);
+        let newSelectedDatasets = selectedDatasets;
+        // Redirect to chat details page with conversationId
+        if (conversationIdFromPersist) {
+          router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
+          return; // Prevent further state updates after redirect
+        }
+        if (Array.isArray(data.result)) {
+          const results = data.result as CrossDatasetSearchResult[];
+          newSelectedDatasets = results
+            .map((item) => item.dataset?.id)
+            .filter((id: string | undefined) => typeof id === "string");
+          foundDatasetNames = results
+            .map((item) => item.dataset?.name)
+            .filter((name: string | undefined) => typeof name === "string");
+          // Build a map of id -> name for sidebar fallback
+          const namesMap: Record<string, string> = {};
+          results.forEach((item) => {
+            if (item.dataset?.id && item.dataset?.name) {
+              namesMap[item.dataset.id] = item.dataset.name;
+            }
+          });
+          setSelectedDatasetNamesMap(namesMap);
+          onSelectedDatasetsChange(newSelectedDatasets);
+          // Also update localStorage for consistency
+          localStorage.setItem(
+            "chatSelectedDatasets",
+            JSON.stringify(newSelectedDatasets),
+          );
+          // Redirect to /chat/conversationId if present in response and not already in a conversation
+          if (conversationIdFromPersist && !conversationId) {
+            router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
+          }
+        } else {
+          setError("No datasets found for your query.");
+          setIsLoading(false);
+          setIsGeneratingAIResponse(false);
+          return;
+        }
+      }
+
+      // Add user message
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: "user",
+        content: inputValue,
+        timestamp: new Date(),
+      };
+      setMessages([userMessage]);
+
+      // Show spinner while generating AI response
+      setIsGeneratingAIResponse(true);
+
+      // If datasets were found via cross-dataset search, show a system message
+      if (foundDatasetNames && foundDatasetNames.length > 0) {
+        // Also update the names map for sidebar fallback
+        const namesMap: Record<string, string> = {};
+        newSelectedDatasets.forEach((id, idx) => {
+          if (foundDatasetNames?.[idx]) {
+            namesMap[id] = foundDatasetNames[idx];
+          }
+        });
+        setSelectedDatasetNamesMap(namesMap);
+        const datasetFoundMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: "ai",
+          content: `Based on your query we found the following datasets: ${foundDatasetNames.join(
+            ", ",
+          )}`,
+          timestamp: new Date(),
+          sources: foundDatasetNames.length,
+        };
+        setMessages((prev) => {
+          const updated = [...prev, datasetFoundMessage];
+          return updated;
+        });
+      }
+
+      setInputValue("");
+    } catch (err: unknown) {
+      let message: string = ApiErrorMessage.UNEXPECTED_ERROR;
+      if (err instanceof Error) message = err.message;
+      else if (typeof err === "string") message = err;
+      setError(message);
+      setIsGeneratingAIResponse(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const _handleBackToBrowse = () => {
+    router.push(getNavigationUrl(APP_ROUTES.BROWSE));
+  };
+
+  const toggleSidebar = () => {
+    // Panel animation
+    if (!showSelectedPanel) {
+      setShowSelectedPanel(true);
+      setIsSourcesPanel(false); // Reset to regular selected datasets panel
+      // Start panel off-screen, then animate in
+      setIsPanelAnimating(true);
+      setTimeout(() => setIsPanelAnimating(false), 50);
+      // On tablets, request closing the sidebar when opening the right panel
+      if (isTablet) {
+        window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
+      }
+    } else {
+      // Animate panel closing
+      setIsPanelClosing(true);
+      setTimeout(() => {
+        setShowSelectedPanel(false);
+        setIsPanelClosing(false);
+        setIsSourcesPanel(false);
+      }, 500); // Match the CSS transition duration
+    }
+  };
+
+  function handleSelectCollection(collection: Collection | null) {
+    setPreviousDatasets([...selectedDatasets]);
+
+    setSelectedCollection(collection);
+
+    // If a collection is selected, get all dataset IDs from it and update selected datasets
+    if (collection) {
+      let datasetIds: string[] = [];
+
+      // Check if collection has datasets array (API collections)
+      if (
+        "datasets" in collection &&
+        collection.datasets &&
+        collection.datasets.length > 0
+      ) {
+        datasetIds = collection.datasets.map((dataset) => dataset.id);
+      }
+      // Check if collection has datasetIds array (user collections)
+      else if (collection.datasetIds && collection.datasetIds.length > 0) {
+        datasetIds = collection.datasetIds;
+      }
+
+      // Update selected datasets with collection datasets
+      if (datasetIds.length > 0) {
+        onSelectedDatasetsChange(datasetIds);
+
+        // Build names map for the selected datasets
+        const namesMap: Record<string, string> = {};
+        datasetIds.forEach((id) => {
+          const dataset = datasets.find((d) => d.id === id);
+          if (dataset) {
+            namesMap[id] = dataset.title;
+          } else {
+            if ("datasets" in collection && collection.datasets) {
+              const apiCollection = collection as ApiCollection;
+              const datasetItem = apiCollection.datasets?.find(
+                (item) => item.id === id,
+              );
+              if (datasetItem?.name) {
+                namesMap[id] = datasetItem.name;
+              } else {
+                namesMap[id] = `${collection.name} Dataset`;
+              }
+            } else {
+              // Fallback: use collection name if dataset not found
+              namesMap[id] = `${collection.name} Dataset`;
+            }
+          }
+        });
+        setSelectedDatasetNamesMap(namesMap);
+
+        // Update localStorage for consistency
+        localStorage.setItem(
+          "chatSelectedDatasets",
+          JSON.stringify(datasetIds),
+        );
+      }
+    } else {
+      // If no collection is selected, clear selected datasets
+      onSelectedDatasetsChange([]);
+      setSelectedDatasetNamesMap({});
+
+      // Clear localStorage
+      localStorage.removeItem("chatSelectedDatasets");
+    }
+  }
+
+  function handleClosePanel() {
+    setIsPanelClosing(true);
+    setTimeout(() => {
+      setShowSelectedPanel(false);
+      setIsPanelClosing(false);
+      setIsSourcesPanel(false);
+    }, 500); // Match the CSS transition duration
+  }
+
+  // Handler for sources button click
+  const handleSourcesClick = (messageId: string) => {
+    // Find the message and extract related datasets
+    const message = messages.find((m) => m.id === messageId);
+    if (message?.sources && message.relatedDatasetIds) {
+      setMessageRelatedDatasets(message.relatedDatasetIds);
+      setIsSourcesPanel(true);
+      setShowSelectedPanel(true);
+      // Start panel off-screen, then animate in
+      setIsPanelAnimating(true);
+      setTimeout(() => setIsPanelAnimating(false), 50);
+      if (isTablet) {
+        window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
+      }
+    }
+  };
+
+  // Helper: Only disable input when loading or generating AI response
+  const isInputDisabled = isLoading || isGeneratingAIResponse;
+
+  // Add scroll-to-bottom for messages
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  // Scroll-to-bottom removed as per request
+
+  return (
+    <div className="relative">
+      {/* Main Chat Area */}
+      <div
+        className={`flex-1 flex flex-col relative ${!isMessagesLoading ? "transition-all duration-500 ease-out" : ""} ${showSelectedPanel ? "sm:pr-[380px] max-w-[1120px] 2xl:max-w-[1400px] mx-auto" : ""}`}
+        style={isMessagesLoading ? { transition: "none" } : undefined}
+      >
+        {/* Header */}
+        <div className="bg-white flex-shrink-0 py-6 z-10">
+          {/* Conversation Name */}
+          {showConversationName && conversationId && (
+            <div className="text-center py-4 px-6 border-b border-gray-100">
+              {isMessagesLoading ? (
+                <div className="h-6 bg-slate-200 rounded animate-pulse max-w-md mx-auto" />
+              ) : (
+                messages.length > 0 &&
+                messages[0].type === "user" && (
+                  <h2 className="text-H2-20-semibold text-blue-700 truncate">
+                    {messages[0].content}
+                  </h2>
+                )
+              )}
+            </div>
+          )}
+          <div className="flex items-center justify-end mx-auto p-4 sm:p-8 h-10">
+            {/* Sidebar toggle button */}
+            {!showSelectedPanel && (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={toggleSidebar}
+                className="flex items-center gap-2 transition-all duration-200"
+              >
+                <Database className="w-4 h-4 text-icon" />
+                {selectedDatasets.length} Selected
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Messages Area - Scrollable with padding for fixed input */}
+        <div
+          className={`flex-1 bg-white ${showDatasetChangeWarning ? "pb-55 md:pb-40" : "pb-35 md:pb-40"}`}
+        >
+          {isMessagesLoading ? (
+            <ChatMessagesSkeleton />
+          ) : (
+            (messages.length > 0 || isGeneratingAIResponse) && (
+              <div
+                className={`${messages.length === 0 && isGeneratingAIResponse ? "min-h-[200px]" : "min-h-0"}`}
+              >
+                <ChatMessages
+                  messages={messages}
+                  isMessagesLoading={isMessagesLoading}
+                  isGeneratingAIResponse={isGeneratingAIResponse}
+                  messagesEndRef={messagesEndRef}
+                  onSourcesClick={handleSourcesClick}
+                  showSelectedPanel={showSelectedPanel}
+                />
+              </div>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Centered ChatInitialView for default state */}
+      {!conversationId &&
+        messages.length === 0 &&
+        !isMessagesLoading &&
+        !isGeneratingAIResponse && (
+          <div
+            className={`fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+            style={{
+              left: "var(--sidebar-offset)",
+              top: "100px",
+              bottom: "200px",
+            }}
+          >
+            <div className="pointer-events-auto">
+              <ChatInitialView />
+            </div>
+          </div>
+        )}
+
+      {/* Centered ChatInput for default state */}
+      {!conversationId &&
+        messages.length === 0 &&
+        !isMessagesLoading &&
+        !isGeneratingAIResponse && (
+          <div
+            className={`fixed left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+            style={{ top: "50%", transform: "translateY(50px)" }}
+          >
+            <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+              {/* Dataset Change Warning */}
+              <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
+
+              <ChatInput
+                value={inputValue}
+                onChange={setInputValue}
+                onSend={handleSendMessage}
+                onAddDatasets={() => setShowAddDatasetsModal(true)}
+                collections={{
+                  apiCollections,
+                  collections: [],
+                  extraCollections,
+                  isLoading: isLoadingApiCollections,
+                }}
+                selectedCollection={selectedCollection}
+                onSelectCollection={handleSelectCollection}
+                isLoading={isLoading}
+                disabled={isInputDisabled}
+                error={error}
+                showAddDatasetsModal={showAddDatasetsModal}
+              />
+            </div>
+          </div>
+        )}
+
+      {/* Chat Input - Fixed at bottom for when messages exist */}
+      {(conversationId ||
+        messages.length > 0 ||
+        isMessagesLoading ||
+        isGeneratingAIResponse) && (
+        <div
+          className={`fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out ${showSelectedPanel ? "sm:pr-[404px]" : "pr-4 sm:pr-6"}`}
+        >
+          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+            {/* Dataset Change Warning */}
+            <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
+
+            <ChatInput
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSendMessage}
+              onAddDatasets={() => setShowAddDatasetsModal(true)}
+              collections={{
+                apiCollections,
+                collections: [],
+                extraCollections,
+                isLoading: isLoadingApiCollections,
+              }}
+              selectedCollection={selectedCollection}
+              onSelectCollection={handleSelectCollection}
+              isLoading={isLoading}
+              disabled={isInputDisabled}
+              error={error}
+              showAddDatasetsModal={showAddDatasetsModal}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Selected Datasets Panel - Under header, fixed on right side */}
+      {(showSelectedPanel || isPanelClosing) && (
+        <div className="fixed right-0 bottom-0 top-18 z-40 w-full sm:w-[380px]">
+          <div
+            className={`h-full transition-transform duration-500 ease-out ${
+              isPanelAnimating
+                ? "translate-x-full"
+                : isPanelClosing
+                  ? "translate-x-full"
+                  : "translate-x-0"
+            }`}
+          >
+            <SelectedDatasetsPanel
+              selectedDatasetIds={
+                isSourcesPanel ? messageRelatedDatasets : selectedDatasets
+              }
+              datasets={datasets}
+              onRemoveDataset={(id) => {
+                const newSelectedDatasets = selectedDatasets.filter(
+                  (datasetId) => datasetId !== id,
+                );
+                onSelectedDatasetsChange(newSelectedDatasets);
+
+                // If all datasets are removed and a collection was selected, clear the collection
+                if (newSelectedDatasets.length === 0 && selectedCollection) {
+                  setSelectedCollection(null);
+                }
+              }}
+              onAddToCollection={() => setShowAddDatasetsModal(true)}
+              onClose={handleClosePanel}
+              selectedDatasetNamesMap={selectedDatasetNamesMap}
+              hideAddToCollection={true}
+              hideRemoveDataset={hideCollectionActions}
+              customHeaderTitle={
+                isSourcesPanel
+                  ? `Sources (${messageRelatedDatasets.length})`
+                  : undefined
+              }
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Add Datasets Modal */}
+      <AddDatasetsModal
+        isVisible={showAddDatasetsModal}
+        onClose={() => setShowAddDatasetsModal(false)}
+        datasets={datasets}
+        onSelectedDatasetsChange={onSelectedDatasetsChange}
+      />
+    </div>
+  );
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((val, index) => val === sortedB[index]);
+}

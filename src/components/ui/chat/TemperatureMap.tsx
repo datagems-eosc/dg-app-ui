@@ -1,8 +1,8 @@
 "use client";
 
+import { Button } from "@ui/Button";
 import maplibregl, { type StyleSpecification } from "maplibre-gl";
 import React from "react";
-import { Button } from "@/components/ui/Button";
 import type { TableData } from "@/types/chat";
 
 interface TemperatureMapProps {

@@ -1,4 +1,5 @@
-import type { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
+import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
+import { logError } from "./logger";
 
 // Types for the API response
 interface VocabularyItem {
@@ -61,7 +62,7 @@ export function processFieldsOfScience(
 
     return categories;
   } catch (error) {
-    console.error("Error processing fields of science:", error);
+    logError("Error processing fields of science", error);
 
     // Return empty array as fallback
     return [];
@@ -144,7 +145,7 @@ export function processLicenses(
 
     return licenses;
   } catch (error) {
-    console.error("Error fetching licenses:", error);
+    logError("Error fetching licenses", error);
 
     // Return empty array as fallback
     return [];

@@ -1,0 +1,16 @@
+@use '@/styles' as *;
+
+.datasetSidebar {
+  width: $sidebar-width;
+  flex-shrink: 0;
+  @include flex-column;
+  gap: $spacing-2xl;
+
+  @media (max-width: $breakpoint-lg - 1px) {
+    width: 100%;
+  }
+
+  @media (max-width: $breakpoint-md - 1px) {
+    gap: $spacing-xl;
+  }
+}

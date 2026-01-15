@@ -58,7 +58,6 @@ export default function WeatherPage() {
   const handleCreateCollection = (_name: string) => {
     // Collections are now created via API in the CreateCollectionModal
     // This function is kept for backward compatibility but doesn't do anything
-    console.log("Collection creation handled by CreateCollectionModal");
   };
 
   return (

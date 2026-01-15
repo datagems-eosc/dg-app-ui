@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type React from "react";
 import { createUrl } from "@/lib/utils";
+import { Tooltip } from "./Tooltip";
 
 interface CollectionItemProps {
   id: string;
@@ -35,9 +36,9 @@ export function CollectionItem({
   const currentCollectionId = searchParams?.get("collection");
   const hrefCollectionId = getCollectionIdFromHref(href);
 
-  // Mark active ONLY on dashboard when the collection param matches
+  // Mark active ONLY on browse when the collection param matches
   const isActive =
-    pathname.startsWith("/dashboard") &&
+    pathname.startsWith("/browse") &&
     !!currentCollectionId &&
     hrefCollectionId === currentCollectionId;
 
@@ -64,31 +65,42 @@ export function CollectionItem({
           }`}
         />
       </div>
-      <Link
-        href={createUrl(href)}
-        className={`w-full flex-1 flex items-center px-3 py-2 text-body-16-medium rounded-lg transition-colors relative min-w-0 text-gray-750 ${
-          isActive ? "bg-blue-75" : "hover:bg-slate-75"
-        }`}
-        title={title}
-        onClick={handleLinkClick}
-      >
-        <span className={`mr-3 ${isActive ? "text-blue-850" : "text-icon"}`}>
-          {icon}
-        </span>
-        <span className="flex-1 truncate sm:max-w-[165px]">{name}</span>
-        {onMessageClick && (
-          <button
-            onClick={handleMessageClick}
-            className="ml-2 p-2 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-white"
-            title="Ask a question about this collection"
+      <div className="w-full flex-1 flex items-center relative">
+        <Tooltip content={title} position="top" delay={300} className="flex-1">
+          <Link
+            href={createUrl(href)}
+            className={`w-full flex-1 flex items-center px-3 py-2 text-body-16-medium rounded-lg transition-colors relative min-w-0 text-gray-750 ${
+              isActive ? "bg-blue-75" : "hover:bg-slate-75"
+            }`}
+            onClick={handleLinkClick}
           >
-            <MessageCircleMore
-              className="w-5 h-5 text-icon"
-              strokeWidth={1.25}
-            />
-          </button>
+            <span
+              className={`mr-3 ${isActive ? "text-blue-850" : "text-icon"}`}
+            >
+              {icon}
+            </span>
+            <span className="flex-1 truncate sm:max-w-[165px]">{name}</span>
+          </Link>
+        </Tooltip>
+        {onMessageClick && (
+          <Tooltip
+            content="Ask a question about this collection"
+            position="top"
+            delay={300}
+            className="ml-2"
+          >
+            <button
+              onClick={handleMessageClick}
+              className="p-2 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-white"
+            >
+              <MessageCircleMore
+                className="w-5 h-5 text-icon"
+                strokeWidth={1.25}
+              />
+            </button>
+          </Tooltip>
         )}
-      </Link>
+      </div>
     </div>
   );
 }

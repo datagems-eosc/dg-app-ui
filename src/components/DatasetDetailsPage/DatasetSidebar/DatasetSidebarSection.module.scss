@@ -1,0 +1,103 @@
+@use '@/styles' as *;
+
+.datasetSidebarSection {
+  @include flex-column;
+  gap: $spacing-lg;
+  width: 100%;
+
+  &__header {
+    @include flex-between;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    width: 100%;
+
+    @media (max-width: $breakpoint-sm - 1px) {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
+  &__headerLeft {
+    @include flex-center;
+    gap: $spacing-sm;
+    flex-shrink: 0;
+  }
+
+  &__icon {
+    @include icon-base;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    @include font-medium;
+    @include text-md;
+    @include text-primary;
+    line-height: 1.5;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  &__button {
+    @include flex-center;
+    gap: $spacing-xs;
+    flex-shrink: 0;
+  }
+
+  &__buttonIcon {
+    @include icon-base;
+  }
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    width: 100%;
+  }
+
+  &__link {
+    @include font-base;
+    @include text-base;
+    @include text-primary;
+    text-decoration: underline;
+    word-break: break-all;
+    line-height: 1.5;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid $color-border;
+    @include border-radius-sm;
+    padding: 2px $spacing-sm;
+    flex-shrink: 0;
+  }
+
+  &__badgeText {
+    @include font-medium;
+    @include text-md;
+    @include text-primary;
+    line-height: 1.5;
+  }
+
+  &__citation {
+    background: $color-background-secondary;
+    @include border-radius-md;
+    padding: $spacing-lg;
+    width: 100%;
+  }
+
+  &__citationText {
+    @include font-base;
+    @include text-base;
+    @include text-primary;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+    line-height: 1.5;
+    width: 100%;
+  }
+}
