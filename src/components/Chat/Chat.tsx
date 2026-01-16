@@ -272,8 +272,10 @@ export default function Chat({
         if (messageDatasetIds && messageDatasetIds.length > 0) {
           // Only update selected datasets if they don't match message datasets AND we're not in an existing conversation
           // In existing conversations, preserve user's dataset selection
+          // Also don't override if user has manually selected a collection
           if (
             !conversationId &&
+            !selectedCollection &&
             !arraysEqual(selectedDatasets, messageDatasetIds)
           ) {
             onSelectedDatasetsChange(messageDatasetIds);
@@ -733,11 +735,18 @@ export default function Chat({
         });
         setSelectedDatasetNamesMap(namesMap);
 
-        // Update localStorage for consistency
-        localStorage.setItem(
-          "chatSelectedDatasets",
-          JSON.stringify(datasetIds),
-        );
+        // Open the selected datasets panel if it's not already open
+        if (!showSelectedPanel) {
+          setShowSelectedPanel(true);
+          setIsSourcesPanel(false);
+          setIsPanelAnimating(true);
+          setTimeout(() => setIsPanelAnimating(false), 50);
+          if (isTablet) {
+            window.dispatchEvent(
+              new CustomEvent("requestCloseSidebarForTablet"),
+            );
+          }
+        }
       }
     } else {
       // If no collection is selected, clear selected datasets
