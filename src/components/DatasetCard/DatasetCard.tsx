@@ -4,6 +4,7 @@ import { Button } from "@ui/Button";
 import { Chip } from "@ui/Chip";
 import FormattedText from "@ui/FormattedText";
 import { SmartSearchMatchItem } from "@ui/SmartSearchMatchItem";
+import { Tooltip } from "@ui/Tooltip";
 import {
   CalendarCheck2,
   Check,
@@ -237,13 +238,14 @@ export default function DatasetCard({
     >
       {/* Edit mode remove button */}
       {isEditMode && onRemove && (
-        <button
-          onClick={handleRemoveClick}
-          className="absolute top-2 right-2 p-1 bg-red-100 hover:bg-red-200 rounded-full text-red-600 hover:text-red-700 transition-colors z-10"
-          title="Remove from collection"
-        >
-          <X className="w-4 h-4 text-icon" />
-        </button>
+        <Tooltip content="Remove from collection" position="top" delay={300}>
+          <button
+            onClick={handleRemoveClick}
+            className="absolute top-2 right-2 p-1 bg-red-100 hover:bg-red-200 rounded-full text-red-600 hover:text-red-700 transition-colors z-10"
+          >
+            <X className="w-4 h-4 text-icon" />
+          </button>
+        </Tooltip>
       )}
 
       {/* Header with title and star */}

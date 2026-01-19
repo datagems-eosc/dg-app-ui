@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe } from "lucide-react";
+import { Link } from "lucide-react";
 import styles from "./DatasetSidebarSection.module.scss";
 
 interface DatasetSourceUrlSectionProps {
@@ -14,7 +14,7 @@ export default function DatasetSourceUrlSection({
     <div className={styles.datasetSidebarSection}>
       <div className={styles.datasetSidebarSection__header}>
         <div className={styles.datasetSidebarSection__headerLeft}>
-          <Globe className={styles.datasetSidebarSection__icon} />
+          <Link className={styles.datasetSidebarSection__icon} />
           <h3 className={styles.datasetSidebarSection__title}>Source URL</h3>
         </div>
       </div>

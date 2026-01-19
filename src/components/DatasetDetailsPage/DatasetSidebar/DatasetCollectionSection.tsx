@@ -32,7 +32,7 @@ export default function DatasetCollectionSection({
         </Button>
       </div>
       {displayCategory && (
-        <Chip color="info" variant="outline" size="sm">
+        <Chip color="grey" variant="regular" size="sm">
           {displayCategory}
         </Chip>
       )}

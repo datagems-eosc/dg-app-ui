@@ -21,6 +21,7 @@ export enum ApiErrorMessage {
   FETCH_USER_SETTINGS_FAILED = "Failed to fetch user settings",
   SAVE_USER_SETTINGS_FAILED = "Failed to save user settings",
   FETCH_GRANTS_FAILED = "Failed to fetch grants",
+  FETCH_RECOMMENDATIONS_FAILED = "Failed to fetch recommendations",
   UNEXPECTED_ERROR = "An unexpected error occurred",
   NO_ACCESS_TOKEN = "No access token available",
   NO_AUTH_TOKEN_OR_FAVORITES_ID = "No authentication token or favorites collection ID",
