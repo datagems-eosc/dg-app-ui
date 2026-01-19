@@ -186,50 +186,11 @@ function ChatPageContent({
       isInitializedRef.current = true;
 
       if (isTransitioningFromConversation) {
-        localStorage.removeItem("chatSelectedDatasets");
         setSelectedDatasets([]);
         sessionStorage.removeItem("lastConversationId");
-      } else {
-        const stored = localStorage.getItem("chatSelectedDatasets");
-        if (stored && stored !== "[]") {
-          try {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              if (
-                selectedDatasets.length === 0 ||
-                JSON.stringify(selectedDatasets.sort()) !==
-                  JSON.stringify(parsed.sort())
-              ) {
-                setSelectedDatasets(parsed);
-              }
-            }
-          } catch (error) {
-            logError(
-              "Error loading selected datasets from localStorage",
-              error,
-            );
-          }
-        }
       }
     } else if (!id && !isInitializedRef.current) {
       isInitializedRef.current = true;
-      const stored = localStorage.getItem("chatSelectedDatasets");
-      if (stored && stored !== "[]") {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            if (
-              selectedDatasets.length === 0 ||
-              JSON.stringify(selectedDatasets.sort()) !==
-                JSON.stringify(parsed.sort())
-            ) {
-              setSelectedDatasets(parsed);
-            }
-          }
-        } catch (error) {
-          logError("Error loading selected datasets from localStorage", error);
-        }
-      }
     }
   }, [isMounted, params, api.hasToken]);
 
@@ -358,10 +319,6 @@ function ChatPageContent({
           datasets={normalizeDatasets(datasets) as Dataset[]}
           onSelectedDatasetsChange={(datasets) => {
             setSelectedDatasets(datasets);
-            localStorage.setItem(
-              "chatSelectedDatasets",
-              JSON.stringify(datasets),
-            );
           }}
           conversationId={conversationId}
           initialMessages={chatInitialMessages ?? undefined}

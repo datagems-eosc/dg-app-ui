@@ -8,7 +8,7 @@ import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
@@ -242,11 +242,6 @@ export default function Chat({
 
   const handleSelectCollection = useCallback(
     async (collection: Collection | null) => {
-      // If collection is null and we just selected a collection, ignore the null call
-      if (collection === null && selectedCollection !== null) {
-        return;
-      }
-
       setPreviousDatasets([...selectedDatasets]);
 
       setSelectedCollection(collection);
@@ -365,9 +360,6 @@ export default function Chat({
         // If no collection is selected, clear selected datasets
         onSelectedDatasetsChange([]);
         setSelectedDatasetNamesMap({});
-
-        // Clear localStorage
-        localStorage.removeItem("chatSelectedDatasets");
       }
     },
     [
@@ -420,9 +412,6 @@ export default function Chat({
       ) {
         handleSelectCollection(targetCollection);
       }
-    } else if (!initialCollectionId && selectedCollection) {
-      // If no collection in URL but we have a selected collection, clear it
-      handleSelectCollection(null);
     }
   }, [
     initialCollectionId,
@@ -698,11 +687,6 @@ export default function Chat({
           });
           setSelectedDatasetNamesMap(namesMap);
           onSelectedDatasetsChange(newSelectedDatasets);
-          // Also update localStorage for consistency
-          localStorage.setItem(
-            "chatSelectedDatasets",
-            JSON.stringify(newSelectedDatasets),
-          );
           // Redirect to /chat/conversationId if present in response and not already in a conversation
           if (conversationIdFromPersist && !conversationId) {
             router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
@@ -779,11 +763,6 @@ export default function Chat({
           });
           setSelectedDatasetNamesMap(namesMap);
           onSelectedDatasetsChange(newSelectedDatasets);
-          // Also update localStorage for consistency
-          localStorage.setItem(
-            "chatSelectedDatasets",
-            JSON.stringify(newSelectedDatasets),
-          );
           // Redirect to /chat/conversationId if present in response and not already in a conversation
           if (conversationIdFromPersist && !conversationId) {
             router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
