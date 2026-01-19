@@ -199,3 +199,132 @@
   visibility: hidden;
 }
 
+// Opacity Utilities
+.opacity-0 {
+  opacity: 0;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.opacity-100 {
+  opacity: 1;
+}
+
+// Pointer Events
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.pointer-events-auto {
+  pointer-events: auto;
+}
+
+// Transition Utilities
+.transition-all {
+  transition: all $transition-base $transition-ease;
+}
+
+.transition-opacity {
+  transition: opacity $transition-base $transition-ease;
+}
+
+.transition-transform {
+  transition: transform $transition-base $transition-ease;
+}
+
+// Border Utilities
+.border {
+  border: 1px solid $color-border;
+}
+
+.border-none {
+  border: none;
+}
+
+.rounded-sm {
+  border-radius: $border-radius-sm;
+}
+
+.rounded-md {
+  border-radius: $border-radius-md;
+}
+
+.rounded-lg {
+  border-radius: $border-radius-lg;
+}
+
+.rounded-full {
+  border-radius: $border-radius-full;
+}
+
+// Shadow Utilities
+.shadow-s1 {
+  box-shadow: $shadow-s1;
+}
+
+.shadow-s2 {
+  box-shadow: $shadow-s2;
+}
+
+.shadow-s3 {
+  box-shadow: $shadow-s3;
+}
+
+// Background Utilities
+.bg-white {
+  background-color: $color-background;
+}
+
+.bg-secondary {
+  background-color: $color-background-secondary;
+}
+
+.bg-tertiary {
+  background-color: $color-background-tertiary;
+}
+
+// Text Color Utilities
+.text-primary {
+  color: $color-primary-text;
+}
+
+.text-secondary {
+  color: $color-secondary-text;
+}
+
+.text-tertiary {
+  color: $color-tertiary-text;
+}
+
+// Font Weight Utilities
+.font-normal {
+  font-weight: $font-weight-normal;
+}
+
+.font-medium {
+  font-weight: $font-weight-medium;
+}
+
+.font-semibold {
+  font-weight: $font-weight-semibold;
+}
+
+.font-bold {
+  font-weight: $font-weight-bold;
+}
+
+// Text Alignment
+.text-left {
+  text-align: left;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
