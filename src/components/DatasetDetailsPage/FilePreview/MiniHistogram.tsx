@@ -21,7 +21,6 @@ export default function MiniHistogram({
   const maxValue = Math.max(...values);
   const normalizedValues = values.map((v) =>
     maxValue > 0 ? (v / maxValue) * 32 : 0,
-  );
 
   return (
     <div className={styles.miniHistogram}>
