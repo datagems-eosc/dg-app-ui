@@ -8,13 +8,14 @@ import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { logError } from "@/lib/logger";
 import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
 import {
   parseConversationMessage,
@@ -192,6 +193,146 @@ export default function Chat({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  const handleSelectCollection = useCallback(
+    async (collection: Collection | null) => {
+      // If collection is null and we just selected a collection, ignore the null call
+      if (collection === null && selectedCollection !== null) {
+        return;
+      }
+
+      setPreviousDatasets([...selectedDatasets]);
+
+      setSelectedCollection(collection);
+
+      // If a collection is selected, get all dataset IDs from it and update selected datasets
+      if (collection) {
+        let datasetIds: string[] = [];
+
+        // Check if collection has datasets array (API collections)
+        if (
+          "datasets" in collection &&
+          collection.datasets &&
+          Array.isArray(collection.datasets) &&
+          collection.datasets.length > 0
+        ) {
+          datasetIds = collection.datasets
+            .map((dataset) => dataset.id)
+            .filter((id): id is string => !!id);
+        }
+        // Check if collection has datasetIds array (user collections)
+        else if (
+          collection.datasetIds &&
+          Array.isArray(collection.datasetIds) &&
+          collection.datasetIds.length > 0
+        ) {
+          datasetIds = collection.datasetIds.filter((id): id is string => !!id);
+        }
+        // If collection doesn't have datasets, fetch them from API
+        else if (collection.id && api.hasToken) {
+          try {
+            const payload = {
+              project: {
+                fields: [
+                  "id",
+                  "code",
+                  "name",
+                  "description",
+                  "size",
+                  "datePublished",
+                  "collections.id",
+                  "collections.code",
+                  "collections.name",
+                  "collections.datasetCount",
+                  "permissions.browseDataset",
+                  "permissions.editDataset",
+                ],
+              },
+              collections: {
+                ids: [collection.id],
+              },
+              page: {
+                Offset: 0,
+                Size: 100,
+              },
+              Order: {
+                Items: ["+code"],
+              },
+              Metadata: {
+                CountAll: true,
+              },
+            };
+            const data = await api.queryDatasets(payload);
+            if (Array.isArray(data.items)) {
+              datasetIds = data.items
+                .map((dataset: { id?: string }) => dataset.id)
+                .filter((id: string | undefined): id is string => !!id);
+            }
+          } catch (error) {
+            logError("Failed to fetch datasets for collection", error);
+          }
+        }
+
+        // Update selected datasets with collection datasets
+        if (datasetIds.length > 0) {
+          onSelectedDatasetsChange(datasetIds);
+
+          // Build names map for the selected datasets
+          const namesMap: Record<string, string> = {};
+          datasetIds.forEach((id) => {
+            const dataset = datasets.find((d) => d.id === id);
+            if (dataset) {
+              namesMap[id] = dataset.title;
+            } else {
+              if ("datasets" in collection && collection.datasets) {
+                const apiCollection = collection as ApiCollection;
+                const datasetItem = apiCollection.datasets?.find(
+                  (item) => item.id === id,
+                );
+                if (datasetItem?.name) {
+                  namesMap[id] = datasetItem.name;
+                } else {
+                  namesMap[id] = `${collection.name} Dataset`;
+                }
+              } else {
+                // Fallback: use collection name if dataset not found
+                namesMap[id] = `${collection.name} Dataset`;
+              }
+            }
+          });
+          setSelectedDatasetNamesMap(namesMap);
+
+          // Open the selected datasets panel if it's not already open
+          if (!showSelectedPanel) {
+            setShowSelectedPanel(true);
+            setIsSourcesPanel(false);
+            setIsPanelAnimating(true);
+            setTimeout(() => setIsPanelAnimating(false), 50);
+            if (isTablet) {
+              window.dispatchEvent(
+                new CustomEvent("requestCloseSidebarForTablet"),
+              );
+            }
+          }
+        }
+      } else {
+        // If no collection is selected, clear selected datasets
+        onSelectedDatasetsChange([]);
+        setSelectedDatasetNamesMap({});
+
+        // Clear localStorage
+        localStorage.removeItem("chatSelectedDatasets");
+      }
+    },
+    [
+      selectedDatasets,
+      datasets,
+      api,
+      onSelectedDatasetsChange,
+      showSelectedPanel,
+      isTablet,
+    ],
+  );
+
   // Close right-side panel when sidebar opens on tablets
   useEffect(() => {
     const handleSidebarOpenedForTablet = () => {
@@ -337,9 +478,11 @@ export default function Chat({
           } else if (
             !matchingCollection &&
             selectedCollection &&
-            !conversationId
+            !conversationId &&
+            selectedDatasets.length > 0
           ) {
             // Only show warning for new conversations when collection doesn't match
+            // Don't reset collection if datasets are being updated (e.g., after selecting a collection)
             setShowDatasetChangeWarning(true);
           }
         }
@@ -681,82 +824,6 @@ export default function Chat({
       }, 500); // Match the CSS transition duration
     }
   };
-
-  function handleSelectCollection(collection: Collection | null) {
-    setPreviousDatasets([...selectedDatasets]);
-
-    setSelectedCollection(collection);
-
-    // If a collection is selected, get all dataset IDs from it and update selected datasets
-    if (collection) {
-      let datasetIds: string[] = [];
-
-      // Check if collection has datasets array (API collections)
-      if (
-        "datasets" in collection &&
-        collection.datasets &&
-        collection.datasets.length > 0
-      ) {
-        datasetIds = collection.datasets
-          .map((dataset) => dataset.id)
-          .filter((id): id is string => !!id);
-      }
-      // Check if collection has datasetIds array (user collections)
-      else if (collection.datasetIds && collection.datasetIds.length > 0) {
-        datasetIds = collection.datasetIds.filter((id): id is string => !!id);
-      }
-
-      // Update selected datasets with collection datasets
-      if (datasetIds.length > 0) {
-        onSelectedDatasetsChange(datasetIds);
-
-        // Build names map for the selected datasets
-        const namesMap: Record<string, string> = {};
-        datasetIds.forEach((id) => {
-          const dataset = datasets.find((d) => d.id === id);
-          if (dataset) {
-            namesMap[id] = dataset.title;
-          } else {
-            if ("datasets" in collection && collection.datasets) {
-              const apiCollection = collection as ApiCollection;
-              const datasetItem = apiCollection.datasets?.find(
-                (item) => item.id === id,
-              );
-              if (datasetItem?.name) {
-                namesMap[id] = datasetItem.name;
-              } else {
-                namesMap[id] = `${collection.name} Dataset`;
-              }
-            } else {
-              // Fallback: use collection name if dataset not found
-              namesMap[id] = `${collection.name} Dataset`;
-            }
-          }
-        });
-        setSelectedDatasetNamesMap(namesMap);
-
-        // Open the selected datasets panel if it's not already open
-        if (!showSelectedPanel) {
-          setShowSelectedPanel(true);
-          setIsSourcesPanel(false);
-          setIsPanelAnimating(true);
-          setTimeout(() => setIsPanelAnimating(false), 50);
-          if (isTablet) {
-            window.dispatchEvent(
-              new CustomEvent("requestCloseSidebarForTablet"),
-            );
-          }
-        }
-      }
-    } else {
-      // If no collection is selected, clear selected datasets
-      onSelectedDatasetsChange([]);
-      setSelectedDatasetNamesMap({});
-
-      // Clear localStorage
-      localStorage.removeItem("chatSelectedDatasets");
-    }
-  }
 
   function handleClosePanel() {
     setIsPanelClosing(true);

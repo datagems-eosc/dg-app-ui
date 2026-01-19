@@ -116,7 +116,8 @@ function ChatPageContent({
   );
   const params = useParams();
   const searchParams = useSearchParams();
-  const hasInitializedRef = useRef(false);
+  const isInitializedRef = useRef(false);
+  const lastConversationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -130,19 +131,19 @@ function ChatPageContent({
   }, [searchParams, initialCollectionId]);
 
   useEffect(() => {
-    if (!isMounted || hasInitializedRef.current) return;
+    if (!isMounted || !api.hasToken) return;
 
     const id = params?.conversationId as string | undefined;
     const lastConversationId = sessionStorage.getItem("lastConversationId");
     const isTransitioningFromConversation = lastConversationId !== null && !id;
 
-    if (id) {
+    if (id && id !== conversationId) {
       sessionStorage.setItem("lastConversationId", id);
       setConversationId(id);
-      hasInitializedRef.current = true;
+      lastConversationIdRef.current = id;
+      isInitializedRef.current = true;
 
       const fetchHistory = async () => {
-        if (!api.hasToken) return;
         const queryParams =
           "?f=id&f=isActive&f=name&f=user.id&f=user.name&f=datasets.dataset.id&f=datasets.dataset.code&f=messages.kind&f=messages.data&f=messages.createdAt";
         const data = await api.getConversation(id, queryParams);
@@ -178,10 +179,11 @@ function ChatPageContent({
         setSelectedDatasets(datasetIds);
       };
       fetchHistory();
-    } else {
+    } else if (!id && conversationId !== null) {
       setConversationId(null);
       setChatInitialMessages([]);
-      hasInitializedRef.current = true;
+      lastConversationIdRef.current = null;
+      isInitializedRef.current = true;
 
       if (isTransitioningFromConversation) {
         localStorage.removeItem("chatSelectedDatasets");
@@ -193,7 +195,13 @@ function ChatPageContent({
           try {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-              setSelectedDatasets(parsed);
+              if (
+                selectedDatasets.length === 0 ||
+                JSON.stringify(selectedDatasets.sort()) !==
+                  JSON.stringify(parsed.sort())
+              ) {
+                setSelectedDatasets(parsed);
+              }
             }
           } catch (error) {
             logError(
@@ -203,15 +211,37 @@ function ChatPageContent({
           }
         }
       }
+    } else if (!id && !isInitializedRef.current) {
+      isInitializedRef.current = true;
+      const stored = localStorage.getItem("chatSelectedDatasets");
+      if (stored && stored !== "[]") {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (
+              selectedDatasets.length === 0 ||
+              JSON.stringify(selectedDatasets.sort()) !==
+                JSON.stringify(parsed.sort())
+            ) {
+              setSelectedDatasets(parsed);
+            }
+          }
+        } catch (error) {
+          logError("Error loading selected datasets from localStorage", error);
+        }
+      }
     }
   }, [isMounted, params, api.hasToken]);
 
   useEffect(() => {
     const id = params?.conversationId as string | undefined;
-    if ((id && id !== conversationId) || (!id && conversationId !== null)) {
-      hasInitializedRef.current = false;
+    if (
+      (id && id !== lastConversationIdRef.current) ||
+      (!id && lastConversationIdRef.current !== null)
+    ) {
+      isInitializedRef.current = false;
     }
-  }, [params?.conversationId, conversationId]);
+  }, [params?.conversationId]);
 
   // Fetch all datasets from API if not in a conversation
   useEffect(() => {
