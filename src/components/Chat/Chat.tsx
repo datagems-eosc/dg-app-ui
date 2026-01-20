@@ -154,11 +154,16 @@ export default function Chat({
   ]);
 
   useEffect(() => {
+    // Pobierz rekomendacje tylko gdy:
+    // 1. Są wiadomości
+    // 2. Komponent jest zainicjalizowany (lub nie ma conversationId - nowa konwersacja)
+    // 3. Nie trwa ładowanie wiadomości
+    // 4. Nie trwa generowanie odpowiedzi AI (czekamy na pełne wyrenderowanie)
     if (
       messages.length > 0 &&
-      conversationId &&
-      hasInitialized &&
-      !isMessagesLoading
+      (conversationId ? hasInitialized : true) &&
+      !isMessagesLoading &&
+      !isGeneratingAIResponse
     ) {
       const lastAIMessageIndex = [...messages]
         .reverse()
@@ -174,26 +179,36 @@ export default function Chat({
           !lastAIMessage.recommendationsLoading &&
           !fetchedRecommendationsRef.current.has(lastAIMessage.id)
         ) {
-          const userMessage =
-            actualIndex > 0 ? messages[actualIndex - 1] : null;
-          const currentQuery =
-            userMessage && userMessage.type === "user"
-              ? userMessage.content
-              : null;
+          // Znajdź najbliższą wcześniejszą wiadomość użytkownika (może być oddzielona innymi AI)
+          const previousUserMessage = [...messages]
+            .slice(0, actualIndex)
+            .reverse()
+            .find((msg) => msg.type === "user");
+
+          const currentQuery = previousUserMessage?.content ?? null;
 
           if (currentQuery) {
             fetchedRecommendationsRef.current.add(lastAIMessage.id);
-            fetchRecommendationsForMessage(
-              conversationId,
-              lastAIMessage.id,
-              currentQuery,
-            );
+            // Dodaj opóźnienie, aby upewnić się, że odpowiedź jest w pełni wyrenderowana
+            setTimeout(() => {
+              fetchRecommendationsForMessage(
+                conversationId ?? null,
+                lastAIMessage.id,
+                currentQuery,
+              );
+            }, 300);
           }
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, conversationId, hasInitialized, isMessagesLoading]);
+  }, [
+    messages,
+    conversationId,
+    hasInitialized,
+    isMessagesLoading,
+    isGeneratingAIResponse,
+  ]);
   const [inputValue, setInputValue] = useState("");
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
   // On mobile, do not show SelectedDatasetsPanel by default
@@ -614,6 +629,8 @@ export default function Chat({
 
           // Turn off spinner
           setIsGeneratingAIResponse(false);
+
+          // Rekomendacje będą pobrane przez useEffect po zakończeniu isGeneratingAIResponse
         }
 
         setIsLoading(false);
@@ -910,7 +927,40 @@ export default function Chat({
       const recommendationsResponse =
         await api.getRecommendNextQueries(currentQuery);
 
-      const recommendations = recommendationsResponse.next_queries || [];
+      // Sprawdź różne możliwe formaty odpowiedzi
+      let recommendations: string[] = [];
+
+      if (
+        recommendationsResponse.next_queries &&
+        Array.isArray(recommendationsResponse.next_queries)
+      ) {
+        recommendations = recommendationsResponse.next_queries.slice(0, 3);
+      } else if (Array.isArray(recommendationsResponse)) {
+        // Jeśli odpowiedź to bezpośrednio tablica
+        recommendations = recommendationsResponse.slice(0, 3);
+      }
+
+      // Log dla debugowania
+      console.log("[Recommendations] Fetched:", {
+        messageId,
+        query: currentQuery,
+        recommendationsCount: recommendations.length,
+        recommendations,
+        fullResponse: recommendationsResponse,
+      });
+
+      // Tymczasowy fallback - jeśli endpoint zwraca pustą tablicę, użyj mock danych do testów
+      // TODO: Usunąć gdy endpoint będzie zwracał prawdziwe dane
+      if (recommendations.length === 0) {
+        console.warn(
+          "[Recommendations] Endpoint returned empty array, using mock data for testing",
+        );
+        recommendations = [
+          "What are the applications of machine learning?",
+          "How does neural network training work?",
+          "What is deep learning?",
+        ];
+      }
 
       if (recommendations.length > 0) {
         setMessages((prev) => {
@@ -1114,6 +1164,7 @@ export default function Chat({
             <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
             <ChatInput
+              ref={chatInputRef}
               value={inputValue}
               onChange={setInputValue}
               onSend={handleSendMessage}
