@@ -1,0 +1,65 @@
+@use '@/styles' as *;
+
+.filePreviewTabs {
+  display: flex;
+  gap: $spacing-md;
+  border-bottom: 1px solid $color-border;
+  background: $color-background;
+  padding: 0 $spacing-md;
+
+  &__tab {
+    @include text-md;
+    @include font-medium;
+    @include text-secondary;
+    padding: $spacing-md $spacing-sm;
+    background: none;
+    border: none;
+    cursor: pointer;
+    @include transition-base;
+    position: relative;
+    height: 55px; // 55px as per Figma
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    &:hover {
+      @include text-primary;
+    }
+
+    &--active {
+      @include text-primary;
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: $color-info;
+        border-radius: 2px 2px 0 0;
+      }
+    }
+
+    &--ai {
+      background: linear-gradient(89.7deg, #2187FF 0.55%, #D518FB 99.7%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  }
+
+  &__aiLabel {
+    @include text-xs;
+    @include font-medium;
+    @include text-primary;
+    padding: 2px $spacing-xs;
+    border: 1px solid $color-border;
+    border-radius: 3px;
+    height: 13px;
+    display: flex;
+    align-items: center;
+    line-height: 1;
+  }
+}
+

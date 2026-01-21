@@ -1,12 +1,13 @@
 @use '@/styles' as *;
 
 .datasetFilesTree {
-  @include section-base;
+  width: 100%;
+  @include flex-column;
+  gap: $spacing-md;
 
   &__header {
     @include flex-center;
     gap: $spacing-sm;
-    margin-bottom: $spacing-lg;
   }
 
   &__headerIcon {
@@ -15,8 +16,8 @@
   }
 
   &__title {
-    @include font-semibold;
-    @include text-xl;
+    @include font-medium;
+    @include text-md;
     @include text-primary;
   }
 
@@ -32,8 +33,8 @@
   &__nodeContent {
     @include flex-center;
     gap: $spacing-sm;
-    padding: $spacing-sm $spacing-md;
-    min-height: 32px;
+    padding: $spacing-sm 0;
+    min-height: 40px;
     cursor: pointer;
     transition: background-color $transition-fast $transition-ease;
     border-radius: $border-radius-sm;
@@ -49,28 +50,36 @@
     }
 
     &--selected {
-      background-color: $color-info-bg;
+      background-color: $color-info-bg; // blue/50 (#F5F9FF)
+      
+      .datasetFilesTree__icon {
+        color: $color-info; // blue/500
+      }
+      
+      .datasetFilesTree__name {
+        color: $color-info; // blue/500
+      }
     }
 
     // Indentation levels
     &--level-0 {
-      padding-left: $spacing-md;
+      padding-left: 12px;
     }
 
     &--level-1 {
-      padding-left: calc($spacing-md + $spacing-xl);
+      padding-left: 48px;
     }
 
     &--level-2 {
-      padding-left: calc($spacing-md + ($spacing-xl * 2));
+      padding-left: 64px;
     }
 
     &--level-3 {
-      padding-left: calc($spacing-md + ($spacing-xl * 3));
+      padding-left: 88px;
     }
 
     &--level-4 {
-      padding-left: calc($spacing-md + ($spacing-xl * 4));
+      padding-left: 104px;
     }
   }
 
@@ -111,8 +120,9 @@
   }
 
   &__name {
-    @include text-base;
+    @include text-sm;
     @include text-primary;
+    font-weight: $font-weight-normal;
     flex: 1;
     word-break: break-word;
   }

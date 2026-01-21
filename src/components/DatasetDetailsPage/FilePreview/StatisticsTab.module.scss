@@ -1,0 +1,204 @@
+@use 'sass:color';
+@use '@/styles' as *;
+
+.statisticsTab {
+  padding: 0;
+  @include flex-column;
+  gap: 0;
+
+  &__tableSummary {
+    display: flex;
+    padding: $spacing-lg $spacing-lg; // 16px y/x as per Figma
+    background: $color-background-secondary;
+    border-bottom: 1px solid $color-border;
+    gap: $spacing-lg;
+    align-items: center;
+  }
+
+  &__summaryLabel {
+    @include text-sm; // 14px
+    @include font-semibold; // semibold as per Figma
+    @include text-primary;
+    min-width: 120px;
+  }
+
+  &__summaryStats {
+    display: flex;
+    gap: $spacing-lg;
+  }
+
+  &__summaryItem {
+    @include flex-column;
+    gap: $spacing-xs; // use defined spacing token
+  }
+
+  &__summaryTitle {
+    @include text-xs; // 12px
+    @include text-secondary;
+    letter-spacing: $letter-spacing-wide;
+    font-weight: $font-weight-normal;
+  }
+
+  &__summaryValue {
+    @include text-md; // 16px
+    font-weight: $font-weight-semibold; // semibold
+    @include text-primary;
+  }
+
+  &__colStats {
+    padding: $spacing-lg; // 16px
+    border-bottom: 1px solid $color-border;
+    @include flex-column;
+    gap: $spacing-lg; // 16px vertical spacing
+  }
+
+  &__colHeader {
+    @include flex-column;
+    gap: $spacing-xs; // 4px
+  }
+
+  &__colName {
+    display: inline-flex;
+    gap: $spacing-xs;
+    align-items: center;
+    @include text-md; // 16px
+    @include font-semibold; // semibold as per Figma
+    @include text-primary;
+  }
+
+  &__icon {
+    @include icon-base;
+  }
+
+  &__colDescription {
+    @include text-sm; // 14px
+    @include text-secondary;
+    line-height: 1.5;
+    font-weight: $font-weight-normal;
+  }
+
+  &__content {
+    display: grid;
+    grid-template-columns: 1fr 249px;
+    gap: $spacing-lg;
+    align-items: flex-start;
+  }
+
+  &__metrics {
+    @include flex-column;
+    gap: $spacing-lg; // 16px between rows
+  }
+
+  &__metricsRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-lg;
+  }
+
+  &__metricsRowFull {
+    display: flex;
+    width: 100%;
+  }
+
+  &__metric {
+    @include flex-column;
+    gap: $spacing-xs;
+  }
+
+  &__metricLabel {
+    @include text-xs;
+    @include text-secondary;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    font-weight: $font-weight-normal;
+  }
+
+  &__metricValue {
+    @include text-sm; // 14px
+    @include text-primary;
+    font-weight: $font-weight-medium;
+  }
+
+  &__visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 222px;
+  }
+
+  &__largeNumber {
+    @include flex-column;
+    gap: $spacing-xs;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-lg;
+    padding: $spacing-xl; // 24px
+    min-width: 170px;
+    min-height: 140px;
+    background: $color-background;
+  }
+
+  &__largeNumberLabel {
+    @include text-sm; // 14px
+    @include text-secondary;
+    max-width: 200px;
+  }
+
+  &__largeNumberValue {
+    font-size: 32px; // H2 32 Semibold as per Figma
+    line-height: 1.4;
+    font-weight: $font-weight-semibold;
+    @include text-primary;
+  }
+}
+
+// Large Histogram styles
+.largeHistogram {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: flex-start;
+  min-height: 222px;
+
+  &__yAxis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 175.5px;
+    padding-top: 9px;
+  }
+
+  &__yLabel {
+    @include text-xs;
+    @include text-secondary;
+    line-height: 18px;
+    text-align: left;
+  }
+
+  &__chart {
+    flex: 1;
+  }
+
+  &__svg {
+    display: block;
+  }
+
+  &__gridLine {
+    stroke: $color-border;
+    stroke-width: 1px;
+  }
+
+  &__bar {
+    fill: $color-info;
+    transition: fill $transition-fast $transition-ease;
+
+    &:hover {
+      fill: color.adjust($color-info, $lightness: -10%);
+    }
+  }
+
+  &__xLabel {
+    @include text-xs;
+    fill: $color-secondary-text;
+  }
+}

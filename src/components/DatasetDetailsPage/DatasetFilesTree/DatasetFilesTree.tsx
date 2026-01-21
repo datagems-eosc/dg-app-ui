@@ -24,6 +24,7 @@ export interface FileNode {
 interface DatasetFilesTreeProps {
   files?: FileNode[];
   defaultExpanded?: string[];
+  onFileSelect?: (fileId: string, fileName: string) => void;
 }
 
 const defaultFiles: FileNode[] = [
@@ -141,11 +142,29 @@ const defaultFiles: FileNode[] = [
 export default function DatasetFilesTree({
   files = defaultFiles,
   defaultExpanded = [],
+  onFileSelect,
 }: DatasetFilesTreeProps) {
+  const initialExpanded =
+    defaultExpanded.length > 0
+      ? defaultExpanded
+      : [
+          "csv-folder",
+          "csv-file2",
+          "excel-folder",
+          "excel-file1",
+          "table1",
+          "table2",
+          "table3",
+          "database-folder",
+          "meteo-db",
+          "schema1",
+          "schema2",
+        ];
+
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
-    new Set(defaultExpanded),
+    new Set(initialExpanded),
   );
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>("csv-file2");
 
   const toggleNode = (nodeId: string) => {
     setExpandedNodes((prev) => {
@@ -194,11 +213,21 @@ export default function DatasetFilesTree({
     return expandedNodes.has(nodeId);
   };
 
-  const handleNodeClick = (nodeId: string, isExpandable: boolean) => {
+  const handleNodeClick = (
+    nodeId: string,
+    nodeName: string,
+    nodeType: string,
+    isExpandable: boolean,
+  ) => {
     if (isExpandable) {
       toggleNode(nodeId);
     }
     setSelectedNode(nodeId);
+
+    // Call onFileSelect for file types (not folders)
+    if (onFileSelect && (nodeType === "file" || nodeType === "excel-sheet")) {
+      onFileSelect(nodeId, nodeName);
+    }
   };
 
   const renderNode = (node: FileNode, level: number = 0) => {
@@ -221,7 +250,9 @@ export default function DatasetFilesTree({
           style={
             level > 4 ? { paddingLeft: `${12 + level * 24}px` } : undefined
           }
-          onClick={() => handleNodeClick(node.id, isExpandable)}
+          onClick={() =>
+            handleNodeClick(node.id, node.name, node.type, isExpandable)
+          }
         >
           {isExpandable ? (
             <button

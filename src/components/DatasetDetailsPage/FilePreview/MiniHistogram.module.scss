@@ -1,0 +1,43 @@
+@use '@/styles' as *;
+
+.miniHistogram {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs; // 4px gap between bars and labels
+  width: 100%;
+
+  &__bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 2px; // 2px gap between bars as per Figma
+    height: 32px; // 32px max height as per Figma
+    width: 100%;
+  }
+
+  &__bar {
+    flex: 1;
+    min-width: 0;
+    background: $color-info; // Blue bars (#2B7FFF)
+    border-radius: 1px 1px 0 0; // Rounded top corners
+    @include transition-base;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+
+  &__labels {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  &__label {
+    @include text-xs;
+    @include text-secondary;
+    font-weight: $font-weight-normal; // Regular as per Figma
+    line-height: 1.5; // 18px line-height
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+  }
+}
