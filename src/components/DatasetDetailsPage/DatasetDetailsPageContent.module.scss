@@ -5,12 +5,12 @@
   background: $color-background;
 
   &__container {
-    max-width: $container-max-width;
+    max-width: 1440px;
     margin: 0 auto;
-    padding: $spacing-3xl 0;
+    padding: $spacing-3xl $spacing-xl;
 
     @media (max-width: $breakpoint-md - 1px) {
-      padding: $spacing-xl 0;
+      padding: $spacing-xl $spacing-lg;
     }
   }
 
@@ -75,7 +75,7 @@
   &__sectionTitle {
     @include text-2xl;
     @include text-primary;
-    margin-bottom: $spacing-2xl; // Add margin below title
+    margin-bottom: $spacing-2xl;
 
     @media (max-width: $breakpoint-md - 1px) {
       font-size: $font-size-xl;
@@ -85,9 +85,9 @@
 
   &__row {
     display: flex;
-    gap: $spacing-2xl; // 32px gap between columns
+    gap: $spacing-2xl;
     align-items: flex-start;
-    margin-bottom: $spacing-3xl; // Gap between rows
+    margin-bottom: $spacing-3xl;
 
     @media (max-width: $breakpoint-lg - 1px) {
       flex-direction: column;
@@ -99,15 +99,15 @@
     }
 
     &:last-child {
-      margin-bottom: 0; // Remove margin from last row
+      margin-bottom: 0;
     }
   }
 
   &__rowLeft {
     flex: 1;
     @include flex-column;
-    gap: 0; // No gap, title has margin-bottom
-    min-width: 0; // Allow flex item to shrink
+    gap: 0;
+    min-width: 0;
 
     @media (max-width: $breakpoint-lg - 1px) {
       width: 100%;

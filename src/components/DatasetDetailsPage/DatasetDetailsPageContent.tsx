@@ -11,6 +11,7 @@ import styles from "./DatasetDetailsPageContent.module.scss";
 import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetHeader from "./DatasetHeader/DatasetHeader";
 import DatasetMetadataBar from "./DatasetMetadataBar/DatasetMetadataBar";
+import DatasetRecommendationsSection from "./DatasetRecommendationsSection/DatasetRecommendationsSection";
 import DatasetSidebar from "./DatasetSidebar/DatasetSidebar";
 import DatasetSpecificationSection from "./DatasetSpecificationSection/DatasetSpecificationSection";
 import DatasetTagsSection from "./DatasetTagsSection/DatasetTagsSection";
@@ -151,6 +152,8 @@ export default function DatasetDetailsPageContent({
               <DatasetFilesTree onFileSelect={handleFileSelect} />
             </div>
           </div>
+
+          <DatasetRecommendationsSection />
         </div>
       </div>
     </div>
