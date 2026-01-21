@@ -45,6 +45,30 @@ export function mergeMessages(
     });
   }
 
+  // Preserve recommendations and recommendationsLoading from local messages
+  const localMessagesMap = new Map<string, Message>();
+  localMessages.forEach((msg) => {
+    localMessagesMap.set(msg.id, msg);
+  });
+
+  // Merge server messages with local recommendations
+  const mergedServerMessages = serverMessages.map((serverMsg) => {
+    const localMsg = localMessagesMap.get(serverMsg.id);
+    if (
+      localMsg &&
+      (localMsg.recommendations ||
+        localMsg.recommendationsLoading !== undefined)
+    ) {
+      // Preserve recommendations from local state
+      return {
+        ...serverMsg,
+        recommendations: localMsg.recommendations,
+        recommendationsLoading: localMsg.recommendationsLoading,
+      };
+    }
+    return serverMsg;
+  });
+
   // Find local messages that don't have a server duplicate
   const localMessagesToKeep = localMessages.filter((localMsg) => {
     const hasServerDuplicate = serverMessages.some((serverMsg) =>
@@ -54,8 +78,8 @@ export function mergeMessages(
     return !hasServerDuplicate;
   });
 
-  // Combine: server messages (authoritative) + local messages without duplicates
-  const merged = [...serverMessages, ...localMessagesToKeep];
+  // Combine: merged server messages (with preserved recommendations) + local messages without duplicates
+  const merged = [...mergedServerMessages, ...localMessagesToKeep];
 
   // Sort by timestamp
   merged.sort((a, b) => {

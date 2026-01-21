@@ -1,10 +1,9 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import Chat from "@/components/Chat";
 import DashboardLayout from "@/components/DashboardLayout";
-// import { getApiBaseUrl } from "@/lib/utils"; // No longer needed
 import ProtectedPage from "@/components/ProtectedPage";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
@@ -107,27 +106,23 @@ function ChatPageContent({
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const api = useApi();
   const [isMounted, setIsMounted] = useState(false);
-  // Removed unused messages state
   const [chatInitialMessages, setChatInitialMessages] = useState<
     ConversationMessage[] | undefined
   >(undefined);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [isResetting, setIsResetting] = useState(false);
-  const [hasJustClearedLocalStorage, setHasJustClearedLocalStorage] =
-    useState(false);
   const [initialCollectionId, setInitialCollectionId] = useState<string | null>(
     null,
   );
   const params = useParams();
   const searchParams = useSearchParams();
+  const isInitializedRef = useRef(false);
+  const lastConversationIdRef = useRef<string | null>(null);
 
-  // Set mounted to true after first render (client-side only)
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Handle collection query parameter
   useEffect(() => {
     const collectionId = searchParams?.get("collection");
     if (collectionId !== initialCollectionId) {
@@ -135,28 +130,20 @@ function ChatPageContent({
     }
   }, [searchParams, initialCollectionId]);
 
-  // Save selected datasets to localStorage whenever they change (only when mounted and not resetting)
   useEffect(() => {
-    if (isMounted && !isResetting) {
-      localStorage.setItem(
-        "chatSelectedDatasets",
-        JSON.stringify(selectedDatasets),
-      );
-    }
-  }, [selectedDatasets, isMounted, isResetting]);
+    if (!isMounted || !api.hasToken) return;
 
-  // Handle conversationId changes and initial page load
-  useEffect(() => {
     const id = params?.conversationId as string | undefined;
     const lastConversationId = sessionStorage.getItem("lastConversationId");
     const isTransitioningFromConversation = lastConversationId !== null && !id;
 
-    if (id) {
+    if (id && id !== conversationId) {
       sessionStorage.setItem("lastConversationId", id);
       setConversationId(id);
+      lastConversationIdRef.current = id;
+      isInitializedRef.current = true;
 
       const fetchHistory = async () => {
-        if (!api.hasToken) return;
         const queryParams =
           "?f=id&f=isActive&f=name&f=user.id&f=user.name&f=datasets.dataset.id&f=datasets.dataset.code&f=messages.kind&f=messages.data&f=messages.createdAt";
         const data = await api.getConversation(id, queryParams);
@@ -192,40 +179,30 @@ function ChatPageContent({
         setSelectedDatasets(datasetIds);
       };
       fetchHistory();
-    } else {
+    } else if (!id && conversationId !== null) {
       setConversationId(null);
       setChatInitialMessages([]);
+      lastConversationIdRef.current = null;
+      isInitializedRef.current = true;
 
       if (isTransitioningFromConversation) {
-        localStorage.removeItem("chatSelectedDatasets");
         setSelectedDatasets([]);
-        setHasJustClearedLocalStorage(true);
         sessionStorage.removeItem("lastConversationId");
-        setTimeout(() => setHasJustClearedLocalStorage(false), 100);
-      } else {
-        setIsResetting(true);
-        setSelectedDatasets([]);
-        setTimeout(() => setIsResetting(false), 0);
       }
+    } else if (!id && !isInitializedRef.current) {
+      isInitializedRef.current = true;
     }
-  }, [params, api.hasToken]);
+  }, [isMounted, params, api.hasToken]);
 
-  // Load from localStorage when on initial chat page (only if not just cleared)
   useEffect(() => {
-    if (isMounted && !conversationId && !hasJustClearedLocalStorage) {
-      const stored = localStorage.getItem("chatSelectedDatasets");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setSelectedDatasets(parsed);
-          }
-        } catch (error) {
-          logError("Error loading selected datasets", error);
-        }
-      }
+    const id = params?.conversationId as string | undefined;
+    if (
+      (id && id !== lastConversationIdRef.current) ||
+      (!id && lastConversationIdRef.current !== null)
+    ) {
+      isInitializedRef.current = false;
     }
-  }, [isMounted, conversationId, hasJustClearedLocalStorage]);
+  }, [params?.conversationId]);
 
   // Fetch all datasets from API if not in a conversation
   useEffect(() => {
@@ -340,7 +317,9 @@ function ChatPageContent({
         <Chat
           selectedDatasets={selectedDatasets}
           datasets={normalizeDatasets(datasets) as Dataset[]}
-          onSelectedDatasetsChange={setSelectedDatasets}
+          onSelectedDatasetsChange={(datasets) => {
+            setSelectedDatasets(datasets);
+          }}
           conversationId={conversationId}
           initialMessages={chatInitialMessages ?? undefined}
           showConversationName={showConversationName}
