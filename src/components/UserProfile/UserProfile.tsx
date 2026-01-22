@@ -1,13 +1,9 @@
 "use client";
 
-import { Toast } from "@ui/Toast";
 import PersonalSettingsSection from "@ui/user/PersonalSettingsSection";
 import PreferencesSection from "@ui/user/PreferencesSection";
 import TabsHeader from "@ui/user/TabsHeader";
-import UserHeader from "@ui/user/UserHeader";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { APP_ROUTES } from "@/config/appUrls";
+import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useApi } from "@/hooks/useApi";
 import { logError } from "@/lib/logger";
@@ -47,13 +43,11 @@ interface NotificationSettings {
 export default function UserProfile() {
   const api = useApi();
 
-  const { userData, setProfilePicture } = useUser();
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"personal" | "preferences">(
-    "personal",
-  );
+  const { userData } = useUser();
+  const [activeTab, setActiveTab] = useState<
+    "personal" | "notifications" | "roles"
+  >("personal");
   const [isLoading, setIsLoading] = useState(true);
-  const [showToast, setShowToast] = useState(false);
   const [personalSettings, setPersonalSettings] = useState<UserData>({
     name: userData.name,
     surname: userData.surname,
@@ -67,12 +61,7 @@ export default function UserProfile() {
     systemErrors: { email: false, inApp: false },
   });
 
-  const [backupUserData, setBackupUserData] = useState(userData);
-  const [backupNotifications, setBackupNotifications] =
-    useState<NotificationSettings>(notifications);
-
   useEffect(() => {
-    setBackupUserData(userData);
     setPersonalSettings({ name: userData.name, surname: userData.surname });
   }, [userData.name, userData.surname, userData]);
 
@@ -113,66 +102,10 @@ export default function UserProfile() {
         id: notificationSettings[lastIndex].id,
         eTag: notificationSettings[lastIndex].eTag,
       });
-      setBackupNotifications({
-        ...JSON.parse(notificationSettings[lastIndex].value),
-        id: notificationSettings[lastIndex].id,
-        eTag: notificationSettings[lastIndex].eTag,
-      });
     } catch (err) {
       logError("Failed to load notificationSettings", err);
     }
   }
-
-  const handleSaveChanges = () => {
-    setIsLoading(true);
-    saveNotificationSettings()?.then(({ id, eTag }) => {
-      setNotifications((prev) => ({ ...prev, id, eTag }));
-      setIsLoading(false);
-    });
-    setBackupUserData({
-      ...userData,
-      name: personalSettings.name,
-      surname: personalSettings.surname,
-    });
-    setBackupNotifications(notifications);
-    setShowToast(true);
-  };
-
-  const saveNotificationSettings = () => {
-    if (!api.hasToken) return;
-
-    // send notification settings with `value` not containing the `id` field
-    const { id, eTag, ...value } = notifications as any;
-    const payload: any = {
-      key: "notificationSettings",
-      value,
-    };
-
-    if (id) payload.id = id;
-    if (eTag) payload.eTag = eTag;
-
-    return api.saveUserSettings(payload, id);
-  };
-
-  const handleCancel = () => {
-    router.push(APP_ROUTES.BROWSE);
-  };
-
-  const handleImageSelect = async (file: File) => {
-    try {
-      await setProfilePicture(file);
-    } catch (error) {
-      logError("Error uploading profile picture", error);
-    }
-  };
-
-  const handleRemoveProfilePicture = async () => {
-    try {
-      await setProfilePicture(null);
-    } catch (error) {
-      logError("Error removing profile picture", error);
-    }
-  };
 
   const handleEnableAll = () => {
     setNotifications((prev) => ({
@@ -186,20 +119,6 @@ export default function UserProfile() {
   };
 
   // Simple comparisons don't need memoization - prefer readable code
-  const hasUserDataChanges =
-    (backupUserData?.name || "") !== (personalSettings?.name || "") ||
-    (backupUserData?.surname || "") !== (personalSettings?.surname || "");
-
-  // JSON.stringify is relatively expensive, but for small objects it's acceptable
-  // Keeping this as is since notification objects can be complex
-  const hasNotificationChanges = useMemo(() => {
-    return (
-      JSON.stringify(backupNotifications) !== JSON.stringify(notifications)
-    );
-  }, [backupNotifications, notifications]);
-
-  const hasChanges = hasUserDataChanges || hasNotificationChanges;
-
   const handleDisableAll = () => {
     setNotifications((prev) => ({
       ...prev,
@@ -228,56 +147,37 @@ export default function UserProfile() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        {hasChanges ? "has unsaved changes" : "has no changes"}
-        {isLoading ? "is loading..." : "is not loading"}
-        <UserHeader
-          isLoading={isLoading}
-          userData={userData}
-          onImageSelect={handleImageSelect}
-          onRemoveProfilePicture={handleRemoveProfilePicture}
-          onCancel={handleCancel}
-          onSave={handleSaveChanges}
-          hasChanges={hasChanges}
-        />
-
-        {/* Body with left Tabs and right Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-          <div className="lg:col-span-3 order-1">
-            <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+      <div className="max-w-5xl mx-auto py-4 sm:py-10">
+        <div className="flex flex-col gap-6 px-4 sm:px-6">
+          <div className="flex items-center">
+            <h1 className="text-[32px] font-semibold leading-[140%] text-gray-750">
+              Settings
+            </h1>
           </div>
+          <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+        </div>
 
-          <div className="lg:col-span-7 order-2">
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
-              {activeTab === "personal" && (
-                <PersonalSettingsSection
-                  isLoading={isLoading}
-                  formData={personalSettings}
-                  updateFormData={(data) =>
-                    setPersonalSettings((prev) => ({ ...prev, ...data }))
-                  }
-                />
-              )}
+        <div className="mt-8 px-4 sm:px-6">
+          {activeTab === "personal" && (
+            <PersonalSettingsSection
+              formData={personalSettings}
+              userData={userData}
+            />
+          )}
 
-              {activeTab === "preferences" && (
-                <PreferencesSection
-                  isLoading={isLoading}
-                  notifications={notifications}
-                  onEnableAll={handleEnableAll}
-                  onDisableAll={handleDisableAll}
-                  updateNotification={updateNotification}
-                />
-              )}
-            </div>
-          </div>
+          {activeTab === "notifications" && (
+            <PreferencesSection
+              isLoading={isLoading}
+              notifications={notifications}
+              onEnableAll={handleEnableAll}
+              onDisableAll={handleDisableAll}
+              updateNotification={updateNotification}
+            />
+          )}
+
+          {activeTab === "roles" && null}
         </div>
       </div>
-
-      <Toast
-        message="All your changes has been saved to the system"
-        isVisible={showToast}
-        onClose={() => setShowToast(false)}
-      />
     </>
   );
 }
