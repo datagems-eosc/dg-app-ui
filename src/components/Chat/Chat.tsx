@@ -2,13 +2,13 @@
 
 import { Button } from "@ui/Button";
 import ChatInitialView from "@ui/chat/ChatInitialView";
-import { ChatInput } from "@ui/chat/ChatInput";
+import { ChatInput, type ChatInputRef } from "@ui/chat/ChatInput";
 import ChatMessages from "@ui/chat/ChatMessages";
 import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
@@ -40,6 +40,8 @@ interface Message {
       cells: Array<{ column: string; value: string | number }>;
     }>;
   };
+  recommendations?: string[];
+  recommendationsLoading?: boolean;
   latitude?: number;
   longitude?: number;
 }
@@ -101,11 +103,14 @@ export default function Chat({
   >([]);
   const [isSourcesPanel, setIsSourcesPanel] = useState(false);
 
+  const fetchedRecommendationsRef = useRef<Set<string>>(new Set());
+
   // Reset initialization state when conversationId changes
   useEffect(() => {
     if (conversationId) {
       setHasInitialized(false);
       setIsMessagesLoading(true);
+      fetchedRecommendationsRef.current.clear();
     }
   }, [conversationId]);
 
@@ -146,6 +151,48 @@ export default function Chat({
     isGeneratingAIResponse,
     messages.length,
   ]);
+
+  useEffect(() => {
+    if (
+      messages.length > 0 &&
+      conversationId &&
+      hasInitialized &&
+      !isMessagesLoading
+    ) {
+      const lastAIMessageIndex = [...messages]
+        .reverse()
+        .findIndex((msg) => msg.type === "ai");
+
+      if (lastAIMessageIndex !== -1) {
+        const actualIndex = messages.length - 1 - lastAIMessageIndex;
+        const lastAIMessage = messages[actualIndex];
+
+        if (
+          lastAIMessage &&
+          !lastAIMessage.recommendations &&
+          !lastAIMessage.recommendationsLoading &&
+          !fetchedRecommendationsRef.current.has(lastAIMessage.id)
+        ) {
+          const userMessage =
+            actualIndex > 0 ? messages[actualIndex - 1] : null;
+          const currentQuery =
+            userMessage && userMessage.type === "user"
+              ? userMessage.content
+              : null;
+
+          if (currentQuery) {
+            fetchedRecommendationsRef.current.add(lastAIMessage.id);
+            fetchRecommendationsForMessage(
+              conversationId,
+              lastAIMessage.id,
+              currentQuery,
+            );
+          }
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, conversationId, hasInitialized, isMessagesLoading]);
   const [inputValue, setInputValue] = useState("");
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
   // On mobile, do not show SelectedDatasetsPanel by default
@@ -771,6 +818,101 @@ export default function Chat({
     }
   };
 
+  const chatInputRef = React.useRef<ChatInputRef>(null);
+
+  const handleRecommendationClick = (recommendation: string) => {
+    setInputValue(recommendation);
+    setTimeout(() => {
+      chatInputRef.current?.setCursorToEnd();
+    }, 0);
+  };
+
+  const fetchRecommendationsForMessage = async (
+    targetConversationId: string | null,
+    messageId: string,
+    currentQuery: string,
+  ) => {
+    try {
+      setMessages((prev) => {
+        const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+        if (messageIndex === -1) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[messageIndex] = {
+          ...updated[messageIndex],
+          recommendationsLoading: true,
+        };
+        return updated;
+      });
+
+      if (!api.hasToken) return;
+
+      const recommendationsResponse =
+        await api.getRecommendNextQueries(currentQuery);
+
+      const recommendations = recommendationsResponse.next_queries || [];
+
+      if (recommendations.length > 0) {
+        setMessages((prev) => {
+          const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+          if (messageIndex === -1) {
+            setTimeout(() => {
+              setMessages((current) => {
+                const idx = current.findIndex((msg) => msg.id === messageId);
+                if (idx !== -1) {
+                  const updated = [...current];
+                  updated[idx] = {
+                    ...updated[idx],
+                    recommendations,
+                    recommendationsLoading: false,
+                  };
+                  return updated;
+                }
+                return current;
+              });
+            }, 500);
+            return prev;
+          }
+
+          const updated = [...prev];
+          updated[messageIndex] = {
+            ...updated[messageIndex],
+            recommendations,
+            recommendationsLoading: false,
+          };
+          return updated;
+        });
+      } else {
+        setMessages((prev) => {
+          const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+          if (messageIndex === -1) {
+            return prev;
+          }
+          const updated = [...prev];
+          updated[messageIndex] = {
+            ...updated[messageIndex],
+            recommendationsLoading: false,
+          };
+          return updated;
+        });
+      }
+    } catch (_error) {
+      setMessages((prev) => {
+        const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+        if (messageIndex === -1) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[messageIndex] = {
+          ...updated[messageIndex],
+          recommendationsLoading: false,
+        };
+        return updated;
+      });
+    }
+  };
+
   // Helper: Only disable input when loading or generating AI response
   const isInputDisabled = isLoading || isGeneratingAIResponse;
 
@@ -828,6 +970,7 @@ export default function Chat({
             (messages.length > 0 || isGeneratingAIResponse) && (
               <div
                 className={`${messages.length === 0 && isGeneratingAIResponse ? "min-h-[200px]" : "min-h-0"}`}
+                ref={messagesEndRef}
               >
                 <ChatMessages
                   messages={messages}
@@ -835,6 +978,7 @@ export default function Chat({
                   isGeneratingAIResponse={isGeneratingAIResponse}
                   messagesEndRef={messagesEndRef}
                   onSourcesClick={handleSourcesClick}
+                  onRecommendationClick={handleRecommendationClick}
                   showSelectedPanel={showSelectedPanel}
                 />
               </div>
@@ -876,6 +1020,7 @@ export default function Chat({
               <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
               <ChatInput
+                ref={chatInputRef}
                 value={inputValue}
                 onChange={setInputValue}
                 onSend={handleSendMessage}

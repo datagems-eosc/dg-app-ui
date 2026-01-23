@@ -4,6 +4,7 @@ describe("Feature: Dashboard Dataset Sorting", () => {
     cy.visit("/browse");
     cy.wait(2000);
   });
+
   const sortingLabels = [
     "Name (A-Z)",
     "Name (Z-A)",
