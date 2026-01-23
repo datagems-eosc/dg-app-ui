@@ -2,6 +2,7 @@
 
 import PersonalSettingsSection from "@ui/user/PersonalSettingsSection";
 import PreferencesSection from "@ui/user/PreferencesSection";
+import RolesPermissionsSection from "@ui/user/RolesPermissionsSection";
 import TabsHeader from "@ui/user/TabsHeader";
 import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
@@ -107,29 +108,6 @@ export default function UserProfile() {
     }
   }
 
-  const handleEnableAll = () => {
-    setNotifications((prev) => ({
-      ...prev,
-      newFeatures: { email: true, inApp: true },
-      datasetLibraryChanges: { email: true, inApp: true },
-      newDatasets: { email: true, inApp: true },
-      systemMaintenance: { email: true, inApp: true },
-      systemErrors: { email: true, inApp: true },
-    }));
-  };
-
-  // Simple comparisons don't need memoization - prefer readable code
-  const handleDisableAll = () => {
-    setNotifications((prev) => ({
-      ...prev,
-      newFeatures: { email: false, inApp: false },
-      datasetLibraryChanges: { email: false, inApp: false },
-      newDatasets: { email: false, inApp: false },
-      systemMaintenance: { email: false, inApp: false },
-      systemErrors: { email: false, inApp: false },
-    }));
-  };
-
   const updateNotification = (
     key: keyof NotificationSettings,
     type: "email" | "inApp",
@@ -169,13 +147,11 @@ export default function UserProfile() {
             <PreferencesSection
               isLoading={isLoading}
               notifications={notifications}
-              onEnableAll={handleEnableAll}
-              onDisableAll={handleDisableAll}
               updateNotification={updateNotification}
             />
           )}
 
-          {activeTab === "roles" && null}
+          {activeTab === "roles" && <RolesPermissionsSection />}
         </div>
       </div>
     </>
