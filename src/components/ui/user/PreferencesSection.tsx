@@ -1,8 +1,5 @@
 "use client";
 
-import { Button } from "@ui/Button";
-import { Checkbox } from "@ui/Checkbox";
-
 type NotificationSettings = {
   newFeatures: { email: boolean; inApp: boolean };
   datasetLibraryChanges: { email: boolean; inApp: boolean };
@@ -20,8 +17,6 @@ type NotificationCategory =
 
 interface Props {
   notifications: NotificationSettings;
-  onEnableAll: () => void;
-  onDisableAll: () => void;
   updateNotification: (
     category: NotificationCategory,
     type: "email" | "inApp",
@@ -65,73 +60,86 @@ const NOTIFICATION_ITEMS: Array<{
 
 export default function PreferencesSection({
   notifications,
-  onEnableAll,
-  onDisableAll,
   updateNotification,
   isLoading,
 }: Props) {
-  return (
-    <div className="space-y-8">
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-6 sm:pb-8">
-          <div className="flex flex-col gap-1 items-start justify-start">
-            <h2 className="text-H2-20-semibold text-gray-750">
-              Notification Preferences
-            </h2>
-            <p className="text-body-14-regular text-gray-650">
-              Choose how you want to be notified about updates and changes
-            </p>
-          </div>
-          <div className="flex gap-2 self-end sm:self-auto sm:ml-auto">
-            <Button variant="outline" size="sm" onClick={onEnableAll}>
-              Enable All
-            </Button>
-            <Button variant="outline" size="sm" onClick={onDisableAll}>
-              Disable All
-            </Button>
-          </div>
-        </div>
+  const renderSwitch = (
+    isOn: boolean,
+    onToggle: () => void,
+    ariaLabel: string,
+  ) => (
+    <button
+      type="button"
+      aria-pressed={isOn}
+      aria-label={ariaLabel}
+      disabled={isLoading}
+      onClick={onToggle}
+      className={`flex items-center w-7 h-4 rounded-full p-[2px] transition-colors ${
+        isOn ? "bg-[#052F4A] justify-end" : "bg-slate-200 justify-start"
+      } ${isLoading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+    >
+      <span className="bg-white w-3 h-3 rounded-full shadow-[0px_0.6px_0.6px_0px_rgba(213,218,227,0.3)]" />
+    </button>
+  );
 
-        <div>
-          {NOTIFICATION_ITEMS.map((item, index, arr) => (
-            <div
-              key={item.key}
-              className={`grid grid-cols-1 sm:grid-cols-[38%_31%_31%] gap-4 items-start sm:items-center justify-items-start sm:justify-items-center py-6 sm:py-8 ${index < arr.length - 1 ? "border-b border-slate-200" : "pb-0"}`}
-            >
-              <div className="space-y-1 justify-self-start text-left">
-                <h3 className="text-body-16-medium text-gray-750">
-                  {item.title}
-                </h3>
-                <p className="text-descriptions-12-regular text-gray-650">
-                  {item.description}
-                </p>
-              </div>
-              <div className="justify-self-start sm:justify-self-center">
-                <Checkbox
-                  disabled={isLoading}
-                  id={`${item.key}-email`}
-                  label="E-mail"
-                  checked={notifications[item.key].email}
-                  onChange={(checked) =>
-                    updateNotification(item.key, "email", checked)
-                  }
-                />
-              </div>
-              <div className="justify-self-start sm:justify-self-center">
-                <Checkbox
-                  disabled={isLoading}
-                  id={`${item.key}-app`}
-                  label="In App"
-                  checked={notifications[item.key].inApp}
-                  onChange={(checked) =>
-                    updateNotification(item.key, "inApp", checked)
-                  }
-                />
-              </div>
-            </div>
-          ))}
+  return (
+    <div className="bg-white rounded-2xl">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:h-12 border-b border-slate-200 py-2 sm:py-0">
+        <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
+          Group permissions
+        </div>
+        <div className="hidden sm:flex w-40 text-[14px] font-normal leading-[150%] text-gray-750 text-center justify-center">
+          E-mail
+        </div>
+        <div className="hidden sm:flex w-40 text-[14px] font-normal leading-[150%] text-gray-750 text-center justify-center">
+          In App
         </div>
       </div>
+      {NOTIFICATION_ITEMS.map((item, index) => (
+        <div
+          key={item.key}
+          className={`flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:h-[72px] ${
+            index < NOTIFICATION_ITEMS.length - 1
+              ? "border-b border-slate-200"
+              : ""
+          }`}
+        >
+          <div className="flex-1">
+            <div className="text-[14px] font-medium leading-[150%] text-gray-750">
+              {item.title}
+            </div>
+            <div className="text-[12px] leading-[150%] text-gray-650 tracking-[0.12px]">
+              {item.description}
+            </div>
+          </div>
+          <div className="w-full sm:w-40 flex items-center gap-3 sm:justify-center">
+            <span className="text-[14px] text-gray-750 sm:hidden">E-mail</span>
+            {renderSwitch(
+              notifications[item.key].email,
+              () =>
+                updateNotification(
+                  item.key,
+                  "email",
+                  !notifications[item.key].email,
+                ),
+              `${item.title} email`,
+            )}
+          </div>
+          <div className="w-full sm:w-40 flex items-center gap-3 sm:justify-center">
+            <span className="text-[14px] text-gray-750 sm:hidden">In App</span>
+            {renderSwitch(
+              notifications[item.key].inApp,
+              () =>
+                updateNotification(
+                  item.key,
+                  "inApp",
+                  !notifications[item.key].inApp,
+                ),
+              `${item.title} in app`,
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
