@@ -7,11 +7,15 @@ import { UserMessage } from "./UserMessage";
 interface MessageItemProps {
   message: Message;
   onSourcesClick?: (messageId: string) => void;
+  onRecommendationClick?: (recommendation: string) => void;
+  isLastAIMessage?: boolean;
 }
 
 export default function MessageItem({
   message,
   onSourcesClick,
+  onRecommendationClick,
+  isLastAIMessage = false,
 }: MessageItemProps) {
   return (
     <div className="space-y-4">
@@ -21,6 +25,8 @@ export default function MessageItem({
         <AIMessage
           message={message}
           onSourcesClick={() => onSourcesClick?.(message.id)}
+          onRecommendationClick={onRecommendationClick}
+          isLastAIMessage={isLastAIMessage}
         />
       )}
     </div>

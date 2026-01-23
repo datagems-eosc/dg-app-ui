@@ -1,5 +1,5 @@
-# Use the official Node.js 22 Alpine image for latest security patches
-FROM node:22-alpine AS base
+# Use the official Node.js 18 Alpine image
+FROM node:20-alpine AS base
 RUN corepack enable
 
 # Install dependencies only when needed
@@ -37,8 +37,8 @@ ENV NODE_ENV=production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Update Alpine packages to get latest security patches
-RUN apk upgrade --no-cache
+# Install curl for healthcheck
+RUN apk add --no-cache curl
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -63,7 +63,7 @@ ENV HOSTNAME="0.0.0.0"
 
 # Health check configuration
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget -q --spider http://localhost:3000/healthz || exit 1
+  CMD curl -f http://localhost:3000/healthz || exit 1
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output

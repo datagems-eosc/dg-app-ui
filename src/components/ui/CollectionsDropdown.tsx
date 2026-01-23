@@ -163,7 +163,11 @@ export function CollectionsDropdown({
   }, [isOpen]);
 
   const handleSelect = (collection: Collection | null) => {
-    onSelectCollection(collection);
+    const isSameSelection =
+      selectedCollection &&
+      collection &&
+      selectedCollection.id === collection.id;
+    onSelectCollection(isSameSelection ? null : collection);
     setIsOpen(false);
   };
 

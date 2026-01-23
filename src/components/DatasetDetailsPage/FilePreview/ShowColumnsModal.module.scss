@@ -1,0 +1,180 @@
+@use '@/styles' as *;
+
+.showColumnsModal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  @include flex-center;
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  &__content {
+    position: relative;
+    background: $color-background;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-s3;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    @include flex-column;
+    gap: 0;
+  }
+
+  &__header {
+    @include flex-between;
+    padding: $spacing-xl;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__title {
+    @include text-xl;
+    @include font-semibold;
+    @include text-primary;
+  }
+
+  &__closeButton {
+    @include flex-center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: $border-radius-sm;
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-secondary;
+    }
+  }
+
+  &__closeIcon {
+    @include icon-base;
+    color: $color-icon;
+  }
+
+  &__search {
+    position: relative;
+    padding: $spacing-lg $spacing-xl;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__searchIcon {
+    @include icon-base;
+    color: $color-icon;
+    position: absolute;
+    left: calc($spacing-xl + $spacing-md);
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  &__searchInput {
+    @include text-base;
+    @include text-primary;
+    width: 100%;
+    padding: $spacing-sm $spacing-md $spacing-sm calc($spacing-xl + $spacing-md);
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    background: $color-background;
+    @include transition-base;
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 0;
+    }
+
+    &::placeholder {
+      @include text-secondary;
+    }
+  }
+
+  &__selectAll {
+    padding: $spacing-lg $spacing-xl;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__list {
+    @include flex-column;
+    gap: $spacing-sm;
+    padding: $spacing-lg $spacing-xl;
+    overflow-y: auto;
+    flex: 1;
+    max-height: 400px;
+  }
+
+  &__checkboxLabel {
+    @include flex-center;
+    gap: $spacing-md;
+    @include text-base;
+    @include text-primary;
+    cursor: pointer;
+    padding: $spacing-sm;
+    border-radius: $border-radius-sm;
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-secondary;
+    }
+  }
+
+  &__checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: $color-info;
+  }
+
+  &__footer {
+    @include flex-center;
+    justify-content: flex-end;
+    gap: $spacing-md;
+    padding: $spacing-xl;
+    border-top: 1px solid $color-border;
+  }
+
+  &__cancelButton {
+    @include text-base;
+    @include font-medium;
+    @include text-primary;
+    padding: $spacing-sm $spacing-lg;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    background: none;
+    cursor: pointer;
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-secondary;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+    }
+  }
+
+  &__saveButton {
+    @include text-base;
+    @include font-medium;
+    color: white;
+    padding: $spacing-sm $spacing-lg;
+    border: none;
+    border-radius: $border-radius-md;
+    background: $color-info;
+    cursor: pointer;
+    @include transition-base;
+
+    &:hover {
+      opacity: 0.9;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+    }
+  }
+}
+

@@ -1,0 +1,72 @@
+@use '@/styles' as *;
+
+.aboutFile {
+  @include flex-column;
+  gap: $spacing-sm; // 8px gap as per Figma
+  padding: $spacing-lg $spacing-lg $spacing-md $spacing-lg; // 16px top/sides, 12px bottom to reduce gap to table
+  background: $color-background; // WHITE background, no secondary!
+  border-bottom: none; // No border
+
+  &__title {
+    @include text-md;
+    @include font-semibold;
+    @include text-primary;
+    margin: 0; // remove default h4 margin
+  }
+
+  &__text {
+    @include text-sm; // 14px as per Figma
+    @include text-secondary;
+    font-weight: $font-weight-normal; // Regular
+    line-height: 1.5; // 21px line-height
+    margin: 0; // Remove default margin
+    white-space: normal; // Allow wrapping
+    word-break: break-word;
+
+    &--truncated {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  &__toggle {
+    @include text-xs; // 12px as per Figma
+    @include font-medium;
+    @include text-primary; // #314158 as per Figma
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-top: 0; // no extra gap
+    @include transition-base;
+    align-self: flex-start;
+    text-decoration: underline; // Always underlined as per Figma
+    text-decoration-skip-ink: none;
+    text-underline-position: from-font;
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    line-height: 1.5; // 18px line-height
+    display: inline-flex; // inline-flex instead of flex
+    align-items: center;
+    gap: $spacing-xs; // 4px gap for chevron
+
+    &:hover {
+      opacity: 0.8;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+      border-radius: $border-radius-sm;
+    }
+  }
+
+  &__toggleIcon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+}
+

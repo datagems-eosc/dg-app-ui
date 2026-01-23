@@ -2,19 +2,20 @@
 
 import { Button } from "@ui/Button";
 import ChatInitialView from "@ui/chat/ChatInitialView";
-import { ChatInput } from "@ui/chat/ChatInput";
+import { ChatInput, type ChatInputRef } from "@ui/chat/ChatInput";
 import ChatMessages from "@ui/chat/ChatMessages";
 import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { logError } from "@/lib/logger";
 import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
 import {
   parseConversationMessage,
@@ -40,6 +41,8 @@ interface Message {
       cells: Array<{ column: string; value: string | number }>;
     }>;
   };
+  recommendations?: string[];
+  recommendationsLoading?: boolean;
   latitude?: number;
   longitude?: number;
 }
@@ -101,11 +104,14 @@ export default function Chat({
   >([]);
   const [isSourcesPanel, setIsSourcesPanel] = useState(false);
 
+  const fetchedRecommendationsRef = useRef<Set<string>>(new Set());
+
   // Reset initialization state when conversationId changes
   useEffect(() => {
     if (conversationId) {
       setHasInitialized(false);
       setIsMessagesLoading(true);
+      fetchedRecommendationsRef.current.clear();
     }
   }, [conversationId]);
 
@@ -145,6 +151,63 @@ export default function Chat({
     hasInitialized,
     isGeneratingAIResponse,
     messages.length,
+  ]);
+
+  useEffect(() => {
+    // Pobierz rekomendacje tylko gdy:
+    // 1. Są wiadomości
+    // 2. Komponent jest zainicjalizowany (lub nie ma conversationId - nowa konwersacja)
+    // 3. Nie trwa ładowanie wiadomości
+    // 4. Nie trwa generowanie odpowiedzi AI (czekamy na pełne wyrenderowanie)
+    if (
+      messages.length > 0 &&
+      (conversationId ? hasInitialized : true) &&
+      !isMessagesLoading &&
+      !isGeneratingAIResponse
+    ) {
+      const lastAIMessageIndex = [...messages]
+        .reverse()
+        .findIndex((msg) => msg.type === "ai");
+
+      if (lastAIMessageIndex !== -1) {
+        const actualIndex = messages.length - 1 - lastAIMessageIndex;
+        const lastAIMessage = messages[actualIndex];
+
+        if (
+          lastAIMessage &&
+          !lastAIMessage.recommendations &&
+          !lastAIMessage.recommendationsLoading &&
+          !fetchedRecommendationsRef.current.has(lastAIMessage.id)
+        ) {
+          // Znajdź najbliższą wcześniejszą wiadomość użytkownika (może być oddzielona innymi AI)
+          const previousUserMessage = [...messages]
+            .slice(0, actualIndex)
+            .reverse()
+            .find((msg) => msg.type === "user");
+
+          const currentQuery = previousUserMessage?.content ?? null;
+
+          if (currentQuery) {
+            fetchedRecommendationsRef.current.add(lastAIMessage.id);
+            // Dodaj opóźnienie, aby upewnić się, że odpowiedź jest w pełni wyrenderowana
+            setTimeout(() => {
+              fetchRecommendationsForMessage(
+                conversationId ?? null,
+                lastAIMessage.id,
+                currentQuery,
+              );
+            }, 300);
+          }
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    messages,
+    conversationId,
+    hasInitialized,
+    isMessagesLoading,
+    isGeneratingAIResponse,
   ]);
   const [inputValue, setInputValue] = useState("");
   const [showAddDatasetsModal, setShowAddDatasetsModal] = useState(false);
@@ -192,6 +255,138 @@ export default function Chat({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  const handleSelectCollection = useCallback(
+    async (collection: Collection | null) => {
+      setPreviousDatasets([...selectedDatasets]);
+
+      setSelectedCollection(collection);
+
+      // If a collection is selected, get all dataset IDs from it and update selected datasets
+      if (collection) {
+        let datasetIds: string[] = [];
+
+        // Check if collection has datasets array (API collections)
+        if (
+          "datasets" in collection &&
+          collection.datasets &&
+          Array.isArray(collection.datasets) &&
+          collection.datasets.length > 0
+        ) {
+          datasetIds = collection.datasets
+            .map((dataset) => dataset.id)
+            .filter((id): id is string => !!id);
+        }
+        // Check if collection has datasetIds array (user collections)
+        else if (
+          collection.datasetIds &&
+          Array.isArray(collection.datasetIds) &&
+          collection.datasetIds.length > 0
+        ) {
+          datasetIds = collection.datasetIds.filter((id): id is string => !!id);
+        }
+        // If collection doesn't have datasets, fetch them from API
+        else if (collection.id && api.hasToken) {
+          try {
+            const payload = {
+              project: {
+                fields: [
+                  "id",
+                  "code",
+                  "name",
+                  "description",
+                  "size",
+                  "datePublished",
+                  "collections.id",
+                  "collections.code",
+                  "collections.name",
+                  "collections.datasetCount",
+                  "permissions.browseDataset",
+                  "permissions.editDataset",
+                ],
+              },
+              collections: {
+                ids: [collection.id],
+              },
+              page: {
+                Offset: 0,
+                Size: 100,
+              },
+              Order: {
+                Items: ["+code"],
+              },
+              Metadata: {
+                CountAll: true,
+              },
+            };
+            const data = await api.queryDatasets(payload);
+            if (Array.isArray(data.items)) {
+              datasetIds = data.items
+                .map((dataset: { id?: string }) => dataset.id)
+                .filter((id: string | undefined): id is string => !!id);
+            }
+          } catch (error) {
+            logError("Failed to fetch datasets for collection", error);
+          }
+        }
+
+        // Update selected datasets with collection datasets
+        if (datasetIds.length > 0) {
+          onSelectedDatasetsChange(datasetIds);
+
+          // Build names map for the selected datasets
+          const namesMap: Record<string, string> = {};
+          datasetIds.forEach((id) => {
+            const dataset = datasets.find((d) => d.id === id);
+            if (dataset) {
+              namesMap[id] = dataset.title;
+            } else {
+              if ("datasets" in collection && collection.datasets) {
+                const apiCollection = collection as ApiCollection;
+                const datasetItem = apiCollection.datasets?.find(
+                  (item) => item.id === id,
+                );
+                if (datasetItem?.name) {
+                  namesMap[id] = datasetItem.name;
+                } else {
+                  namesMap[id] = `${collection.name} Dataset`;
+                }
+              } else {
+                // Fallback: use collection name if dataset not found
+                namesMap[id] = `${collection.name} Dataset`;
+              }
+            }
+          });
+          setSelectedDatasetNamesMap(namesMap);
+
+          // Open the selected datasets panel if it's not already open
+          if (!showSelectedPanel) {
+            setShowSelectedPanel(true);
+            setIsSourcesPanel(false);
+            setIsPanelAnimating(true);
+            setTimeout(() => setIsPanelAnimating(false), 50);
+            if (isTablet) {
+              window.dispatchEvent(
+                new CustomEvent("requestCloseSidebarForTablet"),
+              );
+            }
+          }
+        }
+      } else {
+        // If no collection is selected, clear selected datasets
+        onSelectedDatasetsChange([]);
+        setSelectedDatasetNamesMap({});
+      }
+    },
+    [
+      selectedDatasets,
+      datasets,
+      api,
+      onSelectedDatasetsChange,
+      showSelectedPanel,
+      isTablet,
+    ],
+  );
+
   // Close right-side panel when sidebar opens on tablets
   useEffect(() => {
     const handleSidebarOpenedForTablet = () => {
@@ -232,9 +427,6 @@ export default function Chat({
       ) {
         handleSelectCollection(targetCollection);
       }
-    } else if (!initialCollectionId && selectedCollection) {
-      // If no collection in URL but we have a selected collection, clear it
-      handleSelectCollection(null);
     }
   }, [
     initialCollectionId,
@@ -272,8 +464,10 @@ export default function Chat({
         if (messageDatasetIds && messageDatasetIds.length > 0) {
           // Only update selected datasets if they don't match message datasets AND we're not in an existing conversation
           // In existing conversations, preserve user's dataset selection
+          // Also don't override if user has manually selected a collection
           if (
             !conversationId &&
+            !selectedCollection &&
             !arraysEqual(selectedDatasets, messageDatasetIds)
           ) {
             onSelectedDatasetsChange(messageDatasetIds);
@@ -302,16 +496,18 @@ export default function Chat({
               collection.datasets &&
               collection.datasets.length > 0
             ) {
-              collectionDatasetIds = collection.datasets.map(
-                (dataset) => dataset.id,
-              );
+              collectionDatasetIds = collection.datasets
+                .map((dataset) => dataset.id)
+                .filter((id): id is string => !!id);
             }
             // Handle user collections with datasetIds array
             else if (
               collection.datasetIds &&
               collection.datasetIds.length > 0
             ) {
-              collectionDatasetIds = collection.datasetIds;
+              collectionDatasetIds = collection.datasetIds.filter(
+                (id): id is string => !!id,
+              );
             }
 
             // Check if the current selected datasets match this collection exactly
@@ -333,9 +529,11 @@ export default function Chat({
           } else if (
             !matchingCollection &&
             selectedCollection &&
-            !conversationId
+            !conversationId &&
+            selectedDatasets.length > 0
           ) {
             // Only show warning for new conversations when collection doesn't match
+            // Don't reset collection if datasets are being updated (e.g., after selecting a collection)
             setShowDatasetChangeWarning(true);
           }
         }
@@ -431,6 +629,8 @@ export default function Chat({
 
           // Turn off spinner
           setIsGeneratingAIResponse(false);
+
+          // Rekomendacje będą pobrane przez useEffect po zakończeniu isGeneratingAIResponse
         }
 
         setIsLoading(false);
@@ -504,11 +704,6 @@ export default function Chat({
           });
           setSelectedDatasetNamesMap(namesMap);
           onSelectedDatasetsChange(newSelectedDatasets);
-          // Also update localStorage for consistency
-          localStorage.setItem(
-            "chatSelectedDatasets",
-            JSON.stringify(newSelectedDatasets),
-          );
           // Redirect to /chat/conversationId if present in response and not already in a conversation
           if (conversationIdFromPersist && !conversationId) {
             router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
@@ -585,11 +780,6 @@ export default function Chat({
           });
           setSelectedDatasetNamesMap(namesMap);
           onSelectedDatasetsChange(newSelectedDatasets);
-          // Also update localStorage for consistency
-          localStorage.setItem(
-            "chatSelectedDatasets",
-            JSON.stringify(newSelectedDatasets),
-          );
           // Redirect to /chat/conversationId if present in response and not already in a conversation
           if (conversationIdFromPersist && !conversationId) {
             router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
@@ -678,73 +868,6 @@ export default function Chat({
     }
   };
 
-  function handleSelectCollection(collection: Collection | null) {
-    setPreviousDatasets([...selectedDatasets]);
-
-    setSelectedCollection(collection);
-
-    // If a collection is selected, get all dataset IDs from it and update selected datasets
-    if (collection) {
-      let datasetIds: string[] = [];
-
-      // Check if collection has datasets array (API collections)
-      if (
-        "datasets" in collection &&
-        collection.datasets &&
-        collection.datasets.length > 0
-      ) {
-        datasetIds = collection.datasets.map((dataset) => dataset.id);
-      }
-      // Check if collection has datasetIds array (user collections)
-      else if (collection.datasetIds && collection.datasetIds.length > 0) {
-        datasetIds = collection.datasetIds;
-      }
-
-      // Update selected datasets with collection datasets
-      if (datasetIds.length > 0) {
-        onSelectedDatasetsChange(datasetIds);
-
-        // Build names map for the selected datasets
-        const namesMap: Record<string, string> = {};
-        datasetIds.forEach((id) => {
-          const dataset = datasets.find((d) => d.id === id);
-          if (dataset) {
-            namesMap[id] = dataset.title;
-          } else {
-            if ("datasets" in collection && collection.datasets) {
-              const apiCollection = collection as ApiCollection;
-              const datasetItem = apiCollection.datasets?.find(
-                (item) => item.id === id,
-              );
-              if (datasetItem?.name) {
-                namesMap[id] = datasetItem.name;
-              } else {
-                namesMap[id] = `${collection.name} Dataset`;
-              }
-            } else {
-              // Fallback: use collection name if dataset not found
-              namesMap[id] = `${collection.name} Dataset`;
-            }
-          }
-        });
-        setSelectedDatasetNamesMap(namesMap);
-
-        // Update localStorage for consistency
-        localStorage.setItem(
-          "chatSelectedDatasets",
-          JSON.stringify(datasetIds),
-        );
-      }
-    } else {
-      // If no collection is selected, clear selected datasets
-      onSelectedDatasetsChange([]);
-      setSelectedDatasetNamesMap({});
-
-      // Clear localStorage
-      localStorage.removeItem("chatSelectedDatasets");
-    }
-  }
-
   function handleClosePanel() {
     setIsPanelClosing(true);
     setTimeout(() => {
@@ -768,6 +891,134 @@ export default function Chat({
       if (isTablet) {
         window.dispatchEvent(new CustomEvent("requestCloseSidebarForTablet"));
       }
+    }
+  };
+
+  const chatInputRef = React.useRef<ChatInputRef>(null);
+
+  const handleRecommendationClick = (recommendation: string) => {
+    setInputValue(recommendation);
+    setTimeout(() => {
+      chatInputRef.current?.setCursorToEnd();
+    }, 0);
+  };
+
+  const fetchRecommendationsForMessage = async (
+    targetConversationId: string | null,
+    messageId: string,
+    currentQuery: string,
+  ) => {
+    try {
+      setMessages((prev) => {
+        const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+        if (messageIndex === -1) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[messageIndex] = {
+          ...updated[messageIndex],
+          recommendationsLoading: true,
+        };
+        return updated;
+      });
+
+      if (!api.hasToken) return;
+
+      const recommendationsResponse =
+        await api.getRecommendNextQueries(currentQuery);
+
+      // Sprawdź różne możliwe formaty odpowiedzi
+      let recommendations: string[] = [];
+
+      if (
+        recommendationsResponse.next_queries &&
+        Array.isArray(recommendationsResponse.next_queries)
+      ) {
+        recommendations = recommendationsResponse.next_queries.slice(0, 3);
+      } else if (Array.isArray(recommendationsResponse)) {
+        // Jeśli odpowiedź to bezpośrednio tablica
+        recommendations = recommendationsResponse.slice(0, 3);
+      }
+
+      // Log dla debugowania
+      console.log("[Recommendations] Fetched:", {
+        messageId,
+        query: currentQuery,
+        recommendationsCount: recommendations.length,
+        recommendations,
+        fullResponse: recommendationsResponse,
+      });
+
+      // Tymczasowy fallback - jeśli endpoint zwraca pustą tablicę, użyj mock danych do testów
+      // TODO: Usunąć gdy endpoint będzie zwracał prawdziwe dane
+      if (recommendations.length === 0) {
+        console.warn(
+          "[Recommendations] Endpoint returned empty array, using mock data for testing",
+        );
+        recommendations = [
+          "What are the applications of machine learning?",
+          "How does neural network training work?",
+          "What is deep learning?",
+        ];
+      }
+
+      if (recommendations.length > 0) {
+        setMessages((prev) => {
+          const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+          if (messageIndex === -1) {
+            setTimeout(() => {
+              setMessages((current) => {
+                const idx = current.findIndex((msg) => msg.id === messageId);
+                if (idx !== -1) {
+                  const updated = [...current];
+                  updated[idx] = {
+                    ...updated[idx],
+                    recommendations,
+                    recommendationsLoading: false,
+                  };
+                  return updated;
+                }
+                return current;
+              });
+            }, 500);
+            return prev;
+          }
+
+          const updated = [...prev];
+          updated[messageIndex] = {
+            ...updated[messageIndex],
+            recommendations,
+            recommendationsLoading: false,
+          };
+          return updated;
+        });
+      } else {
+        setMessages((prev) => {
+          const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+          if (messageIndex === -1) {
+            return prev;
+          }
+          const updated = [...prev];
+          updated[messageIndex] = {
+            ...updated[messageIndex],
+            recommendationsLoading: false,
+          };
+          return updated;
+        });
+      }
+    } catch (_error) {
+      setMessages((prev) => {
+        const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+        if (messageIndex === -1) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[messageIndex] = {
+          ...updated[messageIndex],
+          recommendationsLoading: false,
+        };
+        return updated;
+      });
     }
   };
 
@@ -828,6 +1079,7 @@ export default function Chat({
             (messages.length > 0 || isGeneratingAIResponse) && (
               <div
                 className={`${messages.length === 0 && isGeneratingAIResponse ? "min-h-[200px]" : "min-h-0"}`}
+                ref={messagesEndRef}
               >
                 <ChatMessages
                   messages={messages}
@@ -835,6 +1087,7 @@ export default function Chat({
                   isGeneratingAIResponse={isGeneratingAIResponse}
                   messagesEndRef={messagesEndRef}
                   onSourcesClick={handleSourcesClick}
+                  onRecommendationClick={handleRecommendationClick}
                   showSelectedPanel={showSelectedPanel}
                 />
               </div>
@@ -876,6 +1129,7 @@ export default function Chat({
               <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
               <ChatInput
+                ref={chatInputRef}
                 value={inputValue}
                 onChange={setInputValue}
                 onSend={handleSendMessage}
@@ -910,6 +1164,7 @@ export default function Chat({
             <DatasetChangeWarning isVisible={showDatasetChangeWarning} />
 
             <ChatInput
+              ref={chatInputRef}
               value={inputValue}
               onChange={setInputValue}
               onSend={handleSendMessage}

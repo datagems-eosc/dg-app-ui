@@ -631,6 +631,47 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getRecommendNextQueries = useCallback(
+    async (
+      query: string,
+    ): Promise<{
+      next_queries: string[];
+    }> => {
+      if (!token) {
+        throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
+      }
+
+      logApiRequest("getRecommendNextQueries", {
+        endpoint: "/search/recommend",
+        query,
+      });
+
+      const requestPayload = {
+        query: query,
+      };
+
+      const response = await makeRequest("/search/recommend", {
+        method: "POST",
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("getRecommendNextQueries", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_RECOMMENDATIONS_FAILED,
+        );
+      }
+
+      const result = await response.json();
+      logApiResponse("getRecommendNextQueries", {
+        queriesCount: result.next_queries?.length || 0,
+      });
+      return result;
+    },
+    [makeRequest, token],
+  );
+
   return {
     hasToken: !!token,
     token,
@@ -656,5 +697,6 @@ export function useApi() {
     getLicenses,
     getUserSettings,
     saveUserSettings,
+    getRecommendNextQueries,
   };
 }

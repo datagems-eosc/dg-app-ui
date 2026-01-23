@@ -5,12 +5,12 @@
   background: $color-background;
 
   &__container {
-    max-width: $container-max-width;
+    max-width: 1440px;
     margin: 0 auto;
-    padding: $spacing-3xl 0;
+    padding: $spacing-3xl $spacing-xl;
 
     @media (max-width: $breakpoint-md - 1px) {
-      padding: $spacing-xl 0;
+      padding: $spacing-xl $spacing-lg;
     }
   }
 
@@ -75,42 +75,67 @@
   &__sectionTitle {
     @include text-2xl;
     @include text-primary;
+    margin-bottom: $spacing-2xl;
 
     @media (max-width: $breakpoint-md - 1px) {
       font-size: $font-size-xl;
+      margin-bottom: $spacing-xl;
     }
   }
 
-  &__mainContent {
+  &__row {
     display: flex;
     gap: $spacing-2xl;
     align-items: flex-start;
+    margin-bottom: $spacing-3xl;
 
     @media (max-width: $breakpoint-lg - 1px) {
       flex-direction: column;
-      gap: $spacing-xl;
+      margin-bottom: $spacing-2xl;
+    }
+
+    @media (max-width: $breakpoint-md - 1px) {
+      margin-bottom: $spacing-xl;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
     }
   }
 
-  &__leftColumn {
+  &__rowLeft {
     flex: 1;
+    @include flex-column;
+    gap: 0;
     min-width: 0;
-    background: $color-background;
-    @include border-base;
-    @include border-radius-lg;
-    padding: $spacing-xl;
 
-    @media (max-width: $breakpoint-md - 1px) {
-      padding: $spacing-lg;
+    @media (max-width: $breakpoint-lg - 1px) {
+      width: 100%;
+    }
+  }
+
+  &__rowRight {
+    width: 330px;
+    flex-shrink: 0;
+    @include flex-column;
+    gap: 0;
+
+    @media (max-width: $breakpoint-lg - 1px) {
+      width: 100%;
     }
   }
 
   &__sections {
     @include flex-column;
     gap: $spacing-2xl;
+    background: $color-background;
+    @include border-base;
+    @include border-radius-lg;
+    padding: $spacing-xl;
 
     @media (max-width: $breakpoint-md - 1px) {
       gap: $spacing-xl;
+      padding: $spacing-lg;
     }
   }
 }

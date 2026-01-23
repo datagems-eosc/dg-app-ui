@@ -1,0 +1,69 @@
+@use '@/styles' as *;
+
+.reportHeader {
+  @include flex-between;
+  padding: $spacing-md $spacing-lg; // py-12px px-16px as per Figma
+  gap: $spacing-lg;
+  background: $color-background-secondary;
+  border-bottom: 1px solid $color-border;
+
+  &__content {
+    @include flex-column;
+    gap: $spacing-xs;
+    flex: 1;
+  }
+
+  &__title {
+    @include text-md;
+    @include font-semibold;
+    @include text-primary;
+  }
+
+  &__description {
+    @include text-sm;
+    font-weight: $font-weight-normal;
+    @include text-secondary;
+    margin: 0;
+  }
+
+  &__button {
+    @include button-base;
+    @include flex-center;
+    gap: $spacing-xs;
+    height: 32px;
+    padding: 0 $spacing-md;
+    
+    &:hover {
+      background: $color-background-secondary;
+    }
+  }
+
+  &__buttonIcon {
+    @include icon-base;
+    color: $color-icon;
+  }
+}
+
+.totalErrors {
+  @include flex-between;
+  padding: $spacing-md $spacing-lg; // py-12px px-16px as per Figma
+  background: $color-background;
+  border-bottom: 1px solid $color-border;
+
+  &__label {
+    @include text-sm;
+    @include font-medium;
+    @include text-primary;
+  }
+
+  &__value {
+    @include text-sm;
+    @include font-medium;
+    @include text-primary;
+  }
+
+  &__count {
+    color: $color-error;
+  }
+}
+

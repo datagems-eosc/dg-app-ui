@@ -1,0 +1,65 @@
+@use '@/styles' as *;
+
+.filePreviewHeader {
+  @include flex-between;
+  padding: $spacing-xl $spacing-lg; // py-24px px-16px as per Figma
+  gap: $spacing-lg;
+
+  &__info {
+    display: flex;
+    gap: $spacing-xs;
+    flex: 1;
+    min-width: 0;
+    align-items: baseline;
+  }
+
+  &__filename {
+    @include text-xl;
+    @include font-semibold;
+    @include text-primary;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 28px; // 28px as per Figma
+  }
+
+  &__filesize {
+    @include text-xs;
+    @include font-medium;
+    @include text-secondary;
+    line-height: 18px; // 18px as per Figma
+    letter-spacing: $letter-spacing-wide; // 0.12px as per Figma
+    flex-shrink: 0;
+  }
+
+  &__actions {
+    @include flex-center;
+    gap: $spacing-sm;
+  }
+
+  &__iconButton {
+    @include flex-center;
+    width: 32px;
+    height: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: $border-radius-sm;
+    @include transition-base;
+
+    &:hover {
+      background: $color-background-secondary;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+    }
+  }
+
+  &__icon {
+    @include icon-base;
+    color: $color-icon;
+  }
+}
+
