@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@ui/Button";
+
 type NotificationSettings = {
   newFeatures: { email: boolean; inApp: boolean };
   datasetLibraryChanges: { email: boolean; inApp: boolean };
@@ -17,6 +19,13 @@ type NotificationCategory =
 
 interface Props {
   notifications: NotificationSettings;
+  onEnableAll: () => void;
+  onDisableAll: () => void;
+  onReset: () => void;
+  onDeleteSaved: () => void;
+  onSave: () => void;
+  hasSavedSettings: boolean;
+  hasChanges: boolean;
   updateNotification: (
     category: NotificationCategory,
     type: "email" | "inApp",
@@ -60,6 +69,13 @@ const NOTIFICATION_ITEMS: Array<{
 
 export default function PreferencesSection({
   notifications,
+  onEnableAll,
+  onDisableAll,
+  onReset,
+  onDeleteSaved,
+  onSave,
+  hasSavedSettings,
+  hasChanges,
   updateNotification,
   isLoading,
 }: Props) {
@@ -84,6 +100,48 @@ export default function PreferencesSection({
 
   return (
     <div className="bg-white rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-4">
+        <div className="flex flex-col gap-1 items-start justify-start">
+          <h2 className="text-[16px] font-semibold leading-[150%] text-gray-750">
+            Notification Preferences
+          </h2>
+          <p className="text-[12px] leading-[150%] text-gray-650 tracking-[0.12px]">
+            Choose how you want to be notified about updates and changes
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 self-end sm:self-auto sm:ml-auto">
+          <Button variant="outline" size="sm" onClick={onEnableAll}>
+            Enable All
+          </Button>
+          <Button variant="outline" size="sm" onClick={onDisableAll}>
+            Disable All
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDeleteSaved}
+            disabled={isLoading || !hasSavedSettings}
+          >
+            Delete saved settings
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReset}
+            disabled={isLoading}
+          >
+            Reset to defaults
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onSave}
+            disabled={isLoading || !hasChanges}
+          >
+            Save changes
+          </Button>
+        </div>
+      </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:h-12 border-b border-slate-200 py-2 sm:py-0">
         <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
           Group permissions

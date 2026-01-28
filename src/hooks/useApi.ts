@@ -5,6 +5,13 @@ import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
+import type {
+  UserGroupLookup,
+  UserGroupQueryResult,
+  UserLookup,
+  UserQueryResult,
+} from "@/types/userDirectory";
+import type { UserSettings, UserSettingsPersist } from "@/types/userSettings";
 
 export function useApi() {
   const { data: session } = useSession();
@@ -579,13 +586,68 @@ export function useApi() {
     return response.json();
   }, [makeRequest]);
 
-  const getUserSettings = useCallback(
-    async (settingsKey: string): Promise<any> => {
-      const returnFields = ["id", "key", "value", "eTag"];
-      const qs =
-        returnFields && returnFields.length > 0
-          ? `?${returnFields.map((f) => `f=${encodeURIComponent(f)}`).join("&")}`
-          : "";
+  const queryUsers = useCallback(
+    async (payload: UserLookup): Promise<UserQueryResult> => {
+      logApiRequest("queryUsers", {
+        endpoint: "/user/query",
+        payload,
+      });
+
+      const response = await makeRequest("/user/query", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to query users");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const queryUserGroups = useCallback(
+    async (payload: UserGroupLookup): Promise<UserGroupQueryResult> => {
+      logApiRequest("queryUserGroups", {
+        endpoint: "/user/group/query",
+        payload,
+      });
+
+      const response = await makeRequest("/user/group/query", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to query user groups");
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const buildFieldsQuery = (fields?: string[]) => {
+    if (!fields || fields.length === 0) return "";
+    return `?${fields.map((f) => `f=${encodeURIComponent(f)}`).join("&")}`;
+  };
+
+  const getUserSettingsByKey = useCallback(
+    async (
+      settingsKey: string,
+      fields: string[] = [
+        "id",
+        "key",
+        "value",
+        "eTag",
+        "createdAt",
+        "updatedAt",
+      ],
+    ): Promise<UserSettings[]> => {
+      const qs = buildFieldsQuery(fields);
 
       const response = await makeRequest(
         `/user/settings/key/${settingsKey}${qs}`,
@@ -606,13 +668,82 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getUserSettingsById = useCallback(
+    async (
+      id: string,
+      fields: string[] = [
+        "id",
+        "key",
+        "value",
+        "eTag",
+        "createdAt",
+        "updatedAt",
+      ],
+    ): Promise<UserSettings> => {
+      const qs = buildFieldsQuery(fields);
+
+      const response = await makeRequest(`/user/settings/id/${id}${qs}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_SETTINGS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const deleteUserSettingsById = useCallback(
+    async (id: string): Promise<void> => {
+      const response = await makeRequest(`/user/settings/id/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.DELETE_USER_SETTINGS_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
+  const deleteUserSettingsByKey = useCallback(
+    async (key: string): Promise<void> => {
+      const response = await makeRequest(`/user/settings/key/${key}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.DELETE_USER_SETTINGS_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
+  const getUserSettings = getUserSettingsByKey;
+
   const saveUserSettings = useCallback(
-    async (payload: any, id?: string): Promise<any> => {
-      const body = { ...payload };
+    async (
+      payload: UserSettingsPersist & { value: unknown },
+      id?: string,
+    ): Promise<UserSettings> => {
+      const body: UserSettingsPersist & { value: string } = {
+        ...payload,
+        value: JSON.stringify(payload.value),
+      };
       if (id) {
         body.id = id;
       }
-      body.value = JSON.stringify(body.value);
 
       const response = await makeRequest(`/user/settings/persist`, {
         method: "POST",
@@ -695,7 +826,13 @@ export function useApi() {
     deleteConversation,
     getFieldsOfScience,
     getLicenses,
+    queryUsers,
+    queryUserGroups,
     getUserSettings,
+    getUserSettingsByKey,
+    getUserSettingsById,
+    deleteUserSettingsById,
+    deleteUserSettingsByKey,
     saveUserSettings,
     getRecommendNextQueries,
   };

@@ -4,6 +4,8 @@ import { Button } from "@ui/Button";
 import { Input } from "@ui/Input";
 import { Search, Settings2, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 import { ManageGroupsModal } from "./ManageGroupsModal";
 
 type PermissionKey =
@@ -162,11 +164,13 @@ export function DatasetPermissionsModal({
   datasetName,
   onClose,
 }: DatasetPermissionsModalProps) {
+  const api = useApi();
   const [activeTab, setActiveTab] = useState<"groups" | "invite">("groups");
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
   const [inviteSearch, setInviteSearch] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
+  const [isInviteLookupLoading, setIsInviteLookupLoading] = useState(false);
   const [groupPermissions, setGroupPermissions] = useState(
     initialGroupPermissions,
   );
@@ -186,6 +190,36 @@ export function DatasetPermissionsModal({
     if (!isOpen) return;
     setActiveTab("groups");
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !api.hasToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await api.queryUserGroups({ like: null });
+        if (cancelled) return;
+        const groups =
+          result.items?.map((group) => ({
+            id: group.id ?? "",
+            name: group.name ?? "",
+            permissions: {
+              browse: false,
+              delete: false,
+              download: false,
+              edit: false,
+              manage: false,
+              search: false,
+            },
+          })) ?? [];
+        setGroupPermissions(groups.filter((group) => group.id && group.name));
+      } catch (error) {
+        logError("Failed to load groups for permissions", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [api, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -408,21 +442,40 @@ export function DatasetPermissionsModal({
                       <Button
                         variant="outline"
                         size="md"
-                        onClick={() => {
+                        onClick={async () => {
                           if (!inviteEmail.trim()) return;
                           const email = inviteEmail.trim();
-                          setInvitedUsers((prev) => [
-                            ...prev,
-                            {
-                              id: `invite-${Date.now()}`,
-                              name: email.split("@")[0] || "Invited User",
-                              email,
-                              permissions: { ...invitePermissions },
-                            },
-                          ]);
-                          setInviteEmail("");
+                          setIsInviteLookupLoading(true);
+                          try {
+                            const result = await api.queryUsers({
+                              like: email,
+                            });
+                            const match = result.items?.find(
+                              (user) =>
+                                user.email?.toLowerCase() ===
+                                email.toLowerCase(),
+                            );
+                            setInvitedUsers((prev) => [
+                              ...prev,
+                              {
+                                id: match?.id ?? `invite-${Date.now()}`,
+                                name:
+                                  match?.name ??
+                                  email.split("@")[0] ??
+                                  "Invited User",
+                                email: match?.email ?? email,
+                                permissions: { ...invitePermissions },
+                              },
+                            ]);
+                            setInviteEmail("");
+                          } catch (error) {
+                            logError("Failed to lookup invite user", error);
+                          } finally {
+                            setIsInviteLookupLoading(false);
+                          }
                         }}
                         className="rounded-full"
+                        disabled={isInviteLookupLoading}
                       >
                         Invite
                       </Button>

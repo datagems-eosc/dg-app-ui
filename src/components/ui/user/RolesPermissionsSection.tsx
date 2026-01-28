@@ -4,6 +4,8 @@ import { Chip } from "@ui/Chip";
 import { Input } from "@ui/Input";
 import { ChevronDown, Pencil, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 import { DatasetPermissionsModal } from "./DatasetPermissionsModal";
 
 type AccessRow = {
@@ -74,7 +76,9 @@ const permissionOptions: DropdownOption[] = [
   { label: "Edit", value: "edit" },
 ];
 
-const groupOptions: DropdownOption[] = [{ label: "All groups", value: "all" }];
+const defaultGroupOptions: DropdownOption[] = [
+  { label: "All groups", value: "all" },
+];
 
 function DropdownField({
   label,
@@ -171,6 +175,7 @@ function SearchField({
 }
 
 export default function RolesPermissionsSection() {
+  const api = useApi();
   const [activeDataset, setActiveDataset] = useState<AccessRow | null>(null);
   const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
   const [showPermissionsFor, setShowPermissionsFor] = useState("me");
@@ -178,6 +183,31 @@ export default function RolesPermissionsSection() {
   const [permissionsFilter, setPermissionsFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [groupOptions, setGroupOptions] =
+    useState<DropdownOption[]>(defaultGroupOptions);
+
+  useEffect(() => {
+    if (!api.hasToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await api.queryUserGroups({ like: null });
+        if (cancelled) return;
+        const options = (result.items ?? [])
+          .map((group) => ({
+            label: group.name ?? "",
+            value: group.id ?? "",
+          }))
+          .filter((group) => group.label && group.value);
+        setGroupOptions([...defaultGroupOptions, ...options]);
+      } catch (error) {
+        logError("Failed to load groups for filters", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
 
   const filteredRows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
