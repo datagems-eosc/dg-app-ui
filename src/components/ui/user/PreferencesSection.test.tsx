@@ -15,6 +15,13 @@ describe("PreferencesSection", () => {
     render(
       <PreferencesSection
         notifications={baseNotifications}
+        onEnableAll={vi.fn()}
+        onDisableAll={vi.fn()}
+        onReset={vi.fn()}
+        onDeleteSaved={vi.fn()}
+        onSave={vi.fn()}
+        hasSavedSettings={false}
+        hasChanges={false}
         updateNotification={vi.fn()}
         isLoading={false}
       />,
@@ -30,6 +37,13 @@ describe("PreferencesSection", () => {
     render(
       <PreferencesSection
         notifications={baseNotifications}
+        onEnableAll={vi.fn()}
+        onDisableAll={vi.fn()}
+        onReset={vi.fn()}
+        onDeleteSaved={vi.fn()}
+        onSave={vi.fn()}
+        hasSavedSettings={false}
+        hasChanges={true}
         updateNotification={updateNotification}
         isLoading={false}
       />,

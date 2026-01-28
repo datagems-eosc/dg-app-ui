@@ -1,13 +1,22 @@
 "use client";
 
+import { Toast } from "@ui/Toast";
 import PersonalSettingsSection from "@ui/user/PersonalSettingsSection";
 import PreferencesSection from "@ui/user/PreferencesSection";
 import RolesPermissionsSection from "@ui/user/RolesPermissionsSection";
 import TabsHeader from "@ui/user/TabsHeader";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useApi } from "@/hooks/useApi";
 import { logError } from "@/lib/logger";
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  getLatestUserSetting,
+  NOTIFICATION_SETTINGS_KEY,
+  type NotificationSettingsValue,
+  parseNotificationSettingsValue,
+  saveNotificationSettings as persistNotificationSettings,
+} from "@/services/notificationSettingsService";
 
 interface UserData {
   id?: string;
@@ -16,29 +25,9 @@ interface UserData {
   surname: string;
 }
 
-interface NotificationSettings {
+interface NotificationSettings extends NotificationSettingsValue {
   id?: string;
-  eTag?: string;
-  newFeatures: {
-    email: boolean;
-    inApp: boolean;
-  };
-  datasetLibraryChanges: {
-    email: boolean;
-    inApp: boolean;
-  };
-  newDatasets: {
-    email: boolean;
-    inApp: boolean;
-  };
-  systemMaintenance: {
-    email: boolean;
-    inApp: boolean;
-  };
-  systemErrors: {
-    email: boolean;
-    inApp: boolean;
-  };
+  eTag?: string | null;
 }
 
 export default function UserProfile() {
@@ -49,18 +38,20 @@ export default function UserProfile() {
     "personal" | "notifications" | "roles"
   >("personal");
   const [isLoading, setIsLoading] = useState(true);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const [personalSettings, setPersonalSettings] = useState<UserData>({
     name: userData.name,
     surname: userData.surname,
   });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
-    newFeatures: { email: false, inApp: false },
-    datasetLibraryChanges: { email: false, inApp: false },
-    newDatasets: { email: false, inApp: false },
-    systemMaintenance: { email: false, inApp: false },
-    systemErrors: { email: false, inApp: false },
+    ...DEFAULT_NOTIFICATION_SETTINGS,
   });
+  const [savedNotifications, setSavedNotifications] =
+    useState<NotificationSettings>({
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+    });
 
   useEffect(() => {
     setPersonalSettings({ name: userData.name, surname: userData.surname });
@@ -88,25 +79,108 @@ export default function UserProfile() {
     return () => {
       cancelled = true;
     };
-  }, [api.hasToken, loadNotificationSettings]);
+  }, [api.hasToken]);
 
   async function loadNotificationSettings() {
     if (!api.hasToken) return;
     try {
       const notificationSettings = await api.getUserSettings(
-        "notificationSettings",
+        NOTIFICATION_SETTINGS_KEY,
       );
       if (!notificationSettings || notificationSettings.length === 0) return;
-      const lastIndex = notificationSettings.length - 1;
-      setNotifications({
-        ...JSON.parse(notificationSettings[lastIndex].value),
-        id: notificationSettings[lastIndex].id,
-        eTag: notificationSettings[lastIndex].eTag,
-      });
+      const latestSettings = getLatestUserSetting(notificationSettings);
+      if (!latestSettings) return;
+      const parsedValue = parseNotificationSettingsValue(latestSettings.value);
+      if (!parsedValue) return;
+      const nextSettings = {
+        ...parsedValue,
+        id: latestSettings.id,
+        eTag: latestSettings.eTag,
+      };
+      setNotifications(nextSettings);
+      setSavedNotifications(nextSettings);
     } catch (err) {
       logError("Failed to load notificationSettings", err);
     }
   }
+
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+  };
+
+  const resetNotificationState = () => {
+    const defaults = { ...DEFAULT_NOTIFICATION_SETTINGS };
+    setNotifications(defaults);
+    setSavedNotifications(defaults);
+  };
+
+  const handleSaveNotificationSettings = () => {
+    setIsLoading(true);
+    persistNotificationSettings(api, notifications)
+      ?.then(({ id, eTag }) => {
+        const nextSettings = { ...notifications, id, eTag };
+        setNotifications(nextSettings);
+        setSavedNotifications(nextSettings);
+        showToastMessage("Notification settings saved");
+      })
+      .catch((error) => {
+        logError("Failed to save notification settings", error);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  const handleResetNotificationSettings = async () => {
+    if (!api.hasToken) return;
+    setIsLoading(true);
+    try {
+      await api.deleteUserSettingsByKey(NOTIFICATION_SETTINGS_KEY);
+      resetNotificationState();
+      showToastMessage("Notification settings reset to defaults");
+    } catch (error) {
+      logError("Failed to delete notification settings", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteSavedSettings = async () => {
+    if (!api.hasToken || !notifications.id) return;
+    setIsLoading(true);
+    try {
+      await api.deleteUserSettingsById(notifications.id);
+      resetNotificationState();
+      showToastMessage("Saved notification settings deleted");
+    } catch (error) {
+      logError("Failed to delete notification settings by id", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEnableAll = () => {
+    setNotifications((prev) => ({
+      ...prev,
+      newFeatures: { email: true, inApp: true },
+      datasetLibraryChanges: { email: true, inApp: true },
+      newDatasets: { email: true, inApp: true },
+      systemMaintenance: { email: true, inApp: true },
+      systemErrors: { email: true, inApp: true },
+    }));
+  };
+
+  const handleDisableAll = () => {
+    setNotifications((prev) => ({
+      ...prev,
+      newFeatures: { email: false, inApp: false },
+      datasetLibraryChanges: { email: false, inApp: false },
+      newDatasets: { email: false, inApp: false },
+      systemMaintenance: { email: false, inApp: false },
+      systemErrors: { email: false, inApp: false },
+    }));
+  };
 
   const updateNotification = (
     key: keyof NotificationSettings,
@@ -122,6 +196,18 @@ export default function UserProfile() {
       },
     }));
   };
+
+  const stripMeta = (settings: NotificationSettings) => {
+    const { id, eTag, ...value } = settings;
+    return value;
+  };
+
+  const hasNotificationChanges = useMemo(() => {
+    return (
+      JSON.stringify(stripMeta(savedNotifications)) !==
+      JSON.stringify(stripMeta(notifications))
+    );
+  }, [savedNotifications, notifications]);
 
   return (
     <>
@@ -147,6 +233,13 @@ export default function UserProfile() {
             <PreferencesSection
               isLoading={isLoading}
               notifications={notifications}
+              onEnableAll={handleEnableAll}
+              onDisableAll={handleDisableAll}
+              onReset={handleResetNotificationSettings}
+              onDeleteSaved={handleDeleteSavedSettings}
+              onSave={handleSaveNotificationSettings}
+              hasSavedSettings={Boolean(notifications.id)}
+              hasChanges={hasNotificationChanges}
               updateNotification={updateNotification}
             />
           )}
@@ -154,6 +247,14 @@ export default function UserProfile() {
           {activeTab === "roles" && <RolesPermissionsSection />}
         </div>
       </div>
+
+      <Toast
+        message={
+          toastMessage || "All your changes has been saved to the system"
+        }
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+      />
     </>
   );
 }

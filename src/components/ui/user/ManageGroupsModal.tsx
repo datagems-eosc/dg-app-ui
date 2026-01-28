@@ -6,21 +6,13 @@ import { Chip } from "@ui/Chip";
 import { Input } from "@ui/Input";
 import { Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 
 type GroupItem = {
   id: string;
   name: string;
 };
-
-const groups: GroupItem[] = [
-  { id: "administrators", name: "Administrators" },
-  { id: "analytics", name: "Analytics Team" },
-  { id: "engineering", name: "Engineering Team" },
-  { id: "finance", name: "Finance Team" },
-  { id: "moderators", name: "Moderators" },
-  { id: "mobile", name: "Mobile Team" },
-  { id: "researchers", name: "Researchers" },
-];
 
 interface ManageGroupsModalProps {
   isOpen: boolean;
@@ -33,7 +25,10 @@ export function ManageGroupsModal({
   onClose,
   onSave,
 }: ManageGroupsModalProps) {
+  const api = useApi();
   const [search, setSearch] = useState("");
+  const [groups, setGroups] = useState<GroupItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([
     "analytics",
     "engineering",
@@ -55,11 +50,38 @@ export function ManageGroupsModal({
     };
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen || !api.hasToken) return;
+    let cancelled = false;
+    setIsLoading(true);
+    (async () => {
+      try {
+        const result = await api.queryUserGroups({
+          like: search.trim() || null,
+        });
+        if (cancelled) return;
+        const items =
+          result.items?.map((group) => ({
+            id: group.id ?? "",
+            name: group.name ?? "",
+          })) ?? [];
+        setGroups(items.filter((group) => group.id && group.name));
+      } catch (error) {
+        logError("Failed to load user groups", error);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [api, isOpen, search]);
+
   const visibleGroups = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return groups;
     return groups.filter((group) => group.name.toLowerCase().includes(query));
-  }, [search]);
+  }, [groups, search]);
 
   if (!isOpen) return null;
 
@@ -105,6 +127,11 @@ export function ManageGroupsModal({
           />
 
           <div className="mt-4 border-t border-slate-200">
+            {!isLoading && visibleGroups.length === 0 && (
+              <div className="py-8 text-center text-[14px] text-gray-650">
+                No groups found
+              </div>
+            )}
             {visibleGroups.map((group) => {
               const isSelected = selectedGroups.includes(group.id);
               return (
