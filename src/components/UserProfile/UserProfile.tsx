@@ -3,14 +3,20 @@
 import { Toast } from "@ui/Toast";
 import PersonalSettingsSection from "@ui/user/PersonalSettingsSection";
 import PreferencesSection from "@ui/user/PreferencesSection";
+import RolesPermissionsSection from "@ui/user/RolesPermissionsSection";
 import TabsHeader from "@ui/user/TabsHeader";
-import UserHeader from "@ui/user/UserHeader";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { APP_ROUTES } from "@/config/appUrls";
 import { useUser } from "@/contexts/UserContext";
 import { useApi } from "@/hooks/useApi";
 import { logError } from "@/lib/logger";
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  getLatestUserSetting,
+  NOTIFICATION_SETTINGS_KEY,
+  type NotificationSettingsValue,
+  parseNotificationSettingsValue,
+  saveNotificationSettings as persistNotificationSettings,
+} from "@/services/notificationSettingsService";
 
 interface UserData {
   id?: string;
@@ -19,60 +25,35 @@ interface UserData {
   surname: string;
 }
 
-interface NotificationSettings {
+interface NotificationSettings extends NotificationSettingsValue {
   id?: string;
-  eTag?: string;
-  newFeatures: {
-    email: boolean;
-    inApp: boolean;
-  };
-  datasetLibraryChanges: {
-    email: boolean;
-    inApp: boolean;
-  };
-  newDatasets: {
-    email: boolean;
-    inApp: boolean;
-  };
-  systemMaintenance: {
-    email: boolean;
-    inApp: boolean;
-  };
-  systemErrors: {
-    email: boolean;
-    inApp: boolean;
-  };
+  eTag?: string | null;
 }
 
 export default function UserProfile() {
   const api = useApi();
 
-  const { userData, setProfilePicture } = useUser();
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"personal" | "preferences">(
-    "personal",
-  );
+  const { userData } = useUser();
+  const [activeTab, setActiveTab] = useState<
+    "personal" | "notifications" | "roles"
+  >("personal");
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const [personalSettings, setPersonalSettings] = useState<UserData>({
     name: userData.name,
     surname: userData.surname,
   });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
-    newFeatures: { email: false, inApp: false },
-    datasetLibraryChanges: { email: false, inApp: false },
-    newDatasets: { email: false, inApp: false },
-    systemMaintenance: { email: false, inApp: false },
-    systemErrors: { email: false, inApp: false },
+    ...DEFAULT_NOTIFICATION_SETTINGS,
   });
-
-  const [backupUserData, setBackupUserData] = useState(userData);
-  const [backupNotifications, setBackupNotifications] =
-    useState<NotificationSettings>(notifications);
+  const [savedNotifications, setSavedNotifications] =
+    useState<NotificationSettings>({
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+    });
 
   useEffect(() => {
-    setBackupUserData(userData);
     setPersonalSettings({ name: userData.name, surname: userData.surname });
   }, [userData.name, userData.surname, userData]);
 
@@ -98,79 +79,84 @@ export default function UserProfile() {
     return () => {
       cancelled = true;
     };
-  }, [api.hasToken, loadNotificationSettings]);
+  }, [api.hasToken]);
 
   async function loadNotificationSettings() {
     if (!api.hasToken) return;
     try {
       const notificationSettings = await api.getUserSettings(
-        "notificationSettings",
+        NOTIFICATION_SETTINGS_KEY,
       );
       if (!notificationSettings || notificationSettings.length === 0) return;
-      const lastIndex = notificationSettings.length - 1;
-      setNotifications({
-        ...JSON.parse(notificationSettings[lastIndex].value),
-        id: notificationSettings[lastIndex].id,
-        eTag: notificationSettings[lastIndex].eTag,
-      });
-      setBackupNotifications({
-        ...JSON.parse(notificationSettings[lastIndex].value),
-        id: notificationSettings[lastIndex].id,
-        eTag: notificationSettings[lastIndex].eTag,
-      });
+      const latestSettings = getLatestUserSetting(notificationSettings);
+      if (!latestSettings) return;
+      const parsedValue = parseNotificationSettingsValue(latestSettings.value);
+      if (!parsedValue) return;
+      const nextSettings = {
+        ...parsedValue,
+        id: latestSettings.id,
+        eTag: latestSettings.eTag,
+      };
+      setNotifications(nextSettings);
+      setSavedNotifications(nextSettings);
     } catch (err) {
       logError("Failed to load notificationSettings", err);
     }
   }
 
-  const handleSaveChanges = () => {
-    setIsLoading(true);
-    saveNotificationSettings()?.then(({ id, eTag }) => {
-      setNotifications((prev) => ({ ...prev, id, eTag }));
-      setIsLoading(false);
-    });
-    setBackupUserData({
-      ...userData,
-      name: personalSettings.name,
-      surname: personalSettings.surname,
-    });
-    setBackupNotifications(notifications);
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
     setShowToast(true);
   };
 
-  const saveNotificationSettings = () => {
+  const resetNotificationState = () => {
+    const defaults = { ...DEFAULT_NOTIFICATION_SETTINGS };
+    setNotifications(defaults);
+    setSavedNotifications(defaults);
+  };
+
+  const handleSaveNotificationSettings = () => {
+    setIsLoading(true);
+    persistNotificationSettings(api, notifications)
+      ?.then(({ id, eTag }) => {
+        const nextSettings = { ...notifications, id, eTag };
+        setNotifications(nextSettings);
+        setSavedNotifications(nextSettings);
+        showToastMessage("Notification settings saved");
+      })
+      .catch((error) => {
+        logError("Failed to save notification settings", error);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  const handleResetNotificationSettings = async () => {
     if (!api.hasToken) return;
-
-    // send notification settings with `value` not containing the `id` field
-    const { id, eTag, ...value } = notifications as any;
-    const payload: any = {
-      key: "notificationSettings",
-      value,
-    };
-
-    if (id) payload.id = id;
-    if (eTag) payload.eTag = eTag;
-
-    return api.saveUserSettings(payload, id);
-  };
-
-  const handleCancel = () => {
-    router.push(APP_ROUTES.BROWSE);
-  };
-
-  const handleImageSelect = async (file: File) => {
+    setIsLoading(true);
     try {
-      await setProfilePicture(file);
+      await api.deleteUserSettingsByKey(NOTIFICATION_SETTINGS_KEY);
+      resetNotificationState();
+      showToastMessage("Notification settings reset to defaults");
     } catch (error) {
-      logError("Error uploading profile picture", error);
+      logError("Failed to delete notification settings", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRemoveProfilePicture = async () => {
+  const handleDeleteSavedSettings = async () => {
+    if (!api.hasToken || !notifications.id) return;
+    setIsLoading(true);
     try {
-      await setProfilePicture(null);
+      await api.deleteUserSettingsById(notifications.id);
+      resetNotificationState();
+      showToastMessage("Saved notification settings deleted");
     } catch (error) {
-      logError("Error removing profile picture", error);
+      logError("Failed to delete notification settings by id", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -184,21 +170,6 @@ export default function UserProfile() {
       systemErrors: { email: true, inApp: true },
     }));
   };
-
-  // Simple comparisons don't need memoization - prefer readable code
-  const hasUserDataChanges =
-    (backupUserData?.name || "") !== (personalSettings?.name || "") ||
-    (backupUserData?.surname || "") !== (personalSettings?.surname || "");
-
-  // JSON.stringify is relatively expensive, but for small objects it's acceptable
-  // Keeping this as is since notification objects can be complex
-  const hasNotificationChanges = useMemo(() => {
-    return (
-      JSON.stringify(backupNotifications) !== JSON.stringify(notifications)
-    );
-  }, [backupNotifications, notifications]);
-
-  const hasChanges = hasUserDataChanges || hasNotificationChanges;
 
   const handleDisableAll = () => {
     setNotifications((prev) => ({
@@ -226,55 +197,61 @@ export default function UserProfile() {
     }));
   };
 
+  const stripMeta = (settings: NotificationSettings) => {
+    const { id, eTag, ...value } = settings;
+    return value;
+  };
+
+  const hasNotificationChanges = useMemo(() => {
+    return (
+      JSON.stringify(stripMeta(savedNotifications)) !==
+      JSON.stringify(stripMeta(notifications))
+    );
+  }, [savedNotifications, notifications]);
+
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        {hasChanges ? "has unsaved changes" : "has no changes"}
-        {isLoading ? "is loading..." : "is not loading"}
-        <UserHeader
-          isLoading={isLoading}
-          userData={userData}
-          onImageSelect={handleImageSelect}
-          onRemoveProfilePicture={handleRemoveProfilePicture}
-          onCancel={handleCancel}
-          onSave={handleSaveChanges}
-          hasChanges={hasChanges}
-        />
-
-        {/* Body with left Tabs and right Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-          <div className="lg:col-span-3 order-1">
-            <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+      <div className="max-w-5xl mx-auto py-4 sm:py-10">
+        <div className="flex flex-col gap-6 px-4 sm:px-6">
+          <div className="flex items-center">
+            <h1 className="text-[32px] font-semibold leading-[140%] text-gray-750">
+              Settings
+            </h1>
           </div>
+          <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+        </div>
 
-          <div className="lg:col-span-7 order-2">
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
-              {activeTab === "personal" && (
-                <PersonalSettingsSection
-                  isLoading={isLoading}
-                  formData={personalSettings}
-                  updateFormData={(data) =>
-                    setPersonalSettings((prev) => ({ ...prev, ...data }))
-                  }
-                />
-              )}
+        <div className="mt-8 px-4 sm:px-6">
+          {activeTab === "personal" && (
+            <PersonalSettingsSection
+              formData={personalSettings}
+              userData={userData}
+            />
+          )}
 
-              {activeTab === "preferences" && (
-                <PreferencesSection
-                  isLoading={isLoading}
-                  notifications={notifications}
-                  onEnableAll={handleEnableAll}
-                  onDisableAll={handleDisableAll}
-                  updateNotification={updateNotification}
-                />
-              )}
-            </div>
-          </div>
+          {activeTab === "notifications" && (
+            <PreferencesSection
+              isLoading={isLoading}
+              notifications={notifications}
+              onEnableAll={handleEnableAll}
+              onDisableAll={handleDisableAll}
+              onReset={handleResetNotificationSettings}
+              onDeleteSaved={handleDeleteSavedSettings}
+              onSave={handleSaveNotificationSettings}
+              hasSavedSettings={Boolean(notifications.id)}
+              hasChanges={hasNotificationChanges}
+              updateNotification={updateNotification}
+            />
+          )}
+
+          {activeTab === "roles" && <RolesPermissionsSection />}
         </div>
       </div>
 
       <Toast
-        message="All your changes has been saved to the system"
+        message={
+          toastMessage || "All your changes has been saved to the system"
+        }
         isVisible={showToast}
         onClose={() => setShowToast(false)}
       />
