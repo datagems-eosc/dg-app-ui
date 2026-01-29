@@ -766,7 +766,9 @@ export function useApi() {
     async (
       query: string,
     ): Promise<{
-      next_queries: string[];
+      result?: Array<{ query?: string | null }> | null;
+      conversationId?: string | null;
+      next_queries?: string[];
     }> => {
       if (!token) {
         throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
@@ -796,7 +798,7 @@ export function useApi() {
 
       const result = await response.json();
       logApiResponse("getRecommendNextQueries", {
-        queriesCount: result.next_queries?.length || 0,
+        queriesCount: result.result?.length || result.next_queries?.length || 0,
       });
       return result;
     },

@@ -930,7 +930,12 @@ export default function Chat({
       // Sprawdź różne możliwe formaty odpowiedzi
       let recommendations: string[] = [];
 
-      if (
+      if (Array.isArray(recommendationsResponse.result)) {
+        recommendations = recommendationsResponse.result
+          .map((item) => item.query)
+          .filter((query): query is string => Boolean(query))
+          .slice(0, 3);
+      } else if (
         recommendationsResponse.next_queries &&
         Array.isArray(recommendationsResponse.next_queries)
       ) {
@@ -948,19 +953,6 @@ export default function Chat({
         recommendations,
         fullResponse: recommendationsResponse,
       });
-
-      // Tymczasowy fallback - jeśli endpoint zwraca pustą tablicę, użyj mock danych do testów
-      // TODO: Usunąć gdy endpoint będzie zwracał prawdziwe dane
-      if (recommendations.length === 0) {
-        console.warn(
-          "[Recommendations] Endpoint returned empty array, using mock data for testing",
-        );
-        recommendations = [
-          "What are the applications of machine learning?",
-          "How does neural network training work?",
-          "What is deep learning?",
-        ];
-      }
 
       if (recommendations.length > 0) {
         setMessages((prev) => {
