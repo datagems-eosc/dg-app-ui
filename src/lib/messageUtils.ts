@@ -271,3 +271,38 @@ export function parseSearchInDataExploreResponse(
     longitude,
   };
 }
+
+export function extractRecommendations(
+  apiResponse: unknown,
+  limit: number,
+): string[] {
+  if (!apiResponse || typeof apiResponse !== "object") {
+    return [];
+  }
+
+  const response = apiResponse as {
+    result?: Array<{ query?: string | null }> | null;
+    next_queries?: unknown;
+  };
+
+  if (Array.isArray(response.result)) {
+    return response.result
+      .map((item) => item.query)
+      .filter((query): query is string => Boolean(query))
+      .slice(0, limit);
+  }
+
+  if (Array.isArray(response.next_queries)) {
+    return response.next_queries
+      .filter((query): query is string => typeof query === "string")
+      .slice(0, limit);
+  }
+
+  if (Array.isArray(apiResponse)) {
+    return apiResponse
+      .filter((query): query is string => typeof query === "string")
+      .slice(0, limit);
+  }
+
+  return [];
+}

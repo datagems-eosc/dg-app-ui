@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
+import { UI_CONSTANTS } from "@/config/uiConstants";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
@@ -18,6 +19,7 @@ import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logError } from "@/lib/logger";
 import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
 import {
+  extractRecommendations,
   parseConversationMessage,
   parseSearchInDataExploreResponse,
 } from "@/lib/messageUtils";
@@ -927,32 +929,10 @@ export default function Chat({
       const recommendationsResponse =
         await api.getRecommendNextQueries(currentQuery);
 
-      // Sprawdź różne możliwe formaty odpowiedzi
-      let recommendations: string[] = [];
-
-      if (Array.isArray(recommendationsResponse.result)) {
-        recommendations = recommendationsResponse.result
-          .map((item) => item.query)
-          .filter((query): query is string => Boolean(query))
-          .slice(0, 3);
-      } else if (
-        recommendationsResponse.next_queries &&
-        Array.isArray(recommendationsResponse.next_queries)
-      ) {
-        recommendations = recommendationsResponse.next_queries.slice(0, 3);
-      } else if (Array.isArray(recommendationsResponse)) {
-        // Jeśli odpowiedź to bezpośrednio tablica
-        recommendations = recommendationsResponse.slice(0, 3);
-      }
-
-      // Log dla debugowania
-      console.log("[Recommendations] Fetched:", {
-        messageId,
-        query: currentQuery,
-        recommendationsCount: recommendations.length,
-        recommendations,
-        fullResponse: recommendationsResponse,
-      });
+      const recommendations = extractRecommendations(
+        recommendationsResponse,
+        UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
+      );
 
       if (recommendations.length > 0) {
         setMessages((prev) => {
