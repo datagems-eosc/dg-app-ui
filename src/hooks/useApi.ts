@@ -765,6 +765,7 @@ export function useApi() {
   const getRecommendNextQueries = useCallback(
     async (
       query: string,
+      conversationId?: string,
     ): Promise<{
       result?: Array<{ query?: string | null }> | null;
       conversationId?: string | null;
@@ -779,9 +780,28 @@ export function useApi() {
         query,
       });
 
-      const requestPayload = {
+      const requestPayload: {
+        query: string;
+        conversationOptions?: {
+          conversationId?: string;
+          autoCreateConversation?: boolean;
+        };
+        project?: {
+          fields: string[];
+        };
+      } = {
         query: query,
+        project: {
+          fields: ["query"],
+        },
       };
+
+      if (conversationId) {
+        requestPayload.conversationOptions = {
+          conversationId,
+          autoCreateConversation: false,
+        };
+      }
 
       const response = await makeRequest("/search/recommend", {
         method: "POST",
