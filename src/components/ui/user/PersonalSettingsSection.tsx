@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@ui/Button";
-import { Trash } from "lucide-react";
+import { EXTERNAL_URLS } from "@/config/appUrls";
 
 type FormData = {
   name: string;
@@ -24,6 +24,10 @@ export default function PersonalSettingsSection({ formData, userData }: Props) {
   const fullName = `${formData.name} ${formData.surname}`.trim();
   const initials =
     `${formData.name?.[0] || ""}${formData.surname?.[0] || ""}`.toUpperCase();
+  const handleOpenAccount = () => {
+    if (typeof window === "undefined") return;
+    window.open(EXTERNAL_URLS.AAI_ACCOUNT, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="flex flex-col w-full gap-4">
@@ -104,18 +108,18 @@ export default function PersonalSettingsSection({ formData, userData }: Props) {
       <div className="flex flex-col gap-4 py-6 border-y border-slate-200 -mt-px lg:flex-row lg:items-center lg:gap-8">
         <div className="w-full lg:w-[300px]">
           <div className="text-[14px] font-medium leading-[150%] text-gray-750">
-            Delete Account
+            Account management
           </div>
           <div className="text-[12px] leading-[150%] text-gray-650 tracking-[0.12px]">
-            Permanently delete your account and all associated data
+            Manage your profile and security settings in AAI
           </div>
         </div>
         <Button
-          variant="primary"
-          className="h-10 px-4 bg-red-600 border-red-600 hover:bg-red-600 hover:border-red-600 shadow-s1 w-full sm:w-auto"
+          variant="outline"
+          className="h-10 px-4 w-full sm:w-auto"
+          onClick={handleOpenAccount}
         >
-          <Trash strokeWidth={1.25} className="w-4 h-4 mr-2" />
-          Delete Account
+          Open account settings
         </Button>
       </div>
     </div>
