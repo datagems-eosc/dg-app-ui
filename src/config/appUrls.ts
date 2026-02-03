@@ -17,6 +17,9 @@ export const APP_ROUTES = {
   CHAT: "/chat",
   CHAT_WITH_CONVERSATION: (conversationId: string) => `/chat/${conversationId}`,
 
+  // RapidCoreAI chat
+  CHAT_RCAI: "/chat-rcai",
+
   // Collections
   COLLECTIONS: {
     CUSTOM: (id: string) => `/collections/custom/${id}`,
