@@ -199,6 +199,8 @@ export default function UserProfile() {
 
   const stripMeta = (settings: NotificationSettings) => {
     const { id, eTag, ...value } = settings;
+    void id;
+    void eTag;
     return value;
   };
 

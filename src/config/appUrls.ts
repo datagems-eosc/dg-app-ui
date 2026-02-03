@@ -28,6 +28,12 @@ export const APP_ROUTES = {
   },
 } as const;
 
+export const EXTERNAL_URLS = {
+  AAI_ACCOUNT:
+    process.env.NEXT_PUBLIC_AAI_ACCOUNT_URL ??
+    "https://datagems-dev.scayle.es/oauth/realms/dev/account/",
+} as const;
+
 /**
  * Generate URLs with query parameters for browse pages
  */
