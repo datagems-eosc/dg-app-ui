@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
+import type { ContextGrant } from "@/types/contextGrants";
 import type {
   UserGroupLookup,
   UserGroupQueryResult,
@@ -316,6 +317,32 @@ export function useApi() {
     },
     [makeRequest],
   );
+
+  const getCurrentUserContextGrants = useCallback(async (): Promise<
+    ContextGrant[]
+  > => {
+    logApiRequest("getCurrentUserContextGrants", {
+      endpoint: "/principal/me/context-grants",
+    });
+
+    const response = await makeRequest("/principal/me/context-grants", {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      if (errorData && Object.keys(errorData).length > 0) {
+        logApiError("getCurrentUserContextGrants", errorData);
+      }
+      throw new Error(errorData.error || ApiErrorMessage.FETCH_GRANTS_FAILED);
+    }
+
+    const data = await response.json();
+    logApiResponse("getCurrentUserContextGrants", {
+      count: Array.isArray(data) ? data.length : 0,
+    });
+    return Array.isArray(data) ? data : [];
+  }, [makeRequest]);
 
   const grantCollectionPermission = useCallback(
     async (
@@ -837,6 +864,7 @@ export function useApi() {
     getCollectionGrants,
     grantCollectionPermission,
     deleteCollection,
+    getCurrentUserContextGrants,
     searchInDataExplore,
     searchCrossDataset,
     getConversation,

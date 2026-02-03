@@ -2,83 +2,36 @@
 
 import { Chip } from "@ui/Chip";
 import { Input } from "@ui/Input";
-import { ChevronDown, Pencil, Search, Trash2 } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "@/hooks/useApi";
+import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logError } from "@/lib/logger";
-import { DatasetPermissionsModal } from "./DatasetPermissionsModal";
-
-type AccessRow = {
-  id: string;
-  datasetName: string;
-  groupsAdded: string;
-  uploadedBy: string;
-  permissions: string[];
-  actions: Array<"edit" | "delete">;
-};
-
-const accessRows: AccessRow[] = [
-  {
-    id: "row-1",
-    datasetName: "Hurricane Evacuation Data (2005-2023)",
-    groupsAdded: "3",
-    uploadedBy: "Beverly Griffin",
-    permissions: ["Edit", "+3"],
-    actions: ["edit", "delete"],
-  },
-  {
-    id: "row-2",
-    datasetName: "Global Surface Air Temperature (1980-2024)",
-    groupsAdded: "5",
-    uploadedBy: "Jeffery Woods",
-    permissions: ["Edit", "+3"],
-    actions: [],
-  },
-  {
-    id: "row-3",
-    datasetName: "Regional Precipitation Patterns (2010-2024)",
-    groupsAdded: "1",
-    uploadedBy: "Terry Obrien",
-    permissions: ["Edit", "+3"],
-    actions: [],
-  },
-  {
-    id: "row-4",
-    datasetName: "Coastal Sea Level Rise Projections (2025-2050)",
-    groupsAdded: "9",
-    uploadedBy: "Ricardo Barnes",
-    permissions: ["Edit", "+3"],
-    actions: ["edit", "delete"],
-  },
-  {
-    id: "row-5",
-    datasetName: "Extreme Weather Events Tracker (2018-2024)",
-    groupsAdded: "8",
-    uploadedBy: "Evelyn Hayes",
-    permissions: ["Edit", "+3"],
-    actions: ["edit", "delete"],
-  },
-];
+import type { ContextGrant } from "@/types/contextGrants";
 
 type DropdownOption = {
   label: string;
   value: string;
 };
 
-const showPermissionsOptions: DropdownOption[] = [{ label: "Me", value: "me" }];
+type GrantRow = {
+  id: string;
+  targetName: string;
+  targetType: string;
+  role: string;
+  principal: string;
+  principalType: string;
+};
 
-const typeOptions: DropdownOption[] = [
-  { label: "Datasets", value: "datasets" },
-];
+const TARGET_KIND_LABELS: Record<number, string> = {
+  0: "Dataset",
+  1: "Collection",
+};
 
-const permissionOptions: DropdownOption[] = [
-  { label: "Select", value: "all" },
-  { label: "Edit", value: "edit" },
-];
-
-const defaultGroupOptions: DropdownOption[] = [
-  { label: "All groups", value: "all" },
-];
+const PRINCIPAL_KIND_LABELS: Record<number, string> = {
+  0: "User",
+  1: "Group",
+};
 
 function DropdownField({
   label,
@@ -176,53 +129,201 @@ function SearchField({
 
 export default function RolesPermissionsSection() {
   const api = useApi();
-  const [activeDataset, setActiveDataset] = useState<AccessRow | null>(null);
-  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
-  const [showPermissionsFor, setShowPermissionsFor] = useState("me");
-  const [typeFilter, setTypeFilter] = useState("datasets");
-  const [permissionsFilter, setPermissionsFilter] = useState("all");
-  const [groupFilter, setGroupFilter] = useState("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [grants, setGrants] = useState<ContextGrant[]>([]);
+  const [datasetNames, setDatasetNames] = useState<Record<string, string>>({});
+  const [collectionNames, setCollectionNames] = useState<
+    Record<string, string>
+  >({});
+  const [groupNames, setGroupNames] = useState<Record<string, string>>({});
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [principalFilter, setPrincipalFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [groupOptions, setGroupOptions] =
-    useState<DropdownOption[]>(defaultGroupOptions);
 
   useEffect(() => {
-    if (!api.hasToken) return;
+    if (!api.hasToken) {
+      setIsLoading(false);
+      return;
+    }
     let cancelled = false;
-    (async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    const loadGrants = async () => {
       try {
-        const result = await api.queryUserGroups({ like: null });
+        const [grantsResult, groupsResult] = await Promise.all([
+          api.getCurrentUserContextGrants(),
+          api.queryUserGroups({ like: null }),
+        ]);
         if (cancelled) return;
-        const options = (result.items ?? [])
+        setGrants(grantsResult);
+        const groupMap = (groupsResult.items ?? [])
           .map((group) => ({
-            label: group.name ?? "",
-            value: group.id ?? "",
+            id: group.id ?? "",
+            name: group.name ?? "",
           }))
-          .filter((group) => group.label && group.value);
-        setGroupOptions([...defaultGroupOptions, ...options]);
+          .filter((group) => group.id && group.name)
+          .reduce<Record<string, string>>((acc, group) => {
+            acc[group.id] = group.name;
+            return acc;
+          }, {});
+        setGroupNames(groupMap);
+
+        const datasetIds = grantsResult
+          .filter((grant) => grant.targetType === 0 && grant.targetId)
+          .map((grant) => grant.targetId as string);
+        const collectionIds = grantsResult
+          .filter((grant) => grant.targetType === 1 && grant.targetId)
+          .map((grant) => grant.targetId as string);
+
+        const [datasetsResult, collectionsResult] = await Promise.all([
+          datasetIds.length > 0
+            ? api.queryDatasets({
+                ids: datasetIds,
+                project: { fields: ["id", "name"] },
+                page: { Offset: 0, Size: datasetIds.length },
+                Order: { Items: ["+name"] },
+                Metadata: { CountAll: false },
+              })
+            : Promise.resolve({ items: [] }),
+          collectionIds.length > 0
+            ? api.queryCollections({
+                ids: collectionIds,
+                project: { fields: ["id", "name"] },
+                page: { Offset: 0, Size: collectionIds.length },
+                Order: { Items: ["+name"] },
+                Metadata: { CountAll: false },
+              })
+            : Promise.resolve({ items: [] }),
+        ]);
+
+        if (cancelled) return;
+
+        const datasetItems = (datasetsResult.items ?? []) as Array<{
+          id?: string;
+          name?: string;
+        }>;
+        const datasetMap = datasetItems
+          .map((item) => ({
+            id: item.id ?? "",
+            name: item.name ?? "",
+          }))
+          .filter((item) => item.id && item.name)
+          .reduce((acc: Record<string, string>, item) => {
+            acc[item.id] = item.name;
+            return acc;
+          }, {});
+        const collectionItems = (collectionsResult.items ?? []) as Array<{
+          id?: string;
+          name?: string;
+        }>;
+        const collectionMap = collectionItems
+          .map((item) => ({
+            id: item.id ?? "",
+            name: item.name ?? "",
+          }))
+          .filter((item) => item.id && item.name)
+          .reduce((acc: Record<string, string>, item) => {
+            acc[item.id] = item.name;
+            return acc;
+          }, {});
+
+        setDatasetNames(datasetMap);
+        setCollectionNames(collectionMap);
       } catch (error) {
-        logError("Failed to load groups for filters", error);
+        if (cancelled) return;
+        logError("Failed to load context grants", error);
+        setErrorMessage(ApiErrorMessage.FETCH_GRANTS_FAILED);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    })();
+    };
+
+    loadGrants();
+
     return () => {
       cancelled = true;
     };
   }, [api]);
 
+  const roleOptions = useMemo<DropdownOption[]>(() => {
+    const roles = Array.from(
+      new Set(
+        grants.map((grant) => (grant.role?.trim() ? grant.role.trim() : "")),
+      ),
+    ).filter(Boolean);
+    return [
+      { label: "All roles", value: "all" },
+      ...roles.map((role) => ({ label: role, value: role })),
+    ];
+  }, [grants]);
+
+  const rows = useMemo<GrantRow[]>(() => {
+    return grants.map((grant) => {
+      const role = grant.role?.trim() || "Unknown";
+      const targetTypeLabel =
+        grant.targetType !== null && grant.targetType !== undefined
+          ? (TARGET_KIND_LABELS[grant.targetType] ?? "Unknown")
+          : "Unknown";
+      const principalTypeLabel =
+        grant.principalType !== null && grant.principalType !== undefined
+          ? (PRINCIPAL_KIND_LABELS[grant.principalType] ?? "Unknown")
+          : "Unknown";
+      const targetId = grant.targetId ?? "";
+      const targetName =
+        grant.targetType === 0
+          ? datasetNames[targetId] || targetId || "Unknown"
+          : grant.targetType === 1
+            ? collectionNames[targetId] || targetId || "Unknown"
+            : targetId || "Unknown";
+      const principal =
+        grant.principalType === 1
+          ? groupNames[grant.principalId ?? ""] ||
+            grant.principalId ||
+            "Unknown"
+          : "Me";
+
+      return {
+        id: `${grant.targetId ?? "unknown"}-${grant.role ?? "unknown"}-${
+          grant.principalId ?? "me"
+        }`,
+        targetName,
+        targetType: targetTypeLabel,
+        role,
+        principal,
+        principalType: principalTypeLabel,
+      };
+    });
+  }, [collectionNames, datasetNames, grants, groupNames]);
+
   const filteredRows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return accessRows.filter((row) => {
+    return rows.filter((row) => {
+      const matchesType =
+        typeFilter === "all" || row.targetType.toLowerCase() === typeFilter;
+      const matchesRole = roleFilter === "all" || row.role === roleFilter;
+      const matchesPrincipal =
+        principalFilter === "all" ||
+        row.principalType.toLowerCase() === principalFilter;
       const matchesSearch =
-        !query || row.datasetName.toLowerCase().includes(query);
-      const matchesPermission =
-        permissionsFilter === "all" ||
-        row.permissions.some(
-          (permission) =>
-            permission.toLowerCase() === permissionsFilter.toLowerCase(),
-        );
-      return matchesSearch && matchesPermission;
+        !query || row.targetName.toLowerCase().includes(query);
+      return matchesType && matchesRole && matchesPrincipal && matchesSearch;
     });
-  }, [permissionsFilter, searchQuery]);
+  }, [principalFilter, roleFilter, rows, searchQuery, typeFilter]);
+
+  const typeOptions: DropdownOption[] = [
+    { label: "All types", value: "all" },
+    { label: "Dataset", value: "dataset" },
+    { label: "Collection", value: "collection" },
+  ];
+
+  const principalOptions: DropdownOption[] = [
+    { label: "All principals", value: "all" },
+    { label: "User", value: "user" },
+    { label: "Group", value: "group" },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -231,14 +332,6 @@ export default function RolesPermissionsSection() {
           <h2 className="text-[16px] font-semibold leading-[150%] text-gray-750">
             User Access
           </h2>
-        </div>
-        <div className="w-[294px]">
-          <DropdownField
-            label="Show permissions for"
-            value={showPermissionsFor}
-            options={showPermissionsOptions}
-            onChange={setShowPermissionsFor}
-          />
         </div>
         <div className="flex items-center h-12 border-b border-slate-200">
           <h2 className="text-[16px] font-semibold leading-[150%] text-gray-750">
@@ -257,16 +350,16 @@ export default function RolesPermissionsSection() {
               onChange={setTypeFilter}
             />
             <DropdownField
-              label="Permissions"
-              value={permissionsFilter}
-              options={permissionOptions}
-              onChange={setPermissionsFilter}
+              label="Role"
+              value={roleFilter}
+              options={roleOptions}
+              onChange={setRoleFilter}
             />
             <DropdownField
-              label="Group"
-              value={groupFilter}
-              options={groupOptions}
-              onChange={setGroupFilter}
+              label="Principal"
+              value={principalFilter}
+              options={principalOptions}
+              onChange={setPrincipalFilter}
             />
             <SearchField value={searchQuery} onChange={setSearchQuery} />
           </div>
@@ -278,89 +371,53 @@ export default function RolesPermissionsSection() {
 
         <div className="border border-slate-200 rounded-lg overflow-hidden">
           <div className="min-w-[720px] overflow-x-auto">
-            <div className="grid grid-cols-[1fr_126px_180px_122px_137px] bg-slate-50 text-[14px] text-gray-650 border-b border-slate-200">
-              <div className="px-4 py-2 font-medium">Dataset name</div>
-              <div className="px-4 py-2 font-medium text-center">
-                Groups Added
-              </div>
-              <div className="px-4 py-2 font-medium">Uploaded by</div>
-              <div className="px-4 py-2 font-medium">Permissions</div>
-              <div className="px-4 py-2 font-medium">Dataset Actions</div>
+            <div className="grid grid-cols-[1fr_140px_160px_200px] bg-slate-50 text-[14px] text-gray-650 border-b border-slate-200">
+              <div className="px-4 py-2 font-medium">Target</div>
+              <div className="px-4 py-2 font-medium">Type</div>
+              <div className="px-4 py-2 font-medium">Role</div>
+              <div className="px-4 py-2 font-medium">Principal</div>
             </div>
-            {filteredRows.map((row) => (
-              <div
-                key={row.id}
-                className="grid grid-cols-[1fr_126px_180px_122px_137px] items-center h-14 border-b border-slate-200 last:border-b-0"
-              >
-                <div className="px-4 text-[14px] text-gray-750 truncate">
-                  {row.datasetName}
-                </div>
-                <div className="px-4 flex justify-center">
-                  <Chip color="info" variant="outline" size="sm">
-                    {row.groupsAdded}
-                  </Chip>
-                </div>
-                <div className="px-4 text-[14px] text-gray-750">
-                  {row.uploadedBy}
-                </div>
-                <div className="px-4 flex gap-2">
-                  {row.permissions.map((permission) => (
-                    <Chip
-                      key={`${row.id}-${permission}`}
-                      color="info"
-                      variant="outline"
-                      size="sm"
-                    >
-                      {permission}
-                    </Chip>
-                  ))}
-                </div>
-                <div className="px-4 flex justify-end gap-2">
-                  {row.actions.includes("edit") && (
-                    <button
-                      type="button"
-                      className="w-8 h-8 flex items-center justify-center rounded"
-                      aria-label={`Edit ${row.datasetName}`}
-                      onClick={() => {
-                        setActiveDataset(row);
-                        setIsPermissionsOpen(true);
-                      }}
-                    >
-                      <Pencil
-                        className="w-4 h-4 text-icon"
-                        strokeWidth={1.25}
-                      />
-                    </button>
-                  )}
-                  {row.actions.includes("delete") && (
-                    <button
-                      type="button"
-                      className="w-8 h-8 flex items-center justify-center rounded"
-                      aria-label={`Delete ${row.datasetName}`}
-                      onClick={() => {
-                        setActiveDataset(row);
-                        setIsPermissionsOpen(true);
-                      }}
-                    >
-                      <Trash2
-                        className="w-4 h-4 text-icon"
-                        strokeWidth={1.25}
-                      />
-                    </button>
-                  )}
-                </div>
+            {isLoading && (
+              <div className="px-4 py-6 text-[14px] text-gray-650">
+                Loading access entries...
               </div>
-            ))}
+            )}
+            {!isLoading && errorMessage && (
+              <div className="px-4 py-6 text-[14px] text-gray-650">
+                {errorMessage}
+              </div>
+            )}
+            {!isLoading && !errorMessage && filteredRows.length === 0 && (
+              <div className="px-4 py-6 text-[14px] text-gray-650">
+                No access entries found
+              </div>
+            )}
+            {!isLoading &&
+              !errorMessage &&
+              filteredRows.map((row) => (
+                <div
+                  key={row.id}
+                  className="grid grid-cols-[1fr_140px_160px_200px] items-center h-14 border-b border-slate-200 last:border-b-0"
+                >
+                  <div className="px-4 text-[14px] text-gray-750 truncate">
+                    {row.targetName}
+                  </div>
+                  <div className="px-4 text-[14px] text-gray-750">
+                    {row.targetType}
+                  </div>
+                  <div className="px-4">
+                    <Chip color="info" variant="outline" size="sm">
+                      {row.role}
+                    </Chip>
+                  </div>
+                  <div className="px-4 text-[14px] text-gray-750 truncate">
+                    {row.principal}
+                  </div>
+                </div>
+              ))}
           </div>
         </div>
       </div>
-      {activeDataset && (
-        <DatasetPermissionsModal
-          isOpen={isPermissionsOpen}
-          datasetName={activeDataset.datasetName}
-          onClose={() => setIsPermissionsOpen(false)}
-        />
-      )}
     </div>
   );
 }
