@@ -4,16 +4,21 @@ import { useSession } from "next-auth/react";
 import type React from "react";
 import { useEffect } from "react";
 import RcaiMarkdown from "@/components/RcaiChat/RcaiMarkdown";
+import RcaiStreamedMarkdown from "@/components/RcaiChat/RcaiStreamedMarkdown";
+import RcaiThinking from "@/components/RcaiChat/RcaiThinking";
 import { Avatar } from "@/components/ui/Avatar";
 import { scrollToBottom } from "@/lib/scrollUtils";
 import type { Message } from "@/types/chat";
 
-function SendingSpinner() {
+function SendingSpinner({ showTurtle }: { showTurtle: boolean }) {
   return (
     <div className="flex items-center justify-center py-8">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Generating response...</p>
+        <p className="text-gray-600">
+          Generating response...
+          {showTurtle ? " \uD83D\uDC22" : null}
+        </p>
       </div>
     </div>
   );
@@ -24,11 +29,19 @@ export default function RcaiChatMessages({
   isMessagesLoading,
   isGeneratingAIResponse,
   messagesEndRef,
+  streamingMessageId,
+  progressText,
+  showTurtle,
+  hasAssistantOutputStarted,
 }: {
   messages: Message[];
   isMessagesLoading: boolean;
   isGeneratingAIResponse: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  streamingMessageId: string | null;
+  progressText: string | null;
+  showTurtle: boolean;
+  hasAssistantOutputStarted: boolean;
 }) {
   const { data: session } = useSession();
 
@@ -94,13 +107,55 @@ export default function RcaiChatMessages({
           >
             <div className="text-xs text-slate-500">DataGems AI</div>
             <div className="text-body-16-regular text-gray-750 break-words overflow-hidden">
-              <RcaiMarkdown content={message.content} />
+              {streamingMessageId === message.id ? (
+                <RcaiStreamedMarkdown
+                  messageId={message.id}
+                  content={message.content}
+                  isStreaming={true}
+                  statusText={
+                    !hasAssistantOutputStarted
+                      ? progressText
+                        ? `${progressText}${showTurtle ? " \uD83D\uDC22" : ""}`
+                        : showTurtle
+                          ? "\uD83D\uDC22"
+                          : null
+                      : null
+                  }
+                  onTick={() => {
+                    if (messagesEndRef.current) {
+                      scrollToBottom(messagesEndRef.current, {
+                        behavior: "auto",
+                        retryDelays: [],
+                      });
+                    }
+                  }}
+                />
+              ) : (
+                <RcaiMarkdown content={message.content} />
+              )}
             </div>
           </div>
         );
       })}
 
-      {isGeneratingAIResponse && <SendingSpinner />}
+      {isGeneratingAIResponse &&
+      !streamingMessageId &&
+      !hasAssistantOutputStarted &&
+      progressText ? (
+        <div className="w-full max-w-full space-y-4 shadow-s1 border border-slate-350 rounded-2xl px-4 pt-2 pb-4 sm:px-6 sm:pt-4 sm:pb-6">
+          <div className="text-xs text-slate-500">DataGems AI</div>
+          <RcaiThinking
+            text={progressText + (showTurtle ? " \uD83D\uDC22" : "")}
+          />
+        </div>
+      ) : null}
+
+      {isGeneratingAIResponse &&
+      !streamingMessageId &&
+      !hasAssistantOutputStarted &&
+      !progressText ? (
+        <SendingSpinner showTurtle={showTurtle} />
+      ) : null}
 
       <div ref={messagesEndRef} />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { getSession, useSession } from "next-auth/react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import RcaiChatMessages from "@/components/RcaiChat/RcaiChatMessages";
 import { ChatInput } from "@/components/ui/chat/ChatInput";
@@ -32,10 +32,51 @@ export default function RcaiChat() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+    null,
+  );
+  const [chatTitle, setChatTitle] = useState<string>("Untitled");
+  const [progressText, setProgressText] = useState<string | null>(null);
+  const [showTurtle, setShowTurtle] = useState(false);
+  const [hasAssistantOutputStarted, setHasAssistantOutputStarted] =
+    useState(false);
+
+  const debugEnabledRef = useRef(false);
+  useEffect(() => {
+    try {
+      debugEnabledRef.current =
+        typeof window !== "undefined" &&
+        window.localStorage.getItem("rcaiDebug") === "1";
+    } catch {
+      debugEnabledRef.current = false;
+    }
+  }, []);
+
+  const debugLog = (...args: any[]) => {
+    if (!debugEnabledRef.current) return;
+    // eslint-disable-next-line no-console
+    console.debug(...args);
+  };
 
   const isGeneratingRef = useRef(false);
   useEffect(() => {
     isGeneratingRef.current = isGenerating;
+  }, [isGenerating]);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      setShowTurtle(false);
+      return;
+    }
+
+    setShowTurtle(false);
+    const t = window.setTimeout(() => {
+      setShowTurtle(true);
+    }, 15000);
+
+    return () => {
+      window.clearTimeout(t);
+    };
   }, [isGenerating]);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -58,13 +99,36 @@ export default function RcaiChat() {
       setError(null);
       try {
         const url = buildRcaiApiUrl(`/chats/${encodeURIComponent(sessionId)}/`);
-        const resp = await fetch(url, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+
+        const fetchHistory = async (accessToken: string) =>
+          fetch(url, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+        let resp = await fetchHistory(token);
+
+        if (resp.status === 403) {
+          let body = "";
+          try {
+            body = await resp.text();
+          } catch {
+            body = "";
+          }
+
+          if (body.includes("Token expired")) {
+            const refreshed = await getSession();
+            const refreshedToken = (refreshed as any)?.accessToken as
+              | string
+              | undefined;
+            if (refreshedToken) {
+              resp = await fetchHistory(refreshedToken);
+            }
+          }
+        }
 
         if (resp.status === 404) {
           if (!cancelled) {
@@ -141,6 +205,8 @@ export default function RcaiChat() {
         } catch {
           // ignore
         }
+
+        debugLog("[RCAI][WS] open", { sessionId });
       };
 
       ws.onerror = () => {
@@ -152,12 +218,35 @@ export default function RcaiChat() {
         if (isGeneratingRef.current) {
           setError("Connection lost");
           setIsGenerating(false);
+          setStreamingMessageId(null);
+          setProgressText(null);
         }
+
+        debugLog("[RCAI][WS] close", {
+          sessionId,
+          isGenerating: isGeneratingRef.current,
+        });
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+
+          const msgSessionId =
+            typeof data?.session_id === "string" ? data.session_id : null;
+          if (msgSessionId && msgSessionId !== sessionId) {
+            debugLog("[RCAI][WS] ignore other session", {
+              msgSessionId,
+              sessionId,
+              type: data?.type,
+            });
+            return;
+          }
+
+          debugLog("[RCAI][WS] message", {
+            type: data?.type,
+            session_id: msgSessionId,
+          });
 
           if (data?.type === "assistant_message") {
             const messageId = String(data.message_id || "");
@@ -169,6 +258,22 @@ export default function RcaiChat() {
             const prev = assistantBuffersRef.current[messageId] || "";
             const next = prev + textChunk;
             assistantBuffersRef.current[messageId] = next;
+
+            debugLog("[RCAI][WS] assistant_message", {
+              messageId,
+              chunkLen: textChunk.length,
+              totalLen: next.length,
+              isComplete,
+            });
+
+            if (textChunk.trim().length > 0) {
+              setHasAssistantOutputStarted(true);
+              setProgressText(null);
+            }
+
+            if (!isComplete) {
+              setStreamingMessageId(messageId);
+            }
 
             setMessages((current) => {
               const idx = current.findIndex((m) => m.id === messageId);
@@ -194,8 +299,55 @@ export default function RcaiChat() {
 
             if (isComplete) {
               setIsGenerating(false);
+              setStreamingMessageId((current) =>
+                current === messageId ? null : current,
+              );
+              setProgressText(null);
+              setShowTurtle(false);
+              setHasAssistantOutputStarted(false);
             }
 
+            return;
+          }
+
+          if (data?.type === "chat_title_update") {
+            const title = String(data.title || "").trim();
+            if (title) {
+              debugLog("[RCAI][WS] chat_title_update", { title, sessionId });
+              setChatTitle(title);
+              if (typeof document !== "undefined") {
+                document.title = title;
+              }
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent("chat-title-update", {
+                    detail: {
+                      session_id: sessionId,
+                      title,
+                      updated_at: new Date().toISOString(),
+                    },
+                  }),
+                );
+              }
+            }
+            return;
+          }
+
+          if (data?.type === "progress") {
+            const detail = String(data.detail || "").trim();
+            const status = String(data.status || "").trim();
+            const nextText = detail || status;
+            if (nextText) {
+              debugLog("[RCAI][WS] progress", {
+                status,
+                detail,
+                nextText,
+                sessionId,
+              });
+              if (!hasAssistantOutputStarted) {
+                setProgressText(nextText);
+              }
+            }
             return;
           }
 
@@ -203,20 +355,26 @@ export default function RcaiChat() {
             // Backend emits statuses like: processing / waiting_for_input
             const status = String(data.status || "");
             if (status === "waiting_for_input") {
+              debugLog("[RCAI][WS] status_update waiting_for_input", {
+                sessionId,
+              });
               setIsGenerating(false);
+              setProgressText(null);
+              setShowTurtle(false);
+              setHasAssistantOutputStarted(false);
             }
-            return;
-          }
-
-          if (data?.type === "progress") {
-            // We don't render progress yet, but it's useful to know the socket is alive.
             return;
           }
 
           if (data?.type === "error") {
             const errorText = String(data.error || data.message || "Error");
+            debugLog("[RCAI][WS] error", { errorText, sessionId });
             setError(errorText);
             setIsGenerating(false);
+            setStreamingMessageId(null);
+            setProgressText(null);
+            setShowTurtle(false);
+            setHasAssistantOutputStarted(false);
 
             setMessages((current) => [
               ...current,
@@ -266,6 +424,8 @@ export default function RcaiChat() {
 
     setError(null);
     setIsGenerating(true);
+    setShowTurtle(false);
+    setHasAssistantOutputStarted(false);
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
@@ -287,12 +447,19 @@ export default function RcaiChat() {
 
   return (
     <div className="flex flex-col w-full">
+      <div className="px-4 pt-4 max-w-4xl mx-auto w-full">
+        <div className="text-sm text-slate-500">{chatTitle}</div>
+      </div>
       <div className="flex-1">
         <RcaiChatMessages
           messages={messages}
           isMessagesLoading={isLoadingHistory}
           isGeneratingAIResponse={isGenerating}
           messagesEndRef={messagesEndRef}
+          streamingMessageId={streamingMessageId}
+          progressText={progressText}
+          showTurtle={showTurtle}
+          hasAssistantOutputStarted={hasAssistantOutputStarted}
         />
       </div>
 
