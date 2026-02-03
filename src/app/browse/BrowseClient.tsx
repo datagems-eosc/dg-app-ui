@@ -6,6 +6,7 @@ import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
 import { APP_ROUTES } from "@/config/appUrls";
+import { COLLECTION_NAMES } from "@/config/collectionConstants";
 import {
   convertToBackendFilters,
   type FilterState,
@@ -280,7 +281,12 @@ export default function BrowseClient() {
   const [favoritesCollectionId, setFavoritesCollectionId] =
     useState<string>("");
   const [hasFetchedFavorites, setHasFetchedFavorites] = useState(false);
-  const { apiCollections, extraCollections } = useCollections();
+  const {
+    apiCollections,
+    extraCollections,
+    refreshExtraCollections,
+    notifyCollectionModified,
+  } = useCollections();
 
   const collectionDisplayName = React.useMemo(() => {
     if (!selectedCollection) return null;
@@ -306,15 +312,25 @@ export default function BrowseClient() {
     return /\bdatasets$/i.test(base) ? base : `${base} Datasets`;
   }, [selectedCollection, collectionDisplayName]);
 
+  const isFavoritesCollectionName = (name: unknown) => {
+    if (typeof name !== "string") return false;
+    const normalized = name.trim().toLowerCase();
+    return (
+      normalized === COLLECTION_NAMES.FAVORITES.toLowerCase() ||
+      normalized === COLLECTION_NAMES.FAVORITES_DATASETS.toLowerCase() ||
+      normalized.includes("favorite")
+    );
+  };
+
   /**
    * Fetch favorites collection to get dataset IDs for favorite state
    */
-  const fetchFavoritesCollection = useCallback(async () => {
+  const fetchFavoritesCollection = useCallback(async (): Promise<string> => {
     logDebug("fetchFavoritesCollection called");
     try {
       if (!api.hasToken) {
         logDebug("No token available for fetchFavoritesCollection");
-        return;
+        return "";
       }
 
       logDebug("Fetching favorites collection", { hasToken: api.hasToken });
@@ -339,16 +355,8 @@ export default function BrowseClient() {
       const items = Array.isArray(data.items) ? data.items : [];
       logDebug("Items from response", { itemsCount: items.length });
 
-      const favoritesCollection = items.find(
-        (item: any) =>
-          typeof item === "object" &&
-          item !== null &&
-          "name" in item &&
-          (item.name === "Favorites" ||
-            item.name === "Favorites" ||
-            item.name === "favorites" ||
-            item.name === "FAVORITES" ||
-            item.name.toLowerCase().includes("favorite")),
+      const favoritesCollection = items.find((item: any) =>
+        isFavoritesCollectionName(item?.name),
       );
 
       logDebug("Found favorites collection", {
@@ -388,6 +396,7 @@ export default function BrowseClient() {
         logDebug("Setting favorites collection ID", {
           id: favoritesCollection.id,
         });
+        return favoritesCollection.id as string;
       } else if (favoritesCollection) {
         logDebug("Favorites collection exists but is empty");
         setFavoriteDatasetIds([]);
@@ -396,8 +405,21 @@ export default function BrowseClient() {
         logDebug("Setting favorites collection ID", {
           id: favoritesCollection.id,
         });
+        return favoritesCollection.id as string;
       } else {
-        logDebug("No favorites collection found");
+        logDebug("No favorites collection found, creating one");
+        const created = await api.createUserCollection(
+          COLLECTION_NAMES.FAVORITES,
+        );
+        if (created?.id) {
+          setFavoriteDatasetIds([]);
+          setFavoritesCollectionId(created.id as string);
+          setHasFetchedFavorites(true);
+          await refreshExtraCollections();
+          notifyCollectionModified();
+          logDebug("Created favorites collection", { id: created.id });
+          return created.id as string;
+        }
         setFavoriteDatasetIds([]);
         setFavoritesCollectionId("");
         setHasFetchedFavorites(true);
@@ -407,8 +429,17 @@ export default function BrowseClient() {
       setFavoriteDatasetIds([]);
       setFavoritesCollectionId("");
       setHasFetchedFavorites(true);
+      return "";
     }
-  }, [api.hasToken, api.queryUserCollections]);
+    return "";
+  }, [
+    api.hasToken,
+    api.createUserCollection,
+    api.queryUserCollections,
+    isFavoritesCollectionName,
+    notifyCollectionModified,
+    refreshExtraCollections,
+  ]);
 
   /**
    * Add dataset to favorites collection
@@ -417,28 +448,45 @@ export default function BrowseClient() {
     async (datasetId: string) => {
       logDebug("handleAddToFavorites called", { datasetId });
       try {
-        if (!api.hasToken || !favoritesCollectionId) {
+        if (!api.hasToken) {
+          logDebug("Token missing", { hasToken: api.hasToken });
+          throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
+        }
+
+        let collectionId = favoritesCollectionId;
+        if (!collectionId) {
+          collectionId = await fetchFavoritesCollection();
+        }
+
+        if (!collectionId) {
           logDebug("Token or favoritesCollectionId missing", {
             hasToken: api.hasToken,
             favoritesCollectionId,
           });
-          throw new Error("No authentication token or favorites collection ID");
+          throw new Error(ApiErrorMessage.NO_AUTH_TOKEN_OR_FAVORITES_ID);
         }
 
         logDebug("Adding dataset to favorites collection", {
-          collectionId: favoritesCollectionId,
+          collectionId,
           datasetId,
         });
 
-        await api.addDatasetToUserCollection(favoritesCollectionId, datasetId);
+        await api.addDatasetToUserCollection(collectionId, datasetId);
 
-        setFavoriteDatasetIds((prev) => [...prev, datasetId]);
+        setFavoriteDatasetIds((prev) =>
+          prev.includes(datasetId) ? prev : [...prev, datasetId],
+        );
       } catch (err: unknown) {
         logError("Failed to add dataset to favorites", err);
         throw err;
       }
     },
-    [api.hasToken, api.addDatasetToUserCollection, favoritesCollectionId],
+    [
+      api.hasToken,
+      api.addDatasetToUserCollection,
+      favoritesCollectionId,
+      fetchFavoritesCollection,
+    ],
   );
 
   /**
