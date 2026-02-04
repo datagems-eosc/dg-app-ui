@@ -792,8 +792,11 @@ export function useApi() {
   const getRecommendNextQueries = useCallback(
     async (
       query: string,
+      conversationId?: string,
     ): Promise<{
-      next_queries: string[];
+      result?: Array<{ query?: string | null }> | null;
+      conversationId?: string | null;
+      next_queries?: string[];
     }> => {
       if (!token) {
         throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
@@ -804,9 +807,28 @@ export function useApi() {
         query,
       });
 
-      const requestPayload = {
+      const requestPayload: {
+        query: string;
+        conversationOptions?: {
+          conversationId?: string;
+          autoCreateConversation?: boolean;
+        };
+        project?: {
+          fields: string[];
+        };
+      } = {
         query: query,
+        project: {
+          fields: ["query"],
+        },
       };
+
+      if (conversationId) {
+        requestPayload.conversationOptions = {
+          conversationId,
+          autoCreateConversation: false,
+        };
+      }
 
       const response = await makeRequest("/search/recommend", {
         method: "POST",
@@ -823,7 +845,7 @@ export function useApi() {
 
       const result = await response.json();
       logApiResponse("getRecommendNextQueries", {
-        queriesCount: result.next_queries?.length || 0,
+        queriesCount: result.result?.length || result.next_queries?.length || 0,
       });
       return result;
     },

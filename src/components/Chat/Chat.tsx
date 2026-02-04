@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
+import { UI_CONSTANTS } from "@/config/uiConstants";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
@@ -18,6 +19,8 @@ import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logError } from "@/lib/logger";
 import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
 import {
+  buildRecommendationFallback,
+  extractRecommendations,
   parseConversationMessage,
   parseSearchInDataExploreResponse,
 } from "@/lib/messageUtils";
@@ -179,11 +182,31 @@ export default function Chat({
           !lastAIMessage.recommendationsLoading &&
           !fetchedRecommendationsRef.current.has(lastAIMessage.id)
         ) {
-          // Znajdź najbliższą wcześniejszą wiadomość użytkownika (może być oddzielona innymi AI)
-          const previousUserMessage = [...messages]
-            .slice(0, actualIndex)
+          const toTimestamp = (value: Date | string) =>
+            value instanceof Date ? value.getTime() : new Date(value).getTime();
+
+          const sortedByTime = messages
+            .map((message, index) => ({
+              message,
+              timestamp: toTimestamp(message.timestamp),
+              index,
+            }))
+            .sort((a, b) => a.timestamp - b.timestamp || a.index - b.index);
+
+          const lastAiSortedIndex = [...sortedByTime]
             .reverse()
-            .find((msg) => msg.type === "user");
+            .findIndex((entry) => entry.message.type === "ai");
+          const lastAiEntry =
+            lastAiSortedIndex === -1
+              ? null
+              : sortedByTime[sortedByTime.length - 1 - lastAiSortedIndex];
+
+          const previousUserMessage =
+            lastAiEntry &&
+            [...sortedByTime]
+              .slice(0, sortedByTime.indexOf(lastAiEntry))
+              .reverse()
+              .find((entry) => entry.message.type === "user")?.message;
 
           const currentQuery = previousUserMessage?.content ?? null;
 
@@ -924,89 +947,58 @@ export default function Chat({
 
       if (!api.hasToken) return;
 
-      const recommendationsResponse =
-        await api.getRecommendNextQueries(currentQuery);
+      const recommendationsResponse = await api.getRecommendNextQueries(
+        currentQuery,
+        targetConversationId ?? undefined,
+      );
 
-      // Sprawdź różne możliwe formaty odpowiedzi
-      let recommendations: string[] = [];
+      const recommendations = extractRecommendations(
+        recommendationsResponse,
+        UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
+      );
 
-      if (
-        recommendationsResponse.next_queries &&
-        Array.isArray(recommendationsResponse.next_queries)
-      ) {
-        recommendations = recommendationsResponse.next_queries.slice(0, 3);
-      } else if (Array.isArray(recommendationsResponse)) {
-        // Jeśli odpowiedź to bezpośrednio tablica
-        recommendations = recommendationsResponse.slice(0, 3);
-      }
+      const resolvedRecommendations =
+        recommendations.length > 0
+          ? recommendations
+          : buildRecommendationFallback(
+              currentQuery,
+              UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
+            );
 
-      // Log dla debugowania
-      console.log("[Recommendations] Fetched:", {
-        messageId,
-        query: currentQuery,
-        recommendationsCount: recommendations.length,
-        recommendations,
-        fullResponse: recommendationsResponse,
+      setMessages((prev) => {
+        const messageIndex = prev.findIndex((msg) => msg.id === messageId);
+        if (messageIndex === -1) {
+          setTimeout(() => {
+            setMessages((current) => {
+              const idx = current.findIndex((msg) => msg.id === messageId);
+              if (idx !== -1) {
+                const updated = [...current];
+                updated[idx] = {
+                  ...updated[idx],
+                  recommendations: resolvedRecommendations,
+                  recommendationsLoading: false,
+                };
+                return updated;
+              }
+              return current;
+            });
+          }, 500);
+          return prev;
+        }
+
+        const updated = [...prev];
+        updated[messageIndex] = {
+          ...updated[messageIndex],
+          recommendations: resolvedRecommendations,
+          recommendationsLoading: false,
+        };
+        return updated;
       });
-
-      // Tymczasowy fallback - jeśli endpoint zwraca pustą tablicę, użyj mock danych do testów
-      // TODO: Usunąć gdy endpoint będzie zwracał prawdziwe dane
-      if (recommendations.length === 0) {
-        console.warn(
-          "[Recommendations] Endpoint returned empty array, using mock data for testing",
-        );
-        recommendations = [
-          "What are the applications of machine learning?",
-          "How does neural network training work?",
-          "What is deep learning?",
-        ];
-      }
-
-      if (recommendations.length > 0) {
-        setMessages((prev) => {
-          const messageIndex = prev.findIndex((msg) => msg.id === messageId);
-          if (messageIndex === -1) {
-            setTimeout(() => {
-              setMessages((current) => {
-                const idx = current.findIndex((msg) => msg.id === messageId);
-                if (idx !== -1) {
-                  const updated = [...current];
-                  updated[idx] = {
-                    ...updated[idx],
-                    recommendations,
-                    recommendationsLoading: false,
-                  };
-                  return updated;
-                }
-                return current;
-              });
-            }, 500);
-            return prev;
-          }
-
-          const updated = [...prev];
-          updated[messageIndex] = {
-            ...updated[messageIndex],
-            recommendations,
-            recommendationsLoading: false,
-          };
-          return updated;
-        });
-      } else {
-        setMessages((prev) => {
-          const messageIndex = prev.findIndex((msg) => msg.id === messageId);
-          if (messageIndex === -1) {
-            return prev;
-          }
-          const updated = [...prev];
-          updated[messageIndex] = {
-            ...updated[messageIndex],
-            recommendationsLoading: false,
-          };
-          return updated;
-        });
-      }
     } catch (_error) {
+      const fallbackRecommendations = buildRecommendationFallback(
+        currentQuery,
+        UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
+      );
       setMessages((prev) => {
         const messageIndex = prev.findIndex((msg) => msg.id === messageId);
         if (messageIndex === -1) {
@@ -1015,6 +1007,7 @@ export default function Chat({
         const updated = [...prev];
         updated[messageIndex] = {
           ...updated[messageIndex],
+          recommendations: fallbackRecommendations,
           recommendationsLoading: false,
         };
         return updated;
