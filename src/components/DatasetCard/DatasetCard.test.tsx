@@ -4,6 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import type { Dataset } from "@/data/dataset";
 import DatasetCard from "./DatasetCard";
 
+vi.mock("@/contexts/DatasetContext", () => ({
+  useDataset: () => ({
+    toggleFavorite: vi.fn(),
+    isFavorite: () => false,
+  }),
+}));
+
 describe("DatasetCard", () => {
   const mockDataset: Dataset = {
     id: "1",
@@ -38,6 +45,25 @@ describe("DatasetCard", () => {
   it("should render dataset description", () => {
     render(<DatasetCard {...defaultProps} />);
     expect(screen.getByText("Test description")).toBeInTheDocument();
+  });
+
+  it("calls onAddToFavorites when star is clicked", async () => {
+    const user = userEvent.setup();
+    const onAddToFavorites = vi.fn().mockResolvedValue(undefined);
+    render(
+      <DatasetCard
+        {...defaultProps}
+        isFavorite={false}
+        favoritesCollectionId="favorites-1"
+        hasFetchedFavorites={true}
+        onAddToFavorites={onAddToFavorites}
+        onRemoveFromFavorites={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByLabelText("Add to favorites"));
+
+    expect(onAddToFavorites).toHaveBeenCalledWith("1");
   });
 
   it("should call onSelect when card is clicked and not selected", async () => {

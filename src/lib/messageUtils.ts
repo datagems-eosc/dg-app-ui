@@ -271,3 +271,79 @@ export function parseSearchInDataExploreResponse(
     longitude,
   };
 }
+
+export function extractRecommendations(
+  apiResponse: unknown,
+  limit: number,
+): string[] {
+  if (!apiResponse || typeof apiResponse !== "object") {
+    return [];
+  }
+
+  const response = apiResponse as {
+    result?: Array<{ query?: string | null }> | null;
+    next_queries?: unknown;
+  };
+
+  if (Array.isArray(response.result)) {
+    return response.result
+      .map((item) => item.query)
+      .filter((query): query is string => Boolean(query))
+      .slice(0, limit);
+  }
+
+  if (Array.isArray(response.next_queries)) {
+    return response.next_queries
+      .filter((query): query is string => typeof query === "string")
+      .slice(0, limit);
+  }
+
+  if (Array.isArray(apiResponse)) {
+    return apiResponse
+      .filter((query): query is string => typeof query === "string")
+      .slice(0, limit);
+  }
+
+  return [];
+}
+
+export function buildRecommendationFallback(
+  query: string,
+  limit: number,
+): string[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const suggestions: string[] = [];
+  const lower = trimmed.toLowerCase();
+  const pushUnique = (value: string) => {
+    const normalized = value.trim();
+    if (!normalized) return;
+    if (!suggestions.includes(normalized)) {
+      suggestions.push(normalized);
+    }
+  };
+
+  const replaceWord = (from: string, to: string) => {
+    if (!lower.includes(from)) return;
+    const regex = new RegExp(`\\b${from}\\b`, "i");
+    pushUnique(trimmed.replace(regex, to));
+  };
+
+  const replacements: Array<[string, string[]]> = [
+    ["average", ["highest", "lowest"]],
+    ["lowest", ["highest", "average"]],
+    ["highest", ["lowest", "average"]],
+  ];
+
+  replacements.forEach(([from, targets]) => {
+    if (lower.includes(from)) {
+      targets.forEach((to) => replaceWord(from, to));
+    }
+  });
+
+  pushUnique(`Trend of ${trimmed}`);
+  pushUnique(`Monthly breakdown for ${trimmed}`);
+
+  return suggestions.slice(0, limit);
+}

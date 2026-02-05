@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ConversationMessage } from "../src/app/chat/page";
 import {
+  extractRecommendations,
   parseConversationMessage,
   parseSearchInDataExploreResponse,
 } from "../src/lib/messageUtils";
@@ -238,6 +239,43 @@ test("parseConversationMessage - kind 3 with entries but no table", () => {
 
   assert.equal(result.type, "ai");
   assert.equal(result.content, "Analysis completed.");
+});
+
+test("extractRecommendations - result list", () => {
+  const result = extractRecommendations(
+    {
+      result: [
+        { query: "first" },
+        { query: "second" },
+        { query: null },
+        { query: "third" },
+      ],
+    },
+    2,
+  );
+
+  assert.deepEqual(result, ["first", "second"]);
+});
+
+test("extractRecommendations - next_queries list", () => {
+  const result = extractRecommendations(
+    { next_queries: ["alpha", "beta", 1] },
+    3,
+  );
+
+  assert.deepEqual(result, ["alpha", "beta"]);
+});
+
+test("extractRecommendations - array response", () => {
+  const result = extractRecommendations(["one", "two", 3], 1);
+
+  assert.deepEqual(result, ["one"]);
+});
+
+test("extractRecommendations - invalid response", () => {
+  const result = extractRecommendations(null, 3);
+
+  assert.deepEqual(result, []);
 });
 
 test("parseConversationMessage - kind 3 with coordinates", () => {
