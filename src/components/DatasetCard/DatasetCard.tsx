@@ -312,6 +312,9 @@ export default function DatasetCard({
             <button
               onClick={handleStarClick}
               disabled={isFavoriteLoading}
+              aria-label={
+                isStarred ? "Remove from favorites" : "Add to favorites"
+              }
               className={`flex-shrink-0 p-1.5 rounded transition-colors ${
                 isFavoriteLoading
                   ? "opacity-50 cursor-not-allowed"

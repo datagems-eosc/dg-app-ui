@@ -59,7 +59,7 @@ export default function SortingDropdown({
       {isOpen && (
         <div className="absolute top-full mt-1 w-70 bg-white rounded-lg shadow-s3 border border-slate-200 z-50 right-0">
           <div className="px-6 py-4">
-            <h3 className="text-body-16-semibold text-gray-850">Sort by</h3>
+            <h3 className="text-body-16-semibold text-gray-750">Sort by</h3>
           </div>
 
           <div className="px-6 pb-4">
