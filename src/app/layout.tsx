@@ -7,6 +7,7 @@ import { CollectionsProvider } from "@/contexts/CollectionsContext";
 import { DatasetProvider } from "@/contexts/DatasetContext";
 import { ErrorProvider } from "@/contexts/ErrorContext";
 import { UserProvider } from "@/contexts/UserContext";
+import { getAppVersion } from "@/lib/appVersion";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const appVersion = getAppVersion();
+
   return (
     <html lang="en">
       <body
@@ -38,7 +41,14 @@ export default function RootLayout({
             <ErrorProvider>
               <UserProvider>
                 <DatasetProvider>
-                  <CollectionsProvider>{children}</CollectionsProvider>
+                  <CollectionsProvider>
+                    {children}
+                    {appVersion ? (
+                      <div className="fixed bottom-3 right-4 text-[10px] leading-[150%] text-gray-650 tracking-[0.12px]">
+                        {appVersion}
+                      </div>
+                    ) : null}
+                  </CollectionsProvider>
                 </DatasetProvider>
               </UserProvider>
             </ErrorProvider>

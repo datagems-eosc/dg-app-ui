@@ -17,7 +17,7 @@
   },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "next build && node -e \"process.stdout.write('App version: ' + require('./package.json').version + '\\n')\"",
     "start": "next start",
     "lint": "next lint",
     "lint:biome": "npx @biomejs/biome check --write .",
