@@ -8,6 +8,7 @@ import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logError } from "@/lib/logger";
 import type { ContextGrant } from "@/types/contextGrants";
+import type { UserGroupQueryResult } from "@/types/userDirectory";
 
 type DropdownOption = {
   label: string;
@@ -129,6 +130,13 @@ function SearchField({
 
 export default function RolesPermissionsSection() {
   const api = useApi();
+  const {
+    hasToken,
+    getCurrentUserContextGrants,
+    queryUserGroups,
+    queryDatasets,
+    queryCollections,
+  } = api;
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [grants, setGrants] = useState<ContextGrant[]>([]);
@@ -143,7 +151,7 @@ export default function RolesPermissionsSection() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (!api.hasToken) {
+    if (!hasToken) {
       setIsLoading(false);
       return;
     }
@@ -153,12 +161,15 @@ export default function RolesPermissionsSection() {
 
     const loadGrants = async () => {
       try {
-        const [grantsResult, groupsResult] = await Promise.all([
-          api.getCurrentUserContextGrants(),
-          api.queryUserGroups({ like: null }),
-        ]);
+        const grantsResult = await getCurrentUserContextGrants();
         if (cancelled) return;
         setGrants(grantsResult);
+        let groupsResult: UserGroupQueryResult = { items: [] };
+        try {
+          groupsResult = await queryUserGroups({ like: null });
+        } catch (error) {
+          logError("Failed to load user groups for grants", error);
+        }
         const groupMap = (groupsResult.items ?? [])
           .map((group) => ({
             id: group.id ?? "",
@@ -180,21 +191,27 @@ export default function RolesPermissionsSection() {
 
         const [datasetsResult, collectionsResult] = await Promise.all([
           datasetIds.length > 0
-            ? api.queryDatasets({
+            ? queryDatasets({
                 ids: datasetIds,
                 project: { fields: ["id", "name"] },
                 page: { Offset: 0, Size: datasetIds.length },
                 Order: { Items: ["+name"] },
                 Metadata: { CountAll: false },
+              }).catch((error) => {
+                logError("Failed to load dataset names for grants", error);
+                return { items: [] };
               })
             : Promise.resolve({ items: [] }),
           collectionIds.length > 0
-            ? api.queryCollections({
+            ? queryCollections({
                 ids: collectionIds,
                 project: { fields: ["id", "name"] },
                 page: { Offset: 0, Size: collectionIds.length },
                 Order: { Items: ["+name"] },
                 Metadata: { CountAll: false },
+              }).catch((error) => {
+                logError("Failed to load collection names for grants", error);
+                return { items: [] };
               })
             : Promise.resolve({ items: [] }),
         ]);
@@ -246,7 +263,13 @@ export default function RolesPermissionsSection() {
     return () => {
       cancelled = true;
     };
-  }, [api]);
+  }, [
+    getCurrentUserContextGrants,
+    hasToken,
+    queryCollections,
+    queryDatasets,
+    queryUserGroups,
+  ]);
 
   const roleOptions = useMemo<DropdownOption[]>(() => {
     const roles = Array.from(
