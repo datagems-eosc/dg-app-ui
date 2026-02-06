@@ -257,27 +257,19 @@ export default function DatasetCard({
           <div className="flex items-center gap-1 flex-wrap">
             {hasCollections(dataset) && dataset.collections.length > 0 ? (
               dataset.collections.map((col) => (
-                <Chip
-                  key={col.id || col.name}
-                  color="info"
-                  variant="outline"
-                  size="sm"
-                >
+                <Chip key={col.id || col.name} color="grey" size="sm">
                   {typeof col.name === "string"
                     ? col.name.replace(/ Collection$/i, "")
                     : col.name}
                 </Chip>
               ))
             ) : (
-              <Chip color="info" variant="outline" size="sm">
+              <Chip color="grey" size="sm">
                 {dataset.category}
               </Chip>
             )}
-            <Chip
-              color={dataset.access === "Open Access" ? "success" : "warning"}
-              size="sm"
-            >
-              {dataset.access}
+            <Chip color="success" size="sm">
+              {dataset.license || "No License"}
             </Chip>
             {/* Smart search match chip - only show in chips row for grid layout */}
             {isSmartSearchEnabled &&
