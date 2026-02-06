@@ -318,6 +318,250 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getUserDatasetGrants = useCallback(
+    async (
+      userId: string,
+      datasetIds: string[],
+    ): Promise<Record<string, string[]>> => {
+      const params = datasetIds
+        .map((id) => `id=${encodeURIComponent(id)}`)
+        .join("&");
+      const response = await makeRequest(
+        `/principal/user/${userId}/context-grants/dataset?${params}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_GRANTS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const getGroupDatasetGrants = useCallback(
+    async (
+      groupId: string,
+      datasetIds: string[],
+    ): Promise<Record<string, string[]>> => {
+      const params = datasetIds
+        .map((id) => `id=${encodeURIComponent(id)}`)
+        .join("&");
+      const response = await makeRequest(
+        `/principal/group/${groupId}/context-grants/dataset?${params}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_GROUP_GRANTS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const getUserCollectionGrants = useCallback(
+    async (
+      userId: string,
+      collectionIds: string[],
+    ): Promise<Record<string, string[]>> => {
+      const params = collectionIds
+        .map((id) => `id=${encodeURIComponent(id)}`)
+        .join("&");
+      const response = await makeRequest(
+        `/principal/user/${userId}/context-grants/collection?${params}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_GRANTS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const getGroupCollectionGrants = useCallback(
+    async (
+      groupId: string,
+      collectionIds: string[],
+    ): Promise<Record<string, string[]>> => {
+      const params = collectionIds
+        .map((id) => `id=${encodeURIComponent(id)}`)
+        .join("&");
+      const response = await makeRequest(
+        `/principal/group/${groupId}/context-grants/collection?${params}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_GROUP_GRANTS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const assignUserDatasetGrant = useCallback(
+    async (userId: string, datasetId: string, role: string): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/dataset/${datasetId}/role/${role}`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+      }
+    },
+    [makeRequest],
+  );
+
+  const unassignUserDatasetGrant = useCallback(
+    async (userId: string, datasetId: string, role: string): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/dataset/${datasetId}/role/${role}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
+  const assignGroupDatasetGrant = useCallback(
+    async (groupId: string, datasetId: string, role: string): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/group/${groupId}/dataset/${datasetId}/role/${role}`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+      }
+    },
+    [makeRequest],
+  );
+
+  const unassignGroupDatasetGrant = useCallback(
+    async (groupId: string, datasetId: string, role: string): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/group/${groupId}/dataset/${datasetId}/role/${role}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
+  const assignUserCollectionGrant = useCallback(
+    async (
+      userId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/collection/${collectionId}/role/${role}`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+      }
+    },
+    [makeRequest],
+  );
+
+  const unassignUserCollectionGrant = useCallback(
+    async (
+      userId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/collection/${collectionId}/role/${role}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
+  const assignGroupCollectionGrant = useCallback(
+    async (
+      groupId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/group/${groupId}/collection/${collectionId}/role/${role}`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+      }
+    },
+    [makeRequest],
+  );
+
+  const unassignGroupCollectionGrant = useCallback(
+    async (
+      groupId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/group/${groupId}/collection/${collectionId}/role/${role}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
   const getCurrentUserContextGrants = useCallback(async (): Promise<
     ContextGrant[]
   > => {
@@ -865,6 +1109,18 @@ export function useApi() {
     grantCollectionPermission,
     deleteCollection,
     getCurrentUserContextGrants,
+    getUserDatasetGrants,
+    getGroupDatasetGrants,
+    getUserCollectionGrants,
+    getGroupCollectionGrants,
+    assignUserDatasetGrant,
+    unassignUserDatasetGrant,
+    assignGroupDatasetGrant,
+    unassignGroupDatasetGrant,
+    assignUserCollectionGrant,
+    unassignUserCollectionGrant,
+    assignGroupCollectionGrant,
+    unassignGroupCollectionGrant,
     searchInDataExplore,
     searchCrossDataset,
     getConversation,

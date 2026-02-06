@@ -10,6 +10,7 @@ import {
   ListChecks,
   MoreHorizontal,
   Search as SearchIcon,
+  Settings,
   Tag,
   Trash2,
 } from "lucide-react";
@@ -29,6 +30,10 @@ import Switch from "@ui/Switch";
 import { Toast } from "@ui/Toast";
 import { useRouter } from "next/navigation";
 import { APP_ROUTES } from "@/config/appUrls";
+import {
+  COLLECTION_ROLE_MAP,
+  mapRolesToPermissions,
+} from "@/config/contextGrantRoles";
 import { UI_CONSTANTS } from "@/config/uiConstants";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
@@ -48,6 +53,7 @@ import DatasetCard from "../DatasetCard";
 import FilterModal from "../FilterModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
+import { CollectionPermissionsModal } from "../ui/user/CollectionPermissionsModal";
 import ActiveFilters from "./ActiveFilters";
 
 interface BrowseProps {
@@ -232,6 +238,8 @@ export default function Browse({
   const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
     useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCollectionPermissions, setShowCollectionPermissions] =
+    useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
@@ -451,8 +459,7 @@ export default function Browse({
   }, [isMounted]);
 
   // Check if user can delete collection
-  // For custom collections (except Favorites), always show delete button
-  // The API will handle permission check when deletion is attempted
+  // For custom collections (except Favorites), use context grants
   useEffect(() => {
     if (!isCustomCollection) {
       setCanDeleteCollection(false);
@@ -468,10 +475,23 @@ export default function Browse({
       return;
     }
 
-    // For all other custom collections, show delete button
-    // API will validate permissions when deletion is attempted
-    setCanDeleteCollection(true);
-  }, [isCustomCollection, collectionName]);
+    if (!collectionId || !api.hasToken) {
+      setCanDeleteCollection(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const roles = await api.getCollectionGrants(collectionId);
+      if (cancelled) return;
+      const permissions = mapRolesToPermissions(roles, COLLECTION_ROLE_MAP);
+      setCanDeleteCollection(Boolean(permissions.delete));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, collectionId, collectionName, isCustomCollection]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
@@ -831,6 +851,25 @@ export default function Browse({
                               e.preventDefault();
                               e.stopPropagation();
                               setShowTitleActionsDropdown(false);
+                              if (collectionId) {
+                                setShowCollectionPermissions(true);
+                              }
+                            }}
+                            className={`flex items-center gap-3 w-full px-4 py-2 text-left transition-colors ${
+                              collectionId
+                                ? "text-gray-700 hover:bg-gray-50"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
+                          >
+                            <Settings className="w-4 h-4 text-icon" />
+                            Manage permissions
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowTitleActionsDropdown(false);
                             }}
                             className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                           >
@@ -1173,6 +1212,12 @@ export default function Browse({
         confirmVariant="danger"
         icon={<Trash2 className="w-8 h-8 text-red-500" />}
         isLoading={isDeleting}
+      />
+      <CollectionPermissionsModal
+        isOpen={showCollectionPermissions}
+        collectionId={collectionId}
+        collectionName={collectionName || title}
+        onClose={() => setShowCollectionPermissions(false)}
       />
 
       {/* Toast Notification */}

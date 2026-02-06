@@ -5,7 +5,7 @@ import { Input } from "@ui/Input";
 import { Search, Settings2, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
-  DATASET_ROLE_MAP,
+  COLLECTION_ROLE_MAP,
   mapRolesToPermissions,
   type PermissionKey,
 } from "@/config/contextGrantRoles";
@@ -36,10 +36,10 @@ const permissionColumns: Array<{ key: PermissionKey; label: string }> = [
   { key: "search", label: "Search" },
 ];
 
-interface DatasetPermissionsModalProps {
+interface CollectionPermissionsModalProps {
   isOpen: boolean;
-  datasetId: string;
-  datasetName: string;
+  collectionId: string;
+  collectionName: string;
   onClose: () => void;
 }
 
@@ -70,12 +70,12 @@ function PermissionSwitch({
   );
 }
 
-export function DatasetPermissionsModal({
+export function CollectionPermissionsModal({
   isOpen,
-  datasetId,
-  datasetName,
+  collectionId,
+  collectionName,
   onClose,
-}: DatasetPermissionsModalProps) {
+}: CollectionPermissionsModalProps) {
   const api = useApi();
   const [activeTab, setActiveTab] = useState<"groups" | "invite">("groups");
   const [isManageOpen, setIsManageOpen] = useState(false);
@@ -89,7 +89,7 @@ export function DatasetPermissionsModal({
   >([]);
   const [visibleGroupIds, setVisibleGroupIds] = useState<string[] | null>(null);
   const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([]);
-  const [invitePermissions, setInvitePermissions] = useState<
+  const [invitePermissions, _setInvitePermissions] = useState<
     Record<PermissionKey, boolean>
   >({
     browse: false,
@@ -106,7 +106,7 @@ export function DatasetPermissionsModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !api.hasToken || !datasetId) return;
+    if (!isOpen || !api.hasToken || !collectionId) return;
     let cancelled = false;
     setIsLoading(true);
     (async () => {
@@ -117,19 +117,19 @@ export function DatasetPermissionsModal({
           result.items?.map((group) => ({
             id: group.id ?? "",
             name: group.name ?? "",
-            permissions: mapRolesToPermissions([], DATASET_ROLE_MAP),
+            permissions: mapRolesToPermissions([], COLLECTION_ROLE_MAP),
           })) ?? [];
         const validGroups = groups.filter((group) => group.id && group.name);
 
         const grants = await Promise.all(
           validGroups.map(async (group) => {
-            const response = await api.getGroupDatasetGrants(group.id, [
-              datasetId,
+            const response = await api.getGroupCollectionGrants(group.id, [
+              collectionId,
             ]);
-            const roles = response?.[datasetId] ?? [];
+            const roles = response?.[collectionId] ?? [];
             return {
               ...group,
-              permissions: mapRolesToPermissions(roles, DATASET_ROLE_MAP),
+              permissions: mapRolesToPermissions(roles, COLLECTION_ROLE_MAP),
             };
           }),
         );
@@ -146,7 +146,7 @@ export function DatasetPermissionsModal({
     return () => {
       cancelled = true;
     };
-  }, [api, datasetId, isOpen]);
+  }, [api, collectionId, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -185,13 +185,13 @@ export function DatasetPermissionsModal({
     permission: PermissionKey,
     nextValue: boolean,
   ) => {
-    const role = DATASET_ROLE_MAP[permission];
+    const role = COLLECTION_ROLE_MAP[permission];
     if (!role) return;
     try {
       if (nextValue) {
-        await api.assignGroupDatasetGrant(groupId, datasetId, role);
+        await api.assignGroupCollectionGrant(groupId, collectionId, role);
       } else {
-        await api.unassignGroupDatasetGrant(groupId, datasetId, role);
+        await api.unassignGroupCollectionGrant(groupId, collectionId, role);
       }
       setGroupPermissions((prev) =>
         prev.map((row) =>
@@ -217,13 +217,13 @@ export function DatasetPermissionsModal({
     nextValue: boolean,
   ) => {
     if (!userId) return;
-    const role = DATASET_ROLE_MAP[permission];
+    const role = COLLECTION_ROLE_MAP[permission];
     if (!role) return;
     try {
       if (nextValue) {
-        await api.assignUserDatasetGrant(userId, datasetId, role);
+        await api.assignUserCollectionGrant(userId, collectionId, role);
       } else {
-        await api.unassignUserDatasetGrant(userId, datasetId, role);
+        await api.unassignUserCollectionGrant(userId, collectionId, role);
       }
       setInvitedUsers((prev) =>
         prev.map((user) =>
@@ -249,11 +249,15 @@ export function DatasetPermissionsModal({
         Object.keys(user.permissions) as PermissionKey[]
       )
         .filter((key) => user.permissions[key])
-        .map((key) => DATASET_ROLE_MAP[key]);
+        .map((key) => COLLECTION_ROLE_MAP[key]);
       try {
         await Promise.all(
           permissionsToRemove.map((role) =>
-            api.unassignUserDatasetGrant(user.id as string, datasetId, role),
+            api.unassignUserCollectionGrant(
+              user.id as string,
+              collectionId,
+              role,
+            ),
           ),
         );
       } catch (error) {
@@ -280,11 +284,11 @@ export function DatasetPermissionsModal({
           onClick={(event) => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
-          aria-label={datasetName}
+          aria-label={collectionName}
         >
           <div className="flex items-center h-[72px] px-6 pr-4 border-b border-slate-200">
             <h2 className="text-[18px] font-semibold leading-[140%] text-slate-850 flex-1 truncate">
-              {datasetName}
+              {collectionName}
             </h2>
             <button
               type="button"
@@ -296,8 +300,8 @@ export function DatasetPermissionsModal({
             </button>
           </div>
 
-          <div className="border-b border-slate-200 px-6">
-            <div className="flex gap-2 h-[55px]">
+          <div className="px-6 border-b border-slate-200 h-12 flex items-center gap-6">
+            <div className="flex items-center gap-2 h-full">
               <button
                 type="button"
                 onClick={() => setActiveTab("groups")}
@@ -308,7 +312,7 @@ export function DatasetPermissionsModal({
                     activeTab === "groups" ? "text-gray-750" : "text-gray-650"
                   }`}
                 >
-                  Groups
+                  Group permissions
                 </span>
                 {activeTab === "groups" && (
                   <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-500 rounded-t-[2px]" />
@@ -411,135 +415,101 @@ export function DatasetPermissionsModal({
 
             {activeTab === "invite" && (
               <div className="flex flex-col gap-6">
-                <Input
-                  name="invite-search"
-                  placeholder="Search"
-                  value={inviteSearch}
-                  onChange={(event) => setInviteSearch(event.target.value)}
-                  rightIcon={<Search className="w-4 h-4 text-icon" />}
-                  className="h-10"
-                />
-
-                <div>
-                  <div className="flex items-center h-12">
-                    <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
-                      Invite new user
-                    </div>
-                    <div className="flex gap-1 text-[14px] text-gray-750">
-                      {permissionColumns.map((column) => (
-                        <div key={column.key} className="w-20 text-center">
-                          {column.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center h-[72px] border-t border-b border-slate-200">
-                    <div className="flex-1 flex items-center gap-2">
-                      <Input
-                        name="invite-email"
-                        placeholder="Email address"
-                        value={inviteEmail}
-                        onChange={(event) => setInviteEmail(event.target.value)}
-                        className="h-10"
-                      />
-                      <Button
-                        variant="outline"
-                        size="md"
-                        onClick={async () => {
-                          if (!inviteEmail.trim()) return;
-                          const email = inviteEmail.trim();
-                          setIsInviteLookupLoading(true);
-                          try {
-                            const result = await api.queryUsers({
-                              like: email,
-                            });
-                            const match = result.items?.find(
-                              (user) =>
-                                user.email?.toLowerCase() ===
-                                email.toLowerCase(),
-                            );
-                            const userId = match?.id ?? undefined;
-                            let permissions = { ...invitePermissions };
-                            if (userId) {
-                              const grants = await api.getUserDatasetGrants(
-                                userId,
-                                [datasetId],
-                              );
-                              permissions = mapRolesToPermissions(
-                                grants?.[datasetId] ?? [],
-                                DATASET_ROLE_MAP,
-                              );
-                            }
-                            setInvitedUsers((prev) => [
-                              ...prev,
-                              {
-                                id: userId,
-                                name:
-                                  match?.name ??
-                                  email.split("@")[0] ??
-                                  "Invited User",
-                                email: match?.email ?? email,
-                                permissions,
-                                hasApiId: Boolean(userId),
-                              },
-                            ]);
-                            setInviteEmail("");
-                          } catch (error) {
-                            logError("Failed to lookup invite user", error);
-                          } finally {
-                            setIsInviteLookupLoading(false);
-                          }
-                        }}
-                        className="rounded-full"
-                        disabled={isInviteLookupLoading}
-                      >
-                        Invite
-                      </Button>
-                    </div>
-                    <div className="flex gap-1">
-                      {permissionColumns.map((column) => (
-                        <div
-                          key={column.key}
-                          className="w-20 flex justify-center"
-                        >
-                          <PermissionSwitch
-                            checked={invitePermissions[column.key]}
-                            ariaLabel={`Invite ${column.label}`}
-                            onChange={() =>
-                              setInvitePermissions((prev) => ({
-                                ...prev,
-                                [column.key]: !prev[column.key],
-                              }))
-                            }
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                <div className="flex items-center gap-3">
+                  <Input
+                    name="invite-email"
+                    placeholder="Enter e-mail"
+                    value={inviteEmail}
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    className="h-10"
+                  />
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={async () => {
+                      if (!inviteEmail.trim()) return;
+                      const email = inviteEmail.trim();
+                      setIsInviteLookupLoading(true);
+                      try {
+                        const result = await api.queryUsers({
+                          like: email,
+                        });
+                        const match = result.items?.find(
+                          (user) =>
+                            user.email?.toLowerCase() === email.toLowerCase(),
+                        );
+                        const userId = match?.id ?? undefined;
+                        let permissions = { ...invitePermissions };
+                        if (userId) {
+                          const grants = await api.getUserCollectionGrants(
+                            userId,
+                            [collectionId],
+                          );
+                          permissions = mapRolesToPermissions(
+                            grants?.[collectionId] ?? [],
+                            COLLECTION_ROLE_MAP,
+                          );
+                        }
+                        setInvitedUsers((prev) => [
+                          ...prev,
+                          {
+                            id: userId,
+                            name:
+                              match?.name ??
+                              email.split("@")[0] ??
+                              "Invited User",
+                            email: match?.email ?? email,
+                            permissions,
+                            hasApiId: Boolean(userId),
+                          },
+                        ]);
+                        setInviteEmail("");
+                      } catch (error) {
+                        logError("Failed to lookup invite user", error);
+                      } finally {
+                        setIsInviteLookupLoading(false);
+                      }
+                    }}
+                    className="rounded-full"
+                    disabled={isInviteLookupLoading}
+                  >
+                    Invite
+                  </Button>
                 </div>
 
-                <div>
-                  <div className="flex items-center h-12">
-                    <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
-                      Users invited
-                    </div>
-                    <div className="flex gap-1 text-[14px] text-gray-750">
-                      {permissionColumns.map((column) => (
-                        <div key={column.key} className="w-20 text-center">
-                          {column.label}
-                        </div>
-                      ))}
-                    </div>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <Input
+                      name="invite-search"
+                      placeholder="Search"
+                      value={inviteSearch}
+                      onChange={(event) => setInviteSearch(event.target.value)}
+                      rightIcon={<Search className="w-4 h-4 text-icon" />}
+                      className="h-10"
+                    />
                   </div>
-                  <div className="border-t border-b border-slate-200">
-                    {filteredInvitedUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
-                      >
-                        <div className="flex-1 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
-                            <div className="w-full h-full flex items-center justify-center text-[12px] font-medium text-gray-750">
+
+                  <div>
+                    <div className="flex items-center h-12">
+                      <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
+                        Users
+                      </div>
+                      <div className="flex gap-1 text-[14px] text-gray-750">
+                        {permissionColumns.map((column) => (
+                          <div key={column.key} className="w-20 text-center">
+                            {column.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="max-h-[401px] overflow-y-auto border-t border-b border-slate-200">
+                      {filteredInvitedUsers.map((user) => (
+                        <div
+                          key={user.email}
+                          className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-[14px] font-semibold text-gray-650">
                               {user.name
                                 .split(" ")
                                 .map((part) => part[0])
@@ -547,50 +517,50 @@ export function DatasetPermissionsModal({
                                 .slice(0, 2)
                                 .toUpperCase()}
                             </div>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[14px] font-medium text-slate-850">
-                              {user.name}
-                            </span>
-                            <span className="text-[12px] text-gray-650 tracking-[0.12px]">
-                              {user.email}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          {permissionColumns.map((column) => (
-                            <div
-                              key={`${user.email}-${column.key}`}
-                              className="w-20 flex justify-center"
-                            >
-                              <PermissionSwitch
-                                checked={user.permissions[column.key]}
-                                ariaLabel={`${user.name} ${column.label}`}
-                                disabled={!user.hasApiId}
-                                onChange={() =>
-                                  handleUserToggle(
-                                    user.id,
-                                    column.key,
-                                    !user.permissions[column.key],
-                                  )
-                                }
-                              />
+                            <div className="flex flex-col">
+                              <span className="text-[14px] font-medium text-slate-850">
+                                {user.name}
+                              </span>
+                              <span className="text-[12px] text-gray-650 tracking-[0.12px]">
+                                {user.email}
+                              </span>
                             </div>
-                          ))}
+                          </div>
+                          <div className="flex gap-1">
+                            {permissionColumns.map((column) => (
+                              <div
+                                key={`${user.email}-${column.key}`}
+                                className="w-20 flex justify-center"
+                              >
+                                <PermissionSwitch
+                                  checked={user.permissions[column.key]}
+                                  ariaLabel={`${user.name} ${column.label}`}
+                                  disabled={!user.hasApiId}
+                                  onChange={() =>
+                                    handleUserToggle(
+                                      user.id,
+                                      column.key,
+                                      !user.permissions[column.key],
+                                    )
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="w-8 h-8 flex items-center justify-center rounded"
+                            aria-label={`Remove ${user.name}`}
+                            onClick={() => handleRemoveUser(user)}
+                          >
+                            <Trash2
+                              className="w-4 h-4 text-icon"
+                              strokeWidth={1.25}
+                            />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          className="w-8 h-8 flex items-center justify-center rounded"
-                          aria-label={`Remove ${user.name}`}
-                          onClick={() => handleRemoveUser(user)}
-                        >
-                          <Trash2
-                            className="w-4 h-4 text-icon"
-                            strokeWidth={1.25}
-                          />
-                        </button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
