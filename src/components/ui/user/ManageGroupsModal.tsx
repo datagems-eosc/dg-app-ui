@@ -17,25 +17,21 @@ type GroupItem = {
 interface ManageGroupsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (selectedGroupIds: string[]) => void;
+  selectedGroupIds: string[];
 }
 
 export function ManageGroupsModal({
   isOpen,
   onClose,
   onSave,
+  selectedGroupIds,
 }: ManageGroupsModalProps) {
   const api = useApi();
   const [search, setSearch] = useState("");
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([
-    "analytics",
-    "engineering",
-    "finance",
-    "moderators",
-    "researchers",
-  ]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -49,6 +45,12 @@ export function ManageGroupsModal({
       document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedGroups(selectedGroupIds);
+    }
+  }, [isOpen, selectedGroupIds]);
 
   useEffect(() => {
     if (!isOpen || !api.hasToken) return;
@@ -183,7 +185,7 @@ export function ManageGroupsModal({
           <Button
             variant="primary"
             size="md"
-            onClick={onSave}
+            onClick={() => onSave(selectedGroups)}
             className="rounded-full w-[148px]"
           >
             Save
