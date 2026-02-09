@@ -9,10 +9,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DatasetPermissionsModal } from "@/components/ui/user/DatasetPermissionsModal";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
-import { logError } from "@/lib/logger";
+import { logError, logWarn } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
 import type { UserGroupQueryResult } from "@/types/userDirectory";
+import styles from "./RolesPermissionsSection.module.scss";
 
 type DropdownOption = {
   label: string;
@@ -107,7 +108,7 @@ function DropdownField({
         className="flex flex-col gap-1 w-full text-left"
         aria-expanded={isOpen}
       >
-        <span className="text-[14px] font-medium leading-[150%] text-gray-750">
+        <span className="text-[14px] font-semibold leading-[150%] text-gray-750">
           {label}
         </span>
         <span className="flex items-center gap-2 h-10 px-3 rounded-full border border-slate-300 shadow-s1 bg-white text-[14px] text-gray-750">
@@ -149,6 +150,7 @@ function MultiSelectDropdown({
   onChange,
   withSearch = false,
   showSelectAll = true,
+  triggerClassName,
 }: {
   label: string;
   placeholder: string;
@@ -157,6 +159,7 @@ function MultiSelectDropdown({
   onChange: (values: string[]) => void;
   withSearch?: boolean;
   showSelectAll?: boolean;
+  triggerClassName?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -181,7 +184,13 @@ function MultiSelectDropdown({
       )
     : options;
 
-  const allSelected = options.length > 0 && selected.length === options.length;
+  const filteredValues = useMemo(
+    () => filteredOptions.map((option) => option.value),
+    [filteredOptions],
+  );
+  const allSelected =
+    filteredValues.length > 0 &&
+    filteredValues.every((value) => selected.includes(value));
 
   const toggleOption = (value: string) => {
     if (selected.includes(value)) {
@@ -192,10 +201,11 @@ function MultiSelectDropdown({
   };
 
   const toggleSelectAll = () => {
+    if (filteredValues.length === 0) return;
     if (allSelected) {
-      onChange([]);
+      onChange(selected.filter((value) => !filteredValues.includes(value)));
     } else {
-      onChange(options.map((option) => option.value));
+      onChange(Array.from(new Set([...selected, ...filteredValues])));
     }
   };
 
@@ -277,11 +287,13 @@ function ScopeDropdown({
   value,
   groups,
   onChange,
+  triggerClassName,
 }: {
   label: string;
   value: string;
   groups: DropdownOption[];
   onChange: (value: string) => void;
+  triggerClassName?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -322,7 +334,9 @@ function ScopeDropdown({
         <span className="text-[14px] font-medium leading-[150%] text-gray-750">
           {label}
         </span>
-        <span className="flex items-center gap-2 h-10 px-3 rounded-full border border-slate-300 shadow-s1 bg-white text-[14px] text-gray-750">
+        <span
+          className={`flex items-center gap-2 h-10 px-3 rounded-full border border-slate-300 shadow-s1 bg-white text-[14px] text-gray-750 ${triggerClassName ?? ""}`}
+        >
           <span className="flex-1 truncate">{selected}</span>
           <ChevronDown
             className={`w-4 h-4 text-icon transition-transform ${
@@ -464,7 +478,11 @@ export default function RolesPermissionsSection() {
         try {
           groupsResult = await queryUserGroups({ like: null });
         } catch (error) {
-          logError("Failed to load user groups for grants", error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          logWarn("Failed to load user groups for grants", {
+            error: errorMessage,
+          });
         }
         const groupMap = (groupsResult.items ?? [])
           .map((group) => ({
@@ -494,7 +512,11 @@ export default function RolesPermissionsSection() {
                 Order: { Items: ["+name"] },
                 Metadata: { CountAll: false },
               }).catch((error) => {
-                logError("Failed to load dataset names for grants", error);
+                const errorMessage =
+                  error instanceof Error ? error.message : String(error);
+                logWarn("Failed to load dataset names for grants", {
+                  error: errorMessage,
+                });
                 return { items: [] };
               })
             : Promise.resolve({ items: [] }),
@@ -506,7 +528,11 @@ export default function RolesPermissionsSection() {
                 Order: { Items: ["+name"] },
                 Metadata: { CountAll: false },
               }).catch((error) => {
-                logError("Failed to load collection names for grants", error);
+                const errorMessage =
+                  error instanceof Error ? error.message : String(error);
+                logWarn("Failed to load collection names for grants", {
+                  error: errorMessage,
+                });
                 return { items: [] };
               })
             : Promise.resolve({ items: [] }),
@@ -689,6 +715,16 @@ export default function RolesPermissionsSection() {
     ];
   }, [grants]);
 
+  const selectedGroupLabels = useMemo(
+    () =>
+      groupFilter.map(
+        (groupId) =>
+          groupOptions.find((option) => option.value === groupId)?.label ??
+          groupId,
+      ),
+    [groupFilter, groupOptions],
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
@@ -697,18 +733,21 @@ export default function RolesPermissionsSection() {
             User Access
           </h2>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
-          <ScopeDropdown
-            label="Show permissions for"
-            value={principalScope}
-            groups={scopeOptions.filter((option) => option.value !== "me")}
-            onChange={setPrincipalScope}
-          />
-          <div className="flex flex-col gap-2">
-            <span className="text-[14px] font-medium leading-[150%] text-gray-750">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-start">
+          <div className="w-full lg:w-1/2">
+            <ScopeDropdown
+              label="Show permissions for"
+              value={principalScope}
+              groups={scopeOptions.filter((option) => option.value !== "me")}
+              onChange={setPrincipalScope}
+              triggerClassName={styles.showPermissionsSelect}
+            />
+          </div>
+          <div className="flex w-full flex-col gap-1 lg:w-1/2">
+            <span className="text-[14px] font-semibold leading-[150%] text-gray-750">
               My groups
             </span>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1">
               {myGroups.slice(0, 4).map((group) => (
                 <span
                   key={group.id}
@@ -757,6 +796,40 @@ export default function RolesPermissionsSection() {
             />
             <SearchField value={searchQuery} onChange={setSearchQuery} />
           </div>
+          {(roleFilter.length > 0 || groupFilter.length > 0) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {roleFilter.map((role) => (
+                <Chip
+                  key={`permission-${role}`}
+                  color="grey"
+                  size="sm"
+                  onRemove={() =>
+                    setRoleFilter((prev) =>
+                      prev.filter((value) => value !== role),
+                    )
+                  }
+                >
+                  Permission: {role}
+                </Chip>
+              ))}
+              {selectedGroupLabels.map((groupLabel, index) => (
+                <Chip
+                  key={`group-${groupFilter[index] ?? groupLabel}`}
+                  color="grey"
+                  size="sm"
+                  onRemove={() => {
+                    const groupId = groupFilter[index];
+                    if (!groupId) return;
+                    setGroupFilter((prev) =>
+                      prev.filter((value) => value !== groupId),
+                    );
+                  }}
+                >
+                  Group: {groupLabel}
+                </Chip>
+              ))}
+            </div>
+          )}
           <div className="text-[14px] leading-[150%] text-gray-750">
             <span className="text-gray-650">Showing:</span>{" "}
             {filteredRows.length} results
@@ -804,7 +877,7 @@ export default function RolesPermissionsSection() {
                 return (
                   <div
                     key={row.id}
-                    className="grid grid-cols-[1.5fr_120px_160px_200px_120px] items-center h-14 border-b border-slate-200 last:border-b-0"
+                    className="grid grid-cols-[1.5fr_120px_160px_200px_120px] items-center h-12 border-b border-slate-200 last:border-b-0"
                   >
                     <div className="px-4 text-[14px] text-gray-750 truncate">
                       {row.targetType.toLowerCase() === "dataset" ? (
@@ -824,8 +897,10 @@ export default function RolesPermissionsSection() {
                         row.targetName
                       )}
                     </div>
-                    <div className="px-4 text-[14px] text-gray-750 text-center">
-                      {row.groupCount}
+                    <div className="px-4 flex items-center justify-center">
+                      <Chip color="grey" size="xs">
+                        {row.groupCount}
+                      </Chip>
                     </div>
                     <div className="px-4 text-[14px] text-gray-750">—</div>
                     <div className="px-4 flex items-center gap-2">
