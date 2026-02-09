@@ -10,7 +10,7 @@ import {
   type PermissionKey,
 } from "@/config/contextGrantRoles";
 import { useApi } from "@/hooks/useApi";
-import { logError } from "@/lib/logger";
+import { logError, logWarn } from "@/lib/logger";
 import { ManageGroupsModal } from "./ManageGroupsModal";
 
 type GroupPermissionsRow = {
@@ -77,6 +77,17 @@ export function DatasetPermissionsModal({
   onClose,
 }: DatasetPermissionsModalProps) {
   const api = useApi();
+  const {
+    hasToken,
+    queryUserGroups,
+    getGroupDatasetGrants,
+    assignGroupDatasetGrant,
+    unassignGroupDatasetGrant,
+    queryUsers,
+    getUserDatasetGrants,
+    assignUserDatasetGrant,
+    unassignUserDatasetGrant,
+  } = api;
   const [activeTab, setActiveTab] = useState<"groups" | "invite">("groups");
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
@@ -106,12 +117,12 @@ export function DatasetPermissionsModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !api.hasToken || !datasetId) return;
+    if (!isOpen || !hasToken || !datasetId) return;
     let cancelled = false;
     setIsLoading(true);
     (async () => {
       try {
-        const result = await api.queryUserGroups({ like: null });
+        const result = await queryUserGroups({ like: null });
         if (cancelled) return;
         const groups =
           result.items?.map((group) => ({
@@ -123,9 +134,7 @@ export function DatasetPermissionsModal({
 
         const grants = await Promise.all(
           validGroups.map(async (group) => {
-            const response = await api.getGroupDatasetGrants(group.id, [
-              datasetId,
-            ]);
+            const response = await getGroupDatasetGrants(group.id, [datasetId]);
             const roles = response?.[datasetId] ?? [];
             return {
               ...group,
@@ -138,7 +147,11 @@ export function DatasetPermissionsModal({
         setGroupPermissions(grants);
         setVisibleGroupIds((prev) => prev ?? grants.map((group) => group.id));
       } catch (error) {
-        logError("Failed to load groups for permissions", error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logWarn("Failed to load groups for permissions", {
+          error: errorMessage,
+        });
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -146,7 +159,7 @@ export function DatasetPermissionsModal({
     return () => {
       cancelled = true;
     };
-  }, [api, datasetId, isOpen]);
+  }, [datasetId, getGroupDatasetGrants, hasToken, isOpen, queryUserGroups]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -189,9 +202,9 @@ export function DatasetPermissionsModal({
     if (!role) return;
     try {
       if (nextValue) {
-        await api.assignGroupDatasetGrant(groupId, datasetId, role);
+        await assignGroupDatasetGrant(groupId, datasetId, role);
       } else {
-        await api.unassignGroupDatasetGrant(groupId, datasetId, role);
+        await unassignGroupDatasetGrant(groupId, datasetId, role);
       }
       setGroupPermissions((prev) =>
         prev.map((row) =>
@@ -221,9 +234,9 @@ export function DatasetPermissionsModal({
     if (!role) return;
     try {
       if (nextValue) {
-        await api.assignUserDatasetGrant(userId, datasetId, role);
+        await assignUserDatasetGrant(userId, datasetId, role);
       } else {
-        await api.unassignUserDatasetGrant(userId, datasetId, role);
+        await unassignUserDatasetGrant(userId, datasetId, role);
       }
       setInvitedUsers((prev) =>
         prev.map((user) =>
@@ -253,7 +266,7 @@ export function DatasetPermissionsModal({
       try {
         await Promise.all(
           permissionsToRemove.map((role) =>
-            api.unassignUserDatasetGrant(user.id as string, datasetId, role),
+            unassignUserDatasetGrant(user.id as string, datasetId, role),
           ),
         );
       } catch (error) {
@@ -373,37 +386,48 @@ export function DatasetPermissionsModal({
                     </div>
                   </div>
                   <div className="max-h-[401px] overflow-y-auto border-t border-b border-slate-200">
-                    {filteredGroupRows.map((row) => (
-                      <div
-                        key={row.id}
-                        className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
-                      >
-                        <div className="flex-1 text-[14px] font-medium text-slate-850">
-                          {row.name}
-                        </div>
-                        <div className="flex gap-1">
-                          {permissionColumns.map((column) => (
-                            <div
-                              key={`${row.id}-${column.key}`}
-                              className="w-20 flex justify-center"
-                            >
-                              <PermissionSwitch
-                                checked={row.permissions[column.key]}
-                                ariaLabel={`${row.name} ${column.label}`}
-                                disabled={isLoading}
-                                onChange={() =>
-                                  handleGroupToggle(
-                                    row.id,
-                                    column.key,
-                                    !row.permissions[column.key],
-                                  )
-                                }
-                              />
-                            </div>
-                          ))}
-                        </div>
+                    {isLoading && (
+                      <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                        Loading groups...
                       </div>
-                    ))}
+                    )}
+                    {!isLoading && filteredGroupRows.length === 0 && (
+                      <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                        No groups found
+                      </div>
+                    )}
+                    {!isLoading &&
+                      filteredGroupRows.map((row) => (
+                        <div
+                          key={row.id}
+                          className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
+                        >
+                          <div className="flex-1 text-[14px] font-medium text-slate-850">
+                            {row.name}
+                          </div>
+                          <div className="flex gap-1">
+                            {permissionColumns.map((column) => (
+                              <div
+                                key={`${row.id}-${column.key}`}
+                                className="w-20 flex justify-center"
+                              >
+                                <PermissionSwitch
+                                  checked={row.permissions[column.key]}
+                                  ariaLabel={`${row.name} ${column.label}`}
+                                  disabled={isLoading}
+                                  onChange={() =>
+                                    handleGroupToggle(
+                                      row.id,
+                                      column.key,
+                                      !row.permissions[column.key],
+                                    )
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </div>
               </div>
@@ -450,7 +474,7 @@ export function DatasetPermissionsModal({
                           const email = inviteEmail.trim();
                           setIsInviteLookupLoading(true);
                           try {
-                            const result = await api.queryUsers({
+                            const result = await queryUsers({
                               like: email,
                             });
                             const match = result.items?.find(
@@ -461,7 +485,7 @@ export function DatasetPermissionsModal({
                             const userId = match?.id ?? undefined;
                             let permissions = { ...invitePermissions };
                             if (userId) {
-                              const grants = await api.getUserDatasetGrants(
+                              const grants = await getUserDatasetGrants(
                                 userId,
                                 [datasetId],
                               );

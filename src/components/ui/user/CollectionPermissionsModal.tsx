@@ -10,7 +10,7 @@ import {
   type PermissionKey,
 } from "@/config/contextGrantRoles";
 import { useApi } from "@/hooks/useApi";
-import { logError } from "@/lib/logger";
+import { logError, logWarn } from "@/lib/logger";
 import { ManageGroupsModal } from "./ManageGroupsModal";
 
 type GroupPermissionsRow = {
@@ -77,6 +77,17 @@ export function CollectionPermissionsModal({
   onClose,
 }: CollectionPermissionsModalProps) {
   const api = useApi();
+  const {
+    hasToken,
+    queryUserGroups,
+    getGroupCollectionGrants,
+    assignGroupCollectionGrant,
+    unassignGroupCollectionGrant,
+    queryUsers,
+    getUserCollectionGrants,
+    assignUserCollectionGrant,
+    unassignUserCollectionGrant,
+  } = api;
   const [activeTab, setActiveTab] = useState<"groups" | "invite">("groups");
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
@@ -106,12 +117,12 @@ export function CollectionPermissionsModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !api.hasToken || !collectionId) return;
+    if (!isOpen || !hasToken || !collectionId) return;
     let cancelled = false;
     setIsLoading(true);
     (async () => {
       try {
-        const result = await api.queryUserGroups({ like: null });
+        const result = await queryUserGroups({ like: null });
         if (cancelled) return;
         const groups =
           result.items?.map((group) => ({
@@ -123,7 +134,7 @@ export function CollectionPermissionsModal({
 
         const grants = await Promise.all(
           validGroups.map(async (group) => {
-            const response = await api.getGroupCollectionGrants(group.id, [
+            const response = await getGroupCollectionGrants(group.id, [
               collectionId,
             ]);
             const roles = response?.[collectionId] ?? [];
@@ -138,7 +149,11 @@ export function CollectionPermissionsModal({
         setGroupPermissions(grants);
         setVisibleGroupIds((prev) => prev ?? grants.map((group) => group.id));
       } catch (error) {
-        logError("Failed to load groups for permissions", error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logWarn("Failed to load groups for permissions", {
+          error: errorMessage,
+        });
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -146,7 +161,13 @@ export function CollectionPermissionsModal({
     return () => {
       cancelled = true;
     };
-  }, [api, collectionId, isOpen]);
+  }, [
+    collectionId,
+    getGroupCollectionGrants,
+    hasToken,
+    isOpen,
+    queryUserGroups,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -189,9 +210,9 @@ export function CollectionPermissionsModal({
     if (!role) return;
     try {
       if (nextValue) {
-        await api.assignGroupCollectionGrant(groupId, collectionId, role);
+        await assignGroupCollectionGrant(groupId, collectionId, role);
       } else {
-        await api.unassignGroupCollectionGrant(groupId, collectionId, role);
+        await unassignGroupCollectionGrant(groupId, collectionId, role);
       }
       setGroupPermissions((prev) =>
         prev.map((row) =>
@@ -221,9 +242,9 @@ export function CollectionPermissionsModal({
     if (!role) return;
     try {
       if (nextValue) {
-        await api.assignUserCollectionGrant(userId, collectionId, role);
+        await assignUserCollectionGrant(userId, collectionId, role);
       } else {
-        await api.unassignUserCollectionGrant(userId, collectionId, role);
+        await unassignUserCollectionGrant(userId, collectionId, role);
       }
       setInvitedUsers((prev) =>
         prev.map((user) =>
@@ -253,11 +274,7 @@ export function CollectionPermissionsModal({
       try {
         await Promise.all(
           permissionsToRemove.map((role) =>
-            api.unassignUserCollectionGrant(
-              user.id as string,
-              collectionId,
-              role,
-            ),
+            unassignUserCollectionGrant(user.id as string, collectionId, role),
           ),
         );
       } catch (error) {
@@ -377,37 +394,48 @@ export function CollectionPermissionsModal({
                     </div>
                   </div>
                   <div className="max-h-[401px] overflow-y-auto border-t border-b border-slate-200">
-                    {filteredGroupRows.map((row) => (
-                      <div
-                        key={row.id}
-                        className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
-                      >
-                        <div className="flex-1 text-[14px] font-medium text-slate-850">
-                          {row.name}
-                        </div>
-                        <div className="flex gap-1">
-                          {permissionColumns.map((column) => (
-                            <div
-                              key={`${row.id}-${column.key}`}
-                              className="w-20 flex justify-center"
-                            >
-                              <PermissionSwitch
-                                checked={row.permissions[column.key]}
-                                ariaLabel={`${row.name} ${column.label}`}
-                                disabled={isLoading}
-                                onChange={() =>
-                                  handleGroupToggle(
-                                    row.id,
-                                    column.key,
-                                    !row.permissions[column.key],
-                                  )
-                                }
-                              />
-                            </div>
-                          ))}
-                        </div>
+                    {isLoading && (
+                      <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                        Loading groups...
                       </div>
-                    ))}
+                    )}
+                    {!isLoading && filteredGroupRows.length === 0 && (
+                      <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                        No groups found
+                      </div>
+                    )}
+                    {!isLoading &&
+                      filteredGroupRows.map((row) => (
+                        <div
+                          key={row.id}
+                          className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
+                        >
+                          <div className="flex-1 text-[14px] font-medium text-slate-850">
+                            {row.name}
+                          </div>
+                          <div className="flex gap-1">
+                            {permissionColumns.map((column) => (
+                              <div
+                                key={`${row.id}-${column.key}`}
+                                className="w-20 flex justify-center"
+                              >
+                                <PermissionSwitch
+                                  checked={row.permissions[column.key]}
+                                  ariaLabel={`${row.name} ${column.label}`}
+                                  disabled={isLoading}
+                                  onChange={() =>
+                                    handleGroupToggle(
+                                      row.id,
+                                      column.key,
+                                      !row.permissions[column.key],
+                                    )
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </div>
               </div>
@@ -431,7 +459,7 @@ export function CollectionPermissionsModal({
                       const email = inviteEmail.trim();
                       setIsInviteLookupLoading(true);
                       try {
-                        const result = await api.queryUsers({
+                        const result = await queryUsers({
                           like: email,
                         });
                         const match = result.items?.find(
@@ -441,10 +469,9 @@ export function CollectionPermissionsModal({
                         const userId = match?.id ?? undefined;
                         let permissions = { ...invitePermissions };
                         if (userId) {
-                          const grants = await api.getUserCollectionGrants(
-                            userId,
-                            [collectionId],
-                          );
+                          const grants = await getUserCollectionGrants(userId, [
+                            collectionId,
+                          ]);
                           permissions = mapRolesToPermissions(
                             grants?.[collectionId] ?? [],
                             COLLECTION_ROLE_MAP,
