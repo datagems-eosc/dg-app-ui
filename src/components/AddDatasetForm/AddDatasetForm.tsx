@@ -32,12 +32,12 @@ interface FormData {
     headline: string;
     description: string;
     keywords: string[];
+    authors: string;
   };
   classification: {
     fieldsOfScience: string[];
     collection: string;
     license: string;
-    visibility: "open" | "restricted" | "";
   };
   additionalInfo: {
     referenceString: string;
@@ -52,12 +52,12 @@ interface FormErrors {
     headline?: string;
     description?: string;
     keywords?: string;
+    authors?: string;
   };
   classification: {
     fieldsOfScience?: string;
     collection?: string;
     license?: string;
-    visibility?: string;
   };
   additionalInfo: {
     referenceString?: string;
@@ -72,12 +72,12 @@ const initialFormData: FormData = {
     headline: "",
     description: "",
     keywords: [],
+    authors: "",
   },
   classification: {
     fieldsOfScience: [],
     collection: "",
     license: "",
-    visibility: "",
   },
   additionalInfo: {
     referenceString: "",
@@ -90,6 +90,8 @@ const initialErrors: FormErrors = {
   classification: {},
   additionalInfo: {},
 };
+
+const AUTHORS_MAX_LENGTH = 250;
 
 export default function AddDatasetForm() {
   const router = useRouter();
@@ -126,6 +128,10 @@ export default function AddDatasetForm() {
         "Description must be 3000 characters or less";
     }
 
+    if (formData.basicInfo.authors.length > AUTHORS_MAX_LENGTH) {
+      newErrors.basicInfo.authors = `Authors must be ${AUTHORS_MAX_LENGTH} characters or less`;
+    }
+
     // Validate keywords: required and max combined length 250
     const combinedKeywords = formData.basicInfo.keywords
       .filter(Boolean)
@@ -140,11 +146,6 @@ export default function AddDatasetForm() {
     if (formData.classification.fieldsOfScience.length === 0) {
       newErrors.classification.fieldsOfScience =
         "At least one field of science must be selected";
-    }
-
-    if (!formData.classification.visibility) {
-      newErrors.classification.visibility =
-        "Visibility option must be selected";
     }
 
     // Validate additional information
@@ -209,6 +210,7 @@ export default function AddDatasetForm() {
         formData.basicInfo.headline,
         formData.basicInfo.description,
         ...(formData.basicInfo.keywords || []),
+        formData.basicInfo.authors,
       ]
         .filter(Boolean)
         .join(" ")
@@ -334,23 +336,23 @@ export default function AddDatasetForm() {
 
       {/* Action Buttons */}
       <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end gap-3 sm:gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push(APP_ROUTES.BROWSE)}
-          className="w-full sm:w-auto order-2 sm:order-1"
-        >
-          Cancel
-        </Button>
         <Tooltip content="Publishing is not implemented yet." position="top">
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full sm:w-auto px-6 sm:px-8 order-1 sm:order-2"
+            className="w-full sm:w-auto px-6 sm:px-8 order-1 sm:order-1"
           >
-            {isSubmitting ? "Submitting..." : "Publish Dataset"}
+            {isSubmitting ? "Submitting..." : "Next"}
           </Button>
         </Tooltip>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push(APP_ROUTES.BROWSE)}
+          className="w-full sm:w-auto order-2 sm:order-2"
+        >
+          Cancel
+        </Button>
       </div>
     </form>
   );
