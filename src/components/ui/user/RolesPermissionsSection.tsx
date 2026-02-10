@@ -3,7 +3,14 @@
 import { Checkbox } from "@ui/Checkbox";
 import { Chip } from "@ui/Chip";
 import { Input } from "@ui/Input";
-import { ChevronDown, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  Pencil,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DatasetPermissionsModal } from "@/components/ui/user/DatasetPermissionsModal";
@@ -28,6 +35,7 @@ type GrantRow = {
   roles: string[];
   groupCount: number;
   groupIds: string[];
+  uploadedBy?: string | null;
 };
 
 const TARGET_KIND_LABELS: Record<number, string> = {
@@ -71,6 +79,10 @@ const getRoleLabel = (role?: string | null) => {
   if (matchedKey) return PERMISSION_LABELS[matchedKey];
   return role?.trim() || "Unknown";
 };
+
+type SortKey = "assetName" | "groupsAdded" | "permission";
+type SortDirection = "asc" | "desc";
+type SortRule = { key: SortKey; direction: SortDirection };
 
 function DropdownField({
   label,
@@ -449,12 +461,19 @@ export default function RolesPermissionsSection() {
   const [collectionNames, setCollectionNames] = useState<
     Record<string, string>
   >({});
+  const [datasetUploadedBy, setDatasetUploadedBy] = useState<
+    Record<string, string | null>
+  >({});
+  const [collectionUploadedBy, setCollectionUploadedBy] = useState<
+    Record<string, string | null>
+  >({});
   const [groupNames, setGroupNames] = useState<Record<string, string>>({});
   const [typeFilter, setTypeFilter] = useState("datasets");
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [groupFilter, setGroupFilter] = useState<string[]>([]);
   const [principalScope, setPrincipalScope] = useState("me");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortRules, setSortRules] = useState<SortRule[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<{
     id: string;
     name: string;
@@ -543,34 +562,52 @@ export default function RolesPermissionsSection() {
         const datasetItems = (datasetsResult.items ?? []) as Array<{
           id?: string;
           name?: string;
+          createdBy?: string | null;
         }>;
         const datasetMap = datasetItems
           .map((item) => ({
             id: item.id ?? "",
             name: item.name ?? "",
+            uploadedBy: item.createdBy ?? null,
           }))
           .filter((item) => item.id && item.name)
           .reduce((acc: Record<string, string>, item) => {
             acc[item.id] = item.name;
+            return acc;
+          }, {});
+        const datasetUploadedByMap = datasetItems
+          .filter((item) => item.id)
+          .reduce<Record<string, string | null>>((acc, item) => {
+            if (item.id) acc[item.id] = item.createdBy ?? null;
             return acc;
           }, {});
         const collectionItems = (collectionsResult.items ?? []) as Array<{
           id?: string;
           name?: string;
+          createdBy?: string | null;
         }>;
         const collectionMap = collectionItems
           .map((item) => ({
             id: item.id ?? "",
             name: item.name ?? "",
+            uploadedBy: item.createdBy ?? null,
           }))
           .filter((item) => item.id && item.name)
           .reduce((acc: Record<string, string>, item) => {
             acc[item.id] = item.name;
             return acc;
           }, {});
+        const collectionUploadedByMap = collectionItems
+          .filter((item) => item.id)
+          .reduce<Record<string, string | null>>((acc, item) => {
+            if (item.id) acc[item.id] = item.createdBy ?? null;
+            return acc;
+          }, {});
 
         setDatasetNames(datasetMap);
         setCollectionNames(collectionMap);
+        setDatasetUploadedBy(datasetUploadedByMap);
+        setCollectionUploadedBy(collectionUploadedByMap);
       } catch (error) {
         if (cancelled) return;
         logError("Failed to load context grants", error);
@@ -637,6 +674,12 @@ export default function RolesPermissionsSection() {
           : entry.targetType === 1
             ? collectionNames[entry.targetId] || entry.targetId || "Unknown"
             : entry.targetId || "Unknown";
+      const uploadedBy =
+        entry.targetType === 0
+          ? (datasetUploadedBy[entry.targetId] ?? null)
+          : entry.targetType === 1
+            ? (collectionUploadedBy[entry.targetId] ?? null)
+            : null;
 
       return {
         id: `${entry.targetType}-${entry.targetId}`,
@@ -646,9 +689,17 @@ export default function RolesPermissionsSection() {
         roles: Array.from(entry.roles),
         groupCount: entry.groups.size,
         groupIds: Array.from(entry.groups),
+        uploadedBy,
       };
     });
-  }, [collectionNames, datasetNames, grants, principalScope]);
+  }, [
+    collectionNames,
+    collectionUploadedBy,
+    datasetNames,
+    datasetUploadedBy,
+    grants,
+    principalScope,
+  ]);
 
   const filteredRows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -668,6 +719,44 @@ export default function RolesPermissionsSection() {
       return matchesType && matchesRole && matchesGroup && matchesSearch;
     });
   }, [grants, groupFilter, roleFilter, rows, searchQuery, typeFilter]);
+
+  const getPermissionLabel = (row: GrantRow) => row.roles[0] ?? "";
+
+  const getSortValue = (row: GrantRow, key: SortKey) => {
+    if (key === "assetName") return row.targetName.toLowerCase();
+    if (key === "groupsAdded") return row.groupCount;
+    if (key === "permission") return getPermissionLabel(row).toLowerCase();
+    return "";
+  };
+
+  const sortedRows = useMemo(() => {
+    if (sortRules.length === 0) return filteredRows;
+    return [...filteredRows].sort((a, b) => {
+      for (const rule of sortRules) {
+        const aVal = getSortValue(a, rule.key);
+        const bVal = getSortValue(b, rule.key);
+        if (aVal < bVal) return rule.direction === "asc" ? -1 : 1;
+        if (aVal > bVal) return rule.direction === "asc" ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [filteredRows, sortRules]);
+
+  const getSortDirection = (key: SortKey) =>
+    sortRules.find((rule) => rule.key === key)?.direction ?? null;
+
+  const toggleSort = (key: SortKey) => {
+    setSortRules((prev) => {
+      const existing = prev.find((rule) => rule.key === key);
+      if (!existing) return [...prev, { key, direction: "asc" }];
+      if (existing.direction === "asc") {
+        return prev.map((rule) =>
+          rule.key === key ? { ...rule, direction: "desc" } : rule,
+        );
+      }
+      return prev.filter((rule) => rule.key !== key);
+    });
+  };
 
   const typeOptions: DropdownOption[] = [
     { label: "Datasets", value: "datasets" },
@@ -837,116 +926,190 @@ export default function RolesPermissionsSection() {
         </div>
 
         <div className="border border-slate-200 rounded-lg overflow-hidden">
-          <div className="min-w-[880px] overflow-x-auto">
-            <div className="grid grid-cols-[1.5fr_120px_160px_200px_120px] bg-slate-50 text-[14px] text-gray-650 border-b border-slate-200">
-              <div className="px-4 py-2 font-medium">
-                {typeFilter === "collections"
-                  ? "Collection name"
-                  : "Dataset name"}
-              </div>
-              <div className="px-4 py-2 font-medium text-center">
-                Groups Added
-              </div>
-              <div className="px-4 py-2 font-medium">Uploaded by</div>
-              <div className="px-4 py-2 font-medium">Permissions</div>
-              <div className="px-4 py-2 font-medium text-center">
-                Dataset Actions
-              </div>
-            </div>
-            {isLoading && (
-              <div className="px-4 py-6 text-[14px] text-gray-650">
-                Loading access entries...
-              </div>
-            )}
-            {!isLoading && errorMessage && (
-              <div className="px-4 py-6 text-[14px] text-gray-650">
-                {errorMessage}
-              </div>
-            )}
-            {!isLoading && !errorMessage && filteredRows.length === 0 && (
-              <div className="px-4 py-6 text-[14px] text-gray-650">
-                No access entries found
-              </div>
-            )}
-            {!isLoading &&
-              !errorMessage &&
-              filteredRows.map((row) => {
-                const roles = row.roles;
-                const primaryRole = roles[0];
-                const extraCount = Math.max(roles.length - 1, 0);
-                return (
-                  <div
-                    key={row.id}
-                    className="grid grid-cols-[1.5fr_120px_160px_200px_120px] items-center h-12 border-b border-slate-200 last:border-b-0"
+          <div className="overflow-x-auto">
+            <div>
+              <div className="max-h-[420px] overflow-y-auto">
+                <div className="grid grid-cols-[1fr_126px_180px_122px_137px] bg-slate-50 text-[14px] text-gray-650 border-b border-slate-200 sticky top-0 z-10 h-10">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("assetName")}
+                    className="px-4 font-medium text-left flex items-center gap-1"
                   >
-                    <div className="px-4 text-[14px] text-gray-750 truncate">
-                      {row.targetType.toLowerCase() === "dataset" ? (
-                        <button
-                          type="button"
-                          onClick={() =>
+                    {typeFilter === "collections"
+                      ? "Collection name"
+                      : "Dataset name"}
+                    {getSortDirection("assetName") === "asc" && (
+                      <ArrowUp className="w-4 h-4 text-icon" />
+                    )}
+                    {getSortDirection("assetName") === "desc" && (
+                      <ArrowDown className="w-4 h-4 text-icon" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("groupsAdded")}
+                    className="px-4 font-medium text-left flex items-center gap-1"
+                  >
+                    Groups Added
+                    {getSortDirection("groupsAdded") === "asc" && (
+                      <ArrowUp className="w-4 h-4 text-icon" />
+                    )}
+                    {getSortDirection("groupsAdded") === "desc" && (
+                      <ArrowDown className="w-4 h-4 text-icon" />
+                    )}
+                  </button>
+                  <div className="px-4 font-medium flex items-center">
+                    Uploaded by
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("permission")}
+                    className="px-4 font-medium text-left flex items-center gap-1"
+                  >
+                    Permissions
+                    {getSortDirection("permission") === "asc" && (
+                      <ArrowUp className="w-4 h-4 text-icon" />
+                    )}
+                    {getSortDirection("permission") === "desc" && (
+                      <ArrowDown className="w-4 h-4 text-icon" />
+                    )}
+                  </button>
+                  <div className="px-4 font-medium flex items-center">
+                    Dataset Actions
+                  </div>
+                </div>
+                {isLoading && (
+                  <div className="animate-pulse">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div
+                        key={`skeleton-${index}`}
+                        className="grid grid-cols-[1fr_126px_180px_122px_137px] items-center h-14 border-b border-slate-200 last:border-b-0"
+                      >
+                        <div className="px-4">
+                          <div className="h-3 bg-slate-100 rounded w-3/5" />
+                        </div>
+                        <div className="px-4">
+                          <div className="h-3 bg-slate-100 rounded w-1/2" />
+                        </div>
+                        <div className="px-4">
+                          <div className="h-3 bg-slate-100 rounded w-1/2" />
+                        </div>
+                        <div className="px-4">
+                          <div className="h-3 bg-slate-100 rounded w-1/3" />
+                        </div>
+                        <div className="px-4 flex items-center justify-end">
+                          <div className="h-3 bg-slate-100 rounded w-8" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!isLoading && errorMessage && (
+                  <div className="px-4 py-6 text-[14px] text-gray-650">
+                    {errorMessage}
+                  </div>
+                )}
+                {!isLoading && !errorMessage && sortedRows.length === 0 && (
+                  <div className="px-4 py-6 text-[14px] text-gray-650">
+                    No results found. Please try different search.
+                  </div>
+                )}
+                {!isLoading &&
+                  !errorMessage &&
+                  sortedRows.map((row) => {
+                    const roles = row.roles;
+                    const primaryRole = roles[0];
+                    const extraCount = Math.max(roles.length - 1, 0);
+                    return (
+                      <div
+                        key={row.id}
+                        className="grid grid-cols-[1fr_126px_180px_122px_137px] items-center h-14 border-b border-slate-200 last:border-b-0"
+                      >
+                        <div
+                          className="px-4 text-[14px] text-gray-750 truncate"
+                          onClick={() => {
+                            if (row.targetType.toLowerCase() !== "dataset") {
+                              return;
+                            }
                             setSelectedDataset({
                               id: row.targetId,
                               name: row.targetName,
-                            })
-                          }
-                          className="text-left hover:underline"
+                            });
+                          }}
                         >
-                          {row.targetName}
-                        </button>
-                      ) : (
-                        row.targetName
-                      )}
-                    </div>
-                    <div className="px-4 flex items-center justify-center">
-                      <Chip color="grey" size="xs">
-                        {row.groupCount}
-                      </Chip>
-                    </div>
-                    <div className="px-4 text-[14px] text-gray-750">—</div>
-                    <div className="px-4 flex items-center gap-2">
-                      {primaryRole && (
-                        <Chip color="info" variant="outline" size="sm">
-                          {primaryRole}
-                        </Chip>
-                      )}
-                      {extraCount > 0 && (
-                        <Chip color="info" variant="outline" size="sm">
-                          +{extraCount}
-                        </Chip>
-                      )}
-                    </div>
-                    <div className="px-4 flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        aria-label="Edit permissions"
-                        disabled={row.targetType.toLowerCase() !== "dataset"}
-                        onClick={() => {
-                          if (row.targetType.toLowerCase() !== "dataset")
-                            return;
-                          router.push(
-                            getNavigationUrl(`/datasets/${row.targetId}`),
-                          );
-                        }}
-                        className={`w-8 h-8 flex items-center justify-center rounded border ${
-                          row.targetType.toLowerCase() === "dataset"
-                            ? "border-slate-300 text-gray-650 hover:bg-slate-50"
-                            : "border-slate-200 text-gray-400"
-                        }`}
-                      >
-                        <Pencil className="w-4 h-4" strokeWidth={1.25} />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Remove permissions"
-                        disabled
-                        className="w-8 h-8 flex items-center justify-center rounded border border-slate-200 text-gray-400"
-                      >
-                        <Trash2 className="w-4 h-4" strokeWidth={1.25} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                          {row.targetType.toLowerCase() === "dataset" ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                router.push(
+                                  getNavigationUrl(`/datasets/${row.targetId}`),
+                                );
+                              }}
+                              className="text-left hover:underline"
+                            >
+                              {row.targetName}
+                            </button>
+                          ) : (
+                            row.targetName
+                          )}
+                        </div>
+                        <div className="px-4 flex items-center justify-center">
+                          <Chip color="grey" size="xs" className="h-6 px-3">
+                            {row.groupCount}
+                          </Chip>
+                        </div>
+                        <div className="px-4 text-[14px] text-gray-750">
+                          {row.uploadedBy ?? "—"}
+                        </div>
+                        <div className="px-4 flex items-center gap-1">
+                          {primaryRole && (
+                            <Chip color="grey" size="xs" className="h-6 px-3">
+                              {primaryRole}
+                            </Chip>
+                          )}
+                          {extraCount > 0 && (
+                            <Chip color="grey" size="xs" className="h-6 px-3">
+                              +{extraCount}
+                            </Chip>
+                          )}
+                        </div>
+                        <div className="px-4 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            aria-label="Edit permissions"
+                            disabled={
+                              row.targetType.toLowerCase() !== "dataset"
+                            }
+                            onClick={() => {
+                              if (row.targetType.toLowerCase() !== "dataset")
+                                return;
+                              router.push(
+                                getNavigationUrl(`/datasets/${row.targetId}`),
+                              );
+                            }}
+                            className={`w-8 h-8 flex items-center justify-center rounded ${
+                              row.targetType.toLowerCase() === "dataset"
+                                ? "text-gray-650 hover:bg-slate-50"
+                                : "text-gray-400"
+                            }`}
+                          >
+                            <Pencil className="w-4 h-4" strokeWidth={1.25} />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Remove permissions"
+                            disabled
+                            className="w-8 h-8 flex items-center justify-center rounded text-gray-400"
+                          >
+                            <Trash2 className="w-4 h-4" strokeWidth={1.25} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
