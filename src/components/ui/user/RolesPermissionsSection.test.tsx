@@ -51,6 +51,7 @@ describe("RolesPermissionsSection", () => {
     expect(screen.getByText("My groups")).toBeInTheDocument();
     expect(screen.getByText("Dataset name")).toBeInTheDocument();
     expect(screen.getByText("Groups Added")).toBeInTheDocument();
+    expect(screen.getByText("Permissions")).toBeInTheDocument();
     expect(await screen.findByText("Dataset One")).toBeInTheDocument();
     expect(screen.queryByText("Collection One")).toBeNull();
   });
@@ -91,5 +92,61 @@ describe("RolesPermissionsSection", () => {
     expect(
       await screen.findByRole("dialog", { name: "Dataset One" }),
     ).toBeInTheDocument();
+  });
+
+  it("sorts by asset name when header is clicked", async () => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getCurrentUserContextGrants: vi.fn().mockResolvedValue([
+        {
+          principalId: "group-1",
+          principalType: 1,
+          targetType: 0,
+          targetId: "dataset-b",
+          role: "browse",
+        },
+        {
+          principalId: "group-1",
+          principalType: 1,
+          targetType: 0,
+          targetId: "dataset-a",
+          role: "browse",
+        },
+      ]),
+      queryUserGroups: vi.fn().mockResolvedValue({
+        items: [{ id: "group-1", name: "Research Team" }],
+      }),
+      queryDatasets: vi.fn().mockResolvedValue({
+        items: [
+          { id: "dataset-b", name: "Dataset B", datePublished: "2024-01-02" },
+          { id: "dataset-a", name: "Dataset A", datePublished: "2024-01-01" },
+        ],
+      }),
+      queryCollections: vi.fn().mockResolvedValue({ items: [] }),
+      getGroupDatasetGrants: vi.fn().mockResolvedValue({}),
+      assignGroupDatasetGrant: vi.fn().mockResolvedValue(undefined),
+      unassignGroupDatasetGrant: vi.fn().mockResolvedValue(undefined),
+      queryUsers: vi.fn().mockResolvedValue({ items: [] }),
+      getUserDatasetGrants: vi.fn().mockResolvedValue({}),
+      assignUserDatasetGrant: vi.fn().mockResolvedValue(undefined),
+      unassignUserDatasetGrant: vi.fn().mockResolvedValue(undefined),
+    });
+
+    render(<RolesPermissionsSection />);
+
+    const datasetB = await screen.findByText("Dataset B");
+    const datasetA = await screen.findByText("Dataset A");
+    expect(datasetB.compareDocumentPosition(datasetA)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+
+    const header = screen.getByRole("button", { name: "Dataset name" });
+    header.click();
+
+    const sortedA = await screen.findByText("Dataset A");
+    const sortedB = await screen.findByText("Dataset B");
+    expect(sortedA.compareDocumentPosition(sortedB)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 });
