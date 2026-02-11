@@ -23,7 +23,10 @@ export interface UploadedFile {
 interface DatasetUploadProps {
   files: UploadedFile[];
   onFilesChange: (files: UploadedFile[]) => void;
-  onUpload: (files: File[]) => Promise<string[]>;
+  onUpload: (
+    files: File[],
+    onProgress?: (loaded: number, total: number) => void,
+  ) => Promise<string[]>;
   allowedExtensions?: string[];
   onRemoteUploadNotSupported?: (message: string) => void;
 }
@@ -92,8 +95,18 @@ export function DatasetUpload({
       setIsUploading(true);
       const fileObjects = withFile.map((f) => f.file as File);
 
+      const progressCallback = (loaded: number, total: number) => {
+        const pct =
+          total > 0 ? Math.min(99, Math.round((loaded / total) * 100)) : 0;
+        const updates = new Map(allFiles.map((f) => [f.id, f]));
+        withFile.forEach((f) => {
+          updates.set(f.id, { ...f, progress: pct });
+        });
+        onFilesChange(allFiles.map((f) => updates.get(f.id) ?? f));
+      };
+
       try {
-        const paths = await onUpload(fileObjects);
+        const paths = await onUpload(fileObjects, progressCallback);
         const updates = new Map(allFiles.map((f) => [f.id, f]));
         withFile.forEach((f, idx) => {
           const path = paths[idx];
@@ -162,6 +175,22 @@ export function DatasetUpload({
       onFilesChange(files.filter((f) => f.id !== fileId));
     },
     [files, onFilesChange],
+  );
+
+  const handleRetryFile = useCallback(
+    (file: UploadedFile) => {
+      if (!file.file) return;
+      const retryFile: UploadedFile = {
+        ...file,
+        status: "uploading",
+        progress: 0,
+        error: undefined,
+      };
+      const allFiles = files.map((f) => (f.id === file.id ? retryFile : f));
+      onFilesChange(allFiles);
+      performUpload([retryFile], allFiles);
+    },
+    [files, onFilesChange, performUpload],
   );
 
   const handleBrowseFiles = useCallback(() => {
@@ -338,6 +367,11 @@ export function DatasetUpload({
               key={file.id}
               file={file}
               onRemove={() => handleRemoveFile(file.id)}
+              onRetry={
+                file.status === "error" && file.file
+                  ? () => handleRetryFile(file)
+                  : undefined
+              }
             />
           ))}
         </div>

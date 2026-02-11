@@ -1,6 +1,6 @@
 "use client";
 
-import { HardDrive, Upload, X } from "lucide-react";
+import { HardDrive, RefreshCw, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileUploadCardProps {
@@ -13,9 +13,14 @@ interface FileUploadCardProps {
     error?: string;
   };
   onRemove: () => void;
+  onRetry?: () => void;
 }
 
-export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
+export function FileUploadCard({
+  file,
+  onRemove,
+  onRetry,
+}: FileUploadCardProps) {
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -112,13 +117,24 @@ export function FileUploadCard({ file, onRemove }: FileUploadCardProps) {
           </div>
         </div>
 
-        <button
-          onClick={onRemove}
-          className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors flex-shrink-0"
-          aria-label="Remove file"
-        >
-          <X className="w-5 h-5 text-icon" />
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {file.status === "error" && onRetry && (
+            <button
+              onClick={onRetry}
+              className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors"
+              aria-label="Retry upload"
+            >
+              <RefreshCw className="w-5 h-5 text-icon" />
+            </button>
+          )}
+          <button
+            onClick={onRemove}
+            className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors"
+            aria-label="Remove file"
+          >
+            <X className="w-5 h-5 text-icon" />
+          </button>
+        </div>
       </div>
     </div>
   );
