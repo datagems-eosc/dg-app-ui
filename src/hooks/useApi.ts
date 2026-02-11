@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
-import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
+import { fetchWithAuth, getApiBaseUrl, getLogoutUrl } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
 import type {
   UserGroupLookup,
@@ -26,19 +26,18 @@ export function useApi() {
       }
 
       const url = `${baseUrl}/gw/api${endpoint}`;
-
+      const isFormData = options.body instanceof FormData;
       const headers: Record<string, string> = {
-        "Content-Type": "application/json",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         Pragma: "no-cache",
         Expires: "0",
       };
-
-      // Merge headers properly
+      if (!isFormData) {
+        headers["Content-Type"] = "application/json";
+      }
       if (options.headers) {
         Object.assign(headers, options.headers);
       }
-
       headers.Authorization = `Bearer ${token}`;
       headers.oauth2 = token;
 
@@ -1096,6 +1095,209 @@ export function useApi() {
     [makeRequest, token],
   );
 
+  const getUploadAllowedExtensions = useCallback(async (): Promise<
+    string[]
+  > => {
+    logApiRequest("getUploadAllowedExtensions", {
+      endpoint: "/storage/upload/allowed-extension",
+    });
+    const response = await makeRequest("/storage/upload/allowed-extension", {
+      method: "GET",
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      logApiError("getUploadAllowedExtensions", errorData);
+      throw new Error(
+        errorData.error || ApiErrorMessage.FETCH_ALLOWED_EXTENSIONS_FAILED,
+      );
+    }
+    const result = await response.json();
+    logApiResponse("getUploadAllowedExtensions", {
+      count: Array.isArray(result) ? result.length : 0,
+    });
+    return Array.isArray(result) ? result : [];
+  }, [makeRequest]);
+
+  const uploadDatasetFiles = useCallback(
+    async (
+      files: File[],
+      onProgress?: (loaded: number, total: number) => void,
+    ): Promise<string[]> => {
+      if (!files.length) return [];
+      if (!token) {
+        throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
+      }
+      logApiRequest("uploadDatasetFiles", {
+        endpoint: "/storage/upload/dataset",
+        fileCount: files.length,
+      });
+
+      const formData = new FormData();
+      files.forEach((file, index) => {
+        formData.append(`file${index + 1}`, file);
+      });
+
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const url = `${baseUrl}/gw/api/storage/upload/dataset`;
+
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable && onProgress) {
+            onProgress(event.loaded, event.total);
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status === 401 && typeof window !== "undefined") {
+            if (window.location.pathname !== getLogoutUrl()) {
+              window.location.href = getLogoutUrl();
+            }
+            reject(new Error(ApiErrorMessage.NO_AUTH_TOKEN));
+            return;
+          }
+          if (xhr.status < 200 || xhr.status >= 300) {
+            let errorData: Record<string, unknown> = {};
+            try {
+              errorData = JSON.parse(xhr.responseText) ?? {};
+            } catch {
+              /* ignore */
+            }
+            logApiError("uploadDatasetFiles", {
+              ...errorData,
+              statusCode: xhr.status,
+            });
+            reject(
+              new Error(
+                (errorData.error as string) ||
+                  ApiErrorMessage.UPLOAD_DATASET_FAILED,
+              ),
+            );
+            return;
+          }
+          try {
+            const result = JSON.parse(xhr.responseText);
+            logApiResponse("uploadDatasetFiles", {
+              pathCount: Array.isArray(result) ? result.length : 0,
+            });
+            resolve(Array.isArray(result) ? result : []);
+          } catch {
+            reject(new Error(ApiErrorMessage.UPLOAD_DATASET_FAILED));
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          logApiError("uploadDatasetFiles", { network: true });
+          reject(new Error(ApiErrorMessage.UPLOAD_DATASET_FAILED));
+        });
+
+        xhr.addEventListener("abort", () => {
+          reject(new Error(ApiErrorMessage.UPLOAD_DATASET_FAILED));
+        });
+
+        xhr.open("POST", url);
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.setRequestHeader("oauth2", token);
+        xhr.setRequestHeader(
+          "Cache-Control",
+          "no-cache, no-store, must-revalidate",
+        );
+        xhr.send(formData);
+      });
+    },
+    [token, baseUrl],
+  );
+
+  const onboardDataset = useCallback(
+    async (payload: {
+      code: string;
+      name: string;
+      description: string;
+      license: string;
+      mimeType: string;
+      size: number;
+      url?: string;
+      version?: string;
+      headline: string;
+      keywords: string[];
+      fieldOfScience: string[];
+      language?: string[];
+      country?: string[];
+      datePublished: string;
+      citeAs?: string;
+      conformsTo?: string;
+      dataLocations: Array<{ kind: number; location: string }>;
+    }): Promise<string> => {
+      logApiRequest("onboardDataset", {
+        endpoint: "/dataset/onboard",
+      });
+      const apiPayload = {
+        code: payload.code,
+        name: payload.name,
+        Description: payload.description,
+        License: payload.license,
+        MimeType: payload.mimeType,
+        Size: payload.size,
+        Url: payload.url ?? "",
+        Version: payload.version ?? "",
+        Headline: payload.headline,
+        Keywords: payload.keywords,
+        FieldOfScience: payload.fieldOfScience,
+        Language: payload.language ?? [],
+        Country: payload.country ?? [],
+        DatePublished: payload.datePublished,
+        CiteAs: payload.citeAs ?? "",
+        ConformsTo: payload.conformsTo ?? "",
+        DataLocations: payload.dataLocations.map((d) => ({
+          Kind: d.kind,
+          Location: d.location,
+        })),
+      };
+      const response = await makeRequest("/dataset/onboard", {
+        method: "POST",
+        body: JSON.stringify(apiPayload),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("onboardDataset", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.ONBOARD_DATASET_FAILED,
+        );
+      }
+      const result = await response.json();
+      const datasetId =
+        typeof result === "string" ? result : (result?.id ?? "");
+      logApiResponse("onboardDataset", { datasetId });
+      return datasetId;
+    },
+    [makeRequest],
+  );
+
+  const profileDataset = useCallback(
+    async (datasetId: string, dataStoreKind: number): Promise<string> => {
+      logApiRequest("profileDataset", {
+        endpoint: "/dataset/profile",
+        datasetId,
+      });
+      const response = await makeRequest("/dataset/profile", {
+        method: "POST",
+        body: JSON.stringify({ id: datasetId, dataStoreKind }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("profileDataset", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.PROFILE_DATASET_FAILED,
+        );
+      }
+      const result = await response.json();
+      const id =
+        typeof result === "string" ? result : (result?.id ?? datasetId);
+      logApiResponse("profileDataset", { datasetId: id });
+      return id;
+    },
+    [makeRequest],
+  );
+
   return {
     hasToken: !!token,
     token,
@@ -1141,5 +1343,9 @@ export function useApi() {
     deleteUserSettingsByKey,
     saveUserSettings,
     getRecommendNextQueries,
+    getUploadAllowedExtensions,
+    uploadDatasetFiles,
+    onboardDataset,
+    profileDataset,
   };
 }
