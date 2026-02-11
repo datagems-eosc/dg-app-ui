@@ -17,6 +17,10 @@ export const APP_ROUTES = {
   CHAT: "/chat",
   CHAT_WITH_CONVERSATION: (conversationId: string) => `/chat/${conversationId}`,
 
+  // Datasets
+  DATASET_ADD: "/datasets/add",
+  DATASET_DETAILS: (id: string) => `/datasets/${id}`,
+
   // Collections
   COLLECTIONS: {
     CUSTOM: (id: string) => `/collections/custom/${id}`,
