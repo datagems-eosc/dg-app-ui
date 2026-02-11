@@ -4,26 +4,18 @@ import { Button } from "@ui/Button";
 import { AdditionalInformation } from "@ui/datasets/AdditionalInformation";
 import { BasicInformation } from "@ui/datasets/BasicInformation";
 import { Classification } from "@ui/datasets/Classification";
-import { DatasetUpload } from "@ui/datasets/DatasetUpload";
+import { DatasetUpload, type UploadedFile } from "@ui/datasets/DatasetUpload";
 import { FormSectionLayout } from "@ui/FormSectionLayout";
-import { Tooltip } from "@ui/Tooltip";
+import { Toast } from "@ui/Toast";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
-import { logDebug, logError } from "@/lib/logger";
-
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  status: "uploading" | "success" | "error";
-  progress: number;
-  error?: string;
-}
+import { logError } from "@/lib/logger";
+import { slugify } from "@/lib/slugify";
+import { getNavigationUrl } from "@/lib/utils";
 
 interface FormData {
   files: UploadedFile[];
@@ -93,12 +85,37 @@ const initialErrors: FormErrors = {
 
 const AUTHORS_MAX_LENGTH = 250;
 
+const DATA_LOCATION_KIND_STAGED = 4;
+const DATA_STORE_KIND_FILESYSTEM = 0;
+
 export default function AddDatasetForm() {
   const router = useRouter();
   const api = useApi();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<FormErrors>(initialErrors);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
+  const [toast, setToast] = useState<{
+    message: string;
+    visible: boolean;
+    type: "success" | "error";
+  }>({ message: "", visible: false, type: "success" });
+
+  const showToast = useCallback(
+    (message: string, type: "success" | "error" = "success") => {
+      setToast({ message, visible: true, type });
+    },
+    [],
+  );
+
+  const hasToken = api.hasToken;
+  const getUploadAllowedExtensions = api.getUploadAllowedExtensions;
+  useEffect(() => {
+    if (!hasToken) return;
+    getUploadAllowedExtensions()
+      .then(setAllowedExtensions)
+      .catch(() => setAllowedExtensions([]));
+  }, [hasToken, getUploadAllowedExtensions]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {
@@ -184,63 +201,68 @@ export default function AddDatasetForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (!validateForm()) {
+    const stagedFiles = formData.files.filter(
+      (f) => f.status === "success" && f.stagedPath,
+    );
+    if (stagedFiles.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        files: "At least one file must be uploaded successfully",
+      }));
       return;
     }
 
     setIsSubmitting(true);
-
     try {
       if (!api.hasToken) {
         throw new Error(ApiErrorMessage.NO_ACCESS_TOKEN);
       }
 
-      const files = formData.files || [];
-      const sizes = files.map((f) => f.size).filter((n) => Number.isFinite(n));
-      const sizeRange =
-        sizes.length > 0
-          ? { start: Math.min(...sizes), end: Math.max(...sizes) }
-          : undefined;
+      const totalSize = stagedFiles.reduce((acc, f) => acc + (f.size || 0), 0);
+      const mimeType = stagedFiles[0]?.type || "application/octet-stream";
+      const code = slugify(formData.basicInfo.title) || `dataset-${Date.now()}`;
 
-      const mimeTypes = files.map((f) => f.type).filter(Boolean);
+      const datasetId = await api.onboardDataset({
+        code,
+        name: formData.basicInfo.title,
+        description: formData.basicInfo.description,
+        license: formData.classification.license || "",
+        mimeType,
+        size: totalSize,
+        url: formData.additionalInfo.sourceLink || undefined,
+        version: "",
+        headline: formData.basicInfo.headline,
+        keywords: formData.basicInfo.keywords,
+        fieldOfScience: formData.classification.fieldsOfScience,
+        language: [],
+        country: [],
+        datePublished: new Date().toISOString().split("T")[0],
+        citeAs: formData.additionalInfo.referenceString || undefined,
+        conformsTo: "",
+        dataLocations: stagedFiles.map((f) => ({
+          kind: DATA_LOCATION_KIND_STAGED,
+          location: f.stagedPath as string,
+        })),
+      });
 
-      const likeTerms = [
-        formData.basicInfo.title,
-        formData.basicInfo.headline,
-        formData.basicInfo.description,
-        ...(formData.basicInfo.keywords || []),
-        formData.basicInfo.authors,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-
-      const payload: any = {
-        like: likeTerms || undefined,
-        license: formData.classification.license || undefined,
-        mimeType: mimeTypes[0] || undefined,
-        fieldsOfScience: formData.classification.fieldsOfScience?.length
-          ? formData.classification.fieldsOfScience
-          : undefined,
-        sizeRange,
-        page: { offset: 0, size: 10 },
-      };
-
-      if (formData.classification.collection) {
-        payload.collectionIds = [formData.classification.collection];
+      if (!datasetId || typeof datasetId !== "string" || !datasetId.trim()) {
+        throw new Error(ApiErrorMessage.ONBOARD_DATASET_FAILED);
       }
 
-      const response = await api.queryDatasets(payload);
+      await api.profileDataset(datasetId, DATA_STORE_KIND_FILESYSTEM);
 
-      logDebug("/dataset/query response", { response });
-      alert("Dataset submitted successfully!");
-
+      showToast("Dataset onboarded and profiling started.", "success");
       setFormData(initialFormData);
       setErrors(initialErrors);
+      router.push(getNavigationUrl(APP_ROUTES.DATASET_DETAILS(datasetId)));
     } catch (error) {
       logError("Error submitting dataset", error);
-      alert("Error submitting dataset. Please try again.");
+      showToast(
+        error instanceof Error ? error.message : "Failed to onboard dataset.",
+        "error",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -282,6 +304,9 @@ export default function AddDatasetForm() {
               <DatasetUpload
                 files={formData.files}
                 onFilesChange={handleFilesChange}
+                onUpload={api.uploadDatasetFiles}
+                allowedExtensions={allowedExtensions}
+                onRemoteUploadNotSupported={(msg) => showToast(msg, "error")}
               />
             ),
             errorText: errors.files,
@@ -334,26 +359,29 @@ export default function AddDatasetForm() {
         ))}
       </div>
 
-      {/* Action Buttons */}
       <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end gap-3 sm:gap-3">
-        <Tooltip content="Publishing is not implemented yet." position="top">
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full sm:w-auto px-6 sm:px-8 order-1 sm:order-1"
-          >
-            {isSubmitting ? "Submitting..." : "Next"}
-          </Button>
-        </Tooltip>
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full sm:w-auto px-6 sm:px-8 order-1 sm:order-1"
+        >
+          {isSubmitting ? "Publishing..." : "Publish Dataset"}
+        </Button>
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push(APP_ROUTES.BROWSE)}
+          onClick={() => router.push(getNavigationUrl(APP_ROUTES.BROWSE))}
           className="w-full sm:w-auto order-2 sm:order-2"
         >
           Cancel
         </Button>
       </div>
+      <Toast
+        message={toast.message}
+        isVisible={toast.visible}
+        onClose={() => setToast((t) => ({ ...t, visible: false }))}
+        type={toast.type}
+      />
     </form>
   );
 }

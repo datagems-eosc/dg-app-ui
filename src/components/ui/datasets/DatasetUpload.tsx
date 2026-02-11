@@ -3,12 +3,12 @@
 import { Link as LinkIcon, Upload } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { FileUploadCard } from "./FileUploadCard";
 
-interface UploadedFile {
+export interface UploadedFile {
   id: string;
   name: string;
   size: number;
@@ -16,11 +16,16 @@ interface UploadedFile {
   status: "uploading" | "success" | "error";
   progress: number;
   error?: string;
+  file?: File;
+  stagedPath?: string;
 }
 
 interface DatasetUploadProps {
   files: UploadedFile[];
   onFilesChange: (files: UploadedFile[]) => void;
+  onUpload: (files: File[]) => Promise<string[]>;
+  allowedExtensions?: string[];
+  onRemoteUploadNotSupported?: (message: string) => void;
 }
 
 const REMOTE_LOCATIONS = [
@@ -53,143 +58,173 @@ const REMOTE_LOCATIONS = [
   },
 ];
 
-export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
+const DEFAULT_ACCEPT = ".csv,.pdf,.xlsx,.xls,.txt,.png,.jpeg,.jpg,.md";
+
+function generateId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(7);
+}
+
+export function DatasetUpload({
+  files,
+  onFilesChange,
+  onUpload,
+  allowedExtensions,
+  onRemoteUploadNotSupported,
+}: DatasetUploadProps) {
   const [showRemoteLocation, setShowRemoteLocation] = useState(false);
   const [selectedRemoteType, setSelectedRemoteType] = useState<string>("");
   const [remoteUrl, setRemoteUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const filesRef = useRef<UploadedFile[]>(files);
 
-  // Keep a ref to the latest files to avoid stale closures during simulated uploads
-  useEffect(() => {
-    filesRef.current = files;
-  }, [files]);
+  const acceptAttr =
+    allowedExtensions && allowedExtensions.length > 0
+      ? allowedExtensions.join(",")
+      : DEFAULT_ACCEPT;
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files;
-    if (!selectedFiles) return;
+  const performUpload = useCallback(
+    async (filesToUpload: UploadedFile[], allFiles: UploadedFile[]) => {
+      const withFile = filesToUpload.filter((f) => f.file);
+      if (withFile.length === 0) return;
 
-    const newFiles: UploadedFile[] = Array.from(selectedFiles).map((file) => ({
-      id: Math.random().toString(36).substring(7),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      status: "uploading",
-      progress: 0,
-    }));
+      setIsUploading(true);
+      const fileObjects = withFile.map((f) => f.file as File);
 
-    // Add new files to existing files
-    onFilesChange([...files, ...newFiles]);
-
-    // Simulate upload progress
-    newFiles.forEach((file) => {
-      simulateUpload(file.id);
-    });
-
-    // Clear the input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const simulateUpload = (fileId: string) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 20;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-
-        // Randomly simulate success or error for demo
-        const isSuccess = Math.random() > 0.2; // 80% success rate
-
-        const updated: UploadedFile[] = filesRef.current.map((file) =>
-          file.id === fileId
-            ? {
-                ...file,
-                progress: 100,
-                status: isSuccess ? ("success" as const) : ("error" as const),
-                error: !isSuccess
-                  ? "Upload failed. Please try again."
-                  : undefined,
-              }
-            : file,
-        );
-        filesRef.current = updated;
-        onFilesChange(updated);
-      } else {
-        const updated: UploadedFile[] = filesRef.current.map((file) =>
-          file.id === fileId
-            ? { ...file, progress: Math.round(progress) }
-            : file,
-        );
-        filesRef.current = updated;
-        onFilesChange(updated);
+      try {
+        const paths = await onUpload(fileObjects);
+        const updates = new Map(allFiles.map((f) => [f.id, f]));
+        withFile.forEach((f, idx) => {
+          const path = paths[idx];
+          updates.set(f.id, {
+            ...f,
+            progress: 100,
+            status: path ? "success" : "error",
+            stagedPath: path || undefined,
+            error: path ? undefined : "No path returned",
+          });
+        });
+        onFilesChange(allFiles.map((f) => updates.get(f.id) ?? f));
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Upload failed. Please try again.";
+        const errorUpdates = new Map(allFiles.map((f) => [f.id, f]));
+        withFile.forEach((f) => {
+          errorUpdates.set(f.id, {
+            ...f,
+            progress: 0,
+            status: "error",
+            error: message,
+          });
+        });
+        onFilesChange(allFiles.map((f) => errorUpdates.get(f.id) ?? f));
+      } finally {
+        setIsUploading(false);
       }
-    }, 200);
-  };
+    },
+    [onFilesChange, onUpload],
+  );
 
-  const handleRemoveFile = (fileId: string) => {
-    onFilesChange(files.filter((file) => file.id !== fileId));
-  };
+  const handleFileSelect = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (isUploading) return;
+      const selectedFiles = event.target.files;
+      if (!selectedFiles?.length) return;
 
-  const handleBrowseFiles = () => {
+      const newFiles: UploadedFile[] = Array.from(selectedFiles).map(
+        (file) => ({
+          id: generateId(),
+          name: file.name,
+          size: file.size,
+          type: file.type || "application/octet-stream",
+          status: "uploading" as const,
+          progress: 0,
+          file,
+        }),
+      );
+
+      const updated = [...files, ...newFiles];
+      onFilesChange(updated);
+      performUpload(newFiles, updated);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    [files, isUploading, onFilesChange, performUpload],
+  );
+
+  const handleRemoveFile = useCallback(
+    (fileId: string) => {
+      onFilesChange(files.filter((f) => f.id !== fileId));
+    },
+    [files, onFilesChange],
+  );
+
+  const handleBrowseFiles = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
-  const handleAddRemoteLocation = () => {
+  const handleAddRemoteLocation = useCallback(() => {
     setShowRemoteLocation(true);
-  };
+  }, []);
 
-  const handleRemoteUpload = () => {
+  const handleRemoteUpload = useCallback(() => {
     if (!remoteUrl.trim()) return;
-
-    // Create a mock file from URL
-    const fileName = remoteUrl.split("/").pop() || "remote-file";
+    const message = "Remote URL upload requires administrator privileges.";
+    if (onRemoteUploadNotSupported) {
+      onRemoteUploadNotSupported(message);
+      setRemoteUrl("");
+      setSelectedRemoteType("");
+      setShowRemoteLocation(false);
+      return;
+    }
     const newFile: UploadedFile = {
-      id: Math.random().toString(36).substring(7),
-      name: fileName,
-      size: 0, // Unknown size for remote files
+      id: generateId(),
+      name: remoteUrl.split("/").pop() || "remote-file",
+      size: 0,
       type: "remote",
-      status: "uploading",
+      status: "error",
       progress: 0,
+      error: message,
     };
-
     onFilesChange([...files, newFile]);
-    simulateUpload(newFile.id);
-
-    // Reset remote form
     setRemoteUrl("");
     setSelectedRemoteType("");
     setShowRemoteLocation(false);
-  };
+  }, [files, onFilesChange, onRemoteUploadNotSupported, remoteUrl]);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const droppedFiles = e.dataTransfer.files;
-    if (droppedFiles.length > 0) {
-      // Create a fake event to reuse the handleFileSelect logic
-      const fakeEvent = {
-        target: { files: droppedFiles },
-      } as React.ChangeEvent<HTMLInputElement>;
-      handleFileSelect(fakeEvent);
-    }
-  };
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isUploading) return;
+      const droppedFiles = e.dataTransfer.files;
+      if (droppedFiles.length > 0) {
+        const fakeEvent = {
+          target: { files: droppedFiles },
+        } as React.ChangeEvent<HTMLInputElement>;
+        handleFileSelect(fakeEvent);
+      }
+    },
+    [handleFileSelect, isUploading],
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Upload Area */}
       <div
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className="relative rounded-lg p-6 sm:p-10 text-center transition-colors group overflow-hidden bg-slate-75"
+        className={`relative rounded-lg p-6 sm:p-10 text-center transition-colors group overflow-hidden bg-slate-75 ${isUploading ? "pointer-events-none opacity-70" : ""}`}
+        aria-busy={isUploading}
       >
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
@@ -211,8 +246,8 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
           <Upload
             strokeWidth={2.5}
             className="w-6 h-6 sm:w-7.5 sm:h-7.5 text-slate-350"
+            aria-hidden
           />
-
           <div className="space-y-1 sm:space-y-2">
             <p className="text-body-14-medium sm:text-body-16-medium text-gray-750">
               Drop files here or add from remote location
@@ -221,7 +256,6 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
               Supported formats: CSV, PDF, XLSX (max 500MB per file)
             </p>
           </div>
-
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-2 pt-2 w-full sm:w-auto">
             <Button
               variant="outline"
@@ -244,27 +278,26 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
         </div>
       </div>
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".csv,.pdf,.xlsx,.xls"
+        accept={acceptAttr}
         onChange={handleFileSelect}
         className="hidden"
+        aria-hidden
       />
 
-      {/* Remote Location Section */}
       {showRemoteLocation && (
         <div>
           <h4 className="text-body-14-semibold sm:text-body-16-semibold text-gray-750 mb-3 sm:mb-4">
             Choose remote location
           </h4>
-
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-4">
             {REMOTE_LOCATIONS.map((location) => (
               <button
                 key={location.id}
+                type="button"
                 onClick={() => setSelectedRemoteType(location.id)}
                 className={`p-2 sm:p-3 border rounded-lg flex flex-col sm:flex-row justify-center items-center gap-1 sm:gap-2 text-body-12-medium sm:text-body-14-medium text-gray-750 transition-colors ${
                   selectedRemoteType === location.id
@@ -277,7 +310,6 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
               </button>
             ))}
           </div>
-
           <div className="flex flex-col sm:flex-row gap-2 w-full items-end">
             <div className="flex-1 min-w-0">
               <Input
@@ -299,7 +331,6 @@ export function DatasetUpload({ files, onFilesChange }: DatasetUploadProps) {
         </div>
       )}
 
-      {/* Uploaded Files */}
       {files.length > 0 && (
         <div className="space-y-3">
           {files.map((file) => (

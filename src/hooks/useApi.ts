@@ -26,19 +26,18 @@ export function useApi() {
       }
 
       const url = `${baseUrl}/gw/api${endpoint}`;
-
+      const isFormData = options.body instanceof FormData;
       const headers: Record<string, string> = {
-        "Content-Type": "application/json",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         Pragma: "no-cache",
         Expires: "0",
       };
-
-      // Merge headers properly
+      if (!isFormData) {
+        headers["Content-Type"] = "application/json";
+      }
       if (options.headers) {
         Object.assign(headers, options.headers);
       }
-
       headers.Authorization = `Bearer ${token}`;
       headers.oauth2 = token;
 
@@ -1096,6 +1095,132 @@ export function useApi() {
     [makeRequest, token],
   );
 
+  const getUploadAllowedExtensions = useCallback(async (): Promise<
+    string[]
+  > => {
+    logApiRequest("getUploadAllowedExtensions", {
+      endpoint: "/storage/upload/allowed-extension",
+    });
+    const response = await makeRequest("/storage/upload/allowed-extension", {
+      method: "GET",
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      logApiError("getUploadAllowedExtensions", errorData);
+      throw new Error(
+        errorData.error || ApiErrorMessage.FETCH_ALLOWED_EXTENSIONS_FAILED,
+      );
+    }
+    const result = await response.json();
+    logApiResponse("getUploadAllowedExtensions", {
+      count: Array.isArray(result) ? result.length : 0,
+    });
+    return Array.isArray(result) ? result : [];
+  }, [makeRequest]);
+
+  const uploadDatasetFiles = useCallback(
+    async (files: File[]): Promise<string[]> => {
+      if (!files.length) return [];
+      logApiRequest("uploadDatasetFiles", {
+        endpoint: "/storage/upload/dataset",
+        fileCount: files.length,
+      });
+      const formData = new FormData();
+      files.forEach((file, index) => {
+        formData.append(`file${index + 1}`, file);
+      });
+      const response = await makeRequest("/storage/upload/dataset", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("uploadDatasetFiles", {
+          ...errorData,
+          statusCode: response.status,
+        });
+        throw new Error(
+          errorData.error || ApiErrorMessage.UPLOAD_DATASET_FAILED,
+        );
+      }
+      const result = await response.json();
+      logApiResponse("uploadDatasetFiles", {
+        pathCount: Array.isArray(result) ? result.length : 0,
+      });
+      return Array.isArray(result) ? result : [];
+    },
+    [makeRequest],
+  );
+
+  const onboardDataset = useCallback(
+    async (payload: {
+      code: string;
+      name: string;
+      description: string;
+      license: string;
+      mimeType: string;
+      size: number;
+      url?: string;
+      version?: string;
+      headline: string;
+      keywords: string[];
+      fieldOfScience: string[];
+      language?: string[];
+      country?: string[];
+      datePublished: string;
+      citeAs?: string;
+      conformsTo?: string;
+      dataLocations: Array<{ kind: number; location: string }>;
+    }): Promise<string> => {
+      logApiRequest("onboardDataset", {
+        endpoint: "/dataset/onboard",
+      });
+      const response = await makeRequest("/dataset/onboard", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("onboardDataset", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.ONBOARD_DATASET_FAILED,
+        );
+      }
+      const result = await response.json();
+      const datasetId =
+        typeof result === "string" ? result : (result?.id ?? "");
+      logApiResponse("onboardDataset", { datasetId });
+      return datasetId;
+    },
+    [makeRequest],
+  );
+
+  const profileDataset = useCallback(
+    async (datasetId: string, dataStoreKind: number): Promise<string> => {
+      logApiRequest("profileDataset", {
+        endpoint: "/dataset/profile",
+        datasetId,
+      });
+      const response = await makeRequest("/dataset/profile", {
+        method: "POST",
+        body: JSON.stringify({ id: datasetId, dataStoreKind }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("profileDataset", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.PROFILE_DATASET_FAILED,
+        );
+      }
+      const result = await response.json();
+      const id =
+        typeof result === "string" ? result : (result?.id ?? datasetId);
+      logApiResponse("profileDataset", { datasetId: id });
+      return id;
+    },
+    [makeRequest],
+  );
+
   return {
     hasToken: !!token,
     token,
@@ -1141,5 +1266,9 @@ export function useApi() {
     deleteUserSettingsByKey,
     saveUserSettings,
     getRecommendNextQueries,
+    getUploadAllowedExtensions,
+    uploadDatasetFiles,
+    onboardDataset,
+    profileDataset,
   };
 }

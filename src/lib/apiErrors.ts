@@ -33,4 +33,8 @@ export enum ApiErrorMessage {
   NO_CONVERSATION_ID = "No conversation ID returned from server",
   NO_AUTH_TOKEN_FOUND = "No authentication token found. Please log in again.",
   FETCH_DATASET_DETAILS_FAILED = "Failed to fetch dataset details. Please try again.",
+  UPLOAD_DATASET_FAILED = "Failed to upload dataset files",
+  FETCH_ALLOWED_EXTENSIONS_FAILED = "Failed to fetch allowed file extensions",
+  ONBOARD_DATASET_FAILED = "Failed to onboard dataset",
+  PROFILE_DATASET_FAILED = "Failed to profile dataset",
 }
