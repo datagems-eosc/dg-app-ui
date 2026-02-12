@@ -1,0 +1,110 @@
+@use '@/styles' as *;
+
+.jsonFilePreview {
+  @include flex-column;
+  gap: 0;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: $spacing-lg;
+    flex-wrap: wrap;
+    padding: $spacing-xl $spacing-lg;
+    background: $color-background;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__filename {
+    @include text-xl;
+    @include font-semibold;
+    @include text-primary;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__headerInfo {
+    display: flex;
+    gap: $spacing-xs;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+
+  &__filesize {
+    @include text-xs;
+    @include font-medium;
+    @include text-secondary;
+  }
+
+  &__downloadBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  &__downloadIcon {
+    width: 16px;
+    height: 16px;
+  }
+
+  &__codeWrapper {
+    padding: $spacing-lg;
+    background: $color-background-secondary;
+    border-bottom: 1px solid $color-border;
+    overflow: auto;
+    max-height: 400px;
+  }
+
+  &__code {
+    margin: 0;
+    padding: $spacing-md;
+    font-family: $font-family-mono;
+    font-size: $font-size-sm;
+    line-height: 1.5;
+    background: #f1f5f9;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-sm;
+    color: $color-primary-text;
+    overflow-x: auto;
+    min-width: min-content;
+  }
+
+  &__line {
+    white-space: pre;
+    min-height: 1.5em;
+  }
+
+  &__key {
+    color: #0369a1;
+  }
+
+  &__string {
+    color: #166534;
+  }
+
+  &__number {
+    color: #b45309;
+  }
+
+  &__boolean {
+    color: #6d28d9;
+  }
+
+  &__null {
+    color: $color-tertiary-text;
+  }
+
+  &__punctuation {
+    color: $color-secondary-text;
+  }
+
+  &__whitespace {
+    color: transparent;
+  }
+
+  &__default {
+    color: $color-primary-text;
+  }
+}
