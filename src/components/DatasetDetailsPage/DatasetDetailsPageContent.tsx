@@ -28,17 +28,22 @@ export default function DatasetDetailsPageContent({
   const router = useRouter();
   const [selectedFileId, setSelectedFileId] = useState<string>("file1-csv");
 
-  const handleFileSelect = (fileId: string, fileName: string) => {
-    // Map file IDs to mock data IDs
+  const handleFileSelect = (
+    fileId: string,
+    _fileName: string,
+    extension?: string,
+  ) => {
     const mockFileMap: Record<string, string> = {
       file1: "file1-csv",
       "csv-file1": "file1-csv",
       "csv-file2": "file1-csv",
       file2: "file2-xlsx",
       "excel-file1": "file2-xlsx",
+      "pdf-file1": "file-pdf",
+      "json-file1": "file-json",
     };
 
-    const mappedFileId = mockFileMap[fileId] || "file1-csv";
+    const mappedFileId = mockFileMap[fileId] ?? "file1-csv";
     setSelectedFileId(mappedFileId);
   };
 

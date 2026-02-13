@@ -1,0 +1,92 @@
+@use '@/styles' as *;
+
+.filePreviewMetadata {
+  @include flex-column;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  background: $color-background;
+  border-bottom: 1px solid $color-border;
+
+  &__section {
+    @include flex-column;
+    gap: $spacing-sm;
+  }
+
+  &__title {
+    @include text-md;
+    @include font-semibold;
+    @include text-primary;
+    margin: 0;
+  }
+
+  &__description {
+    @include text-sm;
+    @include text-secondary;
+    font-weight: $font-weight-normal;
+    line-height: 1.5;
+    margin: 0;
+    white-space: normal;
+    word-break: break-word;
+
+    &--truncated {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  &__keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin: 0;
+  }
+
+  &__tag {
+    display: inline-block;
+    padding: $spacing-xs $spacing-sm;
+    background: $color-background-secondary;
+    border-radius: $border-radius-sm;
+    @include text-xs;
+    @include font-medium;
+    @include text-primary;
+  }
+
+  &__toggle {
+    @include text-xs;
+    @include font-medium;
+    @include text-primary;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    align-self: flex-start;
+    @include transition-base;
+    text-decoration: underline;
+    text-decoration-skip-ink: none;
+    text-underline-position: from-font;
+    letter-spacing: $letter-spacing-wide;
+    line-height: 1.5;
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    &:hover {
+      opacity: 0.8;
+    }
+
+    &:focus {
+      outline: 2px solid $color-info;
+      outline-offset: 2px;
+      border-radius: $border-radius-sm;
+    }
+  }
+
+  &__toggleIcon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+}
