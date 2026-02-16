@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@ui/Button";
+import { ConfirmationModal } from "@ui/ConfirmationModal";
 import { Input } from "@ui/Input";
 import { Search, Settings2, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -41,6 +42,7 @@ interface DatasetPermissionsModalProps {
   datasetId: string;
   datasetName: string;
   onClose: () => void;
+  hasManageRights?: boolean;
 }
 
 function PermissionSwitch({
@@ -75,6 +77,7 @@ export function DatasetPermissionsModal({
   datasetId,
   datasetName,
   onClose,
+  hasManageRights = false,
 }: DatasetPermissionsModalProps) {
   const api = useApi();
   const {
@@ -110,6 +113,7 @@ export function DatasetPermissionsModal({
     manage: false,
     search: false,
   });
+  const [revokeGroupId, setRevokeGroupId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -256,6 +260,32 @@ export function DatasetPermissionsModal({
     }
   };
 
+  const handleRevokeGroupAccess = async (groupId: string) => {
+    const row = groupPermissions.find((r) => r.id === groupId);
+    if (!row) return;
+    const rolesToRemove = (
+      Object.keys(row.permissions) as PermissionKey[]
+    ).filter((key) => row.permissions[key]);
+    try {
+      await Promise.all(
+        rolesToRemove.map((key) => {
+          const role = DATASET_ROLE_MAP[key];
+          return role
+            ? unassignGroupDatasetGrant(groupId, datasetId, role)
+            : Promise.resolve();
+        }),
+      );
+      setGroupPermissions((prev) => prev.filter((r) => r.id !== groupId));
+      setVisibleGroupIds((prev) =>
+        prev ? prev.filter((id) => id !== groupId) : null,
+      );
+    } catch (error) {
+      logError("Failed to revoke group access", error);
+    } finally {
+      setRevokeGroupId(null);
+    }
+  };
+
   const handleRemoveUser = async (user: InvitedUser) => {
     if (user.id) {
       const permissionsToRemove = (
@@ -397,37 +427,51 @@ export function DatasetPermissionsModal({
                       </div>
                     )}
                     {!isLoading &&
-                      filteredGroupRows.map((row) => (
-                        <div
-                          key={row.id}
-                          className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
-                        >
-                          <div className="flex-1 text-[14px] font-medium text-slate-850">
-                            {row.name}
-                          </div>
-                          <div className="flex gap-1">
-                            {permissionColumns.map((column) => (
-                              <div
-                                key={`${row.id}-${column.key}`}
-                                className="w-20 flex justify-center"
+                      filteredGroupRows.map((row) => {
+                        const hasAnyPermission = permissionColumns.some(
+                          (col) => row.permissions[col.key],
+                        );
+                        return (
+                          <div
+                            key={row.id}
+                            className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
+                          >
+                            <div className="flex-1 text-[14px] font-medium text-slate-850">
+                              {row.name}
+                            </div>
+                            <div className="flex gap-1">
+                              {permissionColumns.map((column) => (
+                                <div
+                                  key={`${row.id}-${column.key}`}
+                                  className="w-20 flex justify-center"
+                                >
+                                  <PermissionSwitch
+                                    checked={row.permissions[column.key]}
+                                    ariaLabel={`${row.name} ${column.label}`}
+                                    disabled={isLoading || !hasManageRights}
+                                    onChange={() =>
+                                      handleGroupToggle(
+                                        row.id,
+                                        column.key,
+                                        !row.permissions[column.key],
+                                      )
+                                    }
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            {hasManageRights && hasAnyPermission && (
+                              <button
+                                type="button"
+                                className="ml-2 text-[14px] text-red-550 hover:underline"
+                                onClick={() => setRevokeGroupId(row.id)}
                               >
-                                <PermissionSwitch
-                                  checked={row.permissions[column.key]}
-                                  ariaLabel={`${row.name} ${column.label}`}
-                                  disabled={isLoading}
-                                  onChange={() =>
-                                    handleGroupToggle(
-                                      row.id,
-                                      column.key,
-                                      !row.permissions[column.key],
-                                    )
-                                  }
-                                />
-                              </div>
-                            ))}
+                                Revoke Access
+                              </button>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 </div>
               </div>
@@ -650,6 +694,22 @@ export function DatasetPermissionsModal({
           setIsManageOpen(false);
         }}
         selectedGroupIds={visibleGroupIds ?? []}
+      />
+
+      <ConfirmationModal
+        isVisible={Boolean(revokeGroupId)}
+        onClose={() => setRevokeGroupId(null)}
+        onConfirm={() => {
+          if (revokeGroupId) {
+            handleRevokeGroupAccess(revokeGroupId);
+          }
+        }}
+        title="Revoke access"
+        message1="Are you sure?"
+        message2=""
+        confirmText="Revoke"
+        cancelText="Cancel"
+        confirmVariant="danger"
       />
     </>
   );

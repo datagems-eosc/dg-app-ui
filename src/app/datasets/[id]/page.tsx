@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DatasetDetailsPageContent from "@/components/DatasetDetailsPage/DatasetDetailsPageContent";
@@ -162,9 +162,15 @@ export default function DatasetDetailsPage() {
     );
   }
 
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
+
   return (
     <DashboardLayout>
-      <DatasetDetailsPageContent dataset={dataset} />
+      <DatasetDetailsPageContent
+        dataset={dataset}
+        returnToRoles={returnTo === "settings-roles"}
+      />
     </DashboardLayout>
   );
 }

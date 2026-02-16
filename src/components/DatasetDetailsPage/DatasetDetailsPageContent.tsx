@@ -4,8 +4,10 @@ import { Button } from "@ui/Button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { APP_ROUTES } from "@/config/appUrls";
 import type { DatasetPlus } from "@/data/dataset";
 import { getFilePreviewData } from "@/data/mockFilePreview";
+import { getNavigationUrl } from "@/lib/utils";
 import DatasetDescriptionSection from "./DatasetDescriptionSection/DatasetDescriptionSection";
 import styles from "./DatasetDetailsPageContent.module.scss";
 import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
@@ -20,10 +22,12 @@ import FilePreview from "./FilePreview/FilePreview";
 
 interface DatasetDetailsPageContentProps {
   dataset: DatasetPlus;
+  returnToRoles?: boolean;
 }
 
 export default function DatasetDetailsPageContent({
   dataset,
+  returnToRoles = false,
 }: DatasetDetailsPageContentProps) {
   const router = useRouter();
   const [selectedFileId, setSelectedFileId] = useState<string>("file1-csv");
@@ -75,7 +79,11 @@ export default function DatasetDetailsPageContent({
           <div className={styles.datasetDetailsPageContent__header}>
             <div className={styles.datasetDetailsPageContent__actions}>
               <button
-                onClick={() => router.back()}
+                onClick={() =>
+                  returnToRoles
+                    ? router.push(getNavigationUrl(APP_ROUTES.SETTINGS_ROLES))
+                    : router.back()
+                }
                 className={styles.datasetDetailsPageContent__backButton}
               >
                 <ArrowLeft

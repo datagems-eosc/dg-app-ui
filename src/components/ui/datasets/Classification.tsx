@@ -291,10 +291,10 @@ export function Classification({
         )}
       </div>
 
-      {/* License */}
       <div>
         <Select
           label="License"
+          required
           groupedOptions={groupedLicenseOptions}
           value={data.license}
           onChange={handleLicenseChange}

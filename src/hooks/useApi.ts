@@ -1176,10 +1176,21 @@ export function useApi() {
           }
           try {
             const result = JSON.parse(xhr.responseText);
-            logApiResponse("uploadDatasetFiles", {
-              pathCount: Array.isArray(result) ? result.length : 0,
+            const rawPaths = Array.isArray(result) ? result : [];
+            const paths = rawPaths.map((item: unknown) => {
+              if (typeof item === "string") return item;
+              if (typeof item === "object" && item !== null) {
+                const obj = item as Record<string, unknown>;
+                const loc =
+                  obj.Location ?? obj.location ?? obj.path ?? obj.Path;
+                return typeof loc === "string" ? loc : "";
+              }
+              return "";
             });
-            resolve(Array.isArray(result) ? result : []);
+            logApiResponse("uploadDatasetFiles", {
+              pathCount: paths.length,
+            });
+            resolve(paths);
           } catch {
             reject(new Error(ApiErrorMessage.UPLOAD_DATASET_FAILED));
           }
@@ -1227,9 +1238,12 @@ export function useApi() {
       conformsTo?: string;
       dataLocations: Array<{ kind: number; location: string }>;
     }): Promise<string> => {
-      logApiRequest("onboardDataset", {
-        endpoint: "/dataset/onboard",
-      });
+      const dataLocationsMapped = payload.dataLocations.map((d) => ({
+        Kind: d.kind,
+        // Keep exact upload path as documented in API data flow.
+        Location: d.location ?? "",
+      }));
+
       const apiPayload = {
         code: payload.code,
         name: payload.name,
@@ -1247,22 +1261,28 @@ export function useApi() {
         DatePublished: payload.datePublished,
         CiteAs: payload.citeAs ?? "",
         ConformsTo: payload.conformsTo ?? "",
-        DataLocations: payload.dataLocations.map((d) => ({
-          Kind: d.kind,
-          Location: d.location,
-        })),
+        DataLocations: dataLocationsMapped,
       };
+
+      logApiRequest("onboardDataset", {
+        endpoint: "/dataset/onboard",
+        DataLocations: dataLocationsMapped,
+      });
+
       const response = await makeRequest("/dataset/onboard", {
         method: "POST",
         body: JSON.stringify(apiPayload),
       });
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logApiError("onboardDataset", errorData);
         throw new Error(
-          errorData.error || ApiErrorMessage.ONBOARD_DATASET_FAILED,
+          (errorData as { error?: string }).error ||
+            ApiErrorMessage.ONBOARD_DATASET_FAILED,
         );
       }
+
       const result = await response.json();
       const datasetId =
         typeof result === "string" ? result : (result?.id ?? "");

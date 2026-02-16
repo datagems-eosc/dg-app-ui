@@ -67,6 +67,7 @@ export function BasicInformation({
       <div>
         <Textarea
           label="Description"
+          required
           value={data.description}
           onChange={(e) => handleFieldChange("description", e.target.value)}
           placeholder="Provide a detailed description of the dataset contents"

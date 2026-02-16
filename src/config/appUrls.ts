@@ -12,6 +12,9 @@ export const APP_ROUTES = {
   HOME: "/",
   BROWSE: "/browse",
   SETTINGS: "/settings",
+  SETTINGS_ROLES: "/settings?tab=roles",
+  SETTINGS_ROLES_DATASET: (datasetId: string) =>
+    `/settings?tab=roles&datasetId=${encodeURIComponent(datasetId)}`,
 
   // Chat
   CHAT: "/chat",
