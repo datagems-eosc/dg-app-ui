@@ -2,7 +2,9 @@
 
 import { Checkbox } from "@ui/Checkbox";
 import { Chip } from "@ui/Chip";
+import { ConfirmationModal } from "@ui/ConfirmationModal";
 import { Input } from "@ui/Input";
+import { Tooltip } from "@ui/Tooltip";
 import {
   ArrowDown,
   ArrowUp,
@@ -11,9 +13,10 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DatasetPermissionsModal } from "@/components/ui/user/DatasetPermissionsModal";
+import { APP_ROUTES } from "@/config/appUrls";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logError, logWarn } from "@/lib/logger";
@@ -444,9 +447,13 @@ function SearchField({
   );
 }
 
+const DATASET_ID_QUERY = "datasetId";
+
 export default function RolesPermissionsSection() {
   const api = useApi();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const datasetIdFilter = searchParams.get(DATASET_ID_QUERY);
   const {
     hasToken,
     getCurrentUserContextGrants,
@@ -478,6 +485,16 @@ export default function RolesPermissionsSection() {
     id: string;
     name: string;
   } | null>(null);
+  const [deleteConfirmDataset, setDeleteConfirmDataset] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (datasetIdFilter) {
+      setTypeFilter("datasets");
+    }
+  }, [datasetIdFilter]);
 
   useEffect(() => {
     if (!hasToken) {
@@ -704,6 +721,13 @@ export default function RolesPermissionsSection() {
   const filteredRows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return rows.filter((row) => {
+      if (
+        datasetIdFilter &&
+        row.targetType.toLowerCase() === "dataset" &&
+        row.targetId !== datasetIdFilter
+      ) {
+        return false;
+      }
       const matchesType =
         typeFilter === "datasets"
           ? row.targetType.toLowerCase() === "dataset"
@@ -718,7 +742,15 @@ export default function RolesPermissionsSection() {
         !query || row.targetName.toLowerCase().includes(query);
       return matchesType && matchesRole && matchesGroup && matchesSearch;
     });
-  }, [grants, groupFilter, roleFilter, rows, searchQuery, typeFilter]);
+  }, [
+    datasetIdFilter,
+    grants,
+    groupFilter,
+    roleFilter,
+    rows,
+    searchQuery,
+    typeFilter,
+  ]);
 
   const getPermissionLabel = (row: GrantRow) => row.roles[0] ?? "";
 
@@ -1020,22 +1052,41 @@ export default function RolesPermissionsSection() {
                     const roles = row.roles;
                     const primaryRole = roles[0];
                     const extraCount = Math.max(roles.length - 1, 0);
+                    const hasEditRights =
+                      row.targetType.toLowerCase() === "dataset" &&
+                      (roles.includes("Edit") || roles.includes("Manage"));
+                    const hasDeleteRights =
+                      row.targetType.toLowerCase() === "dataset" &&
+                      (roles.includes("Delete") || roles.includes("Manage"));
+                    const groupsTooltip =
+                      row.groupCount > 0
+                        ? row.groupIds
+                            .map((id) => groupNames[id] ?? id)
+                            .join(", ")
+                        : "";
+                    const permissionsTooltip =
+                      roles.length > 0 ? roles.join(", ") : "";
                     return (
                       <div
                         key={row.id}
-                        className="grid grid-cols-[1fr_126px_180px_122px_137px] items-center h-14 border-b border-slate-200 last:border-b-0"
+                        role="row"
+                        className={`grid grid-cols-[1fr_126px_180px_122px_137px] items-center h-14 border-b border-slate-200 last:border-b-0 ${
+                          row.targetType.toLowerCase() === "dataset"
+                            ? "cursor-pointer hover:bg-slate-50"
+                            : ""
+                        }`}
+                        onClick={() => {
+                          if (row.targetType.toLowerCase() !== "dataset")
+                            return;
+                          setSelectedDataset({
+                            id: row.targetId,
+                            name: row.targetName,
+                          });
+                        }}
                       >
                         <div
                           className="px-4 text-[14px] text-gray-750 truncate"
-                          onClick={() => {
-                            if (row.targetType.toLowerCase() !== "dataset") {
-                              return;
-                            }
-                            setSelectedDataset({
-                              id: row.targetId,
-                              name: row.targetName,
-                            });
-                          }}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           {row.targetType.toLowerCase() === "dataset" ? (
                             <button
@@ -1043,7 +1094,9 @@ export default function RolesPermissionsSection() {
                               onClick={(event) => {
                                 event.stopPropagation();
                                 router.push(
-                                  getNavigationUrl(`/datasets/${row.targetId}`),
+                                  getNavigationUrl(
+                                    `${APP_ROUTES.DATASET_DETAILS(row.targetId)}?returnTo=settings-roles`,
+                                  ),
                                 );
                               }}
                               className="text-left hover:underline"
@@ -1055,9 +1108,27 @@ export default function RolesPermissionsSection() {
                           )}
                         </div>
                         <div className="px-4 flex items-center justify-center">
-                          <Chip color="grey" size="xs" className="h-6 px-3">
-                            {row.groupCount}
-                          </Chip>
+                          {row.groupCount > 0 && groupsTooltip ? (
+                            <Tooltip
+                              content={groupsTooltip}
+                              position="top"
+                              delay={300}
+                            >
+                              <span className="inline-flex cursor-default">
+                                <Chip
+                                  color="grey"
+                                  size="xs"
+                                  className="h-6 px-3"
+                                >
+                                  {row.groupCount}
+                                </Chip>
+                              </span>
+                            </Tooltip>
+                          ) : (
+                            <Chip color="grey" size="xs" className="h-6 px-3">
+                              {row.groupCount}
+                            </Chip>
+                          )}
                         </div>
                         <div className="px-4 text-[14px] text-gray-750">
                           {row.uploadedBy ?? "—"}
@@ -1068,39 +1139,70 @@ export default function RolesPermissionsSection() {
                               {primaryRole}
                             </Chip>
                           )}
-                          {extraCount > 0 && (
-                            <Chip color="grey" size="xs" className="h-6 px-3">
-                              +{extraCount}
-                            </Chip>
-                          )}
+                          {extraCount > 0 ? (
+                            permissionsTooltip ? (
+                              <Tooltip
+                                content={permissionsTooltip}
+                                position="top"
+                                delay={300}
+                              >
+                                <span className="inline-flex cursor-default">
+                                  <Chip
+                                    color="grey"
+                                    size="xs"
+                                    className="h-6 px-3"
+                                  >
+                                    +{extraCount}
+                                  </Chip>
+                                </span>
+                              </Tooltip>
+                            ) : (
+                              <Chip color="grey" size="xs" className="h-6 px-3">
+                                +{extraCount}
+                              </Chip>
+                            )
+                          ) : null}
                         </div>
-                        <div className="px-4 flex items-center justify-end gap-2">
+                        <div
+                          className="px-4 flex items-center justify-end gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             type="button"
-                            aria-label="Edit permissions"
-                            disabled={
-                              row.targetType.toLowerCase() !== "dataset"
-                            }
+                            aria-label="Edit dataset"
+                            disabled={!hasEditRights}
                             onClick={() => {
-                              if (row.targetType.toLowerCase() !== "dataset")
-                                return;
+                              if (!hasEditRights) return;
                               router.push(
-                                getNavigationUrl(`/datasets/${row.targetId}`),
+                                getNavigationUrl(
+                                  `${APP_ROUTES.DATASET_ADD}?datasetId=${row.targetId}`,
+                                ),
                               );
                             }}
                             className={`w-8 h-8 flex items-center justify-center rounded ${
-                              row.targetType.toLowerCase() === "dataset"
+                              hasEditRights
                                 ? "text-gray-650 hover:bg-slate-50"
-                                : "text-gray-400"
+                                : "text-gray-400 cursor-not-allowed"
                             }`}
                           >
                             <Pencil className="w-4 h-4" strokeWidth={1.25} />
                           </button>
                           <button
                             type="button"
-                            aria-label="Remove permissions"
-                            disabled
-                            className="w-8 h-8 flex items-center justify-center rounded text-gray-400"
+                            aria-label="Delete dataset"
+                            disabled={!hasDeleteRights}
+                            onClick={() => {
+                              if (!hasDeleteRights) return;
+                              setDeleteConfirmDataset({
+                                id: row.targetId,
+                                name: row.targetName,
+                              });
+                            }}
+                            className={`w-8 h-8 flex items-center justify-center rounded ${
+                              hasDeleteRights
+                                ? "text-gray-650 hover:bg-slate-50"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
                           >
                             <Trash2 className="w-4 h-4" strokeWidth={1.25} />
                           </button>
@@ -1118,6 +1220,29 @@ export default function RolesPermissionsSection() {
         datasetId={selectedDataset?.id ?? ""}
         datasetName={selectedDataset?.name ?? "Dataset permissions"}
         onClose={() => setSelectedDataset(null)}
+        hasManageRights={Boolean(
+          selectedDataset &&
+            grants.some(
+              (g) =>
+                g.targetId === selectedDataset.id &&
+                g.targetType === 0 &&
+                (g.role?.toLowerCase().includes("manage") ?? false),
+            ),
+        )}
+      />
+      <ConfirmationModal
+        isVisible={Boolean(deleteConfirmDataset)}
+        onClose={() => setDeleteConfirmDataset(null)}
+        onConfirm={() => {
+          if (!deleteConfirmDataset) return;
+          setDeleteConfirmDataset(null);
+        }}
+        title="Delete dataset"
+        message1="Are you sure to delete dataset?"
+        message2=""
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmVariant="danger"
       />
     </div>
   );

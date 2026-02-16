@@ -7,7 +7,7 @@ import { Classification } from "@ui/datasets/Classification";
 import { DatasetUpload, type UploadedFile } from "@ui/datasets/DatasetUpload";
 import { FormSectionLayout } from "@ui/FormSectionLayout";
 import { Toast } from "@ui/Toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
@@ -90,11 +90,14 @@ const DATA_STORE_KIND_FILESYSTEM = 0;
 
 export default function AddDatasetForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const api = useApi();
+  const datasetIdForEdit = searchParams.get("datasetId");
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<FormErrors>(initialErrors);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
+  const [, setIsEditLoading] = useState(Boolean(datasetIdForEdit));
   const [toast, setToast] = useState<{
     message: string;
     visible: boolean;
@@ -110,12 +113,98 @@ export default function AddDatasetForm() {
 
   const hasToken = api.hasToken;
   const getUploadAllowedExtensions = api.getUploadAllowedExtensions;
+  const queryDatasets = api.queryDatasets;
+
   useEffect(() => {
     if (!hasToken) return;
     getUploadAllowedExtensions()
       .then(setAllowedExtensions)
       .catch(() => setAllowedExtensions([]));
   }, [hasToken, getUploadAllowedExtensions]);
+
+  useEffect(() => {
+    if (!datasetIdForEdit || !hasToken || !queryDatasets) return;
+    let cancelled = false;
+    setIsEditLoading(true);
+    queryDatasets({
+      ids: [datasetIdForEdit],
+      project: {
+        fields: [
+          "id",
+          "name",
+          "description",
+          "headline",
+          "keywords",
+          "fieldOfScience",
+          "license",
+          "collections.id",
+          "url",
+          "citation",
+        ],
+      },
+      page: { Offset: 0, Size: 1 },
+      Order: { Items: ["+name"] },
+      Metadata: { CountAll: false },
+    })
+      .then((res) => {
+        if (cancelled) return;
+        const items = Array.isArray(res.items) ? res.items : [];
+        const item = items[0] as Record<string, unknown> | undefined;
+        if (!item) return;
+        const name = String(item.name ?? item.code ?? "");
+        const description = String(item.description ?? "");
+        const headline = String(item.headline ?? "");
+        const keywords = Array.isArray(item.keywords)
+          ? (item.keywords as string[])
+          : typeof item.keywords === "string"
+            ? [item.keywords]
+            : [];
+        const fieldOfScience = Array.isArray(item.fieldOfScience)
+          ? (item.fieldOfScience as string[])
+          : typeof item.fieldOfScience === "string"
+            ? [item.fieldOfScience]
+            : [];
+        const license = String(item.license ?? "");
+        const collections = Array.isArray(item.collections)
+          ? (item.collections as Array<{ id?: string }>)
+          : [];
+        const collection = collections[0]?.id != null ? collections[0].id : "";
+        const url = String(item.url ?? "");
+        const citeAs = String(
+          (item as { citation?: string }).citation ?? item.citeAs ?? "",
+        );
+        setFormData((prev) => ({
+          ...prev,
+          basicInfo: {
+            ...prev.basicInfo,
+            title: name,
+            headline: headline || name,
+            description,
+            keywords,
+            authors: prev.basicInfo.authors,
+          },
+          classification: {
+            ...prev.classification,
+            fieldsOfScience: fieldOfScience,
+            collection,
+            license,
+          },
+          additionalInfo: {
+            sourceLink: url,
+            referenceString: citeAs,
+          },
+        }));
+      })
+      .catch((err) => {
+        if (!cancelled) logError("Failed to load dataset for edit", err);
+      })
+      .finally(() => {
+        if (!cancelled) setIsEditLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetIdForEdit, hasToken, queryDatasets]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {
@@ -124,8 +213,7 @@ export default function AddDatasetForm() {
       additionalInfo: {},
     };
 
-    // Validate files
-    if (formData.files.length === 0) {
+    if (!datasetIdForEdit && formData.files.length === 0) {
       newErrors.files = "At least one file must be uploaded";
     }
 
@@ -202,6 +290,13 @@ export default function AddDatasetForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    if (datasetIdForEdit) {
+      showToast(
+        "Dataset update is not supported. Metadata changes cannot be saved.",
+        "error",
+      );
+      return;
+    }
 
     const stagedFiles = formData.files.filter(
       (f) => f.status === "success" && f.stagedPath,

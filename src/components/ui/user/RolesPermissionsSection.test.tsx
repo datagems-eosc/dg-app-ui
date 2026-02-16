@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import RolesPermissionsSection from "./RolesPermissionsSection";
 
@@ -11,6 +11,7 @@ vi.mock("@/hooks/useApi", () => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 describe("RolesPermissionsSection", () => {
@@ -51,12 +52,12 @@ describe("RolesPermissionsSection", () => {
     expect(screen.getByText("My groups")).toBeInTheDocument();
     expect(screen.getByText("Dataset name")).toBeInTheDocument();
     expect(screen.getByText("Groups Added")).toBeInTheDocument();
-    expect(screen.getByText("Permissions")).toBeInTheDocument();
+    expect(screen.getAllByText("Permissions").length).toBeGreaterThan(0);
     expect(await screen.findByText("Dataset One")).toBeInTheDocument();
     expect(screen.queryByText("Collection One")).toBeNull();
   });
 
-  it("opens dataset permissions modal when dataset is clicked", async () => {
+  it("opens dataset permissions modal when row is clicked", async () => {
     mockUseApi.mockReturnValue({
       hasToken: true,
       getCurrentUserContextGrants: vi.fn().mockResolvedValue([
@@ -86,8 +87,8 @@ describe("RolesPermissionsSection", () => {
 
     render(<RolesPermissionsSection />);
 
-    const datasetButton = await screen.findByText("Dataset One");
-    datasetButton.click();
+    const editChip = await screen.findByText("Edit");
+    editChip.click();
 
     expect(
       await screen.findByRole("dialog", { name: "Dataset One" }),
@@ -140,11 +141,15 @@ describe("RolesPermissionsSection", () => {
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
 
-    const header = screen.getByRole("button", { name: "Dataset name" });
+    const headers = screen.getAllByRole("button", { name: "Dataset name" });
+    const header = headers[0];
     header.click();
 
-    const sortedA = await screen.findByText("Dataset A");
-    const sortedB = await screen.findByText("Dataset B");
+    await waitFor(() => {
+      expect(screen.getAllByText("Dataset A").length).toBeGreaterThan(0);
+    });
+    const sortedA = screen.getAllByText("Dataset A")[0];
+    const sortedB = screen.getAllByText("Dataset B")[0];
     expect(sortedA.compareDocumentPosition(sortedB)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
