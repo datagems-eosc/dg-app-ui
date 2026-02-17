@@ -36,7 +36,7 @@ export default function SessionProviderWrapper({
     <SessionProvider
       basePath={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/auth`}
       // Enable automatic token refresh
-      refetchInterval={5 * 60} // Refetch session every 5 minutes
+      refetchInterval={60} // Refetch session every 1 minute
       refetchOnWindowFocus={true} // Refetch when window gains focus
     >
       <SessionErrorHandler>{children}</SessionErrorHandler>
