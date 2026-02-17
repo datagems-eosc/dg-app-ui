@@ -45,6 +45,8 @@ export default function DatasetSidebar({
       />
 
       <DatasetPermissionsSection
+        datasetId={dataset.id ?? ""}
+        datasetName={dataset.title ?? "Dataset permissions"}
         hasBrowsePermission={hasBrowsePermission}
         hasEditPermission={hasEditPermission}
         hasDownloadPermission={hasDownloadPermission}

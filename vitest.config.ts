@@ -11,13 +11,17 @@ const dirname =
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
+  resolve: {
+    alias: [
+      { find: "@", replacement: path.resolve(dirname, "src") },
+      { find: "@ui", replacement: path.resolve(dirname, "src/components/ui") },
+    ],
+  },
   test: {
     projects: [
       {
         extends: true,
         plugins: [
-          // The plugin will run tests for the stories defined in your Storybook config
-          // See options at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon#storybooktest
           storybookTest({ configDir: path.join(dirname, ".storybook") }),
         ],
         test: {
@@ -29,6 +33,20 @@ export default defineConfig({
             instances: [{ browser: "chromium" }],
           },
           setupFiles: [".storybook/vitest.setup.ts"],
+        },
+      },
+      {
+        test: {
+          name: "unit",
+          environment: "jsdom",
+          include: ["src/**/*.test.{ts,tsx}"],
+          exclude: [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/.storybook/**",
+            "**/*.stories.*",
+          ],
+          setupFiles: ["tests/vitest.setup.ts"],
         },
       },
     ],

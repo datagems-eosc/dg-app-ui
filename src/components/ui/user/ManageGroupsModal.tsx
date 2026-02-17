@@ -14,28 +14,29 @@ type GroupItem = {
   name: string;
 };
 
+export type SelectedGroup = { id: string; name: string };
+
 interface ManageGroupsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (selected: SelectedGroup[]) => void;
+  selectedGroupIds: string[];
+  title?: string;
 }
 
 export function ManageGroupsModal({
   isOpen,
   onClose,
   onSave,
+  selectedGroupIds,
+  title = "Manage Groups",
 }: ManageGroupsModalProps) {
   const api = useApi();
   const [search, setSearch] = useState("");
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([
-    "analytics",
-    "engineering",
-    "finance",
-    "moderators",
-    "researchers",
-  ]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -51,14 +52,23 @@ export function ManageGroupsModal({
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (!isOpen || !api.hasToken) return;
+    if (isOpen) {
+      setSelectedGroups(selectedGroupIds);
+    }
+  }, [isOpen, selectedGroupIds]);
+
+  const { hasToken, queryUserGroups } = api;
+
+  useEffect(() => {
+    if (!isOpen || !hasToken) return;
     let cancelled = false;
     setIsLoading(true);
+    setLoadError(null);
     (async () => {
       try {
-        const result = await api.queryUserGroups({
-          like: search.trim() || null,
-        });
+        const result = await queryUserGroups(
+          search.trim() ? { like: search.trim() } : { like: null },
+        );
         if (cancelled) return;
         const items =
           result.items?.map((group) => ({
@@ -67,7 +77,12 @@ export function ManageGroupsModal({
           })) ?? [];
         setGroups(items.filter((group) => group.id && group.name));
       } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load groups";
         logError("Failed to load user groups", error);
+        if (!cancelled) {
+          setLoadError(message);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -75,7 +90,7 @@ export function ManageGroupsModal({
     return () => {
       cancelled = true;
     };
-  }, [api, isOpen, search]);
+  }, [hasToken, queryUserGroups, isOpen, search]);
 
   const visibleGroups = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -101,7 +116,7 @@ export function ManageGroupsModal({
       >
         <div className="flex items-center h-[72px] px-6 pr-4 border-b border-slate-200">
           <h2 className="text-[18px] font-semibold leading-[140%] text-slate-850 flex-1">
-            Manage Groups
+            {title}
           </h2>
           <button
             type="button"
@@ -127,7 +142,15 @@ export function ManageGroupsModal({
           />
 
           <div className="mt-4 border-t border-slate-200">
-            {!isLoading && visibleGroups.length === 0 && (
+            {!isLoading && loadError && (
+              <div className="py-8 text-center">
+                <p className="text-[14px] text-red-550 mb-2">{loadError}</p>
+                <p className="text-[12px] text-gray-650">
+                  Please check your connection and try again.
+                </p>
+              </div>
+            )}
+            {!isLoading && !loadError && visibleGroups.length === 0 && (
               <div className="py-8 text-center text-[14px] text-gray-650">
                 No groups found
               </div>
@@ -183,7 +206,12 @@ export function ManageGroupsModal({
           <Button
             variant="primary"
             size="md"
-            onClick={onSave}
+            onClick={() => {
+              const selected = groups
+                .filter((g) => selectedGroups.includes(g.id))
+                .map((g) => ({ id: g.id, name: g.name }));
+              onSave(selected);
+            }}
             className="rounded-full w-[148px]"
           >
             Save

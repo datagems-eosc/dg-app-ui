@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
-import { fetchWithAuth, getApiBaseUrl } from "@/lib/utils";
+import { fetchWithAuth, getApiBaseUrl, getLogoutUrl } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
 import type {
   UserGroupLookup,
@@ -26,19 +26,18 @@ export function useApi() {
       }
 
       const url = `${baseUrl}/gw/api${endpoint}`;
-
+      const isFormData = options.body instanceof FormData;
       const headers: Record<string, string> = {
-        "Content-Type": "application/json",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         Pragma: "no-cache",
         Expires: "0",
       };
-
-      // Merge headers properly
+      if (!isFormData) {
+        headers["Content-Type"] = "application/json";
+      }
       if (options.headers) {
         Object.assign(headers, options.headers);
       }
-
       headers.Authorization = `Bearer ${token}`;
       headers.oauth2 = token;
 
@@ -314,6 +313,250 @@ export function useApi() {
         grants: data.grants || [],
       });
       return data.grants || [];
+    },
+    [makeRequest],
+  );
+
+  const getUserDatasetGrants = useCallback(
+    async (
+      userId: string,
+      datasetIds: string[],
+    ): Promise<Record<string, string[]>> => {
+      const params = datasetIds
+        .map((id) => `id=${encodeURIComponent(id)}`)
+        .join("&");
+      const response = await makeRequest(
+        `/principal/user/${userId}/context-grants/dataset?${params}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_GRANTS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const getGroupDatasetGrants = useCallback(
+    async (
+      groupId: string,
+      datasetIds: string[],
+    ): Promise<Record<string, string[]>> => {
+      const params = datasetIds
+        .map((id) => `id=${encodeURIComponent(id)}`)
+        .join("&");
+      const response = await makeRequest(
+        `/principal/group/${groupId}/context-grants/dataset?${params}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_GROUP_GRANTS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const getUserCollectionGrants = useCallback(
+    async (
+      userId: string,
+      collectionIds: string[],
+    ): Promise<Record<string, string[]>> => {
+      const params = collectionIds
+        .map((id) => `id=${encodeURIComponent(id)}`)
+        .join("&");
+      const response = await makeRequest(
+        `/principal/user/${userId}/context-grants/collection?${params}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_USER_GRANTS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const getGroupCollectionGrants = useCallback(
+    async (
+      groupId: string,
+      collectionIds: string[],
+    ): Promise<Record<string, string[]>> => {
+      const params = collectionIds
+        .map((id) => `id=${encodeURIComponent(id)}`)
+        .join("&");
+      const response = await makeRequest(
+        `/principal/group/${groupId}/context-grants/collection?${params}`,
+        { method: "GET" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_GROUP_GRANTS_FAILED,
+        );
+      }
+
+      return response.json();
+    },
+    [makeRequest],
+  );
+
+  const assignUserDatasetGrant = useCallback(
+    async (userId: string, datasetId: string, role: string): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/dataset/${datasetId}/role/${role}`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+      }
+    },
+    [makeRequest],
+  );
+
+  const unassignUserDatasetGrant = useCallback(
+    async (userId: string, datasetId: string, role: string): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/dataset/${datasetId}/role/${role}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
+  const assignGroupDatasetGrant = useCallback(
+    async (groupId: string, datasetId: string, role: string): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/group/${groupId}/dataset/${datasetId}/role/${role}`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+      }
+    },
+    [makeRequest],
+  );
+
+  const unassignGroupDatasetGrant = useCallback(
+    async (groupId: string, datasetId: string, role: string): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/group/${groupId}/dataset/${datasetId}/role/${role}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
+  const assignUserCollectionGrant = useCallback(
+    async (
+      userId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/collection/${collectionId}/role/${role}`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+      }
+    },
+    [makeRequest],
+  );
+
+  const unassignUserCollectionGrant = useCallback(
+    async (
+      userId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/user/${userId}/collection/${collectionId}/role/${role}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
+        );
+      }
+    },
+    [makeRequest],
+  );
+
+  const assignGroupCollectionGrant = useCallback(
+    async (
+      groupId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/group/${groupId}/collection/${collectionId}/role/${role}`,
+        { method: "POST" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+      }
+    },
+    [makeRequest],
+  );
+
+  const unassignGroupCollectionGrant = useCallback(
+    async (
+      groupId: string,
+      collectionId: string,
+      role: string,
+    ): Promise<void> => {
+      const response = await makeRequest(
+        `/principal/context-grants/group/${groupId}/collection/${collectionId}/role/${role}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
+        );
+      }
     },
     [makeRequest],
   );
@@ -637,19 +880,33 @@ export function useApi() {
 
   const queryUserGroups = useCallback(
     async (payload: UserGroupLookup): Promise<UserGroupQueryResult> => {
+      const endpoint =
+        process.env.NEXT_PUBLIC_USER_GROUPS_ENDPOINT ?? "/user/group/query";
       logApiRequest("queryUserGroups", {
-        endpoint: "/user/group/query",
+        endpoint,
         payload,
       });
 
-      const response = await makeRequest("/user/group/query", {
+      const response = await makeRequest(endpoint, {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to query user groups");
+        const rawMsg =
+          errorData.error ??
+          errorData.message ??
+          `Failed to query user groups (${response.status})`;
+        const msg =
+          typeof rawMsg === "string"
+            ? rawMsg
+            : Array.isArray(rawMsg)
+              ? (rawMsg as { Key?: string; Value?: string[] }[])
+                  .map((e) => `${e.Key ?? "?"}: ${(e.Value ?? []).join(", ")}`)
+                  .join("; ")
+              : String(rawMsg);
+        throw new Error(msg);
       }
 
       return response.json();
@@ -792,8 +1049,11 @@ export function useApi() {
   const getRecommendNextQueries = useCallback(
     async (
       query: string,
+      conversationId?: string,
     ): Promise<{
-      next_queries: string[];
+      result?: Array<{ query?: string | null }> | null;
+      conversationId?: string | null;
+      next_queries?: string[];
     }> => {
       if (!token) {
         throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
@@ -804,9 +1064,28 @@ export function useApi() {
         query,
       });
 
-      const requestPayload = {
+      const requestPayload: {
+        query: string;
+        conversationOptions?: {
+          conversationId?: string;
+          autoCreateConversation?: boolean;
+        };
+        project?: {
+          fields: string[];
+        };
+      } = {
         query: query,
+        project: {
+          fields: ["query"],
+        },
       };
+
+      if (conversationId) {
+        requestPayload.conversationOptions = {
+          conversationId,
+          autoCreateConversation: false,
+        };
+      }
 
       const response = await makeRequest("/search/recommend", {
         method: "POST",
@@ -823,11 +1102,234 @@ export function useApi() {
 
       const result = await response.json();
       logApiResponse("getRecommendNextQueries", {
-        queriesCount: result.next_queries?.length || 0,
+        queriesCount: result.result?.length || result.next_queries?.length || 0,
       });
       return result;
     },
     [makeRequest, token],
+  );
+
+  const getUploadAllowedExtensions = useCallback(async (): Promise<
+    string[]
+  > => {
+    logApiRequest("getUploadAllowedExtensions", {
+      endpoint: "/storage/upload/allowed-extension",
+    });
+    const response = await makeRequest("/storage/upload/allowed-extension", {
+      method: "GET",
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      logApiError("getUploadAllowedExtensions", errorData);
+      throw new Error(
+        errorData.error || ApiErrorMessage.FETCH_ALLOWED_EXTENSIONS_FAILED,
+      );
+    }
+    const result = await response.json();
+    logApiResponse("getUploadAllowedExtensions", {
+      count: Array.isArray(result) ? result.length : 0,
+    });
+    return Array.isArray(result) ? result : [];
+  }, [makeRequest]);
+
+  const uploadDatasetFiles = useCallback(
+    async (
+      files: File[],
+      onProgress?: (loaded: number, total: number) => void,
+    ): Promise<string[]> => {
+      if (!files.length) return [];
+      if (!token) {
+        throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
+      }
+      logApiRequest("uploadDatasetFiles", {
+        endpoint: "/storage/upload/dataset",
+        fileCount: files.length,
+      });
+
+      const formData = new FormData();
+      files.forEach((file, index) => {
+        formData.append(`file${index + 1}`, file);
+      });
+
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const url = `${baseUrl}/gw/api/storage/upload/dataset`;
+
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable && onProgress) {
+            onProgress(event.loaded, event.total);
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status === 401 && typeof window !== "undefined") {
+            if (window.location.pathname !== getLogoutUrl()) {
+              window.location.href = getLogoutUrl();
+            }
+            reject(new Error(ApiErrorMessage.NO_AUTH_TOKEN));
+            return;
+          }
+          if (xhr.status < 200 || xhr.status >= 300) {
+            let errorData: Record<string, unknown> = {};
+            try {
+              errorData = JSON.parse(xhr.responseText) ?? {};
+            } catch {
+              /* ignore */
+            }
+            logApiError("uploadDatasetFiles", {
+              ...errorData,
+              statusCode: xhr.status,
+            });
+            reject(
+              new Error(
+                (errorData.error as string) ||
+                  ApiErrorMessage.UPLOAD_DATASET_FAILED,
+              ),
+            );
+            return;
+          }
+          try {
+            const result = JSON.parse(xhr.responseText);
+            const rawPaths = Array.isArray(result) ? result : [];
+            const paths = rawPaths.map((item: unknown) => {
+              if (typeof item === "string") return item;
+              if (typeof item === "object" && item !== null) {
+                const obj = item as Record<string, unknown>;
+                const loc =
+                  obj.Location ?? obj.location ?? obj.path ?? obj.Path;
+                return typeof loc === "string" ? loc : "";
+              }
+              return "";
+            });
+            logApiResponse("uploadDatasetFiles", {
+              pathCount: paths.length,
+            });
+            resolve(paths);
+          } catch {
+            reject(new Error(ApiErrorMessage.UPLOAD_DATASET_FAILED));
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          logApiError("uploadDatasetFiles", { network: true });
+          reject(new Error(ApiErrorMessage.UPLOAD_DATASET_FAILED));
+        });
+
+        xhr.addEventListener("abort", () => {
+          reject(new Error(ApiErrorMessage.UPLOAD_DATASET_FAILED));
+        });
+
+        xhr.open("POST", url);
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        xhr.setRequestHeader("oauth2", token);
+        xhr.setRequestHeader(
+          "Cache-Control",
+          "no-cache, no-store, must-revalidate",
+        );
+        xhr.send(formData);
+      });
+    },
+    [token, baseUrl],
+  );
+
+  const onboardDataset = useCallback(
+    async (payload: {
+      code: string;
+      name: string;
+      description: string;
+      license: string;
+      mimeType: string;
+      size: number;
+      url?: string;
+      version?: string;
+      headline: string;
+      keywords: string[];
+      fieldOfScience: string[];
+      language?: string[];
+      country?: string[];
+      datePublished: string;
+      citeAs?: string;
+      conformsTo?: string;
+      dataLocations: Array<{ kind: number; location: string }>;
+    }): Promise<string> => {
+      const dataLocationsMapped = payload.dataLocations.map((d) => ({
+        Kind: d.kind,
+        // Keep exact upload path as documented in API data flow.
+        Location: d.location ?? "",
+      }));
+
+      const apiPayload = {
+        code: payload.code,
+        name: payload.name,
+        Description: payload.description,
+        License: payload.license,
+        MimeType: payload.mimeType,
+        Size: payload.size,
+        Url: payload.url ?? "",
+        Version: payload.version ?? "",
+        Headline: payload.headline,
+        Keywords: payload.keywords,
+        FieldOfScience: payload.fieldOfScience,
+        Language: payload.language ?? [],
+        Country: payload.country ?? [],
+        DatePublished: payload.datePublished,
+        CiteAs: payload.citeAs ?? "",
+        ConformsTo: payload.conformsTo ?? "",
+        DataLocations: dataLocationsMapped,
+      };
+
+      logApiRequest("onboardDataset", {
+        endpoint: "/dataset/onboard",
+        DataLocations: dataLocationsMapped,
+      });
+
+      const response = await makeRequest("/dataset/onboard", {
+        method: "POST",
+        body: JSON.stringify(apiPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("onboardDataset", errorData);
+        throw new Error(
+          (errorData as { error?: string }).error ||
+            ApiErrorMessage.ONBOARD_DATASET_FAILED,
+        );
+      }
+
+      const result = await response.json();
+      const datasetId =
+        typeof result === "string" ? result : (result?.id ?? "");
+      logApiResponse("onboardDataset", { datasetId });
+      return datasetId;
+    },
+    [makeRequest],
+  );
+
+  const profileDataset = useCallback(
+    async (datasetId: string, dataStoreKind: number): Promise<string> => {
+      logApiRequest("profileDataset", {
+        endpoint: "/dataset/profile",
+        datasetId,
+      });
+      const response = await makeRequest("/dataset/profile", {
+        method: "POST",
+        body: JSON.stringify({ id: datasetId, dataStoreKind }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("profileDataset", errorData);
+        throw new Error(
+          errorData.error || ApiErrorMessage.PROFILE_DATASET_FAILED,
+        );
+      }
+      const result = await response.json();
+      const id =
+        typeof result === "string" ? result : (result?.id ?? datasetId);
+      logApiResponse("profileDataset", { datasetId: id });
+      return id;
+    },
+    [makeRequest],
   );
 
   return {
@@ -843,6 +1345,18 @@ export function useApi() {
     grantCollectionPermission,
     deleteCollection,
     getCurrentUserContextGrants,
+    getUserDatasetGrants,
+    getGroupDatasetGrants,
+    getUserCollectionGrants,
+    getGroupCollectionGrants,
+    assignUserDatasetGrant,
+    unassignUserDatasetGrant,
+    assignGroupDatasetGrant,
+    unassignGroupDatasetGrant,
+    assignUserCollectionGrant,
+    unassignUserCollectionGrant,
+    assignGroupCollectionGrant,
+    unassignGroupCollectionGrant,
     searchInDataExplore,
     searchCrossDataset,
     getConversation,
@@ -863,5 +1377,9 @@ export function useApi() {
     deleteUserSettingsByKey,
     saveUserSettings,
     getRecommendNextQueries,
+    getUploadAllowedExtensions,
+    uploadDatasetFiles,
+    onboardDataset,
+    profileDataset,
   };
 }

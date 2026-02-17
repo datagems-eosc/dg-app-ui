@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
+import packageJson from "./package.json";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+const appVersion = packageJson.version;
 
 const nextConfig: NextConfig = {
   basePath,
@@ -8,6 +11,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_DATAGEMS_API_BASE_URL:
       process.env.NEXT_PUBLIC_DATAGEMS_API_BASE_URL,
+    NEXT_PUBLIC_APP_VERSION: appVersion,
   },
   async rewrites() {
     if (!basePath) {

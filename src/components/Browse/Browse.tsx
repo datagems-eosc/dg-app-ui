@@ -10,6 +10,7 @@ import {
   ListChecks,
   MoreHorizontal,
   Search as SearchIcon,
+  Settings,
   Tag,
   Trash2,
 } from "lucide-react";
@@ -29,6 +30,10 @@ import Switch from "@ui/Switch";
 import { Toast } from "@ui/Toast";
 import { useRouter } from "next/navigation";
 import { APP_ROUTES } from "@/config/appUrls";
+import {
+  COLLECTION_ROLE_MAP,
+  mapRolesToPermissions,
+} from "@/config/contextGrantRoles";
 import { UI_CONSTANTS } from "@/config/uiConstants";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
@@ -48,6 +53,7 @@ import DatasetCard from "../DatasetCard";
 import FilterModal from "../FilterModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
+import { CollectionPermissionsModal } from "../ui/user/CollectionPermissionsModal";
 import ActiveFilters from "./ActiveFilters";
 
 interface BrowseProps {
@@ -232,6 +238,8 @@ export default function Browse({
   const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
     useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCollectionPermissions, setShowCollectionPermissions] =
+    useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
@@ -451,8 +459,7 @@ export default function Browse({
   }, [isMounted]);
 
   // Check if user can delete collection
-  // For custom collections (except Favorites), always show delete button
-  // The API will handle permission check when deletion is attempted
+  // For custom collections (except Favorites), use context grants
   useEffect(() => {
     if (!isCustomCollection) {
       setCanDeleteCollection(false);
@@ -468,10 +475,23 @@ export default function Browse({
       return;
     }
 
-    // For all other custom collections, show delete button
-    // API will validate permissions when deletion is attempted
-    setCanDeleteCollection(true);
-  }, [isCustomCollection, collectionName]);
+    if (!collectionId || !api.hasToken) {
+      setCanDeleteCollection(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const roles = await api.getCollectionGrants(collectionId);
+      if (cancelled) return;
+      const permissions = mapRolesToPermissions(roles, COLLECTION_ROLE_MAP);
+      setCanDeleteCollection(Boolean(permissions.delete));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, collectionId, collectionName, isCustomCollection]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
@@ -720,8 +740,8 @@ export default function Browse({
             <div className="flex-1">
               {isEditingName ? (
                 // Inline editing mode
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-2 w-full max-w-[900px] sm:min-h-[45px]">
+                  <div className="flex-1 w-full sm:max-w-[680px]">
                     <input
                       type="text"
                       value={editingName}
@@ -733,32 +753,32 @@ export default function Browse({
                           handleCancelEditName();
                         }
                       }}
-                      className="w-full px-3 py-2 text-H2-32-semibold text-gray-750 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+                      className="w-full h-[45px] px-3 text-H2-32-semibold text-gray-750 bg-slate-100 border border-transparent rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                       placeholder="Enter collection name"
                     />
-                    <p className="text-body-16-regular text-gray-650 mt-1">
+                    <p className="text-H2-20-regular text-icon mt-1">
                       {subtitle}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 self-start pt-2">
+                  <div className="flex items-center gap-2 h-[45px] sm:self-start">
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="md"
                       onClick={handleCancelEditName}
-                      className="px-4 py-2"
+                      className="rounded-[40px] box-border w-[78px] whitespace-nowrap"
                     >
                       Cancel
                     </Button>
                     <Button
                       variant="primary"
-                      size="sm"
+                      size="md"
                       onClick={handleSaveName}
                       disabled={
                         !editingName.trim() ||
                         editingName.trim() ===
                           collectionName.replace(/\s+Datasets?$/, "")
                       }
-                      className="px-4 py-2"
+                      className="rounded-[40px] box-border w-[126px] whitespace-nowrap"
                     >
                       Save Changes
                     </Button>
@@ -824,6 +844,25 @@ export default function Browse({
                           >
                             <Tag className="w-4 h-4 text-icon" />
                             Rename
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowTitleActionsDropdown(false);
+                              if (collectionId) {
+                                setShowCollectionPermissions(true);
+                              }
+                            }}
+                            className={`flex items-center gap-3 w-full px-4 py-2 text-left transition-colors ${
+                              collectionId
+                                ? "text-gray-700 hover:bg-gray-50"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
+                          >
+                            <Settings className="w-4 h-4 text-icon" />
+                            Manage permissions
                           </button>
                           <button
                             type="button"
@@ -1173,6 +1212,12 @@ export default function Browse({
         confirmVariant="danger"
         icon={<Trash2 className="w-8 h-8 text-red-500" />}
         isLoading={isDeleting}
+      />
+      <CollectionPermissionsModal
+        isOpen={showCollectionPermissions}
+        collectionId={collectionId}
+        collectionName={collectionName || title}
+        onClose={() => setShowCollectionPermissions(false)}
       />
 
       {/* Toast Notification */}

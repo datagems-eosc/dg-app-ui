@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DatasetDetailsPageContent from "@/components/DatasetDetailsPage/DatasetDetailsPageContent";
@@ -13,6 +13,7 @@ import { getNavigationUrl } from "@/lib/utils";
 export default function DatasetDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const api = useApi();
   const [dataset, setDataset] = useState<DatasetPlus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,9 +163,14 @@ export default function DatasetDetailsPage() {
     );
   }
 
+  const returnTo = searchParams.get("returnTo");
+
   return (
     <DashboardLayout>
-      <DatasetDetailsPageContent dataset={dataset} />
+      <DatasetDetailsPageContent
+        dataset={dataset}
+        returnToRoles={returnTo === "settings-roles"}
+      />
     </DashboardLayout>
   );
 }

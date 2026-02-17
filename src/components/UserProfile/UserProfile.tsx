@@ -5,6 +5,7 @@ import PersonalSettingsSection from "@ui/user/PersonalSettingsSection";
 import PreferencesSection from "@ui/user/PreferencesSection";
 import RolesPermissionsSection from "@ui/user/RolesPermissionsSection";
 import TabsHeader from "@ui/user/TabsHeader";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useApi } from "@/hooks/useApi";
@@ -30,13 +31,30 @@ interface NotificationSettings extends NotificationSettingsValue {
   eTag?: string | null;
 }
 
+type ActiveTabType = "personal" | "notifications" | "roles";
+
+const TAB_QUERY = "tab";
+
 export default function UserProfile() {
   const api = useApi();
-
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { userData } = useUser();
-  const [activeTab, setActiveTab] = useState<
-    "personal" | "notifications" | "roles"
-  >("personal");
+  const [activeTab, setActiveTab] = useState<ActiveTabType>("personal");
+
+  useEffect(() => {
+    const tab = searchParams.get(TAB_QUERY);
+    if (tab === "roles" || tab === "notifications" || tab === "personal") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const setActiveTabWithUrl = (tab: ActiveTabType) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(TAB_QUERY, tab);
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+  };
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -198,9 +216,9 @@ export default function UserProfile() {
   };
 
   const stripMeta = (settings: NotificationSettings) => {
-    const { id, eTag, ...value } = settings;
-    void id;
-    void eTag;
+    const value = { ...settings };
+    delete value.id;
+    delete value.eTag;
     return value;
   };
 
@@ -220,7 +238,10 @@ export default function UserProfile() {
               Settings
             </h1>
           </div>
-          <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+          <TabsHeader
+            activeTab={activeTab}
+            setActiveTab={setActiveTabWithUrl}
+          />
         </div>
 
         <div className="mt-8 px-4 sm:px-6">

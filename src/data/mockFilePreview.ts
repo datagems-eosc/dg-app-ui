@@ -1,7 +1,17 @@
-import type { FilePreviewData } from "@/types/filePreview";
+import type {
+  FilePreviewData,
+  JsonFilePreviewData,
+  PdfFilePreviewData,
+} from "@/types/filePreview";
 
-export const mockFilePreviewData: Record<string, FilePreviewData> = {
+const SAMPLE_PDF_URL = "/sample.pdf";
+
+export const mockFilePreviewData: Record<
+  string,
+  FilePreviewData | PdfFilePreviewData | JsonFilePreviewData
+> = {
   "file1-csv": {
+    type: "tabular",
     filename: "File1.csv",
     fileSize: "65.04 kB",
     description:
@@ -230,6 +240,7 @@ export const mockFilePreviewData: Record<string, FilePreviewData> = {
     ],
   },
   "file2-xlsx": {
+    type: "tabular",
     filename: "File2.xlsx",
     fileSize: "892 kB",
     description:
@@ -267,8 +278,57 @@ export const mockFilePreviewData: Record<string, FilePreviewData> = {
     statistics: [],
     dataQuality: [],
   },
+  "file-pdf": {
+    type: "pdf",
+    filename: "Climate_Report_2024.pdf",
+    fileSize: "2.4 MB",
+    description:
+      "Comprehensive climate analysis report covering temperature trends, precipitation patterns, and sea level changes. The document includes detailed visualizations from global monitoring stations and projections for the next decade based on current emission scenarios.",
+    keywords: [
+      "climate",
+      "temperature",
+      "precipitation",
+      "sea level",
+      "projections",
+      "sustainability",
+    ],
+    fileUrl: SAMPLE_PDF_URL,
+    totalPages: 15,
+  },
+  "file-json": {
+    type: "json",
+    filename: "weather_stations_metadata.json",
+    fileSize: "128 kB",
+    description:
+      "Metadata catalog of weather monitoring stations across Europe. Contains station identifiers, geographic coordinates, installation dates, and sensor configurations.",
+    keywords: ["metadata", "stations", "geospatial", "sensors"],
+    content: JSON.stringify(
+      {
+        version: "1.0",
+        lastUpdated: "2024-01-15",
+        stations: Array.from({ length: 50 }, (_, i) => ({
+          id: `WS-${1000 + i}`,
+          name: `Station ${i + 1}`,
+          latitude: 37.9838 + i * 0.01,
+          longitude: 23.7275 + i * 0.02,
+          elevation: 50 + i * 10,
+          sensors: ["temperature", "humidity", "pressure"],
+          installedAt: `2023-${String((i % 12) + 1).padStart(2, "0")}-15`,
+        })),
+        metadata: {
+          source: "National Observatory",
+          license: "CC BY 4.0",
+          format: "GeoJSON-compatible",
+        },
+      },
+      null,
+      2,
+    ),
+  },
 };
 
-export const getFilePreviewData = (fileId: string): FilePreviewData | null => {
+export const getFilePreviewData = (
+  fileId: string,
+): (FilePreviewData | PdfFilePreviewData | JsonFilePreviewData) | null => {
   return mockFilePreviewData[fileId] || null;
 };

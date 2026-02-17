@@ -9,6 +9,7 @@ interface BasicInformationData {
   headline: string;
   description: string;
   keywords: string[];
+  authors: string;
 }
 
 interface BasicInformationProps {
@@ -19,8 +20,11 @@ interface BasicInformationProps {
     headline?: string;
     description?: string;
     keywords?: string;
+    authors?: string;
   };
 }
+
+const AUTHORS_MAX_LENGTH = 250;
 
 export function BasicInformation({
   data,
@@ -63,6 +67,7 @@ export function BasicInformation({
       <div>
         <Textarea
           label="Description"
+          required
           value={data.description}
           onChange={(e) => handleFieldChange("description", e.target.value)}
           placeholder="Provide a detailed description of the dataset contents"
@@ -84,6 +89,20 @@ export function BasicInformation({
         required={true}
         maxLength={250}
       />
+
+      <div>
+        <Input
+          label="Authors"
+          value={data.authors}
+          onChange={(e) => handleFieldChange("authors", e.target.value)}
+          placeholder="Enter authors"
+          error={errors.authors}
+          maxLength={AUTHORS_MAX_LENGTH}
+        />
+        <div className="mt-1 text-xs text-gray-650 text-right">
+          {data.authors.length}/{AUTHORS_MAX_LENGTH}
+        </div>
+      </div>
     </div>
   );
 }

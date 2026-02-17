@@ -2,10 +2,17 @@
 
 import { Button } from "@ui/Button";
 import { Chip } from "@ui/Chip";
-import { Lock, Settings } from "lucide-react";
+import { Lock, Settings2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { APP_ROUTES } from "@/config/appUrls";
+import { getNavigationUrl } from "@/lib/utils";
 import styles from "./DatasetSidebarSection.module.scss";
 
+type PermissionLevel = "Owner" | "Editor" | "Viewer";
+
 interface DatasetPermissionsSectionProps {
+  datasetId: string;
+  datasetName: string;
   hasBrowsePermission: boolean;
   hasEditPermission: boolean;
   hasDownloadPermission: boolean;
@@ -13,58 +20,66 @@ interface DatasetPermissionsSectionProps {
   permissions: string[];
 }
 
+function getPermissionLevel(
+  hasManagePermission: boolean,
+  hasEditPermission: boolean,
+  hasDownloadPermission: boolean,
+): PermissionLevel {
+  if (hasManagePermission) return "Owner";
+  if (hasEditPermission || hasDownloadPermission) return "Editor";
+  return "Viewer";
+}
+
 export default function DatasetPermissionsSection({
-  hasBrowsePermission,
+  datasetId,
+  hasBrowsePermission: _hasBrowsePermission,
   hasEditPermission,
   hasDownloadPermission,
   hasManagePermission,
   permissions,
+  datasetName: _datasetName,
 }: DatasetPermissionsSectionProps) {
+  const router = useRouter();
+  const level = getPermissionLevel(
+    hasManagePermission,
+    hasEditPermission,
+    hasDownloadPermission,
+  );
+
+  const displayLevel = permissions.length === 0 ? "Viewer" : level;
+
   return (
     <div className={styles.datasetSidebarSection}>
       <div className={styles.datasetSidebarSection__header}>
         <div className={styles.datasetSidebarSection__headerLeft}>
           <Lock className={styles.datasetSidebarSection__icon} />
           <h3 className={styles.datasetSidebarSection__title}>
-            Your Permissions
+            Your permission
           </h3>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className={styles.datasetSidebarSection__button}
-        >
-          <Settings className={styles.datasetSidebarSection__buttonIcon} />
-          Manage
-        </Button>
-      </div>
-      <div className={styles.datasetSidebarSection__chips}>
-        {hasBrowsePermission && (
-          <Chip color="info" variant="outline" size="sm">
-            Browse
-          </Chip>
-        )}
-        {hasEditPermission && (
-          <Chip color="info" variant="outline" size="sm">
-            Edit
-          </Chip>
-        )}
-        {hasDownloadPermission && (
-          <Chip color="info" variant="outline" size="sm">
-            Download
-          </Chip>
-        )}
         {hasManagePermission && (
-          <Chip color="info" variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            className={styles.datasetSidebarSection__button}
+            onClick={() =>
+              router.push(
+                getNavigationUrl(
+                  datasetId
+                    ? APP_ROUTES.SETTINGS_ROLES_DATASET(datasetId)
+                    : APP_ROUTES.SETTINGS_ROLES,
+                ),
+              )
+            }
+          >
+            <Settings2 className={styles.datasetSidebarSection__buttonIcon} />
             Manage
-          </Chip>
-        )}
-        {permissions.length === 0 && (
-          <Chip color="info" variant="outline" size="sm">
-            Browse
-          </Chip>
+          </Button>
         )}
       </div>
+      <Chip color="info" variant="outline" size="sm">
+        {displayLevel}
+      </Chip>
     </div>
   );
 }
