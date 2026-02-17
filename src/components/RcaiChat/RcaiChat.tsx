@@ -80,7 +80,7 @@ export default function RcaiChat() {
   }, [isGenerating]);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const assistantBuffersRef = useRef<Record<string, string>>({});
+  const assistantBuffersRef = useRef<Map<string, string>>(new Map());
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -133,7 +133,7 @@ export default function RcaiChat() {
         if (resp.status === 404) {
           if (!cancelled) {
             setMessages([]);
-            assistantBuffersRef.current = {};
+            assistantBuffersRef.current = new Map();
           }
           return;
         }
@@ -163,7 +163,7 @@ export default function RcaiChat() {
 
         if (!cancelled) {
           setMessages(mapped);
-          assistantBuffersRef.current = {};
+          assistantBuffersRef.current = new Map();
         }
       } catch (e) {
         logError("RCAI: failed to load history", e);
@@ -255,9 +255,9 @@ export default function RcaiChat() {
 
             if (!messageId) return;
 
-            const prev = assistantBuffersRef.current[messageId] || "";
+            const prev = assistantBuffersRef.current.get(messageId) ?? "";
             const next = prev + textChunk;
-            assistantBuffersRef.current[messageId] = next;
+            assistantBuffersRef.current.set(messageId, next);
 
             debugLog("[RCAI][WS] assistant_message", {
               messageId,
