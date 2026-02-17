@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
+import { getDisplayCategory } from "@/config/collectionConstants";
 import type { DatasetPlus } from "@/data/dataset";
 import { getFilePreviewData } from "@/data/mockFilePreview";
 import { getNavigationUrl } from "@/lib/utils";
@@ -53,15 +54,10 @@ export default function DatasetDetailsPageContent({
 
   const filePreviewData = getFilePreviewData(selectedFileId);
 
-  const displayCategory = (() => {
-    if (dataset.collections && dataset.collections.length > 0) {
-      const firstCollection = dataset.collections[0];
-      return typeof firstCollection.name === "string"
-        ? firstCollection.name.replace(/ Collection$/i, "")
-        : firstCollection.name;
-    }
-    return dataset.category || "";
-  })();
+  const displayCategory = getDisplayCategory(
+    dataset.collections,
+    dataset.category || "",
+  );
 
   const displayAccess =
     dataset.access === "Open Access" ? "Open Access" : "Restricted";

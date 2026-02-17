@@ -59,9 +59,7 @@ describe("AddDatasetForm", () => {
     expect(screen.getByText("Basic information")).toBeInTheDocument();
     expect(screen.getByText("Classification")).toBeInTheDocument();
     expect(screen.getByText("Additional Information")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Publish Dataset/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Next/i })).toBeInTheDocument();
   });
 
   it("calls getUploadAllowedExtensions on mount", async () => {
@@ -76,10 +74,8 @@ describe("AddDatasetForm", () => {
     const user = userEvent.setup();
     render(<AddDatasetForm />);
 
-    const publishButtons = screen.getAllByRole("button", {
-      name: /Publish Dataset/i,
-    });
-    await user.click(publishButtons[0]);
+    const nextButton = screen.getByRole("button", { name: /Next/i });
+    await user.click(nextButton);
 
     await waitFor(() => {
       expect(
@@ -92,10 +88,8 @@ describe("AddDatasetForm", () => {
     const user = userEvent.setup();
     render(<AddDatasetForm />);
 
-    const publishButtons = screen.getAllByRole("button", {
-      name: /Publish Dataset/i,
-    });
-    await user.click(publishButtons[0]);
+    const nextButton = screen.getByRole("button", { name: /Next/i });
+    await user.click(nextButton);
 
     await waitFor(() => {
       expect(screen.getByText("Title is required")).toBeInTheDocument();
