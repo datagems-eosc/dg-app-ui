@@ -3,7 +3,7 @@
 import { Check, Copy } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { coldarkDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { coldarkDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button } from "@/components/ui/Button";
 
 export default function RcaiCodeBlock({
