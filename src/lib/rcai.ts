@@ -1,10 +1,23 @@
+function getRuntimePublicEnv(): {
+  RCAI_BACKEND_URL?: string;
+  RCAI_BACKEND_WEBSOCKET_URL?: string;
+} {
+  if (typeof window === "undefined") return {};
+  const value = (window as any)?.__DG_PUBLIC_ENV__;
+  return value && typeof value === "object" ? value : {};
+}
+
 export function getRcaiBackendUrl(): string {
-  return process.env.NEXT_PUBLIC_RCAI_BACKEND_URL || "http://localhost:8000";
+  return (
+    getRuntimePublicEnv().RCAI_BACKEND_URL ||
+    "http://localhost:8000"
+  );
 }
 
 export function getRcaiBackendWebSocketUrl(): string {
   return (
-    process.env.NEXT_PUBLIC_RCAI_BACKEND_WEBSOCKET_URL || "ws://localhost:8000"
+    getRuntimePublicEnv().RCAI_BACKEND_WEBSOCKET_URL ||
+    "ws://localhost:8000"
   );
 }
 

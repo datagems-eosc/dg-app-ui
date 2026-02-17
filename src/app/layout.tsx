@@ -31,8 +31,25 @@ export default function RootLayout({
 }>) {
   const appVersion = getAppVersion();
 
+  const publicEnv = {
+    APP_BASE_URL: process.env.APP_BASE_URL ?? process.env.NEXT_PUBLIC_APP_BASE_URL,
+    RCAI_BACKEND_URL:
+      process.env.RCAI_BACKEND_URL ?? process.env.NEXT_PUBLIC_RCAI_BACKEND_URL,
+    RCAI_BACKEND_WEBSOCKET_URL:
+      process.env.RCAI_BACKEND_WEBSOCKET_URL ??
+      process.env.NEXT_PUBLIC_RCAI_BACKEND_WEBSOCKET_URL,
+  };
+  const publicEnvJson = JSON.stringify(publicEnv).replace(/</g, "\\u003c");
+
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__DG_PUBLIC_ENV__ = ${publicEnvJson};`,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
