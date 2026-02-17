@@ -17,7 +17,11 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  getDisplayCollectionName,
+  getDisplayCollections,
+} from "@/config/collectionConstants";
 import { useDataset } from "@/contexts/DatasetContext";
 import type {
   Dataset,
@@ -125,6 +129,12 @@ export default function DatasetCard({
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const [shouldStackFooter, setShouldStackFooter] = useState(false);
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  const displayCollections = useMemo(
+    () =>
+      hasCollections(dataset) ? getDisplayCollections(dataset.collections) : [],
+    [dataset],
+  );
 
   // Check if we should stack the footer (side panel open + small screen)
   useEffect(() => {
@@ -255,12 +265,10 @@ export default function DatasetCard({
             {getDatasetName(dataset)}
           </h2>
           <div className="flex items-center gap-1 flex-wrap">
-            {hasCollections(dataset) && dataset.collections.length > 0 ? (
-              dataset.collections.map((col) => (
+            {displayCollections.length > 0 ? (
+              displayCollections.map((col) => (
                 <Chip key={col.id || col.name} color="grey" size="sm">
-                  {typeof col.name === "string"
-                    ? col.name.replace(/ Collection$/i, "")
-                    : col.name}
+                  {getDisplayCollectionName(col)}
                 </Chip>
               ))
             ) : (

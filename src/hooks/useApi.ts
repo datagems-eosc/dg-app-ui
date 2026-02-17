@@ -880,19 +880,33 @@ export function useApi() {
 
   const queryUserGroups = useCallback(
     async (payload: UserGroupLookup): Promise<UserGroupQueryResult> => {
+      const endpoint =
+        process.env.NEXT_PUBLIC_USER_GROUPS_ENDPOINT ?? "/user/group/query";
       logApiRequest("queryUserGroups", {
-        endpoint: "/user/group/query",
+        endpoint,
         payload,
       });
 
-      const response = await makeRequest("/user/group/query", {
+      const response = await makeRequest(endpoint, {
         method: "POST",
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to query user groups");
+        const rawMsg =
+          errorData.error ??
+          errorData.message ??
+          `Failed to query user groups (${response.status})`;
+        const msg =
+          typeof rawMsg === "string"
+            ? rawMsg
+            : Array.isArray(rawMsg)
+              ? (rawMsg as { Key?: string; Value?: string[] }[])
+                  .map((e) => `${e.Key ?? "?"}: ${(e.Value ?? []).join(", ")}`)
+                  .join("; ")
+              : String(rawMsg);
+        throw new Error(msg);
       }
 
       return response.json();

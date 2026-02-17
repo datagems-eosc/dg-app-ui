@@ -618,8 +618,8 @@ export function CollectionPermissionsModal({
       <ManageGroupsModal
         isOpen={isManageOpen}
         onClose={() => setIsManageOpen(false)}
-        onSave={(selectedGroupIds) => {
-          setVisibleGroupIds(selectedGroupIds);
+        onSave={(selected) => {
+          setVisibleGroupIds(selected.map((g) => g.id));
           setIsManageOpen(false);
         }}
         selectedGroupIds={visibleGroupIds ?? []}

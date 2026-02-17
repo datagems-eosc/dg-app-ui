@@ -35,13 +35,15 @@ export interface UserLookup {
   project?: Record<string, unknown>;
 }
 
+/** Backend (Postman) expects PascalCase: page.Offset/Size, Order.Items, Metadata.CountAll */
 export interface UserGroupLookup {
   ids?: string[] | null;
   excludedIds?: string[] | null;
   semantics?: string[] | null;
   like?: string | null;
-  page?: Record<string, unknown>;
-  order?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
+  page?: { Offset?: number; Size?: number } | Record<string, unknown>;
+  /** PascalCase per Postman collection */
+  Order?: { Items?: string[] } | Record<string, unknown>;
+  Metadata?: { CountAll?: boolean } | Record<string, unknown>;
   project?: Record<string, unknown>;
 }

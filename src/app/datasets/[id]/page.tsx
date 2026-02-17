@@ -13,6 +13,7 @@ import { getNavigationUrl } from "@/lib/utils";
 export default function DatasetDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const api = useApi();
   const [dataset, setDataset] = useState<DatasetPlus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -162,7 +163,6 @@ export default function DatasetDetailsPage() {
     );
   }
 
-  const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo");
 
   return (

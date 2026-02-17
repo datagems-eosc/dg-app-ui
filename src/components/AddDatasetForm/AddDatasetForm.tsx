@@ -12,11 +12,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
+import type { PermissionKey } from "@/config/contextGrantRoles";
+import { DATASET_ROLE_MAP } from "@/config/contextGrantRoles";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logError } from "@/lib/logger";
 import { slugify } from "@/lib/slugify";
 import { getNavigationUrl } from "@/lib/utils";
+import type { AccessType, GroupPermissionRow } from "./AddDatasetShareStep";
+import AddDatasetShareStep from "./AddDatasetShareStep";
 
 interface FormData {
   files: UploadedFile[];
@@ -107,6 +111,11 @@ export default function AddDatasetForm() {
     type: "success" | "error";
   }>({ message: "", visible: false, type: "success" });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  const [accessType, setAccessType] = useState<AccessType>("public");
+  const [groupPermissions, setGroupPermissions] = useState<
+    GroupPermissionRow[]
+  >([]);
 
   const showToast = useCallback(
     (message: string, type: "success" | "error" = "success") => {
@@ -409,8 +418,13 @@ export default function AddDatasetForm() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+    setCurrentStep(2);
+  };
+
+  const handlePublish = async () => {
     if (!validateForm()) return;
     if (datasetIdForEdit) {
       showToast(
@@ -481,10 +495,27 @@ export default function AddDatasetForm() {
         throw new Error(ApiErrorMessage.ONBOARD_DATASET_FAILED);
       }
 
+      if (accessType === "restricted" && groupPermissions.length > 0) {
+        for (const row of groupPermissions) {
+          const rolesToAssign = (
+            Object.keys(row.permissions) as PermissionKey[]
+          ).filter((key) => row.permissions[key]);
+          for (const key of rolesToAssign) {
+            const role = DATASET_ROLE_MAP[key];
+            if (role) {
+              await api.assignGroupDatasetGrant(row.id, datasetId, role);
+            }
+          }
+        }
+      }
+
       await profileAndResolveDatasetId(datasetId, formData.basicInfo.title);
 
       setFormData(initialFormData);
       setErrors(initialErrors);
+      setCurrentStep(1);
+      setAccessType("public");
+      setGroupPermissions([]);
       setShowSuccessModal(true);
     } catch (error) {
       logError("Error submitting dataset", error);
@@ -521,8 +552,40 @@ export default function AddDatasetForm() {
     setFormData((prev) => ({ ...prev, additionalInfo }));
   };
 
+  if (currentStep === 2) {
+    return (
+      <>
+        <AddDatasetShareStep
+          accessType={accessType}
+          onAccessTypeChange={setAccessType}
+          groupPermissions={groupPermissions}
+          onGroupPermissionsChange={setGroupPermissions}
+          onPublish={handlePublish}
+          onCancel={() => setCurrentStep(1)}
+          isPublishing={isSubmitting}
+        />
+        <Toast
+          message={toast.message}
+          isVisible={toast.visible}
+          onClose={() => setToast((t) => ({ ...t, visible: false }))}
+          type={toast.type}
+        />
+        <SuccessModal
+          isVisible={showSuccessModal}
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.push(getNavigationUrl(APP_ROUTES.BROWSE));
+          }}
+          title="Upload successful"
+          message="Your dataset has been published successfully."
+          buttonText="OK"
+        />
+      </>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={handleNext} noValidate>
       <div className="space-y-6 sm:space-y-8">
         {[
           {
@@ -591,10 +654,9 @@ export default function AddDatasetForm() {
       <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end gap-3 sm:gap-3">
         <Button
           type="submit"
-          disabled={isSubmitting}
           className="w-full sm:w-auto px-6 sm:px-8 order-1 sm:order-1"
         >
-          {isSubmitting ? "Publishing..." : "Publish Dataset"}
+          Next
         </Button>
         <Button
           type="button"
