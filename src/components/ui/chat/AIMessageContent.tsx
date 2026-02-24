@@ -1,6 +1,7 @@
 "use client";
 
 import { DataTable } from "@ui/chat/DataTable";
+import RcaiMarkdown from "@/components/RcaiChat/RcaiMarkdown";
 import type { TableData } from "@/types/chat";
 
 interface AIMessageContentProps {
@@ -14,8 +15,8 @@ export function AIMessageContent({
 }: AIMessageContentProps) {
   return (
     <div className="w-full max-w-full">
-      <div className="whitespace-pre-line text-body-16-regular text-gray-750 break-words overflow-hidden">
-        {content}
+      <div className="text-body-16-regular text-gray-750 break-words overflow-hidden">
+        <RcaiMarkdown content={content} />
       </div>
 
       {tableData && (

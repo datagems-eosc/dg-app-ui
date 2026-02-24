@@ -54,7 +54,6 @@ export default function RcaiChat() {
 
   const debugLog = (...args: any[]) => {
     if (!debugEnabledRef.current) return;
-    // eslint-disable-next-line no-console
     console.debug(...args);
   };
 
