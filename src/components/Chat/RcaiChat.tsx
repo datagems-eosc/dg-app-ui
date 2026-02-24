@@ -85,6 +85,14 @@ export default function RcaiChat({
     if (!incoming) return prev;
     if (!prev) return incoming;
 
+    // Retransmitted suffix (common when backend re-sends the last fragment)
+    if (prev.endsWith(incoming)) return prev;
+
+    const incomingTrimStart = incoming.trimStart();
+    if (incomingTrimStart && incomingTrimStart !== incoming) {
+      if (prev.endsWith(incomingTrimStart)) return prev;
+    }
+
     // Cumulative payload (full text so far)
     if (incoming.startsWith(prev)) return incoming;
 
@@ -98,6 +106,21 @@ export default function RcaiChat({
       if (prev.slice(-i) === incoming.slice(0, i)) {
         overlap = i;
         break;
+      }
+    }
+
+    if (overlap === 0 && incomingTrimStart && incomingTrimStart !== incoming) {
+      const leadingLen = incoming.length - incomingTrimStart.length;
+      const maxOverlapTrimmed = Math.min(prev.length, incomingTrimStart.length);
+      for (let i = maxOverlapTrimmed; i >= minOverlap; i -= 1) {
+        if (prev.slice(-i) === incomingTrimStart.slice(0, i)) {
+          overlap = i;
+          return (
+            prev +
+            incoming.slice(0, leadingLen) +
+            incomingTrimStart.slice(overlap)
+          );
+        }
       }
     }
 
@@ -402,7 +425,13 @@ export default function RcaiChat({
 
             if (!messageId) return;
 
-            setRcaiStreamingMessageId(messageId);
+            const wasGenerating = isGeneratingRef.current;
+
+            // Backend may replay the latest assistant message on subscribe.
+            // Only treat chunks as an active stream when we initiated a generation.
+            if (wasGenerating) {
+              setRcaiStreamingMessageId(messageId);
+            }
 
             setMessages((current) => {
               const lastChunk = assistantLastChunkRef.current.get(messageId);
@@ -469,7 +498,10 @@ export default function RcaiChat({
 
             if (isComplete) {
               setIsGeneratingAIResponse(false);
-              setRcaiStreamingMessageCompleteId(messageId);
+              if (wasGenerating) {
+                setRcaiStreamingMessageCompleteId(messageId);
+              }
+              isGeneratingRef.current = false;
               setRcaiProgressText(null);
               setRcaiShowTurtle(false);
               assistantLastChunkRef.current.delete(messageId);
@@ -526,6 +558,7 @@ export default function RcaiChat({
           if (data?.type === "status_update") {
             const status = String(data.status || "");
             if (status === "waiting_for_input") {
+              isGeneratingRef.current = false;
               setIsGeneratingAIResponse(false);
               setRcaiProgressText(null);
               setRcaiThinkingSteps([]);
@@ -646,6 +679,7 @@ export default function RcaiChat({
     setError(null);
     setIsLoading(true);
     setIsGeneratingAIResponse(true);
+    isGeneratingRef.current = true;
     setRcaiShowTurtle(false);
     setRcaiStreamingMessageId(null);
     setRcaiStreamingMessageCompleteId(null);
