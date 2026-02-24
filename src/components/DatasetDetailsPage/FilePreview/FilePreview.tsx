@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import type {
   FileColumn,
@@ -15,9 +16,12 @@ import FilePreviewHeader from "./FilePreviewHeader";
 import FilePreviewTable from "./FilePreviewTable";
 import FilePreviewTabs from "./FilePreviewTabs";
 import JsonFilePreview from "./JsonFilePreview";
-import PdfFilePreview from "./PdfFilePreview";
 import ShowColumnsModal from "./ShowColumnsModal";
 import StatisticsTab from "./StatisticsTab";
+
+const PdfFilePreview = dynamic(() => import("./PdfFilePreview"), {
+  ssr: false,
+});
 
 interface FilePreviewProps {
   fileData: FilePreviewDataUnion | null;

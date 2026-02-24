@@ -4,6 +4,7 @@
   @include flex-column;
   gap: $spacing-lg;
   width: 100%;
+  align-items: flex-start;
 
   &__header {
     @include flex-between;
