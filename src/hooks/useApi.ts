@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { publicEnv } from "@/lib/env";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import { fetchWithAuth, getApiBaseUrl, getLogoutUrl } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
@@ -880,8 +881,7 @@ export function useApi() {
 
   const queryUserGroups = useCallback(
     async (payload: UserGroupLookup): Promise<UserGroupQueryResult> => {
-      const endpoint =
-        process.env.NEXT_PUBLIC_USER_GROUPS_ENDPOINT ?? "/user/group/query";
+      const endpoint = publicEnv("USER_GROUPS_ENDPOINT", "/user/group/query");
       logApiRequest("queryUserGroups", {
         endpoint,
         payload,

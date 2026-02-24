@@ -43,7 +43,9 @@ RUN apk upgrade --no-cache
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/env.sh ./env.sh
+COPY --from=builder --chown=nextjs:nodejs /app/env.defaults.sh ./env.defaults.sh
 
 # Set the correct permission for prerender cache
 RUN mkdir .next
@@ -53,6 +55,8 @@ RUN chown nextjs:nodejs .next
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+RUN chmod +x ./env.sh
 
 USER nextjs
 
@@ -67,4 +71,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output
-CMD ["node", "server.js"] 
+CMD ["./env.sh", "node", "server.js"]

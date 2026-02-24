@@ -1,5 +1,6 @@
 "use client";
 
+import { getBasePath } from "@/lib/utils";
 import SmartSwitch from "./SmartSwitch";
 
 type SmartSearchProps = {
@@ -42,7 +43,7 @@ export default function SmartSearch({
         </div>
         <div className="shrink-0">
           <img
-            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/wand-sparkles.svg`}
+            src={`${getBasePath()}/wand-sparkles.svg`}
             alt="Smart search"
             className="w-6 h-6"
           />
