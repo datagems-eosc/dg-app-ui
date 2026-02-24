@@ -24,6 +24,7 @@ interface ChatInputProps {
   disabled?: boolean;
   error?: string | null;
   showAddDatasetsModal?: boolean;
+  showCollectionsButton?: boolean;
 }
 
 export interface ChatInputRef {
@@ -45,6 +46,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
       disabled = false,
       error = null,
       showAddDatasetsModal = false,
+      showCollectionsButton = true,
     },
     ref,
   ) => {
@@ -176,7 +178,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
                     onSelectCollection={onSelectCollection}
                     disabled={disabled}
                   />
-                ) : (
+                ) : showCollectionsButton ? (
                   <Button
                     variant="outline"
                     onClick={onAddDatasets}
@@ -187,6 +189,8 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
                       ? selectedCollection.name.replace(/ Collection$/i, "")
                       : "Collections"}
                   </Button>
+                ) : (
+                  <div />
                 )}
                 <Button
                   variant="primary"

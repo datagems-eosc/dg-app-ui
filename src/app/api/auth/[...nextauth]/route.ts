@@ -140,7 +140,7 @@ async function refreshAccessToken(token) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       method: "POST",
       body: new URLSearchParams({
-        client_id: process.env.KEYCLOAK_CLIENT_ID,
+        client_id: process.env.KEYCLOAK_CLIENT_ID ?? "dg-app-ui",
         grant_type: "refresh_token",
         refresh_token: token.refresh_token,
       }),

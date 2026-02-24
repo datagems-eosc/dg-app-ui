@@ -19,6 +19,8 @@ export const APP_ROUTES = {
   // Chat
   CHAT: "/chat",
   CHAT_WITH_CONVERSATION: (conversationId: string) => `/chat/${conversationId}`,
+  CHAT_RCAI: "/chat-rcai",
+  CHAT_RCAI_WITH_SESSION: (sessionId: string) => `/chat-rcai/${sessionId}`,
 
   // Datasets
   DATASET_ADD: "/datasets/add",
