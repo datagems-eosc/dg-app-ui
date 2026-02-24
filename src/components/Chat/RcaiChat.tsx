@@ -175,9 +175,6 @@ export default function RcaiChat({
     if (hasAssistantOutputStartedRef.current) return;
 
     setRcaiHasAssistantOutputStarted(true);
-    setRcaiProgressText(null);
-    setRcaiThinkingSteps([]);
-    setRcaiThinkingExpanded(false);
   }, [isGeneratingAIResponse, messages, rcaiStreamingMessageId]);
 
   useEffect(() => {
@@ -502,7 +499,6 @@ export default function RcaiChat({
                 setRcaiStreamingMessageCompleteId(messageId);
               }
               isGeneratingRef.current = false;
-              setRcaiProgressText(null);
               setRcaiShowTurtle(false);
               assistantLastChunkRef.current.delete(messageId);
             }
@@ -560,11 +556,7 @@ export default function RcaiChat({
             if (status === "waiting_for_input") {
               isGeneratingRef.current = false;
               setIsGeneratingAIResponse(false);
-              setRcaiProgressText(null);
-              setRcaiThinkingSteps([]);
-              setRcaiThinkingExpanded(false);
               setRcaiShowTurtle(false);
-              setRcaiHasAssistantOutputStarted(false);
               return;
             }
 

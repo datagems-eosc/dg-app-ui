@@ -44,6 +44,7 @@ export function AIMessage({
       <AIMessageContent
         content={message.content}
         tableData={message.tableData}
+        sqlQuery={message.sqlQuery}
       />
 
       {shouldShowRecommendations && (

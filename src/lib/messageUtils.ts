@@ -112,6 +112,7 @@ export function parseConversationMessage(
     const relatedDatasetIds: string[] = [];
     let latitude: number | undefined;
     let longitude: number | undefined;
+    let sqlQuery: string | undefined;
 
     // Extract coordinates from InputParams if available
     if (
@@ -149,6 +150,19 @@ export function parseConversationMessage(
         payload as { entries?: Array<{ result?: { table?: any } }> }
       ).entries;
       if (entries && entries.length > 0 && entries[0].result?.table) {
+        const entrySql = (entries[0] as any)?.process?.sql as
+          | { query?: unknown; pattern?: unknown }
+          | undefined;
+        const extractedSql =
+          typeof entrySql?.query === "string"
+            ? entrySql.query
+            : typeof entrySql?.pattern === "string"
+              ? entrySql.pattern
+              : null;
+        if (extractedSql && extractedSql.trim().length > 0) {
+          sqlQuery = extractedSql.trim();
+        }
+
         tableData = entries[0].result.table;
         const table = entries[0].result.table;
         if (table.columns && table.rows) {
@@ -169,6 +183,7 @@ export function parseConversationMessage(
       content,
       timestamp: msg.createdAt,
       tableData,
+      sqlQuery,
       sources: relatedDatasetIds.length,
       relatedDatasetIds,
       latitude,
@@ -222,6 +237,7 @@ export function parseSearchInDataExploreResponse(
 
   const result = response.result;
   let tableData: Message["tableData"] | undefined;
+  let sqlQuery: string | undefined;
   let latitude: number | undefined;
   let longitude: number | undefined;
   let content = "Analysis completed.";
@@ -244,6 +260,19 @@ export function parseSearchInDataExploreResponse(
     result.entries.length > 0
   ) {
     const firstEntry = result.entries[0];
+    const entrySql = (firstEntry as any)?.process?.sql as
+      | { query?: unknown; pattern?: unknown }
+      | undefined;
+    const extractedSql =
+      typeof entrySql?.query === "string"
+        ? entrySql.query
+        : typeof entrySql?.pattern === "string"
+          ? entrySql.pattern
+          : null;
+    if (extractedSql && extractedSql.trim().length > 0) {
+      sqlQuery = extractedSql.trim();
+    }
+
     const extractedTableData = firstEntry?.result?.table;
     if (extractedTableData) {
       tableData = extractedTableData;
@@ -265,6 +294,7 @@ export function parseSearchInDataExploreResponse(
     content,
     timestamp: new Date(),
     tableData,
+    sqlQuery,
     sources: datasetIds.length,
     relatedDatasetIds: datasetIds,
     latitude,
