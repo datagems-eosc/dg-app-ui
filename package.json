@@ -18,6 +18,7 @@
   "scripts": {
     "predev": "sh ./env.sh true",
     "dev": "next dev --turbopack",
+    "dev:clean": "rm -rf .next && next dev --turbopack",
     "build": "next build && node -e \"process.stdout.write('App version: ' + require('./package.json').version + '\\n')\"",
     "prestart": "sh ./env.sh true",
     "start": "next start",

@@ -8,7 +8,14 @@ import { APP_ROUTES } from "@/config/appUrls";
 import { getNavigationUrl } from "@/lib/utils";
 import styles from "./DatasetSidebarSection.module.scss";
 
-type PermissionLevel = "Owner" | "Editor" | "Viewer";
+const PERMISSION_LABELS: Record<string, string> = {
+  Browse: "Browse",
+  Edit: "Edit",
+  Download: "Download",
+  Manage: "Manage",
+};
+
+const PERMISSION_ORDER = ["Browse", "Edit", "Download", "Manage"];
 
 interface DatasetPermissionsSectionProps {
   datasetId: string;
@@ -20,33 +27,30 @@ interface DatasetPermissionsSectionProps {
   permissions: string[];
 }
 
-function getPermissionLevel(
-  hasManagePermission: boolean,
-  hasEditPermission: boolean,
-  hasDownloadPermission: boolean,
-): PermissionLevel {
-  if (hasManagePermission) return "Owner";
-  if (hasEditPermission || hasDownloadPermission) return "Editor";
-  return "Viewer";
-}
-
 export default function DatasetPermissionsSection({
   datasetId,
-  hasBrowsePermission: _hasBrowsePermission,
-  hasEditPermission,
-  hasDownloadPermission,
   hasManagePermission,
   permissions,
   datasetName: _datasetName,
 }: DatasetPermissionsSectionProps) {
   const router = useRouter();
-  const level = getPermissionLevel(
-    hasManagePermission,
-    hasEditPermission,
-    hasDownloadPermission,
+
+  const displayPermissions = PERMISSION_ORDER.filter((key) =>
+    permissions.some((p) => p.toLowerCase() === key.toLowerCase()),
   );
 
-  const displayLevel = permissions.length === 0 ? "Viewer" : level;
+  const permissionChips =
+    displayPermissions.length > 0
+      ? displayPermissions.map((key) => (
+          <Chip key={key} color="grey" variant="regular" size="sm">
+            {PERMISSION_LABELS[key] ?? key}
+          </Chip>
+        ))
+      : [
+          <Chip key="viewer" color="grey" variant="regular" size="sm">
+            Viewer
+          </Chip>,
+        ];
 
   return (
     <div className={styles.datasetSidebarSection}>
@@ -54,7 +58,7 @@ export default function DatasetPermissionsSection({
         <div className={styles.datasetSidebarSection__headerLeft}>
           <Lock className={styles.datasetSidebarSection__icon} />
           <h3 className={styles.datasetSidebarSection__title}>
-            Your permission
+            Your Permissions
           </h3>
         </div>
         {hasManagePermission && (
@@ -77,9 +81,9 @@ export default function DatasetPermissionsSection({
           </Button>
         )}
       </div>
-      <Chip color="info" variant="outline" size="sm">
-        {displayLevel}
-      </Chip>
+      <div className={styles.datasetSidebarSection__chips}>
+        {permissionChips}
+      </div>
     </div>
   );
 }

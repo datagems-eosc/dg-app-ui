@@ -66,9 +66,10 @@ export function ManageGroupsModal({
     setLoadError(null);
     (async () => {
       try {
-        const result = await queryUserGroups(
-          search.trim() ? { like: search.trim() } : { like: null },
-        );
+        const result = await queryUserGroups({
+          project: { fields: ["id", "name"] },
+          metadata: { countAll: true },
+        });
         if (cancelled) return;
         const items =
           result.items?.map((group) => ({
@@ -90,7 +91,7 @@ export function ManageGroupsModal({
     return () => {
       cancelled = true;
     };
-  }, [hasToken, queryUserGroups, isOpen, search]);
+  }, [hasToken, queryUserGroups, isOpen]);
 
   const visibleGroups = useMemo(() => {
     const query = search.trim().toLowerCase();
