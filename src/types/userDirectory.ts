@@ -41,9 +41,6 @@ export interface UserGroupLookup {
   excludedIds?: string[] | null;
   semantics?: string[] | null;
   like?: string | null;
-  page?: { Offset?: number; Size?: number } | Record<string, unknown>;
-  /** PascalCase per Postman collection */
-  Order?: { Items?: string[] } | Record<string, unknown>;
-  Metadata?: { CountAll?: boolean } | Record<string, unknown>;
-  project?: Record<string, unknown>;
+  project?: { fields?: string[] } | Record<string, unknown>;
+  metadata?: { countAll?: boolean } | Record<string, unknown>;
 }

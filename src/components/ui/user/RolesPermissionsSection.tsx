@@ -512,7 +512,10 @@ export default function RolesPermissionsSection() {
         setGrants(grantsResult);
         let groupsResult: UserGroupQueryResult = { items: [] };
         try {
-          groupsResult = await queryUserGroups({ like: null });
+          groupsResult = await queryUserGroups({
+            project: { fields: ["id", "name"] },
+            metadata: { countAll: true },
+          });
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : String(error);

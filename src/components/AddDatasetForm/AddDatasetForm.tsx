@@ -90,6 +90,8 @@ const initialErrors: FormErrors = {
 
 const AUTHORS_MAX_LENGTH = 250;
 
+// data-flows.md: staged files use Kind 0 (File) with the path returned by upload.
+// Backend expects /storage/datagems/gw/dataset_upload\<filename> format (Postman).
 const DATA_LOCATION_KIND_FILE = 0;
 const DATA_STORE_KIND_FILESYSTEM = 0;
 /** Single delay before profile to allow backend propagation. No retry storm. */

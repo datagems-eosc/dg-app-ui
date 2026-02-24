@@ -126,7 +126,10 @@ export function DatasetPermissionsModal({
     setIsLoading(true);
     (async () => {
       try {
-        const result = await queryUserGroups({ like: null });
+        const result = await queryUserGroups({
+          project: { fields: ["id", "name"] },
+          metadata: { countAll: true },
+        });
         if (cancelled) return;
         const groups =
           result.items?.map((group) => ({

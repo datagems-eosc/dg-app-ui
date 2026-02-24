@@ -1252,13 +1252,15 @@ export function useApi() {
       conformsTo?: string;
       dataLocations: Array<{ kind: number; location: string }>;
     }): Promise<string> => {
+      // Send exact path from upload – backend resolves it internally.
       const dataLocationsMapped = payload.dataLocations.map((d) => ({
         Kind: d.kind,
-        // Keep exact upload path as documented in API data flow.
-        Location: d.location ?? "",
+        Location: (d.location ?? "").trim(),
       }));
 
-      const apiPayload = {
+      const buildOnboardPayload = (
+        dataLocations: Array<{ Kind: number; Location: string }>,
+      ) => ({
         code: payload.code,
         name: payload.name,
         Description: payload.description,
@@ -1275,8 +1277,10 @@ export function useApi() {
         DatePublished: payload.datePublished,
         CiteAs: payload.citeAs ?? "",
         ConformsTo: payload.conformsTo ?? "",
-        DataLocations: dataLocationsMapped,
-      };
+        DataLocations: dataLocations,
+      });
+
+      const apiPayload = buildOnboardPayload(dataLocationsMapped);
 
       logApiRequest("onboardDataset", {
         endpoint: "/dataset/onboard",
@@ -1290,6 +1294,50 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+
+        const locationValidationError =
+          Array.isArray((errorData as { message?: unknown }).message) &&
+          (errorData as { message: Array<{ Key?: string }> }).message.some(
+            (entry) => entry?.Key?.includes("DataLocations"),
+          );
+
+        if (locationValidationError) {
+          const candidates = [
+            dataLocationsMapped.map((d) => ({
+              ...d,
+              Location: d.Location.replace(
+                "/s3/gw-service/",
+                "/storage/datagems/gw/",
+              ),
+            })),
+          ];
+
+          for (const candidate of candidates) {
+            const sameAsOriginal = candidate.every(
+              (value, idx) =>
+                value.Location === dataLocationsMapped[idx]?.Location,
+            );
+            if (sameAsOriginal) continue;
+
+            const retryResponse = await makeRequest("/dataset/onboard", {
+              method: "POST",
+              body: JSON.stringify(buildOnboardPayload(candidate)),
+            });
+            if (retryResponse.ok) {
+              const retryResult = await retryResponse.json();
+              const retryDatasetId =
+                typeof retryResult === "string"
+                  ? retryResult
+                  : (retryResult?.id ?? "");
+              logApiResponse("onboardDataset", {
+                datasetId: retryDatasetId,
+                recoveredWithLocationFallback: true,
+              });
+              return retryDatasetId;
+            }
+          }
+        }
+
         logApiError("onboardDataset", errorData);
         throw new Error(
           (errorData as { error?: string }).error ||
