@@ -104,6 +104,12 @@ export default function RcaiChat({
     return prev + incoming.slice(overlap);
   };
 
+  const stripThinkingTags = (value: string) =>
+    value
+      .replace(/<thinking[^>]*>[\s\S]*?<\/thinking>/gi, "")
+      .replace(/<thinking[^>]*>/gi, "")
+      .replace(/<\/thinking>/gi, "");
+
   useEffect(() => {
     isGeneratingRef.current = isGeneratingAIResponse;
   }, [isGeneratingAIResponse]);
@@ -129,6 +135,27 @@ export default function RcaiChat({
   useEffect(() => {
     hasAssistantOutputStartedRef.current = rcaiHasAssistantOutputStarted;
   }, [rcaiHasAssistantOutputStarted]);
+
+  useEffect(() => {
+    if (!isGeneratingAIResponse) return;
+    if (!rcaiStreamingMessageId) return;
+
+    const streamingMessage = messages.find(
+      (m) => m.id === rcaiStreamingMessageId,
+    );
+    const hasDisplayableOutput = Boolean(
+      streamingMessage &&
+        stripThinkingTags(streamingMessage.content).trim().length > 0,
+    );
+
+    if (!hasDisplayableOutput) return;
+    if (hasAssistantOutputStartedRef.current) return;
+
+    setRcaiHasAssistantOutputStarted(true);
+    setRcaiProgressText(null);
+    setRcaiThinkingSteps([]);
+    setRcaiThinkingExpanded(false);
+  }, [isGeneratingAIResponse, messages, rcaiStreamingMessageId]);
 
   useEffect(() => {
     latestSessionIdRef.current = rcaiSessionId;
@@ -375,14 +402,7 @@ export default function RcaiChat({
 
             if (!messageId) return;
 
-            if (textChunk.trim().length > 0) {
-              setRcaiHasAssistantOutputStarted(true);
-              setRcaiProgressText(null);
-              setRcaiThinkingSteps([]);
-              setRcaiThinkingExpanded(false);
-            }
-
-            setRcaiStreamingMessageId((current) => current || messageId);
+            setRcaiStreamingMessageId(messageId);
 
             setMessages((current) => {
               const lastChunk = assistantLastChunkRef.current.get(messageId);
@@ -452,7 +472,6 @@ export default function RcaiChat({
               setRcaiStreamingMessageCompleteId(messageId);
               setRcaiProgressText(null);
               setRcaiShowTurtle(false);
-              setRcaiHasAssistantOutputStarted(false);
               assistantLastChunkRef.current.delete(messageId);
             }
 
@@ -628,6 +647,8 @@ export default function RcaiChat({
     setIsLoading(true);
     setIsGeneratingAIResponse(true);
     setRcaiShowTurtle(false);
+    setRcaiStreamingMessageId(null);
+    setRcaiStreamingMessageCompleteId(null);
     setRcaiHasAssistantOutputStarted(false);
     setRcaiProgressText(null);
     setRcaiThinkingSteps([]);

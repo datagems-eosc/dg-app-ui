@@ -5,6 +5,7 @@ import React, { useCallback, useEffect } from "react";
 import RcaiMarkdown from "@/components/RcaiChat/RcaiMarkdown";
 import RcaiStreamedMarkdown from "@/components/RcaiChat/RcaiStreamedMarkdown";
 import { Avatar } from "@/components/ui/Avatar";
+import { AIMessageHeader } from "@/components/ui/chat/AIMessageHeader";
 import { scrollToBottom } from "@/lib/scrollUtils";
 import type { Message } from "@/types/chat";
 
@@ -81,10 +82,7 @@ export default function RcaiChatMessages({
     .find((msg) => msg.type === "user")?.id;
 
   const showThinkingBlock =
-    isGeneratingAIResponse &&
-    !hasAssistantOutputStarted &&
-    (Boolean(progressText) ||
-      Boolean(thinkingSteps && thinkingSteps.length > 0));
+    isGeneratingAIResponse && !hasAssistantOutputStarted;
 
   return (
     <div className="px-4 py-4 lg:p-6 3xl:px-0 3xl:py-6 space-y-7.5 max-w-4xl mx-auto">
@@ -148,7 +146,7 @@ export default function RcaiChatMessages({
             key={message.id}
             className="w-full max-w-full space-y-4 shadow-s1 border border-slate-350 rounded-2xl px-4 pt-2 pb-4 sm:px-6 sm:pt-4 sm:pb-6"
           >
-            <div className="text-xs text-slate-500">DataGems AI</div>
+            <AIMessageHeader />
             <div className="text-body-16-regular text-gray-750 break-words overflow-hidden">
               {streamingMessageId === message.id ? (
                 <RcaiStreamedMarkdown
