@@ -23,6 +23,8 @@ interface ChatMessagesProps {
   isGeneratingAIResponse?: boolean;
   hideSpinner?: boolean;
   spinnerText?: string;
+  thinkingMode?: boolean;
+  thinkingStepText?: string;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onSourcesClick?: (messageId: string) => void;
   onRecommendationClick?: (recommendation: string) => void;
@@ -35,6 +37,8 @@ export default function ChatMessages({
   isGeneratingAIResponse = false,
   hideSpinner = false,
   spinnerText,
+  thinkingMode = false,
+  thinkingStepText,
   messagesEndRef,
   onSourcesClick,
   onRecommendationClick,
@@ -96,9 +100,24 @@ export default function ChatMessages({
       ))}
 
       {/* AI Response Loading Spinner */}
-      {isGeneratingAIResponse && !hideSpinner && (
-        <SendingSpinner text={spinnerText ?? "Generating response..."} />
-      )}
+      {isGeneratingAIResponse && !hideSpinner ? (
+        thinkingMode ? (
+          <div className="max-w-4xl mx-auto px-4 lg:px-0 py-4">
+            <div className="border-l-2 border-slate-350 pl-4 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-slate-850">
+                  Thinking
+                </div>
+                <div className="mt-1 text-sm text-slate-600 break-words whitespace-pre-wrap">
+                  {thinkingStepText ?? "Step 1 - processing"}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <SendingSpinner text={spinnerText ?? "Generating response..."} />
+        )
+      ) : null}
 
       {/* Dummy div for scroll-to-bottom */}
       <div ref={messagesEndRef} />

@@ -2,12 +2,13 @@
 
 import ChatInitialView from "@ui/chat/ChatInitialView";
 import { ChatInput, type ChatInputRef } from "@ui/chat/ChatInput";
-import ChatMessages from "@ui/chat/ChatMessages";
 import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import { getSession, useSession } from "next-auth/react";
 import React, { useEffect, useRef, useState } from "react";
+import RcaiChatMessages from "@/components/RcaiChat/RcaiChatMessages";
 import { logError } from "@/lib/logger";
 import { buildRcaiApiUrl, buildRcaiWebSocketUrl } from "@/lib/rcai";
+import { scrollToBottom } from "@/lib/scrollUtils";
 
 interface Message {
   id: string;
@@ -37,7 +38,11 @@ export default function RcaiChat({
   const [rcaiStreamingMessageId, setRcaiStreamingMessageId] = useState<
     string | null
   >(null);
+  const [rcaiStreamingMessageCompleteId, setRcaiStreamingMessageCompleteId] =
+    useState<string | null>(null);
   const [rcaiProgressText, setRcaiProgressText] = useState<string | null>(null);
+  const [rcaiThinkingSteps, setRcaiThinkingSteps] = useState<string[]>([]);
+  const [rcaiThinkingExpanded, setRcaiThinkingExpanded] = useState(false);
   const [rcaiHasAssistantOutputStarted, setRcaiHasAssistantOutputStarted] =
     useState(false);
   const [rcaiShowTurtle, setRcaiShowTurtle] = useState(false);
@@ -104,6 +109,24 @@ export default function RcaiChat({
   }, [isGeneratingAIResponse]);
 
   useEffect(() => {
+    if (!isGeneratingAIResponse) return;
+    if (rcaiHasAssistantOutputStarted) return;
+    if (!messagesEndRef.current) return;
+
+    requestAnimationFrame(() => {
+      scrollToBottom(messagesEndRef.current, {
+        behavior: "auto",
+        retryDelays: [],
+      });
+    });
+  }, [
+    isGeneratingAIResponse,
+    rcaiHasAssistantOutputStarted,
+    rcaiThinkingSteps.length,
+    rcaiProgressText,
+  ]);
+
+  useEffect(() => {
     hasAssistantOutputStartedRef.current = rcaiHasAssistantOutputStarted;
   }, [rcaiHasAssistantOutputStarted]);
 
@@ -114,7 +137,11 @@ export default function RcaiChat({
   useEffect(() => {
     setHasLoadedHistory(false);
     setRcaiStreamingMessageId(null);
+    setRcaiStreamingMessageCompleteId(null);
     setRcaiProgressText(null);
+    setRcaiThinkingSteps([]);
+    setRcaiThinkingExpanded(false);
+    setRcaiShowTurtle(false);
     setRcaiHasAssistantOutputStarted(false);
     assistantBuffersRef.current = new Map();
     assistantLastChunkRef.current = new Map();
@@ -351,11 +378,11 @@ export default function RcaiChat({
             if (textChunk.trim().length > 0) {
               setRcaiHasAssistantOutputStarted(true);
               setRcaiProgressText(null);
+              setRcaiThinkingSteps([]);
+              setRcaiThinkingExpanded(false);
             }
 
-            if (!isComplete) {
-              setRcaiStreamingMessageId(messageId);
-            }
+            setRcaiStreamingMessageId((current) => current || messageId);
 
             setMessages((current) => {
               const lastChunk = assistantLastChunkRef.current.get(messageId);
@@ -422,9 +449,7 @@ export default function RcaiChat({
 
             if (isComplete) {
               setIsGeneratingAIResponse(false);
-              setRcaiStreamingMessageId((current) =>
-                current === messageId ? null : current,
-              );
+              setRcaiStreamingMessageCompleteId(messageId);
               setRcaiProgressText(null);
               setRcaiShowTurtle(false);
               setRcaiHasAssistantOutputStarted(false);
@@ -464,6 +489,16 @@ export default function RcaiChat({
             if (nextText) {
               if (!hasAssistantOutputStartedRef.current) {
                 setRcaiProgressText(nextText);
+                setRcaiThinkingSteps((current) => {
+                  if (
+                    current.length > 0 &&
+                    current[current.length - 1] === nextText
+                  ) {
+                    return current;
+                  }
+                  const next = [...current, nextText];
+                  return next.length > 25 ? next.slice(-25) : next;
+                });
               }
             }
             return;
@@ -474,8 +509,26 @@ export default function RcaiChat({
             if (status === "waiting_for_input") {
               setIsGeneratingAIResponse(false);
               setRcaiProgressText(null);
+              setRcaiThinkingSteps([]);
+              setRcaiThinkingExpanded(false);
               setRcaiShowTurtle(false);
               setRcaiHasAssistantOutputStarted(false);
+              return;
+            }
+
+            const nextText = status.trim();
+            if (nextText && !hasAssistantOutputStartedRef.current) {
+              setRcaiProgressText(nextText);
+              setRcaiThinkingSteps((current) => {
+                if (
+                  current.length > 0 &&
+                  current[current.length - 1] === nextText
+                ) {
+                  return current;
+                }
+                const next = [...current, nextText];
+                return next.length > 25 ? next.slice(-25) : next;
+              });
             }
             return;
           }
@@ -576,6 +629,9 @@ export default function RcaiChat({
     setIsGeneratingAIResponse(true);
     setRcaiShowTurtle(false);
     setRcaiHasAssistantOutputStarted(false);
+    setRcaiProgressText(null);
+    setRcaiThinkingSteps([]);
+    setRcaiThinkingExpanded(false);
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -611,19 +667,19 @@ export default function RcaiChat({
         className={`flex-1 flex flex-col relative ${!isMessagesLoading ? "transition-all duration-500 ease-out" : ""}`}
         style={isMessagesLoading ? { transition: "none" } : undefined}
       >
-        <div className="bg-white flex-shrink-0 py-6 z-10">
+        {/* <div className="bg-white flex-shrink-0 py-6 z-10">
           {showConversationName && (
             <div className="text-center py-4 px-6 border-b border-gray-100">
               {isMessagesLoading ? (
                 <div className="h-6 bg-slate-200 rounded animate-pulse max-w-md mx-auto" />
               ) : (
                 <h2 className="text-H2-20-semibold text-blue-700 truncate">
-                  {rcaiChatTitle}
+                  
                 </h2>
               )}
             </div>
           )}
-        </div>
+        </div> */}
 
         <div className="flex-1 bg-white pb-35 md:pb-40">
           {isMessagesLoading ? (
@@ -632,21 +688,30 @@ export default function RcaiChat({
             (messages.length > 0 || isGeneratingAIResponse) && (
               <div
                 className={`${messages.length === 0 && isGeneratingAIResponse ? "min-h-[200px]" : "min-h-0"}`}
-                ref={messagesEndRef}
               >
-                <ChatMessages
+                <RcaiChatMessages
                   messages={messages}
                   isMessagesLoading={isMessagesLoading}
                   isGeneratingAIResponse={isGeneratingAIResponse}
-                  hideSpinner={Boolean(rcaiStreamingMessageId)}
-                  spinnerText={
-                    rcaiProgressText ??
-                    (rcaiShowTurtle
-                      ? "Still working..."
-                      : "Generating response...")
-                  }
                   messagesEndRef={messagesEndRef}
-                  showSelectedPanel={false}
+                  streamingMessageId={rcaiStreamingMessageId}
+                  streamingMessageCompleteId={rcaiStreamingMessageCompleteId}
+                  onStreamingMessageDone={(messageId) => {
+                    setRcaiStreamingMessageId((current) =>
+                      current === messageId ? null : current,
+                    );
+                    setRcaiStreamingMessageCompleteId((current) =>
+                      current === messageId ? null : current,
+                    );
+                  }}
+                  progressText={rcaiProgressText}
+                  showTurtle={rcaiShowTurtle}
+                  hasAssistantOutputStarted={rcaiHasAssistantOutputStarted}
+                  thinkingSteps={rcaiThinkingSteps}
+                  thinkingExpanded={rcaiThinkingExpanded}
+                  onToggleThinkingExpanded={() =>
+                    setRcaiThinkingExpanded((v) => !v)
+                  }
                 />
               </div>
             )
@@ -679,6 +744,7 @@ export default function RcaiChat({
             onChange={setInputValue}
             onSend={handleSendMessage}
             onAddDatasets={() => {}}
+            staticCollectionLabel="Meteo"
             isLoading={isLoading}
             disabled={isInputDisabled}
             error={error}

@@ -9,18 +9,42 @@ export default function RcaiStreamedMarkdown({
   content,
   isStreaming,
   onTick,
+  onDone,
   statusText,
+  isComplete,
 }: {
   messageId: string;
   content: string;
   isStreaming: boolean;
   onTick?: () => void;
+  onDone?: () => void;
   statusText?: string | null;
+  isComplete?: boolean;
 }) {
   const fullContentRef = useRef(content);
   useEffect(() => {
     fullContentRef.current = content;
   }, [content]);
+
+  const onTickRef = useRef<typeof onTick>(onTick);
+  useEffect(() => {
+    onTickRef.current = onTick;
+  }, [onTick]);
+
+  const onDoneRef = useRef<typeof onDone>(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+
+  const isCompleteRef = useRef(Boolean(isComplete));
+  useEffect(() => {
+    isCompleteRef.current = Boolean(isComplete);
+  }, [isComplete]);
+
+  const hasFiredDoneRef = useRef(false);
+  useEffect(() => {
+    hasFiredDoneRef.current = false;
+  }, [messageId]);
 
   const [displayedContent, setDisplayedContent] = useState("");
 
@@ -45,11 +69,13 @@ export default function RcaiStreamedMarkdown({
     }
 
     const interval = setInterval(() => {
+      let didReachEnd = false;
       setDisplayedContent((prev) => {
         const currentLength = prev.length;
         const fullLength = fullContentRef.current.length;
 
         if (currentLength >= fullLength) {
+          didReachEnd = true;
           return prev;
         }
 
@@ -59,15 +85,24 @@ export default function RcaiStreamedMarkdown({
             ? Math.min(pending, 6)
             : Math.max(1, Math.min(2, pending));
         const nextLength = Math.min(currentLength + step, fullLength);
-        return fullContentRef.current.slice(0, nextLength);
+        const nextValue = fullContentRef.current.slice(0, nextLength);
+        if (nextLength >= fullLength) {
+          didReachEnd = true;
+        }
+        return nextValue;
       });
-      onTick?.();
+      onTickRef.current?.();
+
+      if (didReachEnd && isCompleteRef.current && !hasFiredDoneRef.current) {
+        hasFiredDoneRef.current = true;
+        onDoneRef.current?.();
+      }
     }, 40);
 
     return () => {
       clearInterval(interval);
     };
-  }, [isStreaming, messageId, onTick]);
+  }, [isStreaming, messageId]);
 
   return (
     <div className="w-full">

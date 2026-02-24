@@ -1077,6 +1077,8 @@ export default function Chat({
                   messages={messages}
                   isMessagesLoading={isMessagesLoading}
                   isGeneratingAIResponse={isGeneratingAIResponse}
+                  thinkingMode={true}
+                  thinkingStepText="Step 1 - processing"
                   messagesEndRef={messagesEndRef}
                   onSourcesClick={handleSourcesClick}
                   onRecommendationClick={handleRecommendationClick}

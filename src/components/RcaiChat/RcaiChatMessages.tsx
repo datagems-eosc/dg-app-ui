@@ -1,28 +1,12 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import type React from "react";
-import { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import RcaiMarkdown from "@/components/RcaiChat/RcaiMarkdown";
 import RcaiStreamedMarkdown from "@/components/RcaiChat/RcaiStreamedMarkdown";
-import RcaiThinking from "@/components/RcaiChat/RcaiThinking";
 import { Avatar } from "@/components/ui/Avatar";
 import { scrollToBottom } from "@/lib/scrollUtils";
 import type { Message } from "@/types/chat";
-
-function SendingSpinner({ showTurtle }: { showTurtle: boolean }) {
-  return (
-    <div className="flex items-center justify-center py-8">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">
-          Generating response...
-          {showTurtle ? " \uD83D\uDC22" : null}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export default function RcaiChatMessages({
   messages,
@@ -30,20 +14,39 @@ export default function RcaiChatMessages({
   isGeneratingAIResponse,
   messagesEndRef,
   streamingMessageId,
+  streamingMessageCompleteId,
+  onStreamingMessageDone,
   progressText,
   showTurtle,
   hasAssistantOutputStarted,
+  thinkingSteps,
+  thinkingExpanded,
+  onToggleThinkingExpanded,
 }: {
   messages: Message[];
   isMessagesLoading: boolean;
   isGeneratingAIResponse: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   streamingMessageId: string | null;
+  streamingMessageCompleteId?: string | null;
+  onStreamingMessageDone?: (messageId: string) => void;
   progressText: string | null;
   showTurtle: boolean;
   hasAssistantOutputStarted: boolean;
+  thinkingSteps?: string[];
+  thinkingExpanded?: boolean;
+  onToggleThinkingExpanded?: () => void;
 }) {
   const { data: session } = useSession();
+
+  const handleStreamTick = useCallback(() => {
+    if (messagesEndRef.current) {
+      scrollToBottom(messagesEndRef.current, {
+        behavior: "auto",
+        retryDelays: [],
+      });
+    }
+  }, [messagesEndRef]);
 
   useEffect(() => {
     if (isGeneratingAIResponse && messagesEndRef.current) {
@@ -73,6 +76,16 @@ export default function RcaiChatMessages({
     return aISO.localeCompare(bISO);
   });
 
+  const lastUserMessageId = [...sortedMessages]
+    .reverse()
+    .find((msg) => msg.type === "user")?.id;
+
+  const showThinkingBlock =
+    isGeneratingAIResponse &&
+    !hasAssistantOutputStarted &&
+    (Boolean(progressText) ||
+      Boolean(thinkingSteps && thinkingSteps.length > 0));
+
   return (
     <div className="px-4 py-4 lg:p-6 3xl:px-0 3xl:py-6 space-y-7.5 max-w-4xl mx-auto">
       {isMessagesLoading && sortedMessages.length === 0 ? (
@@ -82,21 +95,51 @@ export default function RcaiChatMessages({
       {sortedMessages.map((message) => {
         if (message.type === "user") {
           return (
-            <div
-              key={message.id}
-              className="flex justify-end items-end gap-3 sm:gap-4"
-            >
-              <div className="bg-slate-75 text-slate-850 rounded-4xl px-4 py-2.5 sm:px-6 sm:py-3 max-w-[85%] sm:max-w-xl text-body-16-regular break-words overflow-hidden">
-                <RcaiMarkdown content={message.content} />
+            <React.Fragment key={message.id}>
+              <div className="flex justify-end items-end gap-3 sm:gap-4">
+                <div className="bg-slate-75 text-slate-850 rounded-4xl px-4 py-2.5 sm:px-6 sm:py-3 max-w-[85%] sm:max-w-xl text-body-16-regular break-words overflow-hidden">
+                  <RcaiMarkdown content={message.content} />
+                </div>
+                <Avatar
+                  src={undefined}
+                  name={session?.user?.name || ""}
+                  email={session?.user?.email || ""}
+                  size="md"
+                  className="self-start"
+                />
               </div>
-              <Avatar
-                src={undefined}
-                name={session?.user?.name || ""}
-                email={session?.user?.email || ""}
-                size="md"
-                className="self-start"
-              />
-            </div>
+
+              {message.id === lastUserMessageId && showThinkingBlock ? (
+                <div className="max-w-4xl mx-auto px-4 lg:px-0">
+                  <div className="border-l-2 border-slate-350 pl-4 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-850">
+                        Thinking
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600 break-words whitespace-pre-wrap">
+                        {!thinkingSteps || thinkingSteps.length === 0
+                          ? progressText || "Thinking..."
+                          : thinkingExpanded
+                            ? thinkingSteps
+                                .map((s, i) => `Step ${i + 1}: ${s}`)
+                                .join("\n")
+                            : `Step ${thinkingSteps.length}: ${thinkingSteps[thinkingSteps.length - 1]}`}
+                      </div>
+                    </div>
+
+                    {thinkingSteps && thinkingSteps.length > 1 ? (
+                      <button
+                        type="button"
+                        className="shrink-0 text-xs text-slate-500 hover:text-slate-700"
+                        onClick={onToggleThinkingExpanded}
+                      >
+                        {thinkingExpanded ? "Show less" : "Show more"}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </React.Fragment>
           );
         }
 
@@ -112,6 +155,8 @@ export default function RcaiChatMessages({
                   messageId={message.id}
                   content={message.content}
                   isStreaming={true}
+                  isComplete={streamingMessageCompleteId === message.id}
+                  onDone={() => onStreamingMessageDone?.(message.id)}
                   statusText={
                     !hasAssistantOutputStarted
                       ? progressText
@@ -121,14 +166,7 @@ export default function RcaiChatMessages({
                           : null
                       : null
                   }
-                  onTick={() => {
-                    if (messagesEndRef.current) {
-                      scrollToBottom(messagesEndRef.current, {
-                        behavior: "auto",
-                        retryDelays: [],
-                      });
-                    }
-                  }}
+                  onTick={handleStreamTick}
                 />
               ) : (
                 <RcaiMarkdown content={message.content} />
@@ -137,25 +175,6 @@ export default function RcaiChatMessages({
           </div>
         );
       })}
-
-      {isGeneratingAIResponse &&
-      !streamingMessageId &&
-      !hasAssistantOutputStarted &&
-      progressText ? (
-        <div className="w-full max-w-full space-y-4 shadow-s1 border border-slate-350 rounded-2xl px-4 pt-2 pb-4 sm:px-6 sm:pt-4 sm:pb-6">
-          <div className="text-xs text-slate-500">DataGems AI</div>
-          <RcaiThinking
-            text={progressText + (showTurtle ? " \uD83D\uDC22" : "")}
-          />
-        </div>
-      ) : null}
-
-      {isGeneratingAIResponse &&
-      !streamingMessageId &&
-      !hasAssistantOutputStarted &&
-      !progressText ? (
-        <SendingSpinner showTurtle={showTurtle} />
-      ) : null}
 
       <div ref={messagesEndRef} />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, CloudSun } from "lucide-react";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ApiCollection, Collection } from "@/types/collection";
@@ -13,6 +13,7 @@ interface ChatInputProps {
   onChange: (value: string) => void;
   onSend: () => void;
   onAddDatasets: () => void;
+  staticCollectionLabel?: string;
   collections?: {
     apiCollections: Collection[];
     collections: Collection[];
@@ -40,6 +41,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
       onChange,
       onSend,
       onAddDatasets,
+      staticCollectionLabel,
       collections,
       selectedCollection,
       onSelectCollection,
@@ -174,6 +176,20 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
             ) : (
               <>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {staticCollectionLabel ? (
+                    <div
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-3xl shadow-s1 border border-slate-350 bg-white h-10 px-4 py-2",
+                        disabled &&
+                          "opacity-50 cursor-not-allowed pointer-events-none",
+                      )}
+                    >
+                      <CloudSun className="w-4 h-4 text-slate-700" />
+                      <span className="text-body-14-regular text-gray-750 whitespace-nowrap select-none">
+                        {staticCollectionLabel}
+                      </span>
+                    </div>
+                  ) : null}
                   {collections && onSelectCollection ? (
                     <CollectionsDropdown
                       collections={collections}
