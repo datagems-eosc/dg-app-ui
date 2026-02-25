@@ -7,6 +7,7 @@ export interface Message {
   relatedDatasetIds?: string[];
   datasetIds?: string[];
   tableData?: TableData;
+  sqlQuery?: string;
   latitude?: number;
   longitude?: number;
   recommendations?: string[];

@@ -2,10 +2,9 @@
 
 import { useParams } from "next/navigation";
 import React from "react";
+import RcaiChat from "@/components/Chat/RcaiChat";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedPage from "@/components/ProtectedPage";
-import RcaiChat from "@/components/RcaiChat/RcaiChat";
-import { RcaiChatSessionProvider } from "@/contexts/RcaiChatSessionContext";
 
 export default function ChatRcaiSessionPage() {
   const params = useParams();
@@ -14,9 +13,7 @@ export default function ChatRcaiSessionPage() {
   return (
     <ProtectedPage>
       <DashboardLayout>
-        <RcaiChatSessionProvider initialSessionId={id}>
-          <RcaiChat />
-        </RcaiChatSessionProvider>
+        <RcaiChat rcaiSessionId={id} showConversationName={true} />
       </DashboardLayout>
     </ProtectedPage>
   );

@@ -3,6 +3,8 @@
  * Centralized location for all app routes and URL generation
  */
 
+import { publicEnv } from "@/lib/env";
+
 export const APP_ROUTES = {
   // Authentication
   LOGIN: "/login",
@@ -38,9 +40,10 @@ export const APP_ROUTES = {
 } as const;
 
 export const EXTERNAL_URLS = {
-  AAI_ACCOUNT:
-    process.env.NEXT_PUBLIC_AAI_ACCOUNT_URL ??
+  AAI_ACCOUNT: publicEnv(
+    "AAI_ACCOUNT_URL",
     "https://datagems-dev.scayle.es/oauth/realms/dev/account/",
+  ),
 } as const;
 
 /**

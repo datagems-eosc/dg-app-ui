@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { publicEnv } from "./env";
 import { logError } from "./logger";
 
 export function cn(...inputs: ClassValue[]) {
@@ -8,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 
 // Utility function to handle base path in URLs
 export function getBasePath(): string {
-  return process.env.NEXT_PUBLIC_BASE_PATH || "";
+  return publicEnv("BASE_PATH", "");
 }
 
 // Utility function to create URLs with base path
@@ -73,10 +74,7 @@ export function getUserFromToken(
  * Falls back to 'https://datagems-dev.scayle.es' if not set.
  */
 export function getApiBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_DATAGEMS_API_BASE_URL ||
-    "https://datagems-dev.scayle.es"
-  );
+  return publicEnv("DATAGEMS_API_BASE_URL", "https://datagems-dev.scayle.es");
 }
 
 /**

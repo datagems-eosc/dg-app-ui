@@ -25,30 +25,10 @@ import {
   parseSearchInDataExploreResponse,
 } from "@/lib/messageUtils";
 import { getNavigationUrl } from "@/lib/utils";
+import type { Message } from "@/types/chat";
 import type { ApiCollection, Collection } from "@/types/collection";
 import AddDatasetsModal from "../AddDatasetsModal";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
-
-interface Message {
-  id: string;
-  type: "user" | "ai";
-  content: string;
-  timestamp: Date | string;
-  sources?: number;
-  relatedDatasetIds?: string[];
-  datasetIds?: string[];
-  tableData?: {
-    columns: Array<{ columnNumber: number; name: string }>;
-    rows: Array<{
-      rowNumber: number;
-      cells: Array<{ column: string; value: string | number }>;
-    }>;
-  };
-  recommendations?: string[];
-  recommendationsLoading?: boolean;
-  latitude?: number;
-  longitude?: number;
-}
 
 interface ChatProps {
   selectedDatasets: string[];
@@ -224,7 +204,6 @@ export default function Chat({
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     messages,
     conversationId,
@@ -1078,6 +1057,8 @@ export default function Chat({
                   messages={messages}
                   isMessagesLoading={isMessagesLoading}
                   isGeneratingAIResponse={isGeneratingAIResponse}
+                  thinkingMode={true}
+                  thinkingStepText="Step 1 - processing"
                   messagesEndRef={messagesEndRef}
                   onSourcesClick={handleSourcesClick}
                   onRecommendationClick={handleRecommendationClick}

@@ -48,3 +48,4 @@ memory-shard/
 
 *storybook.log
 storybook-static
+/public/__env.js

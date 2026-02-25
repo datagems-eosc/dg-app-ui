@@ -1,17 +1,19 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, CloudSun } from "lucide-react";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ApiCollection, Collection } from "@/types/collection";
 import { Button } from "../Button";
 import { CollectionsDropdown } from "../CollectionsDropdown";
+import SmartSwitch from "../SmartSwitch";
 
 interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
   onAddDatasets: () => void;
+  staticCollectionLabel?: string;
   collections?: {
     apiCollections: Collection[];
     collections: Collection[];
@@ -39,6 +41,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
       onChange,
       onSend,
       onAddDatasets,
+      staticCollectionLabel,
       collections,
       selectedCollection,
       onSelectCollection,
@@ -54,6 +57,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
     const [_isFocused, setIsFocused] = useState(false);
     const [showTopFade, setShowTopFade] = useState(false);
     const [showBottomFade, setShowBottomFade] = useState(false);
+    const [isExpertMode, setIsExpertMode] = useState(false);
     const hasText = value.trim().length > 0;
 
     // Expose focus and setCursorToEnd methods to parent
@@ -171,27 +175,80 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
               </div>
             ) : (
               <>
-                {collections && onSelectCollection ? (
-                  <CollectionsDropdown
-                    collections={collections}
-                    selectedCollection={selectedCollection || null}
-                    onSelectCollection={onSelectCollection}
-                    disabled={disabled}
-                  />
-                ) : showCollectionsButton ? (
-                  <Button
-                    variant="outline"
-                    onClick={onAddDatasets}
-                    disabled={disabled}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {staticCollectionLabel ? (
+                    <div
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-3xl shadow-s1 border border-slate-350 bg-white h-10 px-4 py-2",
+                        disabled &&
+                          "opacity-50 cursor-not-allowed pointer-events-none",
+                      )}
+                    >
+                      <CloudSun className="w-4 h-4 text-slate-700" />
+                      <span className="text-body-14-regular text-gray-750 whitespace-nowrap select-none">
+                        {staticCollectionLabel}
+                      </span>
+                    </div>
+                  ) : null}
+                  {collections && onSelectCollection ? (
+                    <CollectionsDropdown
+                      collections={collections}
+                      selectedCollection={selectedCollection || null}
+                      onSelectCollection={onSelectCollection}
+                      disabled={disabled}
+                    />
+                  ) : showCollectionsButton ? (
+                    <Button
+                      variant="outline"
+                      onClick={onAddDatasets}
+                      disabled={disabled}
+                    >
+                      <span className="w-4 h-4 mr-2">📁</span>
+                      {selectedCollection
+                        ? selectedCollection.name.replace(/ Collection$/i, "")
+                        : "Collections"}
+                    </Button>
+                  ) : null}
+
+                  <div
+                    className={cn(
+                      "inline-flex items-center gap-3 rounded-3xl shadow-s1 border border-slate-350 bg-white h-10 px-4 py-2",
+                      disabled &&
+                        "opacity-50 cursor-not-allowed pointer-events-none",
+                    )}
                   >
-                    <span className="w-4 h-4 mr-2">📁</span>
-                    {selectedCollection
-                      ? selectedCollection.name.replace(/ Collection$/i, "")
-                      : "Collections"}
-                  </Button>
-                ) : (
-                  <div />
-                )}
+                    <SmartSwitch
+                      checked={isExpertMode}
+                      onChange={setIsExpertMode}
+                      ariaLabel="Expert mode"
+                      disabled={disabled}
+                      size="sm"
+                    />
+                    <span
+                      role="button"
+                      tabIndex={disabled ? -1 : 0}
+                      onClick={() => {
+                        if (disabled) return;
+                        setIsExpertMode((current) => !current);
+                      }}
+                      onKeyDown={(e) => {
+                        if (disabled) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setIsExpertMode((current) => !current);
+                        }
+                      }}
+                      className={cn(
+                        "text-body-14-regular text-gray-750 whitespace-nowrap select-none",
+                        disabled ? "cursor-not-allowed" : "cursor-pointer",
+                      )}
+                      aria-label="Toggle expert mode"
+                    >
+                      Expert Mode
+                    </span>
+                  </div>
+                </div>
+
                 <Button
                   variant="primary"
                   className="p-1"

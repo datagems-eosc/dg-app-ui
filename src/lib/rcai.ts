@@ -1,11 +1,11 @@
+import { publicEnv } from "./env";
+
 export function getRcaiBackendUrl(): string {
-  return process.env.NEXT_PUBLIC_RCAI_BACKEND_URL || "http://localhost:8000";
+  return publicEnv("RCAI_BACKEND_URL", "http://localhost:8000");
 }
 
 export function getRcaiBackendWebSocketUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_RCAI_BACKEND_WEBSOCKET_URL || "ws://localhost:8000"
-  );
+  return publicEnv("RCAI_BACKEND_WEBSOCKET_URL", "ws://localhost:8000");
 }
 
 function normalizeBaseUrl(raw: string): URL {
