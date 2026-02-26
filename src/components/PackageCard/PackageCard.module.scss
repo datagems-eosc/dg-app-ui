@@ -19,7 +19,8 @@ $shadow-s1: 0 1px 1px rgba(213, 218, 227, 0.3);
   transition: border-color $transition-base $transition-ease;
 
   &.isSelected {
-    border: 2px solid $card-border-selected;
+    border: 1px solid $card-border-selected;
+    background: $color-info-bg;
   }
 }
 
@@ -56,10 +57,6 @@ $shadow-s1: 0 1px 1px rgba(213, 218, 227, 0.3);
   min-height: 36px;
   padding: 4px 0;
   border-bottom: 1px solid $card-border;
-
-  &:last-child {
-    border-bottom: none;
-  }
 }
 
 .datasetName {
@@ -87,7 +84,6 @@ $shadow-s1: 0 1px 1px rgba(213, 218, 227, 0.3);
   gap: $spacing-sm;
   margin-top: $spacing-md;
   padding-top: $spacing-md;
-  border-top: 1px solid $card-border;
 }
 
 .footerButton {
