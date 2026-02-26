@@ -1,3 +1,4 @@
+import withFlowbiteReact from "flowbite-react/plugin/nextjs";
 import type { NextConfig } from "next";
 import packageJson from "./package.json";
 
@@ -26,4 +27,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withFlowbiteReact(nextConfig);

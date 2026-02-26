@@ -17,8 +17,8 @@ Od teraz dzialaj tylko wedlug ponizszych wymagan, jesli napisales jakis kod zrob
 - [ ] Nie używaj konsol logów, zamiast tego używaj pino 
 - [ ] Na końcu pomyśl jak można ten kod który teraz zrobimy jeszcze upiększyć tak by docenił go principal developer
 - [ ] Nie dodawaj komentarzy do kodu
-- [ ] Jakiekolwiek zmiany w frontEndzie muszą być stworzone na bazie obecnych designów, stylu jaki mamy dotychczas w innych komponentach, a także masz używać już gotowych komponentów zamiast tworzyć nowych o ile to możliwe wiec masz sprawdzać drzewo komponentów. 
 - [ ] Komponenty muszą być Atomowe
+- [ ] Komponenty muszą mieć swoje własne osobne foldery, w folderze komponentu ma być plik tsx komponentu, plik testu komponentu, SCSS przynalezące do danego komponentu oraz plik index z expory defult danego komponentu, I ma być koniecznie zbudowany kazdy komponent.
 - [ ] Jak Tworzysz jakieś komponenty do których nie mamy designów to kieruj się stylistyką strony a na poziomie UI/UX stosuj się do wszystkich najlepszych zasad którymi kieruje się Principal UI/UX developer
 - [ ] Pamiętaj o WCAG
 - [ ] Jeśli coś jest powtarzalne niech będzie funkcja
