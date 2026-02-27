@@ -3,6 +3,7 @@
 import { AIMessageContent } from "@ui/chat/AIMessageContent";
 import { AIMessageHeader } from "@ui/chat/AIMessageHeader";
 import { ChatRecommendations } from "@ui/chat/ChatRecommendations";
+import DatasetProposalBlock from "@ui/chat/DatasetProposalBlock";
 import { TemperatureMap } from "@ui/chat/TemperatureMap";
 import type { Message } from "@/types/chat";
 
@@ -10,6 +11,7 @@ interface AIMessageProps {
   message: Message;
   onSourcesClick?: () => void;
   onRecommendationClick?: (recommendation: string) => void;
+  onDatasetProposalConfirm?: () => void;
   isLastAIMessage?: boolean;
 }
 
@@ -17,6 +19,7 @@ export function AIMessage({
   message,
   onSourcesClick,
   onRecommendationClick,
+  onDatasetProposalConfirm,
   isLastAIMessage = false,
 }: AIMessageProps) {
   const shouldShowRecommendations =
@@ -31,21 +34,32 @@ export function AIMessage({
         onSourcesClick={onSourcesClick}
       />
 
-      <TemperatureMap
-        content={message.content}
-        latitude={message.latitude}
-        longitude={message.longitude}
-        tableData={message.tableData}
-        baseRadius={90}
-        heatOpacity={0.55}
-        requireTableData={false}
-      />
+      {message.datasetProposal && message.datasetProposal.length > 0 ? (
+        <DatasetProposalBlock
+          datasets={message.datasetProposal}
+          onConfirm={onDatasetProposalConfirm ?? (() => {})}
+          isSubmitting={message.datasetProposalSubmitting}
+          isResolved={message.datasetProposalResolved}
+        />
+      ) : (
+        <>
+          <TemperatureMap
+            content={message.content}
+            latitude={message.latitude}
+            longitude={message.longitude}
+            tableData={message.tableData}
+            baseRadius={90}
+            heatOpacity={0.55}
+            requireTableData={false}
+          />
 
-      <AIMessageContent
-        content={message.content}
-        tableData={message.tableData}
-        sqlQuery={message.sqlQuery}
-      />
+          <AIMessageContent
+            content={message.content}
+            tableData={message.tableData}
+            sqlQuery={message.sqlQuery}
+          />
+        </>
+      )}
 
       {shouldShowRecommendations && (
         <ChatRecommendations
