@@ -2,7 +2,7 @@
 
 import { DataTable } from "@ui/chat/DataTable";
 import { ChevronUp, ThumbsDown, ThumbsUp } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import RcaiMarkdown from "@/components/RcaiChat/RcaiMarkdown";
 import type { TableData } from "@/types/chat";
 
@@ -18,6 +18,13 @@ export function AIMessageContent({
   sqlQuery,
 }: AIMessageContentProps) {
   const [isSqlExpanded, setIsSqlExpanded] = useState(false);
+  const [editableSqlQuery, setEditableSqlQuery] = useState(sqlQuery ?? "");
+  const [isSqlDirty, setIsSqlDirty] = useState(false);
+
+  useEffect(() => {
+    if (isSqlDirty) return;
+    setEditableSqlQuery(sqlQuery ?? "");
+  }, [isSqlDirty, sqlQuery]);
 
   return (
     <div className="w-full max-w-full">
@@ -73,9 +80,16 @@ export function AIMessageContent({
 
           {isSqlExpanded ? (
             <div className="border-t border-slate-350 bg-slate-25 px-4 py-4">
-              <pre className="text-sm text-slate-700 font-mono whitespace-pre-wrap break-words">
-                {sqlQuery}
-              </pre>
+              <textarea
+                value={editableSqlQuery}
+                onChange={(e) => {
+                  setIsSqlDirty(true);
+                  setEditableSqlQuery(e.target.value);
+                }}
+                rows={8}
+                spellCheck={false}
+                className="w-full text-sm text-slate-700 font-mono whitespace-pre-wrap break-words bg-white border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
           ) : null}
         </div>
