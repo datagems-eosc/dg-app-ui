@@ -34,7 +34,7 @@ export default function RcaiChat({
   const [isGeneratingAIResponse, setIsGeneratingAIResponse] = useState(false);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
 
-  const [rcaiChatTitle, setRcaiChatTitle] = useState<string>("Untitled");
+  const [, setRcaiChatTitle] = useState<string>("Untitled");
   const [rcaiStreamingMessageId, setRcaiStreamingMessageId] = useState<
     string | null
   >(null);
@@ -707,6 +707,8 @@ export default function RcaiChat({
   };
 
   const isInputDisabled = isLoading || isGeneratingAIResponse;
+  const isInitialState =
+    messages.length === 0 && !isMessagesLoading && !isGeneratingAIResponse;
 
   return (
     <div className="relative">
@@ -766,40 +768,63 @@ export default function RcaiChat({
         </div>
       </div>
 
-      {messages.length === 0 &&
-        !isMessagesLoading &&
-        !isGeneratingAIResponse && (
-          <div
-            className="fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none transition-all duration-500 ease-out pr-4 sm:pr-6"
-            style={{
-              left: "var(--sidebar-offset)",
-              top: "100px",
-              bottom: "200px",
-            }}
-          >
-            <div className="pointer-events-auto">
-              <ChatInitialView />
-            </div>
+      {isInitialState && (
+        <div
+          className="fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none transition-all duration-500 ease-out pr-4 sm:pr-6"
+          style={{
+            left: "var(--sidebar-offset)",
+            top: "100px",
+            bottom: "200px",
+          }}
+        >
+          <div className="pointer-events-auto">
+            <ChatInitialView />
           </div>
-        )}
-
-      <div className="fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out pr-4 sm:pr-6">
-        <div className="w-full max-w-md sm:max-w-4xl mx-auto">
-          <ChatInput
-            ref={chatInputRef}
-            value={inputValue}
-            onChange={setInputValue}
-            onSend={handleSendMessage}
-            onAddDatasets={() => {}}
-            staticCollectionLabel="Meteo"
-            isLoading={isLoading}
-            disabled={isInputDisabled}
-            error={error}
-            showAddDatasetsModal={false}
-            showCollectionsButton={false}
-          />
         </div>
-      </div>
+      )}
+
+      {isInitialState && (
+        <div
+          className="fixed left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 transition-all duration-500 ease-out pr-4 sm:pr-6"
+          style={{ top: "50%", transform: "translateY(50px)" }}
+        >
+          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+            <ChatInput
+              ref={chatInputRef}
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSendMessage}
+              onAddDatasets={() => {}}
+              staticCollectionLabel="Meteo"
+              isLoading={isLoading}
+              disabled={isInputDisabled}
+              error={error}
+              showAddDatasetsModal={false}
+              showCollectionsButton={false}
+            />
+          </div>
+        </div>
+      )}
+
+      {!isInitialState && (
+        <div className="fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out pr-4 sm:pr-6">
+          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+            <ChatInput
+              ref={chatInputRef}
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSendMessage}
+              onAddDatasets={() => {}}
+              staticCollectionLabel="Meteo"
+              isLoading={isLoading}
+              disabled={isInputDisabled}
+              error={error}
+              showAddDatasetsModal={false}
+              showCollectionsButton={false}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
