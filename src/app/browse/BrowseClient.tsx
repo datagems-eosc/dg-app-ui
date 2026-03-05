@@ -13,6 +13,7 @@ import {
 } from "@/config/filterOptions";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Collection, Dataset, DatasetPlus } from "@/data/dataset";
+import { mockPackages } from "@/data/package";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
@@ -273,6 +274,7 @@ export default function BrowseClient() {
     license: [],
   });
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
+  const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
@@ -1120,6 +1122,34 @@ export default function BrowseClient() {
     }
   }, [isMounted]);
 
+  const handlePackageSelect = useCallback((packageId: string) => {
+    const pkg = mockPackages.find((p) => p.id === packageId);
+    if (!pkg) return;
+    setSelectedDatasets((prev) => {
+      const next = new Set(prev);
+      pkg.datasetIds.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
+    setSelectedPackageIds((prev) =>
+      prev.includes(packageId) ? prev : [...prev, packageId],
+    );
+    setShowSelectedPanel(true);
+  }, []);
+
+  const handlePackageDeselect = useCallback((packageId: string) => {
+    const pkg = mockPackages.find((p) => p.id === packageId);
+    if (!pkg) return;
+    setSelectedDatasets((prev) =>
+      prev.filter((id) => !pkg.datasetIds.includes(id)),
+    );
+    setSelectedPackageIds((prev) => prev.filter((id) => id !== packageId));
+  }, []);
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedDatasets([]);
+    setSelectedPackageIds([]);
+  }, []);
+
   const handleCloseSidebar = useCallback(() => {
     setShowSelectedPanel(false);
   }, []);
@@ -1184,6 +1214,10 @@ export default function BrowseClient() {
           onSmartSearchToggle={setIsSmartSearchEnabled}
           selectedDatasets={selectedDatasets}
           onSelectedDatasetsChange={setSelectedDatasets}
+          selectedPackageIds={selectedPackageIds}
+          onPackageSelect={handlePackageSelect}
+          onPackageDeselect={handlePackageDeselect}
+          onDeselectAll={handleDeselectAll}
           showSelectedPanel={showSelectedPanel}
           onCloseSidebar={handleCloseSidebar}
           onReopenSidebar={handleReopenSidebar}

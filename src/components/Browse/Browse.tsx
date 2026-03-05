@@ -3,6 +3,8 @@
 import { Search } from "@ui/Search";
 import {
   ArrowRightLeft,
+  ChevronDown,
+  ChevronUp,
   Database,
   Edit3,
   Filter,
@@ -38,6 +40,8 @@ import { UI_CONSTANTS } from "@/config/uiConstants";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
+import { mockDatasets } from "@/data/dataset";
+import { filterPackagesBySearchTerm, mockPackages } from "@/data/package";
 import { useApi } from "@/hooks/useApi";
 import logger, { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
@@ -51,6 +55,7 @@ import {
 import CreateCollectionModal from "../CreateCollectionModal";
 import DatasetCard from "../DatasetCard";
 import FilterModal from "../FilterModal";
+import PackageCarousel from "../PackageCarousel";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
 import { CollectionPermissionsModal } from "../ui/user/CollectionPermissionsModal";
@@ -144,6 +149,10 @@ interface BrowseProps {
    */
   isSmartSearchEnabled?: boolean;
   onSmartSearchToggle?: (enabled: boolean) => void;
+  selectedPackageIds?: string[];
+  onPackageSelect?: (packageId: string) => void;
+  onPackageDeselect?: (packageId: string) => void;
+  onDeselectAll?: () => void;
 }
 
 const defaultFilters: FilterState = getDefaultFilters();
@@ -208,6 +217,10 @@ export default function Browse({
   onCollectionNameUpdate,
   isSmartSearchEnabled: controlledSmartSearchEnabled,
   onSmartSearchToggle,
+  selectedPackageIds = [],
+  onPackageSelect,
+  onPackageDeselect,
+  onDeselectAll,
 }: BrowseProps) {
   const api = useApi();
   const { notifyCollectionModified, refreshExtraCollections } =
@@ -250,6 +263,8 @@ export default function Browse({
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isSmartSearchEnabledLocal, setIsSmartSearchEnabledLocal] =
+    useState(false);
+  const [isPackageCarouselCollapsed, setIsPackageCarouselCollapsed] =
     useState(false);
   const isSmartSearchEnabled =
     typeof controlledSmartSearchEnabled === "boolean"
@@ -727,6 +742,42 @@ export default function Browse({
     isSmartSearchEnabled &&
     (searchTerm ?? "").trim().length === 0;
 
+  const datasetsWithMockFallback = useMemo(() => {
+    const byId = new Map(
+      datasets.map((d) => [d.id, d as DatasetWithCollections]),
+    );
+    for (const m of mockDatasets) {
+      if (!byId.has(m.id)) {
+        byId.set(m.id, m as DatasetWithCollections);
+      }
+    }
+    return Array.from(byId.values());
+  }, [datasets]);
+
+  const filteredPackages = useMemo(() => {
+    const term = (searchTerm ?? "").trim();
+    if (term.length === 0) return [];
+    const nameById = new Map<string, string>(
+      datasetsWithMockFallback.map((d) => {
+        const name =
+          "title" in d && d.title
+            ? String(d.title)
+            : "name" in d && d.name
+              ? String(d.name)
+              : d.id;
+        return [d.id, name];
+      }),
+    );
+    return filterPackagesBySearchTerm(
+      mockPackages,
+      term,
+      (id): string => nameById.get(id) ?? id,
+    );
+  }, [searchTerm, datasetsWithMockFallback]);
+
+  const shouldShowPackageCarousel =
+    showSearchAndFilters !== false && (searchTerm ?? "").trim().length > 0;
+
   return (
     <div className="flex relative min-h-screen">
       <div
@@ -1065,6 +1116,46 @@ export default function Browse({
               )}
             </div>
           )}
+          {shouldShowPackageCarousel && (
+            <div
+              className="overflow-hidden px-4 sm:px-6 mb-4 animate-in"
+              role="region"
+              aria-label="Dataset packages suggestions"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setIsPackageCarouselCollapsed(!isPackageCarouselCollapsed)
+                }
+                className="flex w-full items-center justify-between text-left mb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+                aria-expanded={!isPackageCarouselCollapsed}
+              >
+                <h3 className="text-body-16-semibold text-gray-750">
+                  Dataset Packages
+                </h3>
+                {isPackageCarouselCollapsed ? (
+                  <ChevronDown
+                    className="w-5 h-5 text-icon shrink-0"
+                    aria-hidden
+                  />
+                ) : (
+                  <ChevronUp
+                    className="w-5 h-5 text-icon shrink-0"
+                    aria-hidden
+                  />
+                )}
+              </button>
+              {!isPackageCarouselCollapsed && (
+                <PackageCarousel
+                  packages={filteredPackages}
+                  datasets={datasetsWithMockFallback}
+                  selectedPackageIds={selectedPackageIds}
+                  onSelectPackage={onPackageSelect ?? (() => {})}
+                  onDeselectPackage={onPackageDeselect ?? (() => {})}
+                />
+              )}
+            </div>
+          )}
           {/* Smart search examples */}
           {shouldShowSmartExamples && (
             <SmartSearchExamples
@@ -1242,12 +1333,16 @@ export default function Browse({
           >
             <SelectedDatasetsPanel
               selectedDatasetIds={currentSelectedDatasets}
-              datasets={datasets}
+              datasets={datasetsWithMockFallback}
+              selectedPackageIds={selectedPackageIds}
+              packages={mockPackages}
               onRemoveDataset={(id: string) => handleDatasetSelect(id, false)}
               onChatWithData={onChatWithData}
               onClose={handleClosePanel}
               onAddToCollection={onAddToCollection}
-              onDeselectAll={() => setCurrentSelectedDatasets([])}
+              onDeselectAll={
+                onDeselectAll ?? (() => setCurrentSelectedDatasets([]))
+              }
             />
           </div>
         </div>

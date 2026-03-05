@@ -42,6 +42,7 @@ export function parseConversationMessage(
   } else if (msg.kind === 1) {
     // AI message (old format) - extract dataset names from payload array
     let relatedDatasetIds: string[] = [];
+    let datasetProposal: Array<{ id: string; title: string }> = [];
     if (Array.isArray(msg.data?.payload)) {
       const names = (msg.data.payload as DatasetPayloadItem[])
         .map((item) => item.dataset?.name)
@@ -50,6 +51,16 @@ export function parseConversationMessage(
       relatedDatasetIds = (msg.data.payload as DatasetPayloadItem[])
         .map((item) => item.dataset?.id)
         .filter((id: string | undefined) => typeof id === "string") as string[];
+
+      datasetProposal = (msg.data.payload as DatasetPayloadItem[])
+        .map((item) => ({
+          id: item.dataset?.id,
+          title: item.dataset?.name,
+        }))
+        .filter(
+          (entry): entry is { id: string; title: string } =>
+            typeof entry.id === "string" && typeof entry.title === "string",
+        );
 
       if (names.length > 0) {
         if (names.length === 1) {
@@ -78,6 +89,7 @@ export function parseConversationMessage(
       tableData,
       sources: relatedDatasetIds.length,
       relatedDatasetIds,
+      datasetProposal,
     };
   } else if (msg.kind === 2) {
     // User message (new format) - extract question and datasetIds

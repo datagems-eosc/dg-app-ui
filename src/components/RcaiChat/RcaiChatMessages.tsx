@@ -55,7 +55,6 @@ function extractSqlQueryBlocks(content: string): {
     sqlQueries: sqlQueries.length > 0 ? sqlQueries : undefined,
   };
 }
-
 export default function RcaiChatMessages({
   messages,
   isMessagesLoading,

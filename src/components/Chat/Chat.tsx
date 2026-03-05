@@ -64,6 +64,7 @@ export default function Chat({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isGeneratingAIResponse, setIsGeneratingAIResponse] = useState(false);
+  const [aiLoadingText, setAiLoadingText] = useState("Step 1 - processing");
   const [hasInitialized, setHasInitialized] = useState(false);
 
   // Collections state
@@ -572,6 +573,7 @@ export default function Chat({
     setIsLoading(true);
     // Show spinner immediately when user sends a message
     setIsGeneratingAIResponse(true);
+    setAiLoadingText("Step 1 - processing");
 
     // Store current datasets as previous before sending
     setPreviousDatasets([...selectedDatasets]);
@@ -584,6 +586,7 @@ export default function Chat({
 
       // For existing conversations, use the in-data-explore API directly
       if (conversationId && selectedDatasets.length > 0) {
+        setAiLoadingText("Analyzing data from selected datasets...");
         const userMessage: Message = {
           id: Date.now().toString(),
           type: "user",
@@ -636,14 +639,12 @@ export default function Chat({
         }
 
         setIsLoading(false);
+        setAiLoadingText("Step 1 - processing");
         return;
       }
 
       // If no datasets are selected, call persist first, then cross-dataset search API
       if (selectedDatasets.length === 0) {
-        // Show spinner while making API calls (no datasets selected path)
-        setIsGeneratingAIResponse(true);
-
         if (!api.hasToken) {
           setError(ApiErrorMessage.NO_AUTH_TOKEN_FOUND);
           setIsLoading(false);
@@ -706,10 +707,43 @@ export default function Chat({
           });
           setSelectedDatasetNamesMap(namesMap);
           onSelectedDatasetsChange(newSelectedDatasets);
-          // Redirect to /chat/conversationId if present in response and not already in a conversation
+
+          const userMessage: Message = {
+            id: Date.now().toString(),
+            type: "user",
+            content: inputValue,
+            timestamp: new Date(),
+          };
+
+          const datasetProposal: Array<{ id: string; title: string }> = results
+            .map((item) => ({
+              id: item.dataset?.id,
+              title: item.dataset?.name,
+            }))
+            .filter(
+              (entry): entry is { id: string; title: string } =>
+                typeof entry.id === "string" && typeof entry.title === "string",
+            );
+
+          const proposalMessage: Message = {
+            id: `proposal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            type: "ai",
+            content: "Do you want to answer based on these datasets?",
+            timestamp: new Date(),
+            sources: datasetProposal.length,
+            relatedDatasetIds: datasetProposal.map((d) => d.id),
+            datasetProposal,
+          };
+
+          setMessages([userMessage, proposalMessage]);
+          setInputValue("");
+          setIsLoading(false);
+          setIsGeneratingAIResponse(false);
+
           if (conversationIdFromPersist && !conversationId) {
             router.push(getNavigationUrl(`/chat/${conversationIdFromPersist}`));
           }
+          return;
         } else {
           setError("No datasets found for your query.");
           setIsLoading(false);
@@ -905,6 +939,126 @@ export default function Chat({
     }, 0);
   };
 
+  const handleDatasetProposalConfirm = async (proposalMessageId: string) => {
+    const sortedMessages = [...messages].sort((a, b) => {
+      const aISO =
+        a.timestamp instanceof Date ? a.timestamp.toISOString() : a.timestamp;
+      const bISO =
+        b.timestamp instanceof Date ? b.timestamp.toISOString() : b.timestamp;
+      return aISO.localeCompare(bISO);
+    });
+
+    const proposalIndex = sortedMessages.findIndex(
+      (m) => m.id === proposalMessageId,
+    );
+    const proposalMessage =
+      proposalIndex >= 0 ? sortedMessages[proposalIndex] : undefined;
+
+    if (
+      !proposalMessage ||
+      !proposalMessage.datasetProposal ||
+      proposalMessage.datasetProposal.length === 0
+    ) {
+      return;
+    }
+
+    if (
+      proposalMessage.datasetProposalSubmitting ||
+      proposalMessage.datasetProposalResolved
+    ) {
+      return;
+    }
+
+    const previousUserQuestion = [...sortedMessages]
+      .slice(0, proposalIndex)
+      .reverse()
+      .find((m) => m.type === "user")?.content;
+
+    if (!previousUserQuestion) {
+      setError("Missing original question for dataset confirmation.");
+      return;
+    }
+
+    const datasetIds = proposalMessage.datasetProposal.map((d) => d.id);
+
+    if (!conversationId || datasetIds.length === 0) {
+      setError("Conversation or dataset context is missing.");
+      return;
+    }
+
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === proposalMessageId
+          ? { ...m, datasetProposalSubmitting: true }
+          : m,
+      ),
+    );
+
+    const simulatedUserMessage: Message = {
+      id: `sim-user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: "user",
+      content: previousUserQuestion,
+      timestamp: new Date(),
+      datasetIds,
+    };
+
+    setMessages((prev) => [...prev, simulatedUserMessage]);
+    setIsLoading(true);
+    setIsGeneratingAIResponse(true);
+    setAiLoadingText("Analyzing data from selected datasets...");
+    setError(null);
+
+    try {
+      const payload = {
+        conversationOptions: {
+          conversationId,
+          autoCreateConversation: false,
+        },
+        project: {
+          fields: ["question", "data", "status", "entries"],
+        },
+        query: previousUserQuestion,
+        resultCount: 100,
+        datasetIds,
+      };
+
+      const apiResponse = await api.searchInDataExplore(payload);
+      const aiMessage = parseSearchInDataExploreResponse(
+        apiResponse,
+        datasetIds,
+      );
+
+      setMessages((prev) => {
+        const updated = prev.map((m) =>
+          m.id === proposalMessageId
+            ? {
+                ...m,
+                datasetProposalSubmitting: false,
+                datasetProposalResolved: true,
+              }
+            : m,
+        );
+        return aiMessage ? [...updated, aiMessage] : updated;
+      });
+    } catch (err: unknown) {
+      let message: string = ApiErrorMessage.UNEXPECTED_ERROR;
+      if (err instanceof Error) message = err.message;
+      else if (typeof err === "string") message = err;
+      setError(message);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === proposalMessageId
+            ? { ...m, datasetProposalSubmitting: false }
+            : m,
+        ),
+      );
+    } finally {
+      setIsLoading(false);
+      setIsGeneratingAIResponse(false);
+      setAiLoadingText("Step 1 - processing");
+    }
+  };
+
   const fetchRecommendationsForMessage = async (
     targetConversationId: string | null,
     messageId: string,
@@ -1058,10 +1212,11 @@ export default function Chat({
                   isMessagesLoading={isMessagesLoading}
                   isGeneratingAIResponse={isGeneratingAIResponse}
                   thinkingMode={true}
-                  thinkingStepText="Step 1 - processing"
+                  thinkingStepText={aiLoadingText}
                   messagesEndRef={messagesEndRef}
                   onSourcesClick={handleSourcesClick}
                   onRecommendationClick={handleRecommendationClick}
+                  onDatasetProposalConfirm={handleDatasetProposalConfirm}
                   showSelectedPanel={showSelectedPanel}
                 />
               </div>
