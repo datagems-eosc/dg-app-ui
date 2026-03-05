@@ -60,6 +60,28 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
     const [isExpertMode, setIsExpertMode] = useState(false);
     const hasText = value.trim().length > 0;
 
+    useEffect(() => {
+      try {
+        const saved = window.localStorage.getItem("expertMode");
+        if (saved === "1") setIsExpertMode(true);
+        if (saved === "0") setIsExpertMode(false);
+      } catch {}
+    }, []);
+
+    useEffect(() => {
+      try {
+        window.localStorage.setItem("expertMode", isExpertMode ? "1" : "0");
+      } catch {}
+
+      try {
+        window.dispatchEvent(
+          new CustomEvent("expert-mode-change", {
+            detail: { enabled: isExpertMode },
+          }),
+        );
+      } catch {}
+    }, [isExpertMode]);
+
     // Expose focus and setCursorToEnd methods to parent
     useImperativeHandle(ref, () => ({
       focus: () => {

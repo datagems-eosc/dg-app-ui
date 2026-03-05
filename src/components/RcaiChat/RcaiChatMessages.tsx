@@ -11,9 +11,50 @@ import React, {
 import RcaiMarkdown from "@/components/RcaiChat/RcaiMarkdown";
 import RcaiStreamedMarkdown from "@/components/RcaiChat/RcaiStreamedMarkdown";
 import { Avatar } from "@/components/ui/Avatar";
+import { AIMessageContent } from "@/components/ui/chat/AIMessageContent";
 import { AIMessageHeader } from "@/components/ui/chat/AIMessageHeader";
 import { scrollToBottom } from "@/lib/scrollUtils";
 import type { Message } from "@/types/chat";
+
+function extractSqlQueryBlocks(content: string): {
+  contentWithoutSqlQuery: string;
+  sqlQueries: string[] | undefined;
+} {
+  const re = /```sqlquery\s*([\s\S]*?)```/gi;
+  const sqlQueries: string[] = [];
+
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(content)) !== null) {
+    const extracted = String(match[1] ?? "").trim();
+    if (extracted.length > 0) sqlQueries.push(extracted);
+  }
+
+  let without = content.replace(re, "").trim();
+
+  if (sqlQueries.length > 0 && without) {
+    const stripLeak = (text: string, sql: string) => {
+      const candidates = [
+        sql.slice(0, Math.min(300, sql.length)),
+        sql.slice(Math.max(0, sql.length - Math.min(300, sql.length))),
+      ].filter((s) => s.length >= 80);
+
+      let next = text;
+      for (const cand of candidates) {
+        const idx = next.indexOf(cand);
+        if (idx >= 0) {
+          next = (next.slice(0, idx) + next.slice(idx + cand.length)).trim();
+        }
+      }
+      return next;
+    };
+
+    without = sqlQueries.reduce((acc, sql) => stripLeak(acc, sql), without);
+  }
+  return {
+    contentWithoutSqlQuery: without,
+    sqlQueries: sqlQueries.length > 0 ? sqlQueries : undefined,
+  };
+}
 
 export default function RcaiChatMessages({
   messages,
@@ -29,6 +70,7 @@ export default function RcaiChatMessages({
   thinkingSteps,
   thinkingExpanded,
   onToggleThinkingExpanded,
+  onSaveAndRunSqlQuery,
 }: {
   messages: Message[];
   isMessagesLoading: boolean;
@@ -43,6 +85,7 @@ export default function RcaiChatMessages({
   thinkingSteps?: string[];
   thinkingExpanded?: boolean;
   onToggleThinkingExpanded?: () => void;
+  onSaveAndRunSqlQuery?: (sqlQuery: string) => void;
 }) {
   const { data: session } = useSession();
 
@@ -243,6 +286,10 @@ export default function RcaiChatMessages({
           );
         }
 
+        const { contentWithoutSqlQuery, sqlQueries } = extractSqlQueryBlocks(
+          message.content,
+        );
+
         return (
           <div
             key={message.id}
@@ -253,7 +300,7 @@ export default function RcaiChatMessages({
               {streamingMessageId === message.id ? (
                 <RcaiStreamedMarkdown
                   messageId={message.id}
-                  content={message.content}
+                  content={contentWithoutSqlQuery}
                   isStreaming={true}
                   isComplete={streamingMessageCompleteId === message.id}
                   onDone={() => onStreamingMessageDone?.(message.id)}
@@ -269,7 +316,12 @@ export default function RcaiChatMessages({
                   onTick={handleStreamTick}
                 />
               ) : (
-                <RcaiMarkdown content={message.content} />
+                <AIMessageContent
+                  content={contentWithoutSqlQuery}
+                  sqlQueries={sqlQueries}
+                  isGenerating={isGeneratingAIResponse}
+                  onSaveAndRunSqlQuery={onSaveAndRunSqlQuery}
+                />
               )}
             </div>
           </div>
