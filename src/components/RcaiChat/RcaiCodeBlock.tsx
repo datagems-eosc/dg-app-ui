@@ -15,6 +15,10 @@ export default function RcaiCodeBlock({
 }) {
   const [isCopied, setIsCopied] = useState(false);
 
+  const normalizedLanguage = String(language || "")
+    .trim()
+    .toLowerCase();
+
   useEffect(() => {
     if (!isCopied) return;
     const t = setTimeout(() => setIsCopied(false), 2000);
@@ -30,6 +34,28 @@ export default function RcaiCodeBlock({
       setIsCopied(false);
     }
   }, [isCopied, value]);
+
+  if (normalizedLanguage === "sqlquery") {
+    return (
+      <div className="relative rounded-lg w-full bg-white border border-slate-200 overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2 bg-white text-slate-700 border-b border-slate-200">
+          <span className="text-xs lowercase text-slate-500">
+            {language || "code"}
+          </span>
+          <Button variant="outline" size="icon" onClick={onCopy}>
+            {isCopied ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+        <pre className="m-0 px-3 py-2 text-sm text-slate-500 font-mono whitespace-pre-wrap break-words">
+          {value}
+        </pre>
+      </div>
+    );
+  }
 
   return (
     <div className="relative rounded-xl w-full bg-slate-950 overflow-hidden">

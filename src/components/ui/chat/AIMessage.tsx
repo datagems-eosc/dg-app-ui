@@ -52,7 +52,6 @@ export function AIMessage({
             heatOpacity={0.55}
             requireTableData={false}
           />
-
           <AIMessageContent
             content={message.content}
             tableData={message.tableData}

@@ -34,7 +34,7 @@ export default function RcaiChat({
   const [isGeneratingAIResponse, setIsGeneratingAIResponse] = useState(false);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
 
-  const [rcaiChatTitle, setRcaiChatTitle] = useState<string>("Untitled");
+  const [, setRcaiChatTitle] = useState<string>("Untitled");
   const [rcaiStreamingMessageId, setRcaiStreamingMessageId] = useState<
     string | null
   >(null);
@@ -73,6 +73,7 @@ export default function RcaiChat({
   const rcaiWsRef = useRef<WebSocket | null>(null);
   const assistantBuffersRef = useRef<Map<string, string>>(new Map());
   const assistantLastChunkRef = useRef<Map<string, string>>(new Map());
+  const completedAssistantMessageIdsRef = useRef<Set<string>>(new Set());
   const isGeneratingRef = useRef(false);
   const hasAssistantOutputStartedRef = useRef(false);
   const wsUrlRef = useRef<string | null>(null);
@@ -100,7 +101,7 @@ export default function RcaiChat({
     if (prev.startsWith(incoming)) return prev;
 
     const maxOverlap = Math.min(prev.length, incoming.length);
-    const minOverlap = 3;
+    const minOverlap = 15;
     let overlap = 0;
     for (let i = maxOverlap; i >= minOverlap; i -= 1) {
       if (prev.slice(-i) === incoming.slice(0, i)) {
@@ -192,6 +193,7 @@ export default function RcaiChat({
     setRcaiHasAssistantOutputStarted(false);
     assistantBuffersRef.current = new Map();
     assistantLastChunkRef.current = new Map();
+    completedAssistantMessageIdsRef.current = new Set();
   }, [rcaiSessionId]);
 
   useEffect(() => {
@@ -259,6 +261,9 @@ export default function RcaiChat({
           if (!cancelled) {
             setMessages([]);
             assistantBuffersRef.current = new Map();
+            assistantLastChunkRef.current = new Map();
+            completedAssistantMessageIdsRef.current = new Set();
+            setHasLoadedHistory(true);
           }
           return;
         }
@@ -281,33 +286,41 @@ export default function RcaiChat({
 
         const rawMessages = Array.isArray(data.messages) ? data.messages : [];
 
+        const base = Date.now();
         const mapped: Message[] = rawMessages
           .filter((m) => m && m.role !== "tool")
           .map((m, idx) => ({
-            id: String(m.id),
+            id: String(m.id || idx),
             type: m.role === "user" ? "user" : "ai",
             content: m.content || "",
-            timestamp: new Date(new Date(0).getTime() + idx).toISOString(),
+            timestamp: new Date(base + idx).toISOString(),
           }));
 
         if (!cancelled) {
           setRcaiChatTitle(
-            typeof data.title === "string" && data.title.trim().length > 0
-              ? data.title
+            typeof data?.title === "string" && data.title.trim().length > 0
+              ? data.title.trim()
               : "Untitled",
           );
           setMessages(mapped);
           assistantBuffersRef.current = new Map();
+          assistantLastChunkRef.current = new Map();
+          completedAssistantMessageIdsRef.current = new Set();
+          setHasLoadedHistory(true);
         }
       } catch (e) {
         logError("RCAI: failed to load history", e);
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load history");
+          setError("Failed to load messages");
+          setMessages([]);
+          assistantBuffersRef.current = new Map();
+          assistantLastChunkRef.current = new Map();
+          completedAssistantMessageIdsRef.current = new Set();
+          setHasLoadedHistory(true);
         }
       } finally {
         if (!cancelled) {
           setIsMessagesLoading(false);
-          setHasLoadedHistory(true);
         }
       }
     };
@@ -424,6 +437,12 @@ export default function RcaiChat({
 
             const wasGenerating = isGeneratingRef.current;
 
+            if (
+              !wasGenerating &&
+              completedAssistantMessageIdsRef.current.has(messageId)
+            ) {
+              return;
+            }
             // Backend may replay the latest assistant message on subscribe.
             // Only treat chunks as an active stream when we initiated a generation.
             if (wasGenerating) {
@@ -440,6 +459,27 @@ export default function RcaiChat({
               const idx = current.findIndex((m) => m.id === messageId);
               const existing = idx >= 0 ? current[idx] : null;
 
+              if (!wasGenerating && existing) {
+                const existingContent = existing.content ?? "";
+                if (textChunk.length < 30) {
+                  return current;
+                }
+                if (!textChunk.startsWith(existingContent)) {
+                  return current;
+                }
+
+                if (textChunk === existingContent) {
+                  return current;
+                }
+
+                assistantBuffersRef.current.set(messageId, textChunk);
+                const updated = [...current];
+                updated[idx] = {
+                  ...existing,
+                  content: textChunk,
+                };
+                return updated;
+              }
               const bufferedPrev = assistantBuffersRef.current.get(messageId);
 
               const prevBase =
@@ -501,6 +541,7 @@ export default function RcaiChat({
               isGeneratingRef.current = false;
               setRcaiShowTurtle(false);
               assistantLastChunkRef.current.delete(messageId);
+              completedAssistantMessageIdsRef.current.add(messageId);
             }
 
             return;
@@ -706,7 +747,69 @@ export default function RcaiChat({
     }
   };
 
+  const handleSaveAndRunSqlQuery = async (sqlQuery: string) => {
+    const ws = rcaiWsRef.current;
+
+    if (!rcaiToken) {
+      setError("Missing auth token");
+      return;
+    }
+
+    if (!rcaiSessionId) {
+      setError("Missing session id");
+      return;
+    }
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      setError("WebSocket not connected");
+      return;
+    }
+
+    const trimmed = String(sqlQuery || "").trim();
+    if (!trimmed) return;
+
+    setError(null);
+    setIsLoading(true);
+    setIsGeneratingAIResponse(true);
+    isGeneratingRef.current = true;
+    setRcaiShowTurtle(false);
+    setRcaiStreamingMessageId(null);
+    setRcaiStreamingMessageCompleteId(null);
+    setRcaiHasAssistantOutputStarted(false);
+    setRcaiProgressText(null);
+    setRcaiThinkingSteps([]);
+    setRcaiThinkingExpanded(false);
+
+    const content = `\`\`\`sqlquery\n${trimmed}\n\`\`\``;
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      type: "user",
+      content,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
+    try {
+      ws.send(
+        JSON.stringify({
+          message: content,
+          session_id: rcaiSessionId,
+        }),
+      );
+    } catch (e) {
+      logError("RCAI: failed to send sql rerun message", e);
+      setError("Failed to send message");
+      setIsGeneratingAIResponse(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isInputDisabled = isLoading || isGeneratingAIResponse;
+  const isInitialState =
+    messages.length === 0 && !isMessagesLoading && !isGeneratingAIResponse;
 
   return (
     <div className="relative">
@@ -759,6 +862,7 @@ export default function RcaiChat({
                   onToggleThinkingExpanded={() =>
                     setRcaiThinkingExpanded((v) => !v)
                   }
+                  onSaveAndRunSqlQuery={handleSaveAndRunSqlQuery}
                 />
               </div>
             )
@@ -766,40 +870,63 @@ export default function RcaiChat({
         </div>
       </div>
 
-      {messages.length === 0 &&
-        !isMessagesLoading &&
-        !isGeneratingAIResponse && (
-          <div
-            className="fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none transition-all duration-500 ease-out pr-4 sm:pr-6"
-            style={{
-              left: "var(--sidebar-offset)",
-              top: "100px",
-              bottom: "200px",
-            }}
-          >
-            <div className="pointer-events-auto">
-              <ChatInitialView />
-            </div>
+      {isInitialState && (
+        <div
+          className="fixed inset-0 flex flex-col items-center justify-center z-10 pointer-events-none transition-all duration-500 ease-out pr-4 sm:pr-6"
+          style={{
+            left: "var(--sidebar-offset)",
+            top: "100px",
+            bottom: "200px",
+          }}
+        >
+          <div className="pointer-events-auto">
+            <ChatInitialView />
           </div>
-        )}
-
-      <div className="fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out pr-4 sm:pr-6">
-        <div className="w-full max-w-md sm:max-w-4xl mx-auto">
-          <ChatInput
-            ref={chatInputRef}
-            value={inputValue}
-            onChange={setInputValue}
-            onSend={handleSendMessage}
-            onAddDatasets={() => {}}
-            staticCollectionLabel="Meteo"
-            isLoading={isLoading}
-            disabled={isInputDisabled}
-            error={error}
-            showAddDatasetsModal={false}
-            showCollectionsButton={false}
-          />
         </div>
-      </div>
+      )}
+
+      {isInitialState && (
+        <div
+          className="fixed left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 transition-all duration-500 ease-out pr-4 sm:pr-6"
+          style={{ top: "50%", transform: "translateY(50px)" }}
+        >
+          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+            <ChatInput
+              ref={chatInputRef}
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSendMessage}
+              onAddDatasets={() => {}}
+              staticCollectionLabel="Meteo"
+              isLoading={isLoading}
+              disabled={isInputDisabled}
+              error={error}
+              showAddDatasetsModal={false}
+              showCollectionsButton={false}
+            />
+          </div>
+        </div>
+      )}
+
+      {!isInitialState && (
+        <div className="fixed bottom-0 left-[var(--sidebar-offset)] right-0 px-4 sm:px-6 py-4 bg-white z-20 transition-all duration-500 ease-out pr-4 sm:pr-6">
+          <div className="w-full max-w-md sm:max-w-4xl mx-auto">
+            <ChatInput
+              ref={chatInputRef}
+              value={inputValue}
+              onChange={setInputValue}
+              onSend={handleSendMessage}
+              onAddDatasets={() => {}}
+              staticCollectionLabel="Meteo"
+              isLoading={isLoading}
+              disabled={isInputDisabled}
+              error={error}
+              showAddDatasetsModal={false}
+              showCollectionsButton={false}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
