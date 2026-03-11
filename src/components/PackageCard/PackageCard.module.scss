@@ -1,0 +1,119 @@
+@use "@/styles" as *;
+
+$card-border: #e2e8f0;
+$card-border-selected: #1571fc;
+$chip-bg: #f5f9ff;
+$chip-text: #1571fc;
+$shadow-s1: 0 1px 1px rgba(213, 218, 227, 0.3);
+
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 200px;
+  padding: $spacing-lg;
+  background: $color-background;
+  border: 1px solid $card-border;
+  border-radius: $border-radius-md;
+  box-shadow: $shadow-s1;
+  transition: border-color $transition-base $transition-ease;
+
+  &.isSelected {
+    border: 1px solid $card-border-selected;
+    background: $color-info-bg;
+  }
+}
+
+.title {
+  margin-bottom: $spacing-md;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  height: 32px;
+  border-radius: $border-radius-full;
+  background: $chip-bg;
+  color: $chip-text;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  line-height: $line-height-normal;
+}
+
+.datasetList {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.datasetRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  min-height: 36px;
+  padding: 4px 0;
+  border-bottom: 1px solid $card-border;
+}
+
+.datasetName {
+  flex: 1;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-primary-text;
+  line-height: $line-height-normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkIcon {
+  width: 16px;
+  height: 16px;
+  color: $chip-text;
+  flex-shrink: 0;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+}
+
+.footerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: $border-radius-full;
+  border: 1px solid $color-border-secondary;
+  background: $color-background;
+  color: $color-primary-text;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  line-height: $line-height-normal;
+  cursor: pointer;
+  transition: background-color $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    background: $color-background-secondary;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $chip-text;
+    outline-offset: 2px;
+  }
+}
+
+.datasetCount {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-normal;
+  color: $color-tertiary-text;
+}

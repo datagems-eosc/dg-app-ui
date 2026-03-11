@@ -5,9 +5,19 @@ import MissingDatasetItem from "@ui/datasets/MissingDatasetItem";
 import SelectedDatasetItem from "@ui/datasets/SelectedDatasetItem";
 import { NoData } from "@ui/NoData";
 import { Tooltip } from "@ui/Tooltip";
-import { ArrowUp, Bot, Database, PackagePlus, X } from "lucide-react";
+import {
+  ArrowUp,
+  Bot,
+  ChevronDown,
+  ChevronUp,
+  Database,
+  PackagePlus,
+  X,
+} from "lucide-react";
 import React from "react";
+import type { DatasetPackage } from "@/data/package";
 import type { DatasetUnion } from "@/types/datasets";
+import styles from "./SelectedDatasetsPanel.module.scss";
 
 interface SelectedDatasetsPanelProps {
   selectedDatasetIds: string[];
@@ -21,6 +31,8 @@ interface SelectedDatasetsPanelProps {
   hideRemoveDataset?: boolean;
   customHeaderTitle?: string;
   onDeselectAll?: () => void;
+  selectedPackageIds?: string[];
+  packages?: DatasetPackage[];
 }
 
 export default function SelectedDatasetsPanel({
@@ -35,15 +47,32 @@ export default function SelectedDatasetsPanel({
   hideRemoveDataset = false,
   customHeaderTitle,
   onDeselectAll,
+  selectedPackageIds = [],
+  packages = [],
 }: SelectedDatasetsPanelProps) {
   const [expandedDatasets, setExpandedDatasets] = React.useState<string[]>([]);
+  const [expandedPackages, setExpandedPackages] = React.useState<string[]>([]);
 
   const selectedDatasets = datasets.filter((dataset) =>
     selectedDatasetIds.includes(dataset.id),
   );
-  // Add fallback for missing datasets
   const missingDatasetIds = selectedDatasetIds.filter(
     (id) => !selectedDatasets.some((ds) => ds.id === id),
+  );
+  const selectedPackages = packages.filter((p) =>
+    selectedPackageIds.includes(p.id),
+  );
+  const datasetIdsInPackages = new Set(
+    selectedPackages.flatMap((p) => p.datasetIds),
+  );
+  const orphanDatasetIds = selectedDatasetIds.filter(
+    (id) => !datasetIdsInPackages.has(id),
+  );
+  const orphanDatasets = selectedDatasets.filter((d) =>
+    orphanDatasetIds.includes(d.id),
+  );
+  const orphanMissingIds = missingDatasetIds.filter((id) =>
+    orphanDatasetIds.includes(id),
   );
 
   const toggleExpanded = (datasetId: string) => {
@@ -51,6 +80,14 @@ export default function SelectedDatasetsPanel({
       prev.includes(datasetId)
         ? prev.filter((id) => id !== datasetId)
         : [...prev, datasetId],
+    );
+  };
+
+  const togglePackageExpanded = (packageId: string) => {
+    setExpandedPackages((prev) =>
+      prev.includes(packageId)
+        ? prev.filter((id) => id !== packageId)
+        : [...prev, packageId],
     );
   };
 
@@ -93,7 +130,7 @@ export default function SelectedDatasetsPanel({
               Add to collection
             </Button>
           )}
-        {selectedDatasets.length === 0 && missingDatasetIds.length === 0 ? (
+        {selectedDatasetIds.length === 0 ? (
           <NoData
             icon={Database}
             title="Your selected datasets will appear here"
@@ -101,9 +138,77 @@ export default function SelectedDatasetsPanel({
           />
         ) : (
           <>
-            {selectedDatasets.map((dataset: DatasetUnion) => {
-              const isExpanded = expandedDatasets.includes(dataset.id);
+            {selectedPackages.map((pkg) => {
+              const isPkgExpanded = expandedPackages.includes(pkg.id);
+              const pkgDatasets = selectedDatasets.filter((d) =>
+                pkg.datasetIds.includes(d.id),
+              );
+              const pkgMissingIds = pkg.datasetIds.filter(
+                (id) => !selectedDatasets.some((ds) => ds.id === id),
+              );
 
+              return (
+                <div key={pkg.id} className={styles.packageSection}>
+                  <button
+                    type="button"
+                    onClick={() => togglePackageExpanded(pkg.id)}
+                    className={styles.packageHeader}
+                    aria-expanded={isPkgExpanded}
+                  >
+                    <div className={styles.packageTitleRow}>
+                      <span className={styles.packageTitle}>{pkg.title}</span>
+                      {isPkgExpanded ? (
+                        <ChevronUp
+                          className={`${styles.packageChevron} w-5 h-5`}
+                          aria-hidden
+                        />
+                      ) : (
+                        <ChevronDown
+                          className={`${styles.packageChevron} w-5 h-5`}
+                          aria-hidden
+                        />
+                      )}
+                    </div>
+                    <span className={styles.packageChip}>
+                      {pkg.datasetIds.length}{" "}
+                      {pkg.datasetIds.length === 1 ? "dataset" : "datasets"}
+                    </span>
+                  </button>
+                  {isPkgExpanded && (
+                    <div className={styles.packageContent}>
+                      <div className={styles.packageList}>
+                        {pkgDatasets.map((dataset) => {
+                          const isExpanded = expandedDatasets.includes(
+                            dataset.id,
+                          );
+                          return (
+                            <SelectedDatasetItem
+                              key={dataset.id}
+                              dataset={dataset}
+                              isExpanded={isExpanded}
+                              onToggleExpanded={toggleExpanded}
+                              onRemoveDataset={onRemoveDataset}
+                              hideRemoveDataset={hideRemoveDataset}
+                            />
+                          );
+                        })}
+                        {pkgMissingIds.map((id) => (
+                          <MissingDatasetItem
+                            key={id}
+                            id={id}
+                            displayName={selectedDatasetNamesMap[id] || id}
+                            onRemoveDataset={onRemoveDataset}
+                            hideRemoveDataset={hideRemoveDataset}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {orphanDatasets.map((dataset) => {
+              const isExpanded = expandedDatasets.includes(dataset.id);
               return (
                 <SelectedDatasetItem
                   key={dataset.id}
@@ -115,8 +220,7 @@ export default function SelectedDatasetsPanel({
                 />
               );
             })}
-            {/* Fallback for missing datasets */}
-            {missingDatasetIds.map((id) => (
+            {orphanMissingIds.map((id) => (
               <MissingDatasetItem
                 key={id}
                 id={id}

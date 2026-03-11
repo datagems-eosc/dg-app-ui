@@ -28,6 +28,7 @@ interface ChatMessagesProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onSourcesClick?: (messageId: string) => void;
   onRecommendationClick?: (recommendation: string) => void;
+  onDatasetProposalConfirm?: (messageId: string) => void;
   showSelectedPanel?: boolean;
 }
 
@@ -42,6 +43,7 @@ export default function ChatMessages({
   messagesEndRef,
   onSourcesClick,
   onRecommendationClick,
+  onDatasetProposalConfirm,
   showSelectedPanel,
 }: ChatMessagesProps) {
   // Auto-scroll to bottom when generating AI response
@@ -93,6 +95,7 @@ export default function ChatMessages({
           message={message}
           onSourcesClick={onSourcesClick}
           onRecommendationClick={onRecommendationClick}
+          onDatasetProposalConfirm={onDatasetProposalConfirm}
           isLastAIMessage={
             message.type === "ai" && message.id === lastAIMessageId
           }

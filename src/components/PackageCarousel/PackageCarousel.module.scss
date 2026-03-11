@@ -1,0 +1,74 @@
+@use "@/styles" as *;
+
+.carouselWrapper {
+  margin-bottom: $spacing-xl;
+  position: relative;
+  background: $color-background-secondary;
+  border-radius: $border-radius-lg;
+  padding: $spacing-lg;
+}
+
+.scrollContainer {
+  width: 100%;
+}
+
+.slidesTrack {
+  display: flex;
+  transition: transform 0.3s $transition-ease;
+}
+
+.slide {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-lg;
+  min-width: 100%;
+  flex-shrink: 0;
+  min-height: 200px;
+}
+
+.cardWrapper {
+  min-width: 0;
+}
+
+.arrowsWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: $spacing-md;
+  margin-top: $spacing-lg;
+}
+
+.arrowButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: $color-background;
+  color: $color-primary-text;
+  border: 1px solid $color-border;
+  cursor: pointer;
+  transition: background-color $transition-fast, opacity $transition-fast;
+
+  &:hover:not(:disabled) {
+    background: $color-background-secondary;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-info;
+    outline-offset: 2px;
+  }
+}
+
+.emptyState {
+  padding: $spacing-2xl 0;
+  text-align: center;
+  font-size: $font-size-sm;
+  color: $color-tertiary-text;
+}

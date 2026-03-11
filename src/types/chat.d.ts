@@ -12,6 +12,9 @@ export interface Message {
   longitude?: number;
   recommendations?: string[];
   recommendationsLoading?: boolean;
+  datasetProposal?: Array<{ id: string; title: string }>;
+  datasetProposalSubmitting?: boolean;
+  datasetProposalResolved?: boolean;
 }
 
 export interface TableData {

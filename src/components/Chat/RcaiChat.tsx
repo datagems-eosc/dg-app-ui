@@ -316,6 +316,7 @@ export default function RcaiChat({
           assistantBuffersRef.current = new Map();
           assistantLastChunkRef.current = new Map();
           completedAssistantMessageIdsRef.current = new Set();
+          setHasLoadedHistory(true);
         }
       } finally {
         if (!cancelled) {
@@ -442,7 +443,6 @@ export default function RcaiChat({
             ) {
               return;
             }
-
             // Backend may replay the latest assistant message on subscribe.
             // Only treat chunks as an active stream when we initiated a generation.
             if (wasGenerating) {
@@ -480,7 +480,6 @@ export default function RcaiChat({
                 };
                 return updated;
               }
-
               const bufferedPrev = assistantBuffersRef.current.get(messageId);
 
               const prevBase =
