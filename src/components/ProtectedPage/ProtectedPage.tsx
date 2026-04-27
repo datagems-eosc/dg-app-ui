@@ -19,7 +19,7 @@ export default function ProtectedPage({
         windowLocation:
           typeof window !== "undefined" ? window.location.href : null,
       });
-      signIn();
+      signIn("keycloak");
     }
   }, [status, session]);
 
