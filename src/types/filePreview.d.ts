@@ -41,6 +41,7 @@ export interface DataQualityMetric {
 }
 
 export interface FilePreviewData {
+  type: "tabular";
   filename: string;
   fileSize: string;
   description: string;
@@ -51,5 +52,29 @@ export interface FilePreviewData {
   statistics: ColumnStatistics[];
   dataQuality: DataQualityMetric[];
 }
+
+export interface PdfFilePreviewData {
+  type: "pdf";
+  filename: string;
+  fileSize: string;
+  description: string;
+  keywords?: string[];
+  fileUrl: string;
+  totalPages: number;
+}
+
+export interface JsonFilePreviewData {
+  type: "json";
+  filename: string;
+  fileSize: string;
+  description: string;
+  keywords?: string[];
+  content: string;
+}
+
+export type FilePreviewDataUnion =
+  | FilePreviewData
+  | PdfFilePreviewData
+  | JsonFilePreviewData;
 
 export type FilePreviewTab = "preview" | "statistics" | "dataQuality";

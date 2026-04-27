@@ -7,10 +7,14 @@ export interface Message {
   relatedDatasetIds?: string[];
   datasetIds?: string[];
   tableData?: TableData;
+  sqlQuery?: string;
   latitude?: number;
   longitude?: number;
   recommendations?: string[];
   recommendationsLoading?: boolean;
+  datasetProposal?: Array<{ id: string; title: string }>;
+  datasetProposalSubmitting?: boolean;
+  datasetProposalResolved?: boolean;
 }
 
 export interface TableData {

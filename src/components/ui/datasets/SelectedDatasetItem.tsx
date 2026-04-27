@@ -10,6 +10,7 @@ import {
   RefreshCcw,
   Share,
 } from "lucide-react";
+import { getDisplayCategory } from "@/config/collectionConstants";
 import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
 import type { DatasetUnion } from "@/types/datasets";
 import { Button } from "../Button";
@@ -66,21 +67,12 @@ export default function SelectedDatasetItem({
   const _displayTags =
     "tags" in dataset && Array.isArray(dataset.tags) ? dataset.tags : [];
 
-  // Get collections using the same logic as DatasetCard
   const hasDatasetCollections = hasCollections(dataset);
-
-  // Calculate display category/collection name with proper processing
-  const displayCategory = (() => {
-    if (hasDatasetCollections && dataset.collections.length > 0) {
-      // Use first collection name and remove " Collection" suffix like DatasetCard
-      const firstCollection = dataset.collections[0];
-      return typeof firstCollection.name === "string"
-        ? firstCollection.name.replace(/ Collection$/i, "")
-        : firstCollection.name;
-    }
-    // Fallback to category if no collections
-    return "category" in dataset && dataset.category ? dataset.category : "";
-  })();
+  const categoryFallback =
+    "category" in dataset && dataset.category ? String(dataset.category) : "";
+  const displayCategory = hasDatasetCollections
+    ? getDisplayCategory(dataset.collections, categoryFallback)
+    : categoryFallback;
 
   const permissions =
     "permissions" in dataset ? dataset.permissions : undefined;

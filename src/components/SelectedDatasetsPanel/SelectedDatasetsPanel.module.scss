@@ -1,0 +1,79 @@
+@use "@/styles" as *;
+
+$package-chip-bg: #1571fc;
+$package-chip-text: #ffffff;
+
+.packageSection {
+  border: 1px solid $color-border;
+  border-radius: $border-radius-md;
+  overflow: hidden;
+  background: $color-background;
+}
+
+.packageHeader {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  padding: $spacing-lg;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color $transition-fast;
+
+  &:hover {
+    background: $color-background-secondary;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-info;
+    outline-offset: -2px;
+  }
+}
+
+.packageTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-sm;
+}
+
+.packageTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-primary-text;
+  line-height: $line-height-normal;
+}
+
+.packageChevron {
+  flex-shrink: 0;
+  color: $color-icon;
+}
+
+.packageChip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 4px 12px;
+  height: 24px;
+  border-radius: $border-radius-full;
+  background: $package-chip-bg;
+  color: $package-chip-text;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  line-height: $line-height-normal;
+}
+
+.packageContent {
+  padding: 0 $spacing-lg $spacing-lg;
+  border-top: 1px solid $color-border;
+  background: $color-background;
+}
+
+.packageList {
+  padding-top: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}

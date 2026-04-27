@@ -24,7 +24,7 @@ export interface FileNode {
 interface DatasetFilesTreeProps {
   files?: FileNode[];
   defaultExpanded?: string[];
-  onFileSelect?: (fileId: string, fileName: string) => void;
+  onFileSelect?: (fileId: string, fileName: string, extension?: string) => void;
 }
 
 const defaultFiles: FileNode[] = [
@@ -135,7 +135,27 @@ const defaultFiles: FileNode[] = [
     id: "pdf-folder",
     name: "PDF",
     type: "folder",
-    children: [],
+    children: [
+      {
+        id: "pdf-file1",
+        name: "Climate_Report_2024.pdf",
+        type: "file",
+        extension: "pdf",
+      },
+    ],
+  },
+  {
+    id: "json-folder",
+    name: "JSON",
+    type: "folder",
+    children: [
+      {
+        id: "json-file1",
+        name: "weather_stations_metadata.json",
+        type: "file",
+        extension: "json",
+      },
+    ],
   },
 ];
 
@@ -159,6 +179,8 @@ export default function DatasetFilesTree({
           "meteo-db",
           "schema1",
           "schema2",
+          "pdf-folder",
+          "json-folder",
         ];
 
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
@@ -188,6 +210,9 @@ export default function DatasetFilesTree({
           return FileSpreadsheet;
         }
         if (node.extension === "pdf") {
+          return FileText;
+        }
+        if (node.extension === "json") {
           return FileText;
         }
         return File;
@@ -224,10 +249,24 @@ export default function DatasetFilesTree({
     }
     setSelectedNode(nodeId);
 
-    // Call onFileSelect for file types (not folders)
     if (onFileSelect && (nodeType === "file" || nodeType === "excel-sheet")) {
-      onFileSelect(nodeId, nodeName);
+      const node = findNodeById(files, nodeId);
+      onFileSelect(nodeId, nodeName, node?.extension);
     }
+  };
+
+  const findNodeById = (
+    nodes: FileNode[],
+    id: string,
+  ): FileNode | undefined => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNodeById(node.children, id);
+        if (found) return found;
+      }
+    }
+    return undefined;
   };
 
   const renderNode = (node: FileNode, level: number = 0) => {

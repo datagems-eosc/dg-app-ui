@@ -376,7 +376,10 @@ export default function FilterModal({
                       setFilters({ ...filters, license: value })
                     }
                     placeholder="Select licenses..."
-                    searchable={false}
+                    searchable
+                    variant="inline"
+                    searchPlaceholder="Search..."
+                    noOptionsText="No licenses found"
                   />
                 )}
               </div>

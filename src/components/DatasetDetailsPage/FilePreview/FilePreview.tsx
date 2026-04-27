@@ -1,9 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import type {
   FileColumn,
   FilePreviewData,
+  FilePreviewDataUnion,
   FilePreviewTab,
 } from "@/types/filePreview";
 import AboutFile from "./AboutFile";
@@ -13,11 +15,16 @@ import styles from "./FilePreview.module.scss";
 import FilePreviewHeader from "./FilePreviewHeader";
 import FilePreviewTable from "./FilePreviewTable";
 import FilePreviewTabs from "./FilePreviewTabs";
+import JsonFilePreview from "./JsonFilePreview";
 import ShowColumnsModal from "./ShowColumnsModal";
 import StatisticsTab from "./StatisticsTab";
 
+const PdfFilePreview = dynamic(() => import("./PdfFilePreview"), {
+  ssr: false,
+});
+
 interface FilePreviewProps {
-  fileData: FilePreviewData | null;
+  fileData: FilePreviewDataUnion | null;
   onDownload?: () => void;
 }
 
@@ -31,7 +38,7 @@ export default function FilePreview({
   const [extendedViewOpen, setExtendedViewOpen] = useState(false);
 
   useEffect(() => {
-    if (fileData) {
+    if (fileData && fileData.type === "tabular") {
       setColumns(fileData.columns);
       setActiveTab("preview");
     }
@@ -47,16 +54,67 @@ export default function FilePreview({
     );
   }
 
+  if (fileData.type === "pdf") {
+    const handleDownload = () => {
+      if (onDownload) {
+        onDownload();
+      } else {
+        fetch(fileData.fileUrl)
+          .then((r) => r.blob())
+          .then((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileData.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          });
+      }
+    };
+    return (
+      <div className={styles.filePreview}>
+        <PdfFilePreview data={fileData} onDownload={handleDownload} />
+      </div>
+    );
+  }
+
+  if (fileData.type === "json") {
+    const handleJsonDownload = () => {
+      if (onDownload) {
+        onDownload();
+      } else {
+        const blob = new Blob([fileData.content], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileData.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    };
+    return (
+      <div className={styles.filePreview}>
+        <JsonFilePreview data={fileData} onDownload={handleJsonDownload} />
+      </div>
+    );
+  }
+
+  const tabularData = fileData as FilePreviewData;
   const handleDownload = () => {
     if (onDownload) {
       onDownload();
     } else {
-      // Default download behavior - create a test file
       const blob = new Blob(["Test file content"], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = fileData.filename;
+      a.download = tabularData.filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -68,15 +126,14 @@ export default function FilePreview({
     setColumns(updatedColumns);
   };
 
-  // Show all rows (no "Show more" button needed)
-  const visibleRows = fileData.rows;
+  const visibleRows = tabularData.rows;
 
   return (
     <>
       <div className={styles.filePreview}>
         <FilePreviewHeader
-          filename={fileData.filename}
-          fileSize={fileData.fileSize}
+          filename={tabularData.filename}
+          fileSize={tabularData.fileSize}
           onDownload={handleDownload}
           onExtendedView={() => setExtendedViewOpen(true)}
         />
@@ -86,12 +143,12 @@ export default function FilePreview({
         <div className={styles.filePreview__content}>
           {activeTab === "preview" && (
             <>
-              <AboutFile description={fileData.description} />
+              <AboutFile description={tabularData.description} />
               <FilePreviewTable
                 columns={columns}
                 rows={visibleRows}
-                totalRows={fileData.totalRows}
-                statistics={fileData.statistics}
+                totalRows={tabularData.totalRows}
+                statistics={tabularData.statistics}
                 onShowColumnsClick={() => setShowColumnsModal(true)}
               />
             </>
@@ -99,16 +156,16 @@ export default function FilePreview({
 
           {activeTab === "statistics" && (
             <StatisticsTab
-              statistics={fileData.statistics}
+              statistics={tabularData.statistics}
               columns={columns}
-              totalRows={fileData.totalRows}
-              totalMissingPercentage={fileData.totalMissingPercentage}
+              totalRows={tabularData.totalRows}
+              totalMissingPercentage={tabularData.totalMissingPercentage}
             />
           )}
 
           {activeTab === "dataQuality" && (
             <DataQualityTab
-              dataQuality={fileData.dataQuality}
+              dataQuality={tabularData.dataQuality}
               columns={columns}
             />
           )}
@@ -124,7 +181,7 @@ export default function FilePreview({
 
       <ExtendedFilePreviewModal
         isOpen={extendedViewOpen}
-        fileData={fileData}
+        fileData={tabularData}
         activeTab={activeTab}
         columns={columns}
         onClose={() => setExtendedViewOpen(false)}

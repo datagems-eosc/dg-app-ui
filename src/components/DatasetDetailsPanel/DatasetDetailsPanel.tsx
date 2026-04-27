@@ -16,6 +16,7 @@ import {
   Share,
   X,
 } from "lucide-react";
+import { getDisplayCategory } from "@/config/collectionConstants";
 import type { Dataset } from "@/data/dataset";
 import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
 
@@ -51,19 +52,13 @@ export default function DatasetDetailsPanel({
   const hasDatasetCollections = dataset && hasCollections(dataset);
 
   // Calculate display category/collection name with proper processing
-  const displayCategory = (() => {
-    if (dataset && hasDatasetCollections && dataset.collections.length > 0) {
-      // Use first collection name and remove " Collection" suffix like DatasetCard
-      const firstCollection = dataset.collections[0];
-      return typeof firstCollection.name === "string"
-        ? firstCollection.name.replace(/ Collection$/i, "")
-        : firstCollection.name;
-    }
-    // Fallback to category if no collections
-    return dataset && "category" in dataset && dataset.category
-      ? dataset.category
+  const displayCategory =
+    dataset && hasDatasetCollections
+      ? getDisplayCategory(
+          dataset.collections,
+          ("category" in dataset && dataset.category) || "",
+        )
       : "";
-  })();
   const permissions =
     dataset && "permissions" in dataset ? dataset.permissions : undefined;
   const displayAccess =

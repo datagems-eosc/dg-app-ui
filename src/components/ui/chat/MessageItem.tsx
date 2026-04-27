@@ -8,6 +8,7 @@ interface MessageItemProps {
   message: Message;
   onSourcesClick?: (messageId: string) => void;
   onRecommendationClick?: (recommendation: string) => void;
+  onDatasetProposalConfirm?: (messageId: string) => void;
   isLastAIMessage?: boolean;
 }
 
@@ -15,6 +16,7 @@ export default function MessageItem({
   message,
   onSourcesClick,
   onRecommendationClick,
+  onDatasetProposalConfirm,
   isLastAIMessage = false,
 }: MessageItemProps) {
   return (
@@ -26,6 +28,9 @@ export default function MessageItem({
           message={message}
           onSourcesClick={() => onSourcesClick?.(message.id)}
           onRecommendationClick={onRecommendationClick}
+          onDatasetProposalConfirm={() =>
+            onDatasetProposalConfirm?.(message.id)
+          }
           isLastAIMessage={isLastAIMessage}
         />
       )}

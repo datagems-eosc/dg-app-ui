@@ -1,18 +1,21 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DatasetDetailsPageContent from "@/components/DatasetDetailsPage/DatasetDetailsPageContent";
 import { APP_ROUTES } from "@/config/appUrls";
+import { DATASET_ROLE_MAP } from "@/config/contextGrantRoles";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
-import { logApiError } from "@/lib/logger";
+import { logApiError, logWarn } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
+import type { ContextGrant } from "@/types/contextGrants";
 
 export default function DatasetDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const api = useApi();
   const [dataset, setDataset] = useState<DatasetPlus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,7 +110,37 @@ export default function DatasetDetailsPage() {
         }
 
         const apiDataset = items[0];
-        const mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
+        let mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
+        const hasManageFromDataset = mappedDataset.permissions?.some(
+          (p) => p.toLowerCase() === "manage",
+        );
+        if (!hasManageFromDataset) {
+          try {
+            const grants: ContextGrant[] =
+              await api.getCurrentUserContextGrants();
+            if (isCancelled) return;
+            const hasManageFromGrants = grants.some(
+              (g) =>
+                g.targetType === 0 &&
+                g.targetId === datasetId &&
+                g.role
+                  ?.toLowerCase()
+                  .includes(DATASET_ROLE_MAP.manage.toLowerCase()),
+            );
+            if (hasManageFromGrants) {
+              mappedDataset = {
+                ...mappedDataset,
+                permissions: [...(mappedDataset.permissions ?? []), "Manage"],
+              };
+            }
+          } catch (grantsErr) {
+            logWarn("Failed to fetch context grants for dataset permissions", {
+              datasetId,
+              error: grantsErr,
+            });
+          }
+        }
+        if (isCancelled) return;
         setDataset(mappedDataset);
         setIsLoading(false);
       } catch (err) {
@@ -162,9 +195,14 @@ export default function DatasetDetailsPage() {
     );
   }
 
+  const returnTo = searchParams.get("returnTo");
+
   return (
     <DashboardLayout>
-      <DatasetDetailsPageContent dataset={dataset} />
+      <DatasetDetailsPageContent
+        dataset={dataset}
+        returnToRoles={returnTo === "settings-roles"}
+      />
     </DashboardLayout>
   );
 }
@@ -215,10 +253,16 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
   let permissionArray: string[] = [];
   if (typeof permissions === "object" && permissions !== null) {
     const permObj = permissions as Record<string, unknown>;
-    if (permObj.browseDataset) permissionArray.push("Browse");
-    if (permObj.editDataset) permissionArray.push("Edit");
-    if (permObj.downloadDataset) permissionArray.push("Download");
-    if (permObj.manageDataset) permissionArray.push("Manage");
+    const hasPermission = (camel: string, pascal: string) =>
+      Boolean(permObj[camel]) || Boolean(permObj[pascal]);
+    if (hasPermission("browseDataset", "BrowseDataset"))
+      permissionArray.push("Browse");
+    if (hasPermission("editDataset", "EditDataset"))
+      permissionArray.push("Edit");
+    if (hasPermission("downloadDataset", "DownloadDataset"))
+      permissionArray.push("Download");
+    if (hasPermission("manageDataset", "ManageDataset"))
+      permissionArray.push("Manage");
   } else if (Array.isArray(permissions)) {
     permissionArray = permissions.map(String);
   }
