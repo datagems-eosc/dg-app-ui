@@ -1,0 +1,94 @@
+"use client";
+
+import { Check, Copy } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { coldarkDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Button } from "@/components/ui/Button";
+
+export default function RcaiCodeBlock({
+  language,
+  value,
+}: {
+  language: string;
+  value: string;
+}) {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const normalizedLanguage = String(language || "")
+    .trim()
+    .toLowerCase();
+
+  useEffect(() => {
+    if (!isCopied) return;
+    const t = setTimeout(() => setIsCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [isCopied]);
+
+  const onCopy = useCallback(async () => {
+    if (isCopied) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setIsCopied(true);
+    } catch {
+      setIsCopied(false);
+    }
+  }, [isCopied, value]);
+
+  if (normalizedLanguage === "sqlquery") {
+    return (
+      <div className="relative rounded-lg w-full bg-white border border-slate-200 overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2 bg-white text-slate-700 border-b border-slate-200">
+          <span className="text-xs lowercase text-slate-500">
+            {language || "code"}
+          </span>
+          <Button variant="outline" size="icon" onClick={onCopy}>
+            {isCopied ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+        <pre className="m-0 px-3 py-2 text-sm text-slate-500 font-mono whitespace-pre-wrap break-words">
+          {value}
+        </pre>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative rounded-xl w-full bg-slate-950 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 bg-slate-900 text-slate-100">
+        <span className="text-xs lowercase opacity-80">
+          {language || "code"}
+        </span>
+        <Button variant="outline" size="icon" onClick={onCopy}>
+          {isCopied ? (
+            <Check className="w-4 h-4" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </Button>
+      </div>
+      <SyntaxHighlighter
+        language={language}
+        style={coldarkDark as any}
+        PreTag="div"
+        customStyle={{
+          margin: 0,
+          background: "transparent",
+          padding: "1rem",
+        }}
+        codeTagProps={{
+          style: {
+            fontSize: "0.9rem",
+            fontFamily: "var(--font-mono)",
+          },
+        }}
+      >
+        {value}
+      </SyntaxHighlighter>
+    </div>
+  );
+}

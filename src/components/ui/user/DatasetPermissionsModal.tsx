@@ -1,20 +1,18 @@
 "use client";
 
 import { Button } from "@ui/Button";
+import { ConfirmationModal } from "@ui/ConfirmationModal";
 import { Input } from "@ui/Input";
 import { Search, Settings2, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  DATASET_ROLE_MAP,
+  mapRolesToPermissions,
+  type PermissionKey,
+} from "@/config/contextGrantRoles";
 import { useApi } from "@/hooks/useApi";
-import { logError } from "@/lib/logger";
+import { logError, logWarn } from "@/lib/logger";
 import { ManageGroupsModal } from "./ManageGroupsModal";
-
-type PermissionKey =
-  | "browse"
-  | "delete"
-  | "download"
-  | "edit"
-  | "manage"
-  | "search";
 
 type GroupPermissionsRow = {
   id: string;
@@ -23,10 +21,11 @@ type GroupPermissionsRow = {
 };
 
 type InvitedUser = {
-  id: string;
+  id?: string;
   name: string;
   email: string;
   permissions: Record<PermissionKey, boolean>;
+  hasApiId: boolean;
 };
 
 const permissionColumns: Array<{ key: PermissionKey; label: string }> = [
@@ -38,121 +37,35 @@ const permissionColumns: Array<{ key: PermissionKey; label: string }> = [
   { key: "search", label: "Search" },
 ];
 
-const initialGroupPermissions: GroupPermissionsRow[] = [
-  {
-    id: "analytics",
-    name: "Analytics Team",
-    permissions: {
-      browse: false,
-      delete: true,
-      download: false,
-      edit: false,
-      manage: true,
-      search: false,
-    },
-  },
-  {
-    id: "engineering",
-    name: "Engineering Team",
-    permissions: {
-      browse: false,
-      delete: true,
-      download: false,
-      edit: false,
-      manage: true,
-      search: false,
-    },
-  },
-  {
-    id: "moderators",
-    name: "Moderators",
-    permissions: {
-      browse: false,
-      delete: true,
-      download: false,
-      edit: false,
-      manage: true,
-      search: false,
-    },
-  },
-  {
-    id: "finance",
-    name: "Finance Team",
-    permissions: {
-      browse: false,
-      delete: false,
-      download: true,
-      edit: true,
-      manage: true,
-      search: false,
-    },
-  },
-  {
-    id: "researchers",
-    name: "Researchers",
-    permissions: {
-      browse: false,
-      delete: true,
-      download: false,
-      edit: false,
-      manage: true,
-      search: false,
-    },
-  },
-  {
-    id: "finance-duplicate",
-    name: "Finance Team",
-    permissions: {
-      browse: false,
-      delete: false,
-      download: true,
-      edit: true,
-      manage: true,
-      search: false,
-    },
-  },
-];
-
-const initialInvitedUsers: InvitedUser[] = [
-  {
-    id: "naomi",
-    name: "Naomi Watts",
-    email: "naomi.watts@gmail.com",
-    permissions: {
-      browse: false,
-      delete: true,
-      download: false,
-      edit: false,
-      manage: true,
-      search: false,
-    },
-  },
-];
-
 interface DatasetPermissionsModalProps {
   isOpen: boolean;
+  datasetId: string;
   datasetName: string;
   onClose: () => void;
+  hasManageRights?: boolean;
 }
 
 function PermissionSwitch({
   checked,
   onChange,
   ariaLabel,
+  disabled = false,
 }: {
   checked: boolean;
   onChange: () => void;
   ariaLabel: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-pressed={checked}
       aria-label={ariaLabel}
-      onClick={onChange}
+      onClick={disabled ? undefined : onChange}
+      disabled={disabled}
       className={`flex items-center w-7 h-4 rounded-full p-[2px] transition-colors ${
         checked ? "bg-[#052F4A] justify-end" : "bg-slate-200 justify-start"
-      }`}
+      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
     >
       <span className="bg-white w-3 h-3 rounded-full shadow-[0px_0.6px_0.6px_0px_rgba(213,218,227,0.3)]" />
     </button>
@@ -161,20 +74,35 @@ function PermissionSwitch({
 
 export function DatasetPermissionsModal({
   isOpen,
+  datasetId,
   datasetName,
   onClose,
+  hasManageRights = false,
 }: DatasetPermissionsModalProps) {
   const api = useApi();
+  const {
+    hasToken,
+    queryUserGroups,
+    getGroupDatasetGrants,
+    assignGroupDatasetGrant,
+    unassignGroupDatasetGrant,
+    queryUsers,
+    getUserDatasetGrants,
+    assignUserDatasetGrant,
+    unassignUserDatasetGrant,
+  } = api;
   const [activeTab, setActiveTab] = useState<"groups" | "invite">("groups");
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
   const [inviteSearch, setInviteSearch] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteLookupLoading, setIsInviteLookupLoading] = useState(false);
-  const [groupPermissions, setGroupPermissions] = useState(
-    initialGroupPermissions,
-  );
-  const [invitedUsers, setInvitedUsers] = useState(initialInvitedUsers);
+  const [isLoading, setIsLoading] = useState(false);
+  const [groupPermissions, setGroupPermissions] = useState<
+    GroupPermissionsRow[]
+  >([]);
+  const [visibleGroupIds, setVisibleGroupIds] = useState<string[] | null>(null);
+  const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([]);
   const [invitePermissions, setInvitePermissions] = useState<
     Record<PermissionKey, boolean>
   >({
@@ -185,6 +113,7 @@ export function DatasetPermissionsModal({
     manage: false,
     search: false,
   });
+  const [revokeGroupId, setRevokeGroupId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -192,34 +121,52 @@ export function DatasetPermissionsModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !api.hasToken) return;
+    if (!isOpen || !hasToken || !datasetId) return;
     let cancelled = false;
+    setIsLoading(true);
     (async () => {
       try {
-        const result = await api.queryUserGroups({ like: null });
+        const result = await queryUserGroups({
+          project: { fields: ["id", "name"] },
+          metadata: { countAll: true },
+        });
         if (cancelled) return;
         const groups =
           result.items?.map((group) => ({
             id: group.id ?? "",
             name: group.name ?? "",
-            permissions: {
-              browse: false,
-              delete: false,
-              download: false,
-              edit: false,
-              manage: false,
-              search: false,
-            },
+            permissions: mapRolesToPermissions([], DATASET_ROLE_MAP),
           })) ?? [];
-        setGroupPermissions(groups.filter((group) => group.id && group.name));
+        const validGroups = groups.filter((group) => group.id && group.name);
+
+        const grants = await Promise.all(
+          validGroups.map(async (group) => {
+            const response = await getGroupDatasetGrants(group.id, [datasetId]);
+            const roles = response?.[datasetId] ?? [];
+            return {
+              ...group,
+              permissions: mapRolesToPermissions(roles, DATASET_ROLE_MAP),
+            };
+          }),
+        );
+
+        if (cancelled) return;
+        setGroupPermissions(grants);
+        setVisibleGroupIds((prev) => prev ?? grants.map((group) => group.id));
       } catch (error) {
-        logError("Failed to load groups for permissions", error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logWarn("Failed to load groups for permissions", {
+          error: errorMessage,
+        });
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [api, isOpen]);
+  }, [datasetId, getGroupDatasetGrants, hasToken, isOpen, queryUserGroups]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -236,11 +183,12 @@ export function DatasetPermissionsModal({
 
   const filteredGroupRows = useMemo(() => {
     const query = groupSearch.trim().toLowerCase();
-    if (!query) return groupPermissions;
-    return groupPermissions.filter((row) =>
-      row.name.toLowerCase().includes(query),
+    const base = groupPermissions.filter((row) =>
+      visibleGroupIds === null ? true : visibleGroupIds.includes(row.id),
     );
-  }, [groupPermissions, groupSearch]);
+    if (!query) return base;
+    return base.filter((row) => row.name.toLowerCase().includes(query));
+  }, [groupPermissions, groupSearch, visibleGroupIds]);
 
   const filteredInvitedUsers = useMemo(() => {
     const query = inviteSearch.trim().toLowerCase();
@@ -251,6 +199,115 @@ export function DatasetPermissionsModal({
         user.email.toLowerCase().includes(query),
     );
   }, [inviteSearch, invitedUsers]);
+
+  const handleGroupToggle = async (
+    groupId: string,
+    permission: PermissionKey,
+    nextValue: boolean,
+  ) => {
+    const role = DATASET_ROLE_MAP[permission];
+    if (!role) return;
+    try {
+      if (nextValue) {
+        await assignGroupDatasetGrant(groupId, datasetId, role);
+      } else {
+        await unassignGroupDatasetGrant(groupId, datasetId, role);
+      }
+      setGroupPermissions((prev) =>
+        prev.map((row) =>
+          row.id === groupId
+            ? {
+                ...row,
+                permissions: {
+                  ...row.permissions,
+                  [permission]: nextValue,
+                },
+              }
+            : row,
+        ),
+      );
+    } catch (error) {
+      logError("Failed to update group permission", error);
+    }
+  };
+
+  const handleUserToggle = async (
+    userId: string | undefined,
+    permission: PermissionKey,
+    nextValue: boolean,
+  ) => {
+    if (!userId) return;
+    const role = DATASET_ROLE_MAP[permission];
+    if (!role) return;
+    try {
+      if (nextValue) {
+        await assignUserDatasetGrant(userId, datasetId, role);
+      } else {
+        await unassignUserDatasetGrant(userId, datasetId, role);
+      }
+      setInvitedUsers((prev) =>
+        prev.map((user) =>
+          user.id === userId
+            ? {
+                ...user,
+                permissions: {
+                  ...user.permissions,
+                  [permission]: nextValue,
+                },
+              }
+            : user,
+        ),
+      );
+    } catch (error) {
+      logError("Failed to update user permission", error);
+    }
+  };
+
+  const handleRevokeGroupAccess = async (groupId: string) => {
+    const row = groupPermissions.find((r) => r.id === groupId);
+    if (!row) return;
+    const rolesToRemove = (
+      Object.keys(row.permissions) as PermissionKey[]
+    ).filter((key) => row.permissions[key]);
+    try {
+      await Promise.all(
+        rolesToRemove.map((key) => {
+          const role = DATASET_ROLE_MAP[key];
+          return role
+            ? unassignGroupDatasetGrant(groupId, datasetId, role)
+            : Promise.resolve();
+        }),
+      );
+      setGroupPermissions((prev) => prev.filter((r) => r.id !== groupId));
+      setVisibleGroupIds((prev) =>
+        prev ? prev.filter((id) => id !== groupId) : null,
+      );
+    } catch (error) {
+      logError("Failed to revoke group access", error);
+    } finally {
+      setRevokeGroupId(null);
+    }
+  };
+
+  const handleRemoveUser = async (user: InvitedUser) => {
+    if (user.id) {
+      const permissionsToRemove = (
+        Object.keys(user.permissions) as PermissionKey[]
+      )
+        .filter((key) => user.permissions[key])
+        .map((key) => DATASET_ROLE_MAP[key]);
+      try {
+        await Promise.all(
+          permissionsToRemove.map((role) =>
+            unassignUserDatasetGrant(user.id as string, datasetId, role),
+          ),
+        );
+      } catch (error) {
+        logError("Failed to remove user permissions", error);
+      }
+    }
+    setInvitedUsers((prev) => prev.filter((item) => item.email !== user.email));
+  };
 
   if (!isOpen) return null;
 
@@ -362,45 +419,62 @@ export function DatasetPermissionsModal({
                     </div>
                   </div>
                   <div className="max-h-[401px] overflow-y-auto border-t border-b border-slate-200">
-                    {filteredGroupRows.map((row) => (
-                      <div
-                        key={row.id}
-                        className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
-                      >
-                        <div className="flex-1 text-[14px] font-medium text-slate-850">
-                          {row.name}
-                        </div>
-                        <div className="flex gap-1">
-                          {permissionColumns.map((column) => (
-                            <div
-                              key={`${row.id}-${column.key}`}
-                              className="w-20 flex justify-center"
-                            >
-                              <PermissionSwitch
-                                checked={row.permissions[column.key]}
-                                ariaLabel={`${row.name} ${column.label}`}
-                                onChange={() =>
-                                  setGroupPermissions((prev) =>
-                                    prev.map((item) =>
-                                      item.id === row.id
-                                        ? {
-                                            ...item,
-                                            permissions: {
-                                              ...item.permissions,
-                                              [column.key]:
-                                                !item.permissions[column.key],
-                                            },
-                                          }
-                                        : item,
-                                    ),
-                                  )
-                                }
-                              />
-                            </div>
-                          ))}
-                        </div>
+                    {isLoading && (
+                      <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                        Loading groups...
                       </div>
-                    ))}
+                    )}
+                    {!isLoading && filteredGroupRows.length === 0 && (
+                      <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                        No groups found
+                      </div>
+                    )}
+                    {!isLoading &&
+                      filteredGroupRows.map((row) => {
+                        const hasAnyPermission = permissionColumns.some(
+                          (col) => row.permissions[col.key],
+                        );
+                        return (
+                          <div
+                            key={row.id}
+                            className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
+                          >
+                            <div className="flex-1 text-[14px] font-medium text-slate-850">
+                              {row.name}
+                            </div>
+                            <div className="flex gap-1">
+                              {permissionColumns.map((column) => (
+                                <div
+                                  key={`${row.id}-${column.key}`}
+                                  className="w-20 flex justify-center"
+                                >
+                                  <PermissionSwitch
+                                    checked={row.permissions[column.key]}
+                                    ariaLabel={`${row.name} ${column.label}`}
+                                    disabled={isLoading || !hasManageRights}
+                                    onChange={() =>
+                                      handleGroupToggle(
+                                        row.id,
+                                        column.key,
+                                        !row.permissions[column.key],
+                                      )
+                                    }
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            {hasManageRights && hasAnyPermission && (
+                              <button
+                                type="button"
+                                className="ml-2 text-[14px] text-red-550 hover:underline"
+                                onClick={() => setRevokeGroupId(row.id)}
+                              >
+                                Revoke Access
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               </div>
@@ -447,7 +521,7 @@ export function DatasetPermissionsModal({
                           const email = inviteEmail.trim();
                           setIsInviteLookupLoading(true);
                           try {
-                            const result = await api.queryUsers({
+                            const result = await queryUsers({
                               like: email,
                             });
                             const match = result.items?.find(
@@ -455,16 +529,29 @@ export function DatasetPermissionsModal({
                                 user.email?.toLowerCase() ===
                                 email.toLowerCase(),
                             );
+                            const userId = match?.id ?? undefined;
+                            let permissions = { ...invitePermissions };
+                            if (userId) {
+                              const grants = await getUserDatasetGrants(
+                                userId,
+                                [datasetId],
+                              );
+                              permissions = mapRolesToPermissions(
+                                grants?.[datasetId] ?? [],
+                                DATASET_ROLE_MAP,
+                              );
+                            }
                             setInvitedUsers((prev) => [
                               ...prev,
                               {
-                                id: match?.id ?? `invite-${Date.now()}`,
+                                id: userId,
                                 name:
                                   match?.name ??
                                   email.split("@")[0] ??
                                   "Invited User",
                                 email: match?.email ?? email,
-                                permissions: { ...invitePermissions },
+                                permissions,
+                                hasApiId: Boolean(userId),
                               },
                             ]);
                             setInviteEmail("");
@@ -544,26 +631,18 @@ export function DatasetPermissionsModal({
                         <div className="flex gap-1">
                           {permissionColumns.map((column) => (
                             <div
-                              key={`${user.id}-${column.key}`}
+                              key={`${user.email}-${column.key}`}
                               className="w-20 flex justify-center"
                             >
                               <PermissionSwitch
                                 checked={user.permissions[column.key]}
                                 ariaLabel={`${user.name} ${column.label}`}
+                                disabled={!user.hasApiId}
                                 onChange={() =>
-                                  setInvitedUsers((prev) =>
-                                    prev.map((item) =>
-                                      item.id === user.id
-                                        ? {
-                                            ...item,
-                                            permissions: {
-                                              ...item.permissions,
-                                              [column.key]:
-                                                !item.permissions[column.key],
-                                            },
-                                          }
-                                        : item,
-                                    ),
+                                  handleUserToggle(
+                                    user.id,
+                                    column.key,
+                                    !user.permissions[column.key],
                                   )
                                 }
                               />
@@ -574,11 +653,7 @@ export function DatasetPermissionsModal({
                           type="button"
                           className="w-8 h-8 flex items-center justify-center rounded"
                           aria-label={`Remove ${user.name}`}
-                          onClick={() =>
-                            setInvitedUsers((prev) =>
-                              prev.filter((item) => item.id !== user.id),
-                            )
-                          }
+                          onClick={() => handleRemoveUser(user)}
                         >
                           <Trash2
                             className="w-4 h-4 text-icon"
@@ -617,7 +692,27 @@ export function DatasetPermissionsModal({
       <ManageGroupsModal
         isOpen={isManageOpen}
         onClose={() => setIsManageOpen(false)}
-        onSave={() => setIsManageOpen(false)}
+        onSave={(selected) => {
+          setVisibleGroupIds(selected.map((g) => g.id));
+          setIsManageOpen(false);
+        }}
+        selectedGroupIds={visibleGroupIds ?? []}
+      />
+
+      <ConfirmationModal
+        isVisible={Boolean(revokeGroupId)}
+        onClose={() => setRevokeGroupId(null)}
+        onConfirm={() => {
+          if (revokeGroupId) {
+            handleRevokeGroupAccess(revokeGroupId);
+          }
+        }}
+        title="Revoke access"
+        message1="Are you sure?"
+        message2=""
+        confirmText="Revoke"
+        cancelText="Cancel"
+        confirmVariant="danger"
       />
     </>
   );

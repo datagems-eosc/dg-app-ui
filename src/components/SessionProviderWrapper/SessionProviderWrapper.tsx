@@ -2,13 +2,13 @@
 
 import { SessionProvider, signIn, useSession } from "next-auth/react";
 import { type ReactNode, useEffect } from "react";
+import { publicEnv } from "@/lib/env";
 import { logDebug } from "@/lib/logger";
 
 // Get the base URL including the base path for NextAuth
 const _getBaseUrl = () => {
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_BASE_URL || "http://localhost:3000";
+  const basePath = publicEnv("BASE_PATH", "");
+  const baseUrl = publicEnv("APP_BASE_URL", "http://localhost:3000");
   return `${baseUrl}${basePath}`;
 };
 
@@ -34,9 +34,9 @@ export default function SessionProviderWrapper({
 }) {
   return (
     <SessionProvider
-      basePath={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/api/auth`}
+      basePath={`${publicEnv("BASE_PATH", "")}/api/auth`}
       // Enable automatic token refresh
-      refetchInterval={5 * 60} // Refetch session every 5 minutes
+      refetchInterval={60} // Refetch session every 1 minute
       refetchOnWindowFocus={true} // Refetch when window gains focus
     >
       <SessionErrorHandler>{children}</SessionErrorHandler>

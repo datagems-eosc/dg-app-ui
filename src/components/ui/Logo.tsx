@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { APP_ROUTES } from "@/config/appUrls";
-import { createUrl } from "@/lib/utils";
+import { createUrl, getBasePath } from "@/lib/utils";
 
 interface LogoProps {
   isMobile?: boolean;
@@ -19,7 +19,7 @@ export function Logo({
       className="flex items-center gap-2"
     >
       <img
-        src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/${logoSrc}`}
+        src={`${getBasePath()}/${logoSrc}`}
         alt="Logo"
         className={className}
       />

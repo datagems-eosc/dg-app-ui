@@ -4,6 +4,7 @@ export { default as DataQualityTab } from "./DataQualityTab";
 export { default as ExtendedFilePreviewModal } from "./ExtendedFilePreviewModal";
 export { default, default as FilePreview } from "./FilePreview";
 export { default as FilePreviewHeader } from "./FilePreviewHeader";
+export { default as FilePreviewMetadata } from "./FilePreviewMetadata";
 export { default as FilePreviewTable } from "./FilePreviewTable";
 export { default as FilePreviewTabs } from "./FilePreviewTabs";
 export { default as ShowColumnsModal } from "./ShowColumnsModal";

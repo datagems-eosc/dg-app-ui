@@ -1,0 +1,87 @@
+@use '@/styles' as *;
+
+.pdfFilePreview {
+  @include flex-column;
+  gap: 0;
+
+  &__header {
+    display: flex;
+    gap: $spacing-xs;
+    flex-wrap: wrap;
+    align-items: baseline;
+    padding: $spacing-xl $spacing-lg;
+    background: $color-background;
+    border-bottom: 1px solid $color-border;
+  }
+
+  &__filename {
+    @include text-xl;
+    @include font-semibold;
+    @include text-primary;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__filesize {
+    @include text-xs;
+    @include font-medium;
+    @include text-secondary;
+  }
+
+  &__pages {
+    @include flex-column;
+    gap: $spacing-md;
+    padding: $spacing-lg;
+    background: $color-background-secondary;
+    overflow-y: auto;
+    max-height: 600px;
+  }
+
+  &__page {
+    background: $color-background;
+    border-radius: $border-radius-sm;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  &__remainingCard {
+    @include flex-column;
+    @include flex-center;
+    gap: $spacing-md;
+    padding: $spacing-xl;
+    background: $color-background;
+    border: 1px dashed $color-border;
+    border-radius: $border-radius-lg;
+    min-height: 120px;
+  }
+
+  &__remainingText {
+    @include text-md;
+    @include font-medium;
+    @include text-secondary;
+    margin: 0;
+  }
+
+  &__downloadBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  &__downloadIcon {
+    width: 16px;
+    height: 16px;
+  }
+
+  &__loading,
+  &__error {
+    padding: $spacing-xl;
+    @include text-secondary;
+    text-align: center;
+  }
+
+  &__error {
+    color: $color-error;
+  }
+}

@@ -3,6 +3,8 @@
  * Centralized location for all app routes and URL generation
  */
 
+import { publicEnv } from "@/lib/env";
+
 export const APP_ROUTES = {
   // Authentication
   LOGIN: "/login",
@@ -12,10 +14,19 @@ export const APP_ROUTES = {
   HOME: "/",
   BROWSE: "/browse",
   SETTINGS: "/settings",
+  SETTINGS_ROLES: "/settings?tab=roles",
+  SETTINGS_ROLES_DATASET: (datasetId: string) =>
+    `/settings?tab=roles&datasetId=${encodeURIComponent(datasetId)}`,
 
   // Chat
   CHAT: "/chat",
   CHAT_WITH_CONVERSATION: (conversationId: string) => `/chat/${conversationId}`,
+  CHAT_RCAI: "/chat-rcai",
+  CHAT_RCAI_WITH_SESSION: (sessionId: string) => `/chat-rcai/${sessionId}`,
+
+  // Datasets
+  DATASET_ADD: "/datasets/add",
+  DATASET_DETAILS: (id: string) => `/datasets/${id}`,
 
   // Collections
   COLLECTIONS: {
@@ -29,9 +40,10 @@ export const APP_ROUTES = {
 } as const;
 
 export const EXTERNAL_URLS = {
-  AAI_ACCOUNT:
-    process.env.NEXT_PUBLIC_AAI_ACCOUNT_URL ??
+  AAI_ACCOUNT: publicEnv(
+    "AAI_ACCOUNT_URL",
     "https://datagems-dev.scayle.es/oauth/realms/dev/account/",
+  ),
 } as const;
 
 /**

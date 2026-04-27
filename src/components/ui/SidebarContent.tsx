@@ -1,6 +1,7 @@
 "use client";
 import {
   Bot,
+  BotMessageSquare,
   Calculator,
   CloudSun,
   FolderSearch,
@@ -102,6 +103,12 @@ const menuItems = [
     label: "Ask a question",
     href: APP_ROUTES.CHAT,
     icon: Bot,
+  },
+  {
+    id: "ask-rcai",
+    label: "Ask RCAI",
+    href: APP_ROUTES.CHAT_RCAI,
+    icon: BotMessageSquare,
   },
 ];
 

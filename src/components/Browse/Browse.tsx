@@ -3,6 +3,8 @@
 import { Search } from "@ui/Search";
 import {
   ArrowRightLeft,
+  ChevronDown,
+  ChevronUp,
   Database,
   Edit3,
   Filter,
@@ -10,6 +12,7 @@ import {
   ListChecks,
   MoreHorizontal,
   Search as SearchIcon,
+  Settings,
   Tag,
   Trash2,
 } from "lucide-react";
@@ -29,10 +32,16 @@ import Switch from "@ui/Switch";
 import { Toast } from "@ui/Toast";
 import { useRouter } from "next/navigation";
 import { APP_ROUTES } from "@/config/appUrls";
+import {
+  COLLECTION_ROLE_MAP,
+  mapRolesToPermissions,
+} from "@/config/contextGrantRoles";
 import { UI_CONSTANTS } from "@/config/uiConstants";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
+import { mockDatasets } from "@/data/dataset";
+import { filterPackagesBySearchTerm, mockPackages } from "@/data/package";
 import { useApi } from "@/hooks/useApi";
 import logger, { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
@@ -46,8 +55,10 @@ import {
 import CreateCollectionModal from "../CreateCollectionModal";
 import DatasetCard from "../DatasetCard";
 import FilterModal from "../FilterModal";
+import PackageCarousel from "../PackageCarousel";
 import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
+import { CollectionPermissionsModal } from "../ui/user/CollectionPermissionsModal";
 import ActiveFilters from "./ActiveFilters";
 
 interface BrowseProps {
@@ -138,6 +149,10 @@ interface BrowseProps {
    */
   isSmartSearchEnabled?: boolean;
   onSmartSearchToggle?: (enabled: boolean) => void;
+  selectedPackageIds?: string[];
+  onPackageSelect?: (packageId: string) => void;
+  onPackageDeselect?: (packageId: string) => void;
+  onDeselectAll?: () => void;
 }
 
 const defaultFilters: FilterState = getDefaultFilters();
@@ -202,6 +217,10 @@ export default function Browse({
   onCollectionNameUpdate,
   isSmartSearchEnabled: controlledSmartSearchEnabled,
   onSmartSearchToggle,
+  selectedPackageIds = [],
+  onPackageSelect,
+  onPackageDeselect,
+  onDeselectAll,
 }: BrowseProps) {
   const api = useApi();
   const { notifyCollectionModified, refreshExtraCollections } =
@@ -232,6 +251,8 @@ export default function Browse({
   const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
     useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCollectionPermissions, setShowCollectionPermissions] =
+    useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
@@ -242,6 +263,8 @@ export default function Browse({
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isSmartSearchEnabledLocal, setIsSmartSearchEnabledLocal] =
+    useState(false);
+  const [isPackageCarouselCollapsed, setIsPackageCarouselCollapsed] =
     useState(false);
   const isSmartSearchEnabled =
     typeof controlledSmartSearchEnabled === "boolean"
@@ -451,8 +474,7 @@ export default function Browse({
   }, [isMounted]);
 
   // Check if user can delete collection
-  // For custom collections (except Favorites), always show delete button
-  // The API will handle permission check when deletion is attempted
+  // For custom collections (except Favorites), use context grants
   useEffect(() => {
     if (!isCustomCollection) {
       setCanDeleteCollection(false);
@@ -468,10 +490,23 @@ export default function Browse({
       return;
     }
 
-    // For all other custom collections, show delete button
-    // API will validate permissions when deletion is attempted
-    setCanDeleteCollection(true);
-  }, [isCustomCollection, collectionName]);
+    if (!collectionId || !api.hasToken) {
+      setCanDeleteCollection(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const roles = await api.getCollectionGrants(collectionId);
+      if (cancelled) return;
+      const permissions = mapRolesToPermissions(roles, COLLECTION_ROLE_MAP);
+      setCanDeleteCollection(Boolean(permissions.delete));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, collectionId, collectionName, isCustomCollection]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
@@ -707,6 +742,42 @@ export default function Browse({
     isSmartSearchEnabled &&
     (searchTerm ?? "").trim().length === 0;
 
+  const datasetsWithMockFallback = useMemo(() => {
+    const byId = new Map(
+      datasets.map((d) => [d.id, d as DatasetWithCollections]),
+    );
+    for (const m of mockDatasets) {
+      if (!byId.has(m.id)) {
+        byId.set(m.id, m as DatasetWithCollections);
+      }
+    }
+    return Array.from(byId.values());
+  }, [datasets]);
+
+  const filteredPackages = useMemo(() => {
+    const term = (searchTerm ?? "").trim();
+    if (term.length === 0) return [];
+    const nameById = new Map<string, string>(
+      datasetsWithMockFallback.map((d) => {
+        const name =
+          "title" in d && d.title
+            ? String(d.title)
+            : "name" in d && d.name
+              ? String(d.name)
+              : d.id;
+        return [d.id, name];
+      }),
+    );
+    return filterPackagesBySearchTerm(
+      mockPackages,
+      term,
+      (id): string => nameById.get(id) ?? id,
+    );
+  }, [searchTerm, datasetsWithMockFallback]);
+
+  const shouldShowPackageCarousel =
+    showSearchAndFilters !== false && (searchTerm ?? "").trim().length > 0;
+
   return (
     <div className="flex relative min-h-screen">
       <div
@@ -824,6 +895,25 @@ export default function Browse({
                           >
                             <Tag className="w-4 h-4 text-icon" />
                             Rename
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowTitleActionsDropdown(false);
+                              if (collectionId) {
+                                setShowCollectionPermissions(true);
+                              }
+                            }}
+                            className={`flex items-center gap-3 w-full px-4 py-2 text-left transition-colors ${
+                              collectionId
+                                ? "text-gray-700 hover:bg-gray-50"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
+                          >
+                            <Settings className="w-4 h-4 text-icon" />
+                            Manage permissions
                           </button>
                           <button
                             type="button"
@@ -1026,6 +1116,46 @@ export default function Browse({
               )}
             </div>
           )}
+          {shouldShowPackageCarousel && (
+            <div
+              className="overflow-hidden px-4 sm:px-6 mb-4 animate-in"
+              role="region"
+              aria-label="Dataset packages suggestions"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setIsPackageCarouselCollapsed(!isPackageCarouselCollapsed)
+                }
+                className="flex w-full items-center justify-between text-left mb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+                aria-expanded={!isPackageCarouselCollapsed}
+              >
+                <h3 className="text-body-16-semibold text-gray-750">
+                  Dataset Packages
+                </h3>
+                {isPackageCarouselCollapsed ? (
+                  <ChevronDown
+                    className="w-5 h-5 text-icon shrink-0"
+                    aria-hidden
+                  />
+                ) : (
+                  <ChevronUp
+                    className="w-5 h-5 text-icon shrink-0"
+                    aria-hidden
+                  />
+                )}
+              </button>
+              {!isPackageCarouselCollapsed && (
+                <PackageCarousel
+                  packages={filteredPackages}
+                  datasets={datasetsWithMockFallback}
+                  selectedPackageIds={selectedPackageIds}
+                  onSelectPackage={onPackageSelect ?? (() => {})}
+                  onDeselectPackage={onPackageDeselect ?? (() => {})}
+                />
+              )}
+            </div>
+          )}
           {/* Smart search examples */}
           {shouldShowSmartExamples && (
             <SmartSearchExamples
@@ -1174,6 +1304,12 @@ export default function Browse({
         icon={<Trash2 className="w-8 h-8 text-red-500" />}
         isLoading={isDeleting}
       />
+      <CollectionPermissionsModal
+        isOpen={showCollectionPermissions}
+        collectionId={collectionId}
+        collectionName={collectionName || title}
+        onClose={() => setShowCollectionPermissions(false)}
+      />
 
       {/* Toast Notification */}
       <Toast
@@ -1197,12 +1333,16 @@ export default function Browse({
           >
             <SelectedDatasetsPanel
               selectedDatasetIds={currentSelectedDatasets}
-              datasets={datasets}
+              datasets={datasetsWithMockFallback}
+              selectedPackageIds={selectedPackageIds}
+              packages={mockPackages}
               onRemoveDataset={(id: string) => handleDatasetSelect(id, false)}
               onChatWithData={onChatWithData}
               onClose={handleClosePanel}
               onAddToCollection={onAddToCollection}
-              onDeselectAll={() => setCurrentSelectedDatasets([])}
+              onDeselectAll={
+                onDeselectAll ?? (() => setCurrentSelectedDatasets([]))
+              }
             />
           </div>
         </div>

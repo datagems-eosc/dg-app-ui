@@ -60,3 +60,15 @@ export const DataQualityTab: Story = {
     }
   },
 };
+
+export const PdfFile: Story = {
+  args: {
+    fileData: mockFilePreviewData["file-pdf"],
+  },
+};
+
+export const JsonFile: Story = {
+  args: {
+    fileData: mockFilePreviewData["file-json"],
+  },
+};

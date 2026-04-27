@@ -4,8 +4,11 @@ import { Button } from "@ui/Button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { APP_ROUTES } from "@/config/appUrls";
+import { getDisplayCategory } from "@/config/collectionConstants";
 import type { DatasetPlus } from "@/data/dataset";
 import { getFilePreviewData } from "@/data/mockFilePreview";
+import { getNavigationUrl } from "@/lib/utils";
 import DatasetDescriptionSection from "./DatasetDescriptionSection/DatasetDescriptionSection";
 import styles from "./DatasetDetailsPageContent.module.scss";
 import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
@@ -20,39 +23,41 @@ import FilePreview from "./FilePreview/FilePreview";
 
 interface DatasetDetailsPageContentProps {
   dataset: DatasetPlus;
+  returnToRoles?: boolean;
 }
 
 export default function DatasetDetailsPageContent({
   dataset,
+  returnToRoles = false,
 }: DatasetDetailsPageContentProps) {
   const router = useRouter();
   const [selectedFileId, setSelectedFileId] = useState<string>("file1-csv");
 
-  const handleFileSelect = (fileId: string, fileName: string) => {
-    // Map file IDs to mock data IDs
+  const handleFileSelect = (
+    fileId: string,
+    _fileName: string,
+    extension?: string,
+  ) => {
     const mockFileMap: Record<string, string> = {
       file1: "file1-csv",
       "csv-file1": "file1-csv",
       "csv-file2": "file1-csv",
       file2: "file2-xlsx",
       "excel-file1": "file2-xlsx",
+      "pdf-file1": "file-pdf",
+      "json-file1": "file-json",
     };
 
-    const mappedFileId = mockFileMap[fileId] || "file1-csv";
+    const mappedFileId = mockFileMap[fileId] ?? "file1-csv";
     setSelectedFileId(mappedFileId);
   };
 
   const filePreviewData = getFilePreviewData(selectedFileId);
 
-  const displayCategory = (() => {
-    if (dataset.collections && dataset.collections.length > 0) {
-      const firstCollection = dataset.collections[0];
-      return typeof firstCollection.name === "string"
-        ? firstCollection.name.replace(/ Collection$/i, "")
-        : firstCollection.name;
-    }
-    return dataset.category || "";
-  })();
+  const displayCategory = getDisplayCategory(
+    dataset.collections,
+    dataset.category || "",
+  );
 
   const displayAccess =
     dataset.access === "Open Access" ? "Open Access" : "Restricted";
@@ -70,7 +75,11 @@ export default function DatasetDetailsPageContent({
           <div className={styles.datasetDetailsPageContent__header}>
             <div className={styles.datasetDetailsPageContent__actions}>
               <button
-                onClick={() => router.back()}
+                onClick={() =>
+                  returnToRoles
+                    ? router.push(getNavigationUrl(APP_ROUTES.SETTINGS_ROLES))
+                    : router.back()
+                }
                 className={styles.datasetDetailsPageContent__backButton}
               >
                 <ArrowLeft

@@ -1,9 +1,11 @@
 "use client";
 
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./Checkbox";
+import { Chip } from "./Chip";
+import { Input } from "./Input";
 
 interface MultiSelectOption {
   value: string;
@@ -18,6 +20,10 @@ interface MultiSelectProps {
   placeholder?: string;
   searchable?: boolean;
   className?: string;
+  variant?: "dropdown" | "inline";
+  searchPlaceholder?: string;
+  noOptionsText?: string;
+  listClassName?: string;
 }
 
 export function MultiSelect({
@@ -27,6 +33,10 @@ export function MultiSelect({
   placeholder = "Select options...",
   searchable = false,
   className,
+  variant = "dropdown",
+  searchPlaceholder = "Search...",
+  noOptionsText = "No options found",
+  listClassName,
 }: MultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,14 +77,72 @@ export function MultiSelect({
     onChange(value.filter((v) => v !== optionValue));
   };
 
-  const getSelectedLabels = () => {
-    return value.map((v) => {
+  const getSelectedLabels = () =>
+    value.map((v) => {
       const option = options.find((o) => o.value === v);
       return option ? option.label : v;
     });
-  };
 
-  // If 7 or fewer options, show checkboxes directly without dropdown
+  const shouldShowSearch =
+    searchable && (variant === "inline" || options.length > 7);
+
+  if (variant === "inline") {
+    return (
+      <div className={cn("space-y-3", className)}>
+        {value.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {getSelectedLabels().map((label, index) => (
+              <Chip
+                key={`${value[index]}-${label}`}
+                color="grey"
+                size="xs"
+                onRemove={() => handleRemoveOption(value[index])}
+              >
+                {label}
+              </Chip>
+            ))}
+          </div>
+        )}
+        {shouldShowSearch && (
+          <Input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={searchPlaceholder}
+            rightIcon={<Search className="w-4 h-4 icon" />}
+          />
+        )}
+        <div
+          className={cn(
+            "max-h-56 overflow-y-auto border border-slate-200 rounded-md",
+            listClassName,
+          )}
+        >
+          {filteredOptions.map((option) => (
+            <div
+              key={option.value}
+              className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-200 last:border-b-0"
+              onClick={() => handleToggleOption(option.value)}
+            >
+              <Checkbox
+                id={`multiselect-${option.value}`}
+                checked={value.includes(option.value)}
+                onChange={() => handleToggleOption(option.value)}
+                label={option.label}
+                className="w-full"
+              />
+            </div>
+          ))}
+          {filteredOptions.length === 0 && (
+            <div className="px-3 py-2 text-slate-400 text-body-14-regular">
+              {noOptionsText}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (options.length <= 7) {
     return (
       <div className={cn("space-y-3", className)}>
@@ -91,9 +159,6 @@ export function MultiSelect({
     );
   }
 
-  // Show search only if searchable is true and there are more than 7 options
-  const shouldShowSearch = searchable && options.length > 7;
-
   return (
     <div className={cn("relative", className)} ref={dropdownRef}>
       <div
@@ -106,23 +171,21 @@ export function MultiSelect({
               {placeholder}
             </span>
           ) : (
-            getSelectedLabels().map((label, index) => (
-              <div
-                key={index}
-                className="inline-flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded text-descriptions-12-medium"
-              >
-                {label}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveOption(value[index]);
-                  }}
-                  className="ml-1 hover:text-blue-900"
+            <div
+              className="flex flex-wrap gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {getSelectedLabels().map((label, index) => (
+                <Chip
+                  key={`${value[index]}-${label}`}
+                  color="grey"
+                  size="xs"
+                  onRemove={() => handleRemoveOption(value[index])}
                 >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))
+                  {label}
+                </Chip>
+              ))}
+            </div>
           )}
         </div>
         <ChevronDown
@@ -137,16 +200,13 @@ export function MultiSelect({
         <div className="absolute top-full mt-1 w-full bg-white rounded-md shadow-lg border border-slate-200 py-1 z-50 max-h-60 overflow-y-auto">
           {shouldShowSearch && (
             <div className="p-2 border-b border-slate-200">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-850 placeholder-slate-400 text-body-14-regular"
-                />
-              </div>
+              <Input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={searchPlaceholder}
+                rightIcon={<Search className="w-4 h-4 icon" />}
+              />
             </div>
           )}
           <div className="max-h-48 overflow-y-auto">
@@ -167,7 +227,7 @@ export function MultiSelect({
             ))}
             {filteredOptions.length === 0 && (
               <div className="px-3 py-2 text-slate-400 text-body-14-regular">
-                No options found
+                {noOptionsText}
               </div>
             )}
           </div>

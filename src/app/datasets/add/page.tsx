@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import AddDatasetForm from "@/components/AddDatasetForm";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -16,7 +17,9 @@ export default function AddDatasetPage() {
           </p>
         </div>
 
-        <AddDatasetForm />
+        <Suspense fallback={null}>
+          <AddDatasetForm />
+        </Suspense>
       </div>
     </DashboardLayout>
   );

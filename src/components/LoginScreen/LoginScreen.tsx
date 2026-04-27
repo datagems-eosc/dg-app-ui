@@ -2,6 +2,7 @@
 
 import { Button } from "@ui/Button";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { getBasePath } from "@/lib/utils";
 
 export default function LoginScreen() {
   const { data: session, status } = useSession();
@@ -12,7 +13,7 @@ export default function LoginScreen() {
       <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg flex flex-col items-center">
         <div className="w-full mb-10">
           <img
-            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.svg`}
+            src={`${getBasePath()}/logo.svg`}
             alt="DataGEMS Logo"
             className="w-full h-full object-contain"
           />

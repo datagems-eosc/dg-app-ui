@@ -43,20 +43,64 @@ export const logApiResponse = (
   );
 };
 
+const safeSerialize = (value: unknown): unknown => {
+  if (value === null || value === undefined) return value;
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  )
+    return value;
+  if (typeof value === "object") {
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch {
+      return Object.prototype.toString.call(value);
+    }
+  }
+  return String(value);
+};
+
+const getErrorDisplay = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "error" in error)
+    return String((error as { error?: unknown }).error);
+  if (typeof error === "object" && error !== null && "message" in error)
+    return String((error as { message?: unknown }).message);
+  return String(error);
+};
+
 export const logApiError = (
   operation: string,
-  error: any,
-  details?: Record<string, any>,
+  error: unknown,
+  details?: Record<string, unknown>,
 ) => {
-  apiLogger.error(
-    {
+  try {
+    const errorMsg = getErrorDisplay(error);
+    const safeDetails =
+      details && typeof details === "object"
+        ? (safeSerialize(details) as Record<string, unknown>)
+        : {};
+    const payload = {
       operation,
       type: "error",
-      error: error?.message || error,
-      ...details,
-    },
-    `API Error: ${operation}`,
-  );
+      error: errorMsg,
+      ...safeDetails,
+    };
+    apiLogger.error(payload, `API Error: ${operation}`);
+  } catch (_fallbackErr) {
+    try {
+      const errorMsg = getErrorDisplay(error);
+      apiLogger.error(
+        { operation, type: "error", error: errorMsg },
+        `API Error: ${operation}`,
+      );
+    } catch {
+      if (typeof console !== "undefined" && console.error) {
+        console.error("[logApiError] Failed to log:", operation, error);
+      }
+    }
+  }
 };
 
 // Helper functions for different log levels

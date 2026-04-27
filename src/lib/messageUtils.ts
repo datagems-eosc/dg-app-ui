@@ -42,6 +42,7 @@ export function parseConversationMessage(
   } else if (msg.kind === 1) {
     // AI message (old format) - extract dataset names from payload array
     let relatedDatasetIds: string[] = [];
+    let datasetProposal: Array<{ id: string; title: string }> = [];
     if (Array.isArray(msg.data?.payload)) {
       const names = (msg.data.payload as DatasetPayloadItem[])
         .map((item) => item.dataset?.name)
@@ -50,6 +51,16 @@ export function parseConversationMessage(
       relatedDatasetIds = (msg.data.payload as DatasetPayloadItem[])
         .map((item) => item.dataset?.id)
         .filter((id: string | undefined) => typeof id === "string") as string[];
+
+      datasetProposal = (msg.data.payload as DatasetPayloadItem[])
+        .map((item) => ({
+          id: item.dataset?.id,
+          title: item.dataset?.name,
+        }))
+        .filter(
+          (entry): entry is { id: string; title: string } =>
+            typeof entry.id === "string" && typeof entry.title === "string",
+        );
 
       if (names.length > 0) {
         if (names.length === 1) {
@@ -78,6 +89,7 @@ export function parseConversationMessage(
       tableData,
       sources: relatedDatasetIds.length,
       relatedDatasetIds,
+      datasetProposal,
     };
   } else if (msg.kind === 2) {
     // User message (new format) - extract question and datasetIds
@@ -112,6 +124,7 @@ export function parseConversationMessage(
     const relatedDatasetIds: string[] = [];
     let latitude: number | undefined;
     let longitude: number | undefined;
+    let sqlQuery: string | undefined;
 
     // Extract coordinates from InputParams if available
     if (
@@ -149,6 +162,19 @@ export function parseConversationMessage(
         payload as { entries?: Array<{ result?: { table?: any } }> }
       ).entries;
       if (entries && entries.length > 0 && entries[0].result?.table) {
+        const entrySql = (entries[0] as any)?.process?.sql as
+          | { query?: unknown; pattern?: unknown }
+          | undefined;
+        const extractedSql =
+          typeof entrySql?.query === "string"
+            ? entrySql.query
+            : typeof entrySql?.pattern === "string"
+              ? entrySql.pattern
+              : null;
+        if (extractedSql && extractedSql.trim().length > 0) {
+          sqlQuery = extractedSql.trim();
+        }
+
         tableData = entries[0].result.table;
         const table = entries[0].result.table;
         if (table.columns && table.rows) {
@@ -169,6 +195,7 @@ export function parseConversationMessage(
       content,
       timestamp: msg.createdAt,
       tableData,
+      sqlQuery,
       sources: relatedDatasetIds.length,
       relatedDatasetIds,
       latitude,
@@ -222,6 +249,7 @@ export function parseSearchInDataExploreResponse(
 
   const result = response.result;
   let tableData: Message["tableData"] | undefined;
+  let sqlQuery: string | undefined;
   let latitude: number | undefined;
   let longitude: number | undefined;
   let content = "Analysis completed.";
@@ -244,6 +272,19 @@ export function parseSearchInDataExploreResponse(
     result.entries.length > 0
   ) {
     const firstEntry = result.entries[0];
+    const entrySql = (firstEntry as any)?.process?.sql as
+      | { query?: unknown; pattern?: unknown }
+      | undefined;
+    const extractedSql =
+      typeof entrySql?.query === "string"
+        ? entrySql.query
+        : typeof entrySql?.pattern === "string"
+          ? entrySql.pattern
+          : null;
+    if (extractedSql && extractedSql.trim().length > 0) {
+      sqlQuery = extractedSql.trim();
+    }
+
     const extractedTableData = firstEntry?.result?.table;
     if (extractedTableData) {
       tableData = extractedTableData;
@@ -265,6 +306,7 @@ export function parseSearchInDataExploreResponse(
     content,
     timestamp: new Date(),
     tableData,
+    sqlQuery,
     sources: datasetIds.length,
     relatedDatasetIds: datasetIds,
     latitude,

@@ -22,13 +22,11 @@ import HierarchicalDropdown, {
 import { Input } from "../Input";
 import { Select } from "../Select";
 import { LicenseCard } from "./LicenseCard";
-import { VisibilityCard } from "./VisibilityCard";
 
 interface ClassificationData {
   fieldsOfScience: string[];
   collection: string;
   license: string;
-  visibility: "open" | "restricted" | "";
 }
 
 interface ClassificationProps {
@@ -38,7 +36,6 @@ interface ClassificationProps {
     fieldsOfScience?: string;
     collection?: string;
     license?: string;
-    visibility?: string;
   };
 }
 
@@ -294,10 +291,10 @@ export function Classification({
         )}
       </div>
 
-      {/* License */}
       <div>
         <Select
           label="License"
+          required
           groupedOptions={groupedLicenseOptions}
           value={data.license}
           onChange={handleLicenseChange}
@@ -328,22 +325,6 @@ export function Classification({
               primaryUrl={selectedLicense.urls?.[0]}
             />
           )
-        )}
-      </div>
-
-      {/* Visibility */}
-      <div>
-        <h4 className="text-body-14-medium sm:text-sm font-medium text-gray-750 mb-3">
-          Visibility <span className="ml-0.5 text-red-550">*</span>
-        </h4>
-        <VisibilityCard
-          value={data.visibility}
-          onChange={(value) => handleFieldChange("visibility", value)}
-        />
-        {errors.visibility && (
-          <p className="mt-1 text-descriptions-12-regular text-red-500">
-            {errors.visibility}
-          </p>
         )}
       </div>
     </div>
