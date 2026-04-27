@@ -3,22 +3,24 @@ services:
     build:
       context: .
       args:
-        NEXT_PUBLIC_BASE_PATH: /ui
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - NEXT_TELEMETRY_DISABLED=1
       - KEYCLOAK_AUTH_GRAND_TYPE=PKCE
-      - KEYCLOAK_CLIENT_ID=dg-app-ui
-      - KEYCLOAK_CLIENT_SECRET="" # (empty string, not used)
-      - KEYCLOAK_ISSUER=https://datagems-dev.scayle.es/oauth/realms/dev
-      - NEXT_PUBLIC_APP_BASE_URL=http://localhost:${FRONTEND_PORT:-3000}
-      - NEXTAUTH_URL=http://localhost:${FRONTEND_PORT:-3000}
-      - NEXTAUTH_SECRET=your-secret-key-here-change-in-production
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-dg-app-ui}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET:-}
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER:?KEYCLOAK_ISSUER must be set in .env}
+      - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-}
+      - NEXT_PUBLIC_APP_BASE_URL=${NEXT_PUBLIC_APP_BASE_URL:?NEXT_PUBLIC_APP_BASE_URL must be set in .env}
+      - NEXT_PUBLIC_DATAGEMS_API_BASE_URL=${NEXT_PUBLIC_DATAGEMS_API_BASE_URL:-https://datagems-dev.scayle.es}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:?NEXTAUTH_URL must be set in .env}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET must be set in .env}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
