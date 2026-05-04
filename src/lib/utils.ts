@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from "clsx";
+import { getSession } from "next-auth/react";
 import { twMerge } from "tailwind-merge";
 import { publicEnv } from "./env";
 import { logError } from "./logger";
@@ -78,26 +79,68 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * Wrapper for fetch that logs out the user (redirects to /logout) on 401 Unauthorized.
- * Use this for all authenticated API calls in the browser.
+ * Wrapper for fetch that handles auth on 401 responses:
+ *   1. Forces a session refresh via getSession() — NextAuth's JWT callback
+ *      runs and exchanges the refresh_token for a new access_token if the
+ *      current one has just expired.
+ *   2. Retries the original request once with the fresh token.
+ *   3. Only if the retry still returns 401 (or refresh itself failed) does
+ *      the user get redirected to /logout.
  *
- * @param input - RequestInfo (URL or Request object)
- * @param init - RequestInit (fetch options)
- * @returns Promise<Response>
+ * Use this for all authenticated API calls in the browser.
  */
 export async function fetchWithAuth(
   input: RequestInfo,
   init?: RequestInit,
 ): Promise<Response> {
-  const response = await fetch(input, init);
-  if (response.status === 401 && typeof window !== "undefined") {
-    if (window.location.pathname !== getLogoutUrl()) {
-      window.location.href = getLogoutUrl();
-    }
-    // Prevent further code execution
-    return new Response(null, { status: 401, statusText: "Unauthorized" });
+  let response = await fetch(input, init);
+
+  if (response.status !== 401 || typeof window === "undefined") {
+    return response;
   }
+
+  let freshSession: any = null;
+  try {
+    freshSession = await getSession();
+  } catch (error) {
+    logError("Session refresh failed during 401 retry", error);
+  }
+
+  const newToken: string | undefined = freshSession?.accessToken;
+  const refreshFailed = freshSession?.error === "RefreshAccessTokenError";
+
+  if (!newToken || refreshFailed) {
+    return forceLogoutResponse();
+  }
+
+  const retryHeaders = new Headers(init?.headers);
+  const previousToken = retryHeaders
+    .get("Authorization")
+    ?.replace(/^Bearer\s+/i, "");
+
+  if (previousToken && previousToken === newToken) {
+    return forceLogoutResponse();
+  }
+
+  retryHeaders.set("Authorization", `Bearer ${newToken}`);
+  if (retryHeaders.has("oauth2")) {
+    retryHeaders.set("oauth2", newToken);
+  }
+
+  response = await fetch(input, { ...init, headers: retryHeaders });
+
+  if (response.status === 401) {
+    return forceLogoutResponse();
+  }
+
   return response;
+}
+
+function forceLogoutResponse(): Response {
+  if (window.location.pathname !== getLogoutUrl()) {
+    window.location.href = getLogoutUrl();
+  }
+  return new Response(null, { status: 401, statusText: "Unauthorized" });
 }
 
 /**
