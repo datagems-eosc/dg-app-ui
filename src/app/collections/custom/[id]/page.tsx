@@ -1,5 +1,6 @@
 "use client";
 
+import { Toast } from "@ui/Toast";
 import { Edit3, Plus, Save, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,8 +9,11 @@ import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
 import { APP_ROUTES } from "@/config/appUrls";
+import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { mockDatasets } from "@/data/dataset";
+import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function CustomCollectionPage() {
@@ -34,6 +38,10 @@ export default function CustomCollectionPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editedDatasetIds, setEditedDatasetIds] = useState<string[]>([]);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const api = useApi();
 
   useEffect(() => {
     // Non-chat page: always clear saved selection to avoid leakage
@@ -140,8 +148,35 @@ export default function CustomCollectionPage() {
     alert("Collection updated successfully!");
   };
 
-  const handleRemoveDataset = (datasetId: string) => {
+  const showToastFromConfig = (config: {
+    message: string;
+    type: "success" | "error";
+  }) => {
+    setToastType(config.type);
+    setToastMessage(config.message);
+    setShowToast(true);
+  };
+
+  const handleRemoveDataset = async (datasetId: string) => {
+    if (!collection?.id) return;
+    // Optimistic UI update
+    const previousIds = editedDatasetIds;
     setEditedDatasetIds((prev) => prev.filter((id) => id !== datasetId));
+    try {
+      await api.removeDatasetFromUserCollection(collection.id, datasetId);
+      notifyCollectionModified();
+      showToastFromConfig(
+        TOAST_MESSAGES.datasetRemovedFromCollection(collection.name),
+      );
+    } catch (error) {
+      logError("Failed to remove dataset from collection", error, {
+        collectionId: collection.id,
+        datasetId,
+      });
+      // Revert on failure
+      setEditedDatasetIds(previousIds);
+      showToastFromConfig(TOAST_MESSAGES.datasetRemoveFailed);
+    }
   };
 
   const handleAddDatasetsFromModal = (newSelectedDatasets: string[]) => {
@@ -268,6 +303,13 @@ export default function CustomCollectionPage() {
           onClose={() => setShowAddDatasetsModal(false)}
           datasets={mockDatasets}
           onSelectedDatasetsChange={handleAddDatasetsFromModal}
+        />
+
+        <Toast
+          message={toastMessage}
+          isVisible={showToast}
+          onClose={() => setShowToast(false)}
+          type={toastType}
         />
       </div>
     </DashboardLayout>
