@@ -14,6 +14,10 @@ export const TOAST_MESSAGES: {
   readonly datasetRemovedFromCollection: (
     collectionName?: string,
   ) => ToastConfig;
+  readonly datasetsRemovedFromCollection: (
+    count: number,
+    collectionName?: string,
+  ) => ToastConfig;
   readonly datasetRemoveFailed: ToastConfig;
   readonly collectionDeleted: ToastConfig;
   readonly collectionDeleteFailed: ToastConfig;

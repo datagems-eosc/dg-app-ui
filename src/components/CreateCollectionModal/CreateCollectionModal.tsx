@@ -19,9 +19,6 @@ interface CreateCollectionModalProps {
   isVisible: boolean;
   onClose: () => void;
   onCreateCollection?: (name: string) => void;
-  onDatasetsAddedToCollections?: (
-    addedCollections: { id: string; name: string }[],
-  ) => void;
   selectedDatasets: string[];
   datasets: Dataset[];
 }
@@ -32,7 +29,6 @@ export default function CreateCollectionModal({
   isVisible,
   onClose,
   onCreateCollection,
-  onDatasetsAddedToCollections,
   selectedDatasets,
   datasets,
 }: CreateCollectionModalProps) {
@@ -133,9 +129,6 @@ export default function CreateCollectionModal({
 
         if (selectedDatasets.length > 0) {
           showDatasetAddedToast([newCollectionName]);
-          onDatasetsAddedToCollections?.([
-            { id: response.id, name: newCollectionName },
-          ]);
         }
 
         if (onCreateCollection) {
@@ -193,7 +186,6 @@ export default function CreateCollectionModal({
       // Also notify that collections have been modified to refresh sidebar
       notifyCollectionModified();
       showDatasetAddedToast(targetCollections.map((c) => c.name));
-      onDatasetsAddedToCollections?.(targetCollections);
     } catch (error) {
       logError("Failed to add datasets to collections", error);
       alert("Failed to add datasets to collections. Please try again.");
