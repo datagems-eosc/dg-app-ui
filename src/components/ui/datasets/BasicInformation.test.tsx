@@ -7,7 +7,6 @@ type BasicInformationData = {
   headline: string;
   description: string;
   keywords: string[];
-  authors: string;
 };
 
 const initialData: BasicInformationData = {
@@ -15,23 +14,9 @@ const initialData: BasicInformationData = {
   headline: "",
   description: "",
   keywords: [],
-  authors: "",
 };
 
 describe("BasicInformation", () => {
-  it("renders authors field with counter and max length", () => {
-    render(
-      <BasicInformation data={initialData} onChange={() => {}} errors={{}} />,
-    );
-
-    expect(screen.getByPlaceholderText("Enter authors")).toBeInTheDocument();
-    expect(screen.getAllByText("0/250").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByPlaceholderText("Enter authors")).toHaveAttribute(
-      "maxLength",
-      "250",
-    );
-  });
-
   it("renders all basic info fields", () => {
     render(
       <BasicInformation data={initialData} onChange={() => {}} errors={{}} />,
@@ -48,8 +33,14 @@ describe("BasicInformation", () => {
         "Provide a detailed description of the dataset contents",
       ).length,
     ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByPlaceholderText("Enter authors").length,
-    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not render an Authors field", () => {
+    render(
+      <BasicInformation data={initialData} onChange={() => {}} errors={{}} />,
+    );
+
+    expect(screen.queryByPlaceholderText("Enter authors")).toBeNull();
+    expect(screen.queryByText(/^Authors$/)).toBeNull();
   });
 });
