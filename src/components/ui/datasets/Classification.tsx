@@ -21,12 +21,15 @@ import HierarchicalDropdown, {
 } from "../HierarchicalDropdown";
 import { Input } from "../Input";
 import { Select } from "../Select";
+import { KeywordInput } from "./KeywordInput";
 import { LicenseCard } from "./LicenseCard";
 
 interface ClassificationData {
   fieldsOfScience: string[];
   collection: string;
   license: string;
+  languages: string[];
+  countries: string[];
 }
 
 interface ClassificationProps {
@@ -36,6 +39,8 @@ interface ClassificationProps {
     fieldsOfScience?: string;
     collection?: string;
     license?: string;
+    languages?: string;
+    countries?: string;
   };
 }
 
@@ -327,6 +332,24 @@ export function Classification({
           )
         )}
       </div>
+
+      <KeywordInput
+        label="Languages"
+        value={data.languages}
+        onChange={(languages) => handleFieldChange("languages", languages)}
+        placeholder="Enter language codes separate with commas e.g. en, de, fr"
+        error={errors.languages}
+        required={false}
+      />
+
+      <KeywordInput
+        label="Country"
+        value={data.countries}
+        onChange={(countries) => handleFieldChange("countries", countries)}
+        placeholder="Enter country-code separate with commas e.g. US, DE, IT"
+        error={errors.countries}
+        required={false}
+      />
     </div>
   );
 }
