@@ -54,66 +54,6 @@
     gap: $spacing-sm;
   }
 
-  &__chipWithRemove {
-    display: inline-flex;
-    align-items: center;
-    gap: $spacing-xs;
-    background: $color-background-secondary;
-    border: 1px solid $color-border;
-    @include border-radius-sm;
-    padding: 2px $spacing-sm;
-    max-width: 100%;
-  }
-
-  &__chipLabel {
-    @include font-base;
-    @include text-base;
-    @include text-primary;
-    line-height: 1.5;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 200px;
-  }
-
-  &__chipRemoveBtn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: transparent;
-    padding: 2px;
-    cursor: pointer;
-    color: inherit;
-    border-radius: 50%;
-
-    &:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.06);
-    }
-
-    &:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    &:focus-visible {
-      outline: 2px solid currentColor;
-      outline-offset: 1px;
-    }
-  }
-
-  &__chipRemoveIcon {
-    width: 14px;
-    height: 14px;
-  }
-
-  &__emptyText {
-    @include font-base;
-    @include text-base;
-    line-height: 1.5;
-    color: rgba(0, 0, 0, 0.5);
-  }
-
   &__link {
     @include font-base;
     @include text-base;

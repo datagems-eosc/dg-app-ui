@@ -179,6 +179,72 @@ export default function CustomCollectionPage() {
     }
   };
 
+  const handleBulkRemoveSelectedDatasets = async (datasetIds: string[]) => {
+    if (!collection?.id || datasetIds.length === 0) return;
+    const collectionId = collection.id;
+    const collectionName = collection.name;
+
+    // Optimistic UI: remove from edited list (used for display in edit mode)
+    // and clear selection.
+    const previousIds = editedDatasetIds;
+    const previousSelection = selectedDatasets;
+    const removeSet = new Set(datasetIds);
+    setEditedDatasetIds((prev) => prev.filter((id) => !removeSet.has(id)));
+    setSelectedDatasets([]);
+
+    const results = await Promise.allSettled(
+      datasetIds.map((id) =>
+        api.removeDatasetFromUserCollection(collectionId, id),
+      ),
+    );
+    const failures = results
+      .map((result, index) => ({ result, datasetId: datasetIds[index] }))
+      .filter(({ result }) => result.status === "rejected");
+
+    if (failures.length === 0) {
+      notifyCollectionModified();
+      showToastFromConfig(
+        datasetIds.length === 1
+          ? TOAST_MESSAGES.datasetRemovedFromCollection(collectionName)
+          : TOAST_MESSAGES.datasetsRemovedFromCollection(
+              datasetIds.length,
+              collectionName,
+            ),
+      );
+      return;
+    }
+
+    failures.forEach(({ result, datasetId }) => {
+      if (result.status === "rejected") {
+        logError(
+          "Failed to remove dataset from collection (bulk)",
+          result.reason,
+          {
+            collectionId,
+            datasetId,
+          },
+        );
+      }
+    });
+
+    // Revert UI for failed datasets — only their IDs come back
+    const failedIds = new Set(failures.map((f) => f.datasetId));
+    setEditedDatasetIds((current) => {
+      const merged = [...current];
+      for (const id of previousIds) {
+        if (failedIds.has(id) && !merged.includes(id)) merged.push(id);
+      }
+      return merged;
+    });
+    setSelectedDatasets(previousSelection.filter((id) => failedIds.has(id)));
+
+    // Some succeeded — still notify so sidebar refreshes
+    if (failures.length < datasetIds.length) {
+      notifyCollectionModified();
+    }
+    showToastFromConfig(TOAST_MESSAGES.datasetRemoveFailed);
+  };
+
   const handleAddDatasetsFromModal = (newSelectedDatasets: string[]) => {
     // Add any new datasets that aren't already in the collection
     const datasetsToAdd = newSelectedDatasets.filter(
@@ -284,6 +350,7 @@ export default function CustomCollectionPage() {
           onAddToCollection={handleAddToCollection}
           isEditMode={isEditMode}
           onRemoveDataset={isEditMode ? handleRemoveDataset : undefined}
+          onBulkRemoveDatasets={handleBulkRemoveSelectedDatasets}
           customActionButtons={getCustomActionButtons()}
           isCustomCollection={true}
           collectionName={collection.name}

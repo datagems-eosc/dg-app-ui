@@ -17,6 +17,12 @@ export const TOAST_MESSAGES = {
       : "Dataset removed from collection.",
     type: "success",
   }),
+  datasetsRemovedFromCollection: (count, collectionName) => ({
+    message: collectionName
+      ? `${count} datasets removed from ${collectionName}.`
+      : `${count} datasets removed from collection.`,
+    type: "success",
+  }),
   datasetRemoveFailed: {
     message: "Failed to remove dataset from collection. Please try again.",
     type: "error",

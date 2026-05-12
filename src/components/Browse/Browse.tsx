@@ -76,6 +76,7 @@ interface BrowseProps {
   isModal?: boolean;
   isEditMode?: boolean;
   onRemoveDataset?: (datasetId: string) => void;
+  onBulkRemoveDatasets?: (datasetIds: string[]) => Promise<void> | void;
   customActionButtons?: Array<{
     label: string;
     icon?: React.ComponentType<{ className?: string }>;
@@ -194,6 +195,7 @@ export default function Browse({
   isModal = false,
   isEditMode = false,
   onRemoveDataset,
+  onBulkRemoveDatasets,
   customActionButtons,
   showAddButton = true, // default true for backward compatibility
   showSearchAndFilters = true, // Default to true
@@ -1032,18 +1034,24 @@ export default function Browse({
                           <Tag className="w-4 h-4 text-icon" />
                           Rename
                         </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowActionsDropdown(false);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4 text-icon" />
-                          Delete
-                        </button>
+                        {onBulkRemoveDatasets && (
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowActionsDropdown(false);
+                              if (currentSelectedDatasets.length === 0) return;
+                              await onBulkRemoveDatasets([
+                                ...currentSelectedDatasets,
+                              ]);
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-icon" />
+                            Delete
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
