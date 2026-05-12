@@ -28,6 +28,10 @@ ARG NEXT_PUBLIC_BASE_PATH=""
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+# CI=true tells pnpm that this is a non-interactive environment;
+# without it pnpm aborts on no-TTY when it wants to purge stale
+# node_modules (ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY).
+ENV CI=true
 RUN pnpm run build
 
 # Production image, copy all the files and run next
