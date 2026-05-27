@@ -13,7 +13,7 @@ export default function Home() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace(getNavigationUrl(APP_ROUTES.BROWSE));
+      router.replace(getNavigationUrl(APP_ROUTES.DASHBOARD));
     }
   }, [status, router]);
 

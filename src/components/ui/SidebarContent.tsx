@@ -7,6 +7,7 @@ import {
   FolderSearch,
   GraduationCap,
   Languages,
+  LayoutDashboard,
   Settings,
   Star,
 } from "lucide-react";
@@ -92,6 +93,12 @@ const getCollectionIcon = (code?: string, className?: string) => {
 
 // Menu items array
 const menuItems = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    href: APP_ROUTES.DASHBOARD,
+    icon: LayoutDashboard,
+  },
   {
     id: "browse",
     label: "Browse",
