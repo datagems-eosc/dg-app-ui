@@ -12,6 +12,7 @@ export const APP_ROUTES = {
 
   // Main pages
   HOME: "/",
+  DASHBOARD: "/dashboard",
   BROWSE: "/browse",
   SETTINGS: "/settings",
   SETTINGS_ROLES: "/settings?tab=roles",
