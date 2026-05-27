@@ -10,12 +10,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { generateChatUrl } from "@/config/appUrls";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useApi } from "@/hooks/useApi";
 import { logError } from "@/lib/logger";
-import { createUrl } from "@/lib/utils";
-import type { ApiCollection } from "@/types/collection";
 import CollectionSettingsModal from "../CollectionSettingsModal";
 
 interface DashboardLayoutProps {
@@ -46,13 +43,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  const {
-    apiCollections,
-    extraCollections,
-    isLoadingApiCollections,
-    isLoadingExtraCollections,
-    refreshAllCollections,
-  } = useCollections();
+  const { refreshAllCollections } = useCollections();
   const { data: session } = useSession();
 
   // Extract conversation ID from pathname if we're on a chat page
@@ -73,95 +64,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (session) {
       refreshAllCollections();
     }
-  };
-
-  // Function to sort and filter collections based on localStorage settings
-  const getSortedAndFilteredCollections = (
-    collections: ApiCollection[],
-    isExtra = false,
-  ) => {
-    const savedSettings =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("collectionSettings")
-        : null;
-    let settingsData: Record<string, { isVisible: boolean; order: number }> =
-      {};
-
-    if (savedSettings) {
-      try {
-        settingsData = JSON.parse(savedSettings);
-      } catch (error) {
-        logError("Error parsing collection settings", error);
-      }
-    }
-
-    // Add settings data to collections
-    const collectionsWithSettings = collections.map((collection, index) => {
-      const settings = settingsData[collection.id];
-      return {
-        ...collection,
-        isVisible: settings?.isVisible ?? true,
-        order: settings?.order ?? index,
-      };
-    });
-
-    // Filter visible collections and sort by order
-    return collectionsWithSettings
-      .filter((collection) => collection.isVisible)
-      .sort((a, b) => a.order - b.order);
-  };
-
-  // Function to get collections with default ordering when localStorage is empty
-  const getCollectionsWithDefaultOrder = () => {
-    const savedSettings =
-      typeof window !== "undefined"
-        ? window.localStorage.getItem("collectionSettings")
-        : null;
-
-    if (!savedSettings) {
-      // When localStorage is empty, return extraCollections first, then apiCollections
-      const extraCollectionsWithDefaults = extraCollections.map(
-        (collection, index) => ({
-          ...collection,
-          isVisible: true,
-          order: index, // Start ordering from 0 for custom collections
-        }),
-      );
-
-      const apiCollectionsWithDefaults = apiCollections.map(
-        (collection, index) => ({
-          ...collection,
-          isVisible: true,
-          order: extraCollectionsWithDefaults.length + index, // Start ordering after custom collections
-        }),
-      );
-
-      const byId = new Map();
-      [...extraCollectionsWithDefaults, ...apiCollectionsWithDefaults].forEach(
-        (collection) => {
-          if (collection.id && !byId.has(collection.id)) {
-            byId.set(collection.id, collection);
-          }
-        },
-      );
-
-      return Array.from(byId.values());
-    }
-
-    // When localStorage has settings, use the existing logic but prioritize custom collections
-    const customCollections = getSortedAndFilteredCollections(extraCollections);
-
-    const sortedApiCollections =
-      getSortedAndFilteredCollections(apiCollections);
-
-    const byId = new Map();
-    [...customCollections, ...sortedApiCollections].forEach((collection) => {
-      if (collection.id && !byId.has(collection.id)) {
-        byId.set(collection.id, collection);
-      }
-    });
-
-    return Array.from(byId.values());
   };
 
   // Handle mobile detection and sidebar state
@@ -249,14 +151,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  const handleCollectionAskQuestion = (collectionId: string) => {
-    const url = createUrl(generateChatUrl({ collection: collectionId }));
-    router.push(url);
-    if (isMobile) {
-      setIsSidebarOpen(false);
-    }
-  };
-
   const handleDeleteConversation = (
     conversationId: string,
     conversationName: string,
@@ -339,16 +233,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <SidebarContent
           isSidebarOpen={isSidebarOpen}
           isMobile={isMobile}
-          isLoadingApiCollections={isLoadingApiCollections}
-          isLoadingExtraCollections={isLoadingExtraCollections}
-          finalSortedCollections={getCollectionsWithDefaultOrder()}
-          extraCollections={extraCollections}
           session={session}
           currentConversationId={currentConversationId}
           conversations={conversations}
-          onCollectionSettingsOpen={() => setIsCollectionSettingsOpen(true)}
           onMobileSidebarClose={() => isMobile && setIsSidebarOpen(false)}
-          onCollectionAskQuestion={handleCollectionAskQuestion}
           onDeleteConversation={handleDeleteConversation}
           onConversationUpdate={handleConversationUpdate}
           setConversations={setConversations}
