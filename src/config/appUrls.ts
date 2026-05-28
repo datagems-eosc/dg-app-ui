@@ -33,10 +33,14 @@ export const APP_ROUTES = {
   COLLECTIONS: {
     CUSTOM: (id: string) => `/collections/custom/${id}`,
     FAVORITES: "/collections/favorites",
-    LANGUAGE: "/collections/language",
-    LIFELONG_LEARNING: "/collections/lifelong-learning",
-    MATH: "/collections/math",
-    WEATHER: "/collections/weather",
+  },
+
+  // Use cases
+  USE_CASES: {
+    LANGUAGE: "/use-case/language",
+    LIFELONG_LEARNING: "/use-case/lifelong-learning",
+    MATH: "/use-case/math",
+    WEATHER: "/use-case/weather",
   },
 } as const;
 

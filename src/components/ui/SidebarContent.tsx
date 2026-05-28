@@ -63,25 +63,25 @@ const useCaseItems = [
   {
     id: "weather",
     label: "Weather",
-    href: APP_ROUTES.COLLECTIONS.WEATHER,
+    href: APP_ROUTES.USE_CASES.WEATHER,
     icon: CloudSun,
   },
   {
     id: "math",
     label: "Math",
-    href: APP_ROUTES.COLLECTIONS.MATH,
+    href: APP_ROUTES.USE_CASES.MATH,
     icon: Calculator,
   },
   {
     id: "lifelong-learning",
     label: "Lifelong Learning",
-    href: APP_ROUTES.COLLECTIONS.LIFELONG_LEARNING,
+    href: APP_ROUTES.USE_CASES.LIFELONG_LEARNING,
     icon: GraduationCap,
   },
   {
     id: "language",
     label: "Language",
-    href: APP_ROUTES.COLLECTIONS.LANGUAGE,
+    href: APP_ROUTES.USE_CASES.LANGUAGE,
     icon: Languages,
   },
 ];
