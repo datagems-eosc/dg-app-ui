@@ -85,12 +85,14 @@ interface UseCasePageClientProps {
   collectionName: string;
   title: string;
   subtitle: string;
+  withLayout?: boolean;
 }
 
 export default function UseCasePageClient({
   collectionName,
   title,
   subtitle,
+  withLayout = true,
 }: UseCasePageClientProps) {
   const api = useApi();
   const router = useRouter();
@@ -328,38 +330,40 @@ export default function UseCasePageClient({
     setShowCreateCollectionModal(true);
   }, [selectedDatasets]);
 
-  return (
-    <DashboardLayout>
-      <div className="relative p-6">
-        <Browse
-          datasets={displayedDatasets}
-          title={title}
-          subtitle={subtitle}
-          showSelectAll={true}
-          showSearchAndFilters={true}
-          searchTerm={pendingSearchTerm}
-          onSearchTermChange={handleSearchTermChange}
-          onSearchTermSubmit={handleSearchTermSubmit}
-          isSmartSearchEnabled={isSmartSearchEnabled}
-          onSmartSearchToggle={setIsSmartSearchEnabled}
-          selectedDatasets={selectedDatasets}
-          onSelectedDatasetsChange={setSelectedDatasets}
-          showSelectedPanel={showSelectedPanel}
-          onCloseSidebar={() => setShowSelectedPanel(false)}
-          onReopenSidebar={() => setShowSelectedPanel(true)}
-          onChatWithData={handleChatWithData}
-          onAddToCollection={handleAddToCollection}
-          isLoading={isLoading}
-          error={error}
-        />
+  const content = (
+    <div className="relative p-6">
+      <Browse
+        datasets={displayedDatasets}
+        title={title}
+        subtitle={subtitle}
+        showSelectAll={true}
+        showSearchAndFilters={true}
+        searchTerm={pendingSearchTerm}
+        onSearchTermChange={handleSearchTermChange}
+        onSearchTermSubmit={handleSearchTermSubmit}
+        isSmartSearchEnabled={isSmartSearchEnabled}
+        onSmartSearchToggle={setIsSmartSearchEnabled}
+        selectedDatasets={selectedDatasets}
+        onSelectedDatasetsChange={setSelectedDatasets}
+        showSelectedPanel={showSelectedPanel}
+        onCloseSidebar={() => setShowSelectedPanel(false)}
+        onReopenSidebar={() => setShowSelectedPanel(true)}
+        onChatWithData={handleChatWithData}
+        onAddToCollection={handleAddToCollection}
+        isLoading={isLoading}
+        error={error}
+      />
 
-        <CreateCollectionModal
-          isVisible={showCreateCollectionModal}
-          onClose={() => setShowCreateCollectionModal(false)}
-          selectedDatasets={selectedDatasets}
-          datasets={allDatasets}
-        />
-      </div>
-    </DashboardLayout>
+      <CreateCollectionModal
+        isVisible={showCreateCollectionModal}
+        onClose={() => setShowCreateCollectionModal(false)}
+        selectedDatasets={selectedDatasets}
+        datasets={allDatasets}
+      />
+    </div>
   );
+
+  if (!withLayout) return content;
+
+  return <DashboardLayout>{content}</DashboardLayout>;
 }
