@@ -1354,6 +1354,35 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getLinguisticFeatures = useCallback(
+    async (payload: { DatasetIds: string[]; Query: string }): Promise<any> => {
+      logApiRequest("getLinguisticFeatures", {
+        endpoint: "/pilot/language/linguistic-features",
+        payload,
+      });
+      const response = await makeRequest(
+        "/pilot/language/linguistic-features",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("getLinguisticFeatures", errorData);
+        throw new Error(
+          errorData.error ||
+            errorData.message ||
+            "Failed to get linguistic features",
+        );
+      }
+      const result = await response.json();
+      logApiResponse("getLinguisticFeatures", result);
+      return result;
+    },
+    [makeRequest],
+  );
+
   const profileDataset = useCallback(
     async (datasetId: string, dataStoreKind: number): Promise<string> => {
       logApiRequest("profileDataset", {
@@ -1429,5 +1458,6 @@ export function useApi() {
     uploadDatasetFiles,
     onboardDataset,
     profileDataset,
+    getLinguisticFeatures,
   };
 }
