@@ -1,13 +1,5 @@
-"use client";
-
-import UseCasePageClient from "../UseCasePageClient";
+import { redirect } from "next/navigation";
 
 export default function MathPage() {
-  return (
-    <UseCasePageClient
-      collectionName="Math"
-      title="Math Datasets"
-      subtitle="Math dataset collection"
-    />
-  );
+  redirect("/use-case/math/home");
 }
