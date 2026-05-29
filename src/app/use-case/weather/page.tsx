@@ -1,13 +1,5 @@
-"use client";
-
-import UseCasePageClient from "../UseCasePageClient";
+import { redirect } from "next/navigation";
 
 export default function WeatherPage() {
-  return (
-    <UseCasePageClient
-      collectionName="Weather"
-      title="Weather Datasets"
-      subtitle="Weather dataset collection"
-    />
-  );
+  redirect("/use-case/weather/home");
 }

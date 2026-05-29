@@ -96,12 +96,16 @@ export interface ConversationMessage {
 interface ChatPageProps {
   showConversationName?: boolean;
   hideCollectionActions?: boolean;
+  withLayout?: boolean;
+  forcedCollectionId?: string | null;
 }
 
 // Main chat component that uses useSearchParams
-function ChatPageContent({
+export function ChatPageContent({
   showConversationName,
   hideCollectionActions,
+  withLayout = true,
+  forcedCollectionId,
 }: ChatPageProps) {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const api = useApi();
@@ -124,11 +128,15 @@ function ChatPageContent({
   }, []);
 
   useEffect(() => {
+    if (forcedCollectionId !== undefined) {
+      setInitialCollectionId(forcedCollectionId);
+      return;
+    }
     const collectionId = searchParams?.get("collection");
     if (collectionId !== initialCollectionId) {
       setInitialCollectionId(collectionId);
     }
-  }, [searchParams, initialCollectionId]);
+  }, [searchParams, initialCollectionId, forcedCollectionId]);
 
   useEffect(() => {
     if (!isMounted || !api.hasToken) return;
@@ -311,22 +319,28 @@ function ChatPageContent({
     });
   }
 
+  const chat = (
+    <Chat
+      selectedDatasets={selectedDatasets}
+      datasets={normalizeDatasets(datasets) as Dataset[]}
+      onSelectedDatasetsChange={(datasets) => {
+        setSelectedDatasets(datasets);
+      }}
+      conversationId={conversationId}
+      initialMessages={chatInitialMessages ?? undefined}
+      showConversationName={showConversationName}
+      hideCollectionActions={hideCollectionActions}
+      initialCollectionId={initialCollectionId}
+    />
+  );
+
+  if (!withLayout) {
+    return <ProtectedPage>{chat}</ProtectedPage>;
+  }
+
   return (
     <ProtectedPage>
-      <DashboardLayout>
-        <Chat
-          selectedDatasets={selectedDatasets}
-          datasets={normalizeDatasets(datasets) as Dataset[]}
-          onSelectedDatasetsChange={(datasets) => {
-            setSelectedDatasets(datasets);
-          }}
-          conversationId={conversationId}
-          initialMessages={chatInitialMessages ?? undefined}
-          showConversationName={showConversationName}
-          hideCollectionActions={hideCollectionActions}
-          initialCollectionId={initialCollectionId}
-        />
-      </DashboardLayout>
+      <DashboardLayout>{chat}</DashboardLayout>
     </ProtectedPage>
   );
 }
@@ -334,12 +348,16 @@ function ChatPageContent({
 export default function ChatPage({
   showConversationName = true,
   hideCollectionActions = false,
+  withLayout = true,
+  forcedCollectionId,
 }: ChatPageProps) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <ChatPageContent
         showConversationName={showConversationName}
         hideCollectionActions={hideCollectionActions}
+        withLayout={withLayout}
+        forcedCollectionId={forcedCollectionId}
       />
     </Suspense>
   );
