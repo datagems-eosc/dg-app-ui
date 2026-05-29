@@ -1,8 +1,16 @@
-// Dynamic chat page for /chat/[conversationId]
+"use client";
 
-import ChatPage from "../page";
+import { Suspense } from "react";
+import { ChatPageContent } from "../ChatPageContent";
 
-// Wrapper to hide conversation name on details page
 export default function ConversationChatPage() {
-  return <ChatPage showConversationName={false} hideCollectionActions={true} />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ChatPageContent
+        showConversationName={false}
+        hideCollectionActions={true}
+        withLayout={true}
+      />
+    </Suspense>
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { ChatPageContent } from "@/app/chat/page";
+import { ChatPageContent } from "@/app/chat/ChatPageContent";
 import { useCollections } from "@/contexts/CollectionsContext";
 
 function MathChatInner() {
