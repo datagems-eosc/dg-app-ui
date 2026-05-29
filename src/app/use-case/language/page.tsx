@@ -1,13 +1,5 @@
-"use client";
-
-import UseCasePageClient from "../UseCasePageClient";
+import { redirect } from "next/navigation";
 
 export default function LanguagePage() {
-  return (
-    <UseCasePageClient
-      collectionName="Language"
-      title="Language Datasets"
-      subtitle="Language dataset collection"
-    />
-  );
+  redirect("/use-case/language/home");
 }
