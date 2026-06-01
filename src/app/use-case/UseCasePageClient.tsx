@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useCollections } from "@/contexts/CollectionsContext";
 import type { Collection, Dataset, DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { logError } from "@/lib/logger";
@@ -96,6 +97,7 @@ export default function UseCasePageClient({
 }: UseCasePageClientProps) {
   const api = useApi();
   const router = useRouter();
+  const { collections } = useCollections();
 
   // allDatasets: full collection datasets (normal mode) or smart search results
   const [allDatasets, setAllDatasets] = useState<DatasetPlus[]>([]);
@@ -260,8 +262,16 @@ export default function UseCasePageClient({
           return;
         }
 
-        // Normal fetch — collection-filtered
-        const data = await api.queryDatasets(DATASET_FIELDS);
+        // Normal fetch — server-side collection filtering via collectionIds when available
+        const collectionId = collections.find(
+          (c) => c.name?.toLowerCase().trim() === normalized,
+        )?.id;
+
+        const payload = collectionId
+          ? { ...DATASET_FIELDS, collectionIds: [collectionId] }
+          : DATASET_FIELDS;
+
+        const data = await api.queryDatasets(payload);
         const items: unknown[] = Array.isArray(data.items) ? data.items : [];
         const mapped = items
           .filter(
@@ -270,9 +280,11 @@ export default function UseCasePageClient({
           )
           .map(mapApiDataset)
           .filter((d) =>
-            d.collections?.some(
-              (c) => c.name.toLowerCase().trim() === normalized,
-            ),
+            collectionId
+              ? true
+              : d.collections?.some(
+                  (c) => c.name.toLowerCase().trim() === normalized,
+                ),
           );
         setAllDatasets(mapped as DatasetPlus[]);
       } catch (err) {
@@ -286,7 +298,13 @@ export default function UseCasePageClient({
     };
 
     fetchDatasets();
-  }, [api.hasToken, searchTerm, isSmartSearchEnabled, collectionName]);
+  }, [
+    api.hasToken,
+    searchTerm,
+    isSmartSearchEnabled,
+    collectionName,
+    collections,
+  ]);
 
   // Client-side text filter for normal search mode only.
   // Smart search results are shown as-is (already ranked by relevance).
