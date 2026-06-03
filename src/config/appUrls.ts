@@ -14,6 +14,7 @@ export const APP_ROUTES = {
   HOME: "/",
   DASHBOARD: "/dashboard",
   BROWSE: "/browse",
+  FEATURE_FLAGS: "/feature-flags",
   SETTINGS: "/settings",
   SETTINGS_ROLES: "/settings?tab=roles",
   SETTINGS_ROLES_DATASET: (datasetId: string) =>

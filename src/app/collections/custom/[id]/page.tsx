@@ -8,6 +8,7 @@ import AddDatasetsModal from "@/components/AddDatasetsModal";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
+import { FeatureFlagGuard } from "@/components/FeatureFlagGuard";
 import { APP_ROUTES } from "@/config/appUrls";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
@@ -334,51 +335,53 @@ export default function CustomCollectionPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="relative p-6">
-        <Browse
-          datasets={collectionDatasets}
-          title={collection.name}
-          subtitle={`Custom collection • ${displayDatasetIds.length} datasets`}
-          showSelectAll={!isEditMode}
-          selectedDatasets={selectedDatasets}
-          onSelectedDatasetsChange={setSelectedDatasets}
-          showSelectedPanel={showSelectedPanel}
-          onCloseSidebar={handleCloseSidebar}
-          onReopenSidebar={handleReopenSidebar}
-          onChatWithData={!isEditMode ? handleChatWithData : undefined}
-          onAddToCollection={handleAddToCollection}
-          isEditMode={isEditMode}
-          onRemoveDataset={isEditMode ? handleRemoveDataset : undefined}
-          onBulkRemoveDatasets={handleBulkRemoveSelectedDatasets}
-          customActionButtons={getCustomActionButtons()}
-          isCustomCollection={true}
-          collectionName={collection.name}
-          collectionId={collection.id}
-        />
+    <FeatureFlagGuard flag="customCollection">
+      <DashboardLayout>
+        <div className="relative p-6">
+          <Browse
+            datasets={collectionDatasets}
+            title={collection.name}
+            subtitle={`Custom collection • ${displayDatasetIds.length} datasets`}
+            showSelectAll={!isEditMode}
+            selectedDatasets={selectedDatasets}
+            onSelectedDatasetsChange={setSelectedDatasets}
+            showSelectedPanel={showSelectedPanel}
+            onCloseSidebar={handleCloseSidebar}
+            onReopenSidebar={handleReopenSidebar}
+            onChatWithData={!isEditMode ? handleChatWithData : undefined}
+            onAddToCollection={handleAddToCollection}
+            isEditMode={isEditMode}
+            onRemoveDataset={isEditMode ? handleRemoveDataset : undefined}
+            onBulkRemoveDatasets={handleBulkRemoveSelectedDatasets}
+            customActionButtons={getCustomActionButtons()}
+            isCustomCollection={true}
+            collectionName={collection.name}
+            collectionId={collection.id}
+          />
 
-        <CreateCollectionModal
-          isVisible={showCreateCollectionModal}
-          onClose={() => setShowCreateCollectionModal(false)}
-          onCreateCollection={handleCreateCollection}
-          selectedDatasets={selectedDatasets}
-          datasets={mockDatasets}
-        />
+          <CreateCollectionModal
+            isVisible={showCreateCollectionModal}
+            onClose={() => setShowCreateCollectionModal(false)}
+            onCreateCollection={handleCreateCollection}
+            selectedDatasets={selectedDatasets}
+            datasets={mockDatasets}
+          />
 
-        <AddDatasetsModal
-          isVisible={showAddDatasetsModal}
-          onClose={() => setShowAddDatasetsModal(false)}
-          datasets={mockDatasets}
-          onSelectedDatasetsChange={handleAddDatasetsFromModal}
-        />
+          <AddDatasetsModal
+            isVisible={showAddDatasetsModal}
+            onClose={() => setShowAddDatasetsModal(false)}
+            datasets={mockDatasets}
+            onSelectedDatasetsChange={handleAddDatasetsFromModal}
+          />
 
-        <Toast
-          message={toastMessage}
-          isVisible={showToast}
-          onClose={() => setShowToast(false)}
-          type={toastType}
-        />
-      </div>
-    </DashboardLayout>
+          <Toast
+            message={toastMessage}
+            isVisible={showToast}
+            onClose={() => setShowToast(false)}
+            type={toastType}
+          />
+        </div>
+      </DashboardLayout>
+    </FeatureFlagGuard>
   );
 }

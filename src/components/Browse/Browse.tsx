@@ -39,6 +39,7 @@ import {
 import { UI_CONSTANTS } from "@/config/uiConstants";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import type { Dataset } from "@/data/dataset";
 import { mockDatasets } from "@/data/dataset";
 import { filterPackagesBySearchTerm, mockPackages } from "@/data/package";
@@ -268,6 +269,7 @@ export default function Browse({
     useState(false);
   const [isPackageCarouselCollapsed, setIsPackageCarouselCollapsed] =
     useState(false);
+  const datasetPackagingEnabled = useFeatureFlag("datasetPackage");
   const isSmartSearchEnabled =
     typeof controlledSmartSearchEnabled === "boolean"
       ? controlledSmartSearchEnabled
@@ -778,7 +780,9 @@ export default function Browse({
   }, [searchTerm, datasetsWithMockFallback]);
 
   const shouldShowPackageCarousel =
-    showSearchAndFilters !== false && (searchTerm ?? "").trim().length > 0;
+    datasetPackagingEnabled &&
+    showSearchAndFilters !== false &&
+    (searchTerm ?? "").trim().length > 0;
 
   return (
     <div className="flex relative min-h-screen">
