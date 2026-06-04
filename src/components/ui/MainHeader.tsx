@@ -1,5 +1,8 @@
+"use client";
+
 import { Menu, PanelLeftOpen, Plus } from "lucide-react";
 import Link from "next/link";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import { Button } from "./Button";
 import { Logo } from "./Logo";
 import { UserProfileDropdown } from "./UserProfileDropdown";
@@ -19,6 +22,8 @@ export function MainHeader({
   onToggleSidebar,
   onLogout,
 }: MainHeaderProps) {
+  const datasetOnboardingEnabled = useFeatureFlag("datasetOnboarding");
+
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 h-18">
       <div
@@ -53,16 +58,21 @@ export function MainHeader({
 
         {/* Right side - Add Dataset button and User info */}
         <div className="flex items-center gap-4">
-          <Link href="/datasets/add">
-            <Button
-              variant="primary"
-              size="md"
-              className="flex items-center gap-2"
-            >
-              <Plus strokeWidth={1.25} className="w-4 h-4 !stroke-slate-450" />
-              {!isMobile && <span>Add Dataset</span>}
-            </Button>
-          </Link>
+          {datasetOnboardingEnabled && (
+            <Link href="/datasets/add">
+              <Button
+                variant="primary"
+                size="md"
+                className="flex items-center gap-2"
+              >
+                <Plus
+                  strokeWidth={1.25}
+                  className="w-4 h-4 !stroke-slate-450"
+                />
+                {!isMobile && <span>Add Dataset</span>}
+              </Button>
+            </Link>
+          )}
 
           <UserProfileDropdown
             session={session}

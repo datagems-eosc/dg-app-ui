@@ -11,6 +11,8 @@ import {
 import type React from "react";
 import { Suspense } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
+import type { FeatureFlagId } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { ChatHistoryList } from "./chat/ChatHistoryList";
 import { MenuItem } from "./MenuItem";
 
@@ -59,30 +61,40 @@ const menuItems = [
   },
 ];
 
-const useCaseItems = [
+const useCaseItems: {
+  id: string;
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  flag: FeatureFlagId;
+}[] = [
   {
     id: "weather",
     label: "Weather",
     href: APP_ROUTES.USE_CASES.WEATHER,
     icon: CloudSun,
+    flag: "useCaseWeather",
   },
   {
     id: "math",
     label: "Math",
     href: APP_ROUTES.USE_CASES.MATH,
     icon: Calculator,
+    flag: "useCaseMath",
   },
   {
     id: "lifelong-learning",
     label: "Lifelong Learning",
     href: APP_ROUTES.USE_CASES.LIFELONG_LEARNING,
     icon: GraduationCap,
+    flag: "useCaseLifelongLearning",
   },
   {
     id: "language",
     label: "Language",
     href: APP_ROUTES.USE_CASES.LANGUAGE,
     icon: Languages,
+    flag: "useCaseLanguage",
   },
 ];
 
@@ -112,6 +124,9 @@ export function SidebarContent({
   onConversationUpdate,
   setConversations,
 }: SidebarContentProps) {
+  const { flags } = useFeatureFlags();
+  const visibleUseCaseItems = useCaseItems.filter((item) => flags[item.flag]);
+
   return (
     <div
       className={`flex-1 min-h-0 overflow-y-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
@@ -136,22 +151,24 @@ export function SidebarContent({
         </div>
 
         {/* Use-Cases Section */}
-        <div className="mb-4 pb-4 border-b border-slate-200">
-          <h3 className="px-5 text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
-            USE-CASES
-          </h3>
-          <nav className="space-y-2">
-            {useCaseItems.map((item) => (
-              <MenuItemWithSuspense
-                key={item.id}
-                href={item.href}
-                icon={item.icon}
-                label={item.label}
-                onClick={onMobileSidebarClose}
-              />
-            ))}
-          </nav>
-        </div>
+        {visibleUseCaseItems.length > 0 && (
+          <div className="mb-4 pb-4 border-b border-slate-200">
+            <h3 className="px-5 text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
+              USE-CASES
+            </h3>
+            <nav className="space-y-2">
+              {visibleUseCaseItems.map((item) => (
+                <MenuItemWithSuspense
+                  key={item.id}
+                  href={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  onClick={onMobileSidebarClose}
+                />
+              ))}
+            </nav>
+          </div>
+        )}
 
         {/* Recent Chats Section */}
         <div className="flex-1 flex flex-col min-h-0">

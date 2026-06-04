@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import { FeatureFlagGuard } from "@/components/FeatureFlagGuard";
 import MathTabBar from "./MathTabBar";
 
 export default function MathWorkspaceLayout({
@@ -8,10 +9,12 @@ export default function MathWorkspaceLayout({
 }) {
   return (
     <DashboardLayout>
-      <div className="flex flex-col min-h-[calc(100vh-56px)]">
-        <MathTabBar />
-        <div className="flex-1">{children}</div>
-      </div>
+      <FeatureFlagGuard flag="useCaseMath">
+        <div className="flex flex-col min-h-[calc(100vh-56px)]">
+          <MathTabBar />
+          <div className="flex-1">{children}</div>
+        </div>
+      </FeatureFlagGuard>
     </DashboardLayout>
   );
 }
