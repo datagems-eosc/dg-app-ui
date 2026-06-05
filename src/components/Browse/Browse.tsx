@@ -88,11 +88,6 @@ interface BrowseProps {
   }>;
   showAddButton?: boolean; // NEW PROP
   showSearchAndFilters?: boolean; // NEW PROP
-  favoriteDatasetIds?: string[]; // NEW PROP
-  favoritesCollectionId?: string; // NEW PROP
-  hasFetchedFavorites?: boolean; // NEW PROP
-  onAddToFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
-  onRemoveFromFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
   /**
    * The current value of the search input (controlled from parent).
    */
@@ -200,11 +195,6 @@ export default function Browse({
   customActionButtons,
   showAddButton = true, // default true for backward compatibility
   showSearchAndFilters = true, // Default to true
-  favoriteDatasetIds = [], // Default to empty array
-  favoritesCollectionId = "", // Default to empty string
-  hasFetchedFavorites = false, // Default to false
-  onAddToFavorites, // NEW PROP
-  onRemoveFromFavorites, // NEW PROP
   searchTerm = "",
   onSearchTermChange,
   onSearchTermSubmit,
@@ -1251,11 +1241,6 @@ export default function Browse({
                       viewMode={viewMode}
                       onAddToCollection={() => handleAddToCollection(dataset)}
                       showAddButton={showAddButton}
-                      isFavorite={favoriteDatasetIds.includes(dataset.id)}
-                      favoritesCollectionId={favoritesCollectionId}
-                      onAddToFavorites={onAddToFavorites}
-                      hasFetchedFavorites={hasFetchedFavorites}
-                      onRemoveFromFavorites={onRemoveFromFavorites}
                       hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
                       isSmartSearchEnabled={isSmartSearchEnabled}
                     />

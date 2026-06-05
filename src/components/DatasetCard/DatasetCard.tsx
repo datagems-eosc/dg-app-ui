@@ -90,11 +90,6 @@ interface DatasetCardProps {
   viewMode?: "grid" | "list";
   onAddToCollection?: (dataset: Dataset) => void;
   showAddButton?: boolean; // NEW PROP
-  isFavorite?: boolean; // NEW PROP to override hook behavior
-  favoritesCollectionId?: string; // NEW PROP for API calls
-  onAddToFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
-  hasFetchedFavorites?: boolean; // NEW PROP
-  onRemoveFromFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
   hasSidePanelOpen?: boolean; // NEW PROP to indicate if side panels are open
   isSmartSearchEnabled?: boolean; // NEW PROP for smart search functionality
   defaultExpanded?: boolean; // TEMP: opens card by default in smart test mode
@@ -112,19 +107,12 @@ export default function DatasetCard({
   viewMode = "grid",
   onAddToCollection,
   showAddButton = true, // default true for backward compatibility
-  isFavorite: propIsFavorite, // NEW PROP to override hook behavior
-  favoritesCollectionId = "", // NEW PROP for API calls
-  onAddToFavorites, // NEW PROP
-  hasFetchedFavorites = false, // NEW PROP
-  onRemoveFromFavorites, // NEW PROP
   hasSidePanelOpen = false, // NEW PROP to indicate if side panels are open
   isSmartSearchEnabled = false, // NEW PROP for smart search functionality
   defaultExpanded = false,
 }: DatasetCardProps) {
   const { toggleFavorite, isFavorite } = useDataset();
-  const hookIsFavorite = isFavorite(dataset.id);
-  const isStarred =
-    propIsFavorite !== undefined ? propIsFavorite : hookIsFavorite;
+  const isStarred = isFavorite(dataset.id);
   const isListMode = viewMode === "list";
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const [shouldStackFooter, setShouldStackFooter] = useState(false);
@@ -150,58 +138,13 @@ export default function DatasetCard({
 
   const handleStarClick = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click when starring
-
-    logDebug("Star clicked", {
-      datasetId: dataset.id,
-      propIsFavorite,
-      favoritesCollectionId,
-      onAddToFavorites: !!onAddToFavorites,
-      onRemoveFromFavorites: !!onRemoveFromFavorites,
-      hasFetchedFavorites,
-      isStarred,
-      condition1: propIsFavorite !== undefined,
-      condition2: !!favoritesCollectionId,
-      condition3: !!onAddToFavorites && !!onRemoveFromFavorites,
-      condition4: hasFetchedFavorites,
-      allConditions:
-        propIsFavorite !== undefined &&
-        favoritesCollectionId &&
-        onAddToFavorites &&
-        onRemoveFromFavorites &&
-        hasFetchedFavorites,
-    });
-
-    // If using prop-based favorite state and we have a favorites collection ID and have fetched favorites
-    if (
-      propIsFavorite !== undefined &&
-      favoritesCollectionId &&
-      onAddToFavorites &&
-      onRemoveFromFavorites &&
-      hasFetchedFavorites
-    ) {
-      logDebug("Using API-based favorites");
-      try {
-        setIsFavoriteLoading(true);
-        if (!isStarred) {
-          // Add to favorites via API
-          logDebug("Adding to favorites via API");
-          await onAddToFavorites(dataset.id);
-          logDebug("Successfully added to favorites");
-        } else {
-          // Remove from favorites via API
-          logDebug("Removing from favorites via API");
-          await onRemoveFromFavorites(dataset.id);
-          logDebug("Successfully removed from favorites");
-        }
-      } catch (error) {
-        logError("Failed to modify favorites", error);
-      } finally {
-        setIsFavoriteLoading(false);
-      }
-    } else {
-      logDebug("Using local hook behavior");
-      // Fall back to local hook behavior
-      toggleFavorite(dataset.id);
+    try {
+      setIsFavoriteLoading(true);
+      await toggleFavorite(dataset.id);
+    } catch (error) {
+      logError("Failed to modify favorites", error);
+    } finally {
+      setIsFavoriteLoading(false);
     }
   };
 
