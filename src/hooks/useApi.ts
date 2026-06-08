@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { publicEnv } from "@/lib/env";
+import type { UserFavorite } from "@/lib/favorites";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import { fetchWithAuth, getApiBaseUrl, getLogoutUrl } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
@@ -952,6 +953,117 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getUserFavorites = useCallback(
+    async (
+      fields: string[] = [
+        "id",
+        "dataset.id",
+        "dataset.name",
+        "dataset.description",
+        "dataset.keywords",
+        "dataset.fieldOfScience",
+        "dataset.datePublished",
+        "dataset.license",
+        "dataset.url",
+        "dataset.permissions",
+        "dataset.collections.id",
+        "dataset.collections.name",
+        "dataset.collections.code",
+      ],
+    ): Promise<UserFavorite[]> => {
+      const qs = buildFieldsQuery(fields);
+      logApiRequest("getUserFavorites", {
+        endpoint: "/user/settings/favorites/dataset",
+      });
+
+      const response = await makeRequest(
+        `/user/settings/favorites/dataset${qs}`,
+        {
+          method: "GET",
+          headers: { "X-Request-Type": "getUserFavorites" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("getUserFavorites", errorData);
+        }
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_FAVORITES_FAILED,
+        );
+      }
+
+      const result = await response.json();
+      logApiResponse("getUserFavorites", {
+        count: Array.isArray(result) ? result.length : 0,
+      });
+      return Array.isArray(result) ? result : [];
+    },
+    [makeRequest],
+  );
+
+  const addFavoriteDataset = useCallback(
+    async (datasetId: string): Promise<UserFavorite> => {
+      logApiRequest("addFavoriteDataset", {
+        endpoint: "/user/settings/favorites/dataset/persist",
+        datasetId,
+      });
+
+      const response = await makeRequest(
+        "/user/settings/favorites/dataset/persist?f=id&f=dataset.id",
+        {
+          method: "POST",
+          body: JSON.stringify({ datasetId }),
+          headers: { "X-Request-Type": "addFavoriteDataset" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("addFavoriteDataset", errorData, { datasetId });
+        }
+        throw new Error(errorData.error || ApiErrorMessage.ADD_FAVORITE_FAILED);
+      }
+
+      const result = await response.json();
+      logApiResponse("addFavoriteDataset", { datasetId });
+      return result;
+    },
+    [makeRequest],
+  );
+
+  const removeFavoriteDataset = useCallback(
+    async (datasetId: string): Promise<void> => {
+      logApiRequest("removeFavoriteDataset", {
+        endpoint: `/user/settings/favorites/dataset/${datasetId}`,
+        datasetId,
+      });
+
+      const response = await makeRequest(
+        `/user/settings/favorites/dataset/${encodeURIComponent(datasetId)}`,
+        {
+          method: "DELETE",
+          headers: { "X-Request-Type": "removeFavoriteDataset" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("removeFavoriteDataset", errorData, { datasetId });
+        }
+        throw new Error(
+          errorData.error || ApiErrorMessage.REMOVE_FAVORITE_FAILED,
+        );
+      }
+
+      logApiResponse("removeFavoriteDataset", { datasetId });
+    },
+    [makeRequest],
+  );
+
   const getUserSettingsById = useCallback(
     async (
       id: string,
@@ -1418,6 +1530,9 @@ export function useApi() {
     createUserCollection,
     addDatasetToUserCollection,
     removeDatasetFromUserCollection,
+    getUserFavorites,
+    addFavoriteDataset,
+    removeFavoriteDataset,
     getCollectionGrants,
     grantCollectionPermission,
     deleteCollection,

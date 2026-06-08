@@ -11,18 +11,13 @@ import { mockDatasets } from "@/data/dataset";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function FavoritesPage() {
-  const { favorites } = useDataset();
+  const { favoriteDatasets, isFavoritesLoading } = useDataset();
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [_isLoaded, setIsLoaded] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const router = useRouter();
-
-  // Filter datasets to show only favorites
-  const favoriteDatasets = mockDatasets.filter((dataset) =>
-    favorites.includes(dataset.id),
-  );
 
   // On mount: clear any previous chat selection as this is not the chat page
   useEffect(() => {
@@ -69,6 +64,7 @@ export default function FavoritesPage() {
           datasets={favoriteDatasets}
           title="Favorite Datasets"
           subtitle="List of all datasets"
+          isLoading={isFavoritesLoading}
           showSelectAll={true}
           selectedDatasets={selectedDatasets}
           onSelectedDatasetsChange={setSelectedDatasets}
