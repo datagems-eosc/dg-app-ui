@@ -953,6 +953,67 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getDatasetById = useCallback(
+    async (id: string, fields?: string[]): Promise<any> => {
+      const qs = buildFieldsQuery(fields);
+      logApiRequest("getDatasetById", { endpoint: `/dataset/${id}` });
+
+      const response = await makeRequest(
+        `/dataset/${encodeURIComponent(id)}${qs}`,
+        {
+          method: "GET",
+          headers: { "X-Request-Type": "getDatasetById" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("getDatasetById", errorData, { id });
+        }
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
+        );
+      }
+
+      const result = await response.json();
+      logApiResponse("getDatasetById", { id });
+      return result;
+    },
+    [makeRequest],
+  );
+
+  const downloadDatasetFile = useCallback(
+    async (datasetId: string, fileObjectNodeId: string): Promise<Response> => {
+      logApiRequest("downloadDatasetFile", { datasetId, fileObjectNodeId });
+
+      const response = await makeRequest(
+        `/storage/download/dataset/${encodeURIComponent(datasetId)}/file-object/${encodeURIComponent(fileObjectNodeId)}`,
+        {
+          method: "GET",
+          headers: { "X-Request-Type": "downloadDatasetFile" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("downloadDatasetFile", errorData, {
+            datasetId,
+            fileObjectNodeId,
+          });
+        }
+        throw new Error(
+          errorData.error || ApiErrorMessage.DOWNLOAD_FILE_FAILED,
+        );
+      }
+
+      logApiResponse("downloadDatasetFile", { datasetId, fileObjectNodeId });
+      return response;
+    },
+    [makeRequest],
+  );
+
   const getUserFavorites = useCallback(
     async (
       fields: string[] = [
@@ -1530,6 +1591,8 @@ export function useApi() {
     createUserCollection,
     addDatasetToUserCollection,
     removeDatasetFromUserCollection,
+    getDatasetById,
+    downloadDatasetFile,
     getUserFavorites,
     addFavoriteDataset,
     removeFavoriteDataset,

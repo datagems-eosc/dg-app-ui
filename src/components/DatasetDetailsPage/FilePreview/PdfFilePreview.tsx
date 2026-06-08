@@ -27,8 +27,11 @@ export default function PdfFilePreview({
 
   const { filename, fileSize, description, keywords, fileUrl, totalPages } =
     data;
+  // profileRaw has no page count, so prefer the count from the loaded document.
+  const [numPages, setNumPages] = useState<number>(totalPages);
 
-  const remainingPages = Math.max(0, totalPages - PREVIEW_PAGE_LIMIT);
+  const effectivePages = numPages || totalPages;
+  const remainingPages = Math.max(0, effectivePages - PREVIEW_PAGE_LIMIT);
 
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) {
@@ -53,6 +56,9 @@ export default function PdfFilePreview({
       >
         <Document
           file={fileUrl}
+          onLoadSuccess={({ numPages: loadedPages }) =>
+            setNumPages(loadedPages)
+          }
           loading={
             <div className={styles.pdfFilePreview__loading}>Loading PDF…</div>
           }
@@ -63,7 +69,7 @@ export default function PdfFilePreview({
           }
         >
           {Array.from(
-            { length: Math.min(PREVIEW_PAGE_LIMIT, totalPages) },
+            { length: Math.min(PREVIEW_PAGE_LIMIT, effectivePages) },
             (_, i) => (
               <Page
                 key={i}
