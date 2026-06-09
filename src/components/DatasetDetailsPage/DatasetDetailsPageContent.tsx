@@ -8,7 +8,11 @@ import { APP_ROUTES } from "@/config/appUrls";
 import { getDisplayCategory } from "@/config/collectionConstants";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
-import { buildFilePreviews } from "@/lib/datasetProfile";
+import {
+  buildFilePreviews,
+  buildFileTree,
+  type ProfileTreeNode,
+} from "@/lib/datasetProfile";
 import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { FilePreviewDataUnion } from "@/types/filePreview";
@@ -36,6 +40,24 @@ function extensionFromMime(mime?: string): string | undefined {
   return undefined;
 }
 
+function mapTreeToFileNodes(nodes: ProfileTreeNode[]): FileNode[] {
+  return nodes.map((node) =>
+    node.kind === "folder"
+      ? {
+          id: node.id,
+          name: node.name,
+          type: "folder",
+          children: mapTreeToFileNodes(node.children ?? []),
+        }
+      : {
+          id: node.id,
+          name: node.name,
+          type: "file",
+          extension: extensionFromMime(node.mimeType),
+        },
+  );
+}
+
 interface DatasetDetailsPageContentProps {
   dataset: DatasetPlus;
   returnToRoles?: boolean;
@@ -54,14 +76,8 @@ export default function DatasetDetailsPageContent({
   );
 
   const fileNodes: FileNode[] = useMemo(
-    () =>
-      previewEntries.map((entry) => ({
-        id: entry.id,
-        name: entry.name,
-        type: "file",
-        extension: extensionFromMime(entry.mimeType),
-      })),
-    [previewEntries],
+    () => mapTreeToFileNodes(buildFileTree(dataset.profileRaw)),
+    [dataset.profileRaw],
   );
 
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);

@@ -41,9 +41,19 @@ interface CroissantRecordSet {
 
 interface CroissantDistribution {
   "@id"?: string;
+  "@type"?: string;
   name?: string;
   contentSize?: string;
   encodingFormat?: string;
+  containedIn?: { "@id"?: string } | null;
+}
+
+export interface ProfileTreeNode {
+  id: string;
+  name: string;
+  kind: "folder" | "file";
+  mimeType?: string;
+  children?: ProfileTreeNode[];
 }
 
 export interface CroissantProfile {
@@ -202,13 +212,17 @@ function buildTabular(
     .filter((count): count is number => typeof count === "number");
   const totalRows = rowCounts.length > 0 ? rowCounts[0] : rows.length;
 
-  const missingPercentages = fields
-    .map((field) => field.statistics?.missingPercentage)
-    .filter((value): value is number => typeof value === "number");
+  // File-level "missing values" = all missing cells / all cells. Equivalent to
+  // the mean of per-column percentages when every column shares a row count,
+  // but robust when they differ.
+  const missingCounts = fields
+    .map((field) => field.statistics?.missingCount)
+    .filter((count): count is number => typeof count === "number");
+  const totalCells = totalRows * fields.length;
   const totalMissingPercentage =
-    missingPercentages.length > 0
-      ? missingPercentages.reduce((sum, value) => sum + value, 0) /
-        missingPercentages.length
+    missingCounts.length > 0 && totalCells > 0
+      ? (missingCounts.reduce((sum, count) => sum + count, 0) / totalCells) *
+        100
       : undefined;
 
   return {
@@ -241,6 +255,8 @@ export function buildFilePreviews(raw: unknown): FilePreviewEntry[] {
   const entries: FilePreviewEntry[] = [];
 
   for (const distribution of distributions) {
+    // FileSets are folders, not previewable files.
+    if (distribution["@type"] === "cr:FileSet") continue;
     const id = distribution["@id"];
     if (!id) continue;
     const name = distribution.name ?? "";
@@ -288,4 +304,61 @@ export function buildFilePreviews(raw: unknown): FilePreviewEntry[] {
   }
 
   return entries;
+}
+
+/**
+ * Builds the nested file tree from the profile's `distribution`: `cr:FileSet`
+ * entries are folders, `cr:FileObject` entries are files nested under their
+ * `containedIn` folder (or at the root when they have none).
+ */
+export function buildFileTree(raw: unknown): ProfileTreeNode[] {
+  const profile = parseProfileRaw(raw);
+  if (!profile) return [];
+
+  const distributions = Array.isArray(profile.distribution)
+    ? profile.distribution
+    : [];
+
+  const folders = new Map<string, ProfileTreeNode>();
+  for (const distribution of distributions) {
+    const id = distribution["@id"];
+    if (distribution["@type"] === "cr:FileSet" && id) {
+      folders.set(id, {
+        id,
+        name: distribution.name ?? "",
+        kind: "folder",
+        children: [],
+      });
+    }
+  }
+
+  const roots: ProfileTreeNode[] = [];
+  for (const distribution of distributions) {
+    const id = distribution["@id"];
+    if (!id) continue;
+
+    let node: ProfileTreeNode | undefined;
+    if (distribution["@type"] === "cr:FileSet") {
+      node = folders.get(id);
+    } else {
+      node = {
+        id,
+        name: distribution.name ?? "",
+        kind: "file",
+        mimeType: distribution.encodingFormat,
+      };
+    }
+    if (!node) continue;
+
+    const parentId = distribution.containedIn?.["@id"];
+    const parent =
+      parentId && parentId !== id ? folders.get(parentId) : undefined;
+    if (parent) {
+      parent.children?.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return roots;
 }

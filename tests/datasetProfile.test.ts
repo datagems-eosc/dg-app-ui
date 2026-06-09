@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildFilePreviews,
+  buildFileTree,
   mapFieldStatistics,
   parseProfileRaw,
   transposeSamplesToRows,
@@ -141,8 +142,64 @@ test("buildFilePreviews builds a tabular preview for a recordSet file", () => {
   assert.equal(csv.data.columns[1].type, "numeric");
   assert.equal(csv.data.rows.length, 3);
   assert.equal(csv.data.totalRows, 1447);
-  assert.equal(csv.data.totalMissingPercentage, 11.5);
+  // total missing cells / total cells = (0 + 333) / (1447 * 2) * 100
+  assert.ok(
+    Math.abs((csv.data.totalMissingPercentage ?? 0) - 11.5065) < 0.01,
+    `expected ~11.51, got ${csv.data.totalMissingPercentage}`,
+  );
   assert.equal(csv.data.statistics.length, 2);
+});
+
+const TREE_PROFILE = {
+  distribution: [
+    {
+      "@type": "cr:FileObject",
+      "@id": "root.csv",
+      name: "root.csv",
+      encodingFormat: "text/csv",
+    },
+    { "@type": "cr:FileSet", "@id": "folderA", name: "PDFs" },
+    {
+      "@type": "cr:FileObject",
+      "@id": "a.pdf",
+      name: "a.pdf",
+      encodingFormat: "application/pdf",
+      containedIn: { "@id": "folderA" },
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "b.pdf",
+      name: "b.pdf",
+      encodingFormat: "application/pdf",
+      containedIn: { "@id": "folderA" },
+    },
+  ],
+};
+
+test("buildFileTree nests FileObjects under their containedIn FileSet", () => {
+  const tree = buildFileTree(TREE_PROFILE);
+  assert.equal(tree.length, 2);
+
+  const folder = tree.find((node) => node.id === "folderA");
+  assert.ok(folder);
+  assert.equal(folder.kind, "folder");
+  assert.deepEqual(
+    folder.children?.map((child) => child.id),
+    ["a.pdf", "b.pdf"],
+  );
+
+  const rootFile = tree.find((node) => node.id === "root.csv");
+  assert.equal(rootFile?.kind, "file");
+  assert.equal(rootFile?.mimeType, "text/csv");
+});
+
+test("buildFilePreviews skips FileSets — folders are not previewable", () => {
+  const previews = buildFilePreviews(TREE_PROFILE);
+  assert.deepEqual(previews.map((p) => p.id).sort(), [
+    "a.pdf",
+    "b.pdf",
+    "root.csv",
+  ]);
 });
 
 test("buildFilePreviews classifies pdf and json files by mime type", () => {
