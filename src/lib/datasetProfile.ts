@@ -85,6 +85,9 @@ const TABULAR_MIMES = new Set([
 
 const JSON_MIMES = new Set(["application/json", "application/x-ipynb+json"]);
 
+// Distribution entries that represent containers (folders) rather than files.
+const FOLDER_TYPES = new Set(["cr:FileSet", "dg:DatabaseConnection"]);
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -255,8 +258,8 @@ export function buildFilePreviews(raw: unknown): FilePreviewEntry[] {
   const entries: FilePreviewEntry[] = [];
 
   for (const distribution of distributions) {
-    // FileSets are folders, not previewable files.
-    if (distribution["@type"] === "cr:FileSet") continue;
+    // Folders (FileSets / database connections) are not previewable files.
+    if (FOLDER_TYPES.has(distribution["@type"] ?? "")) continue;
     const id = distribution["@id"];
     if (!id) continue;
     const name = distribution.name ?? "";
@@ -322,7 +325,7 @@ export function buildFileTree(raw: unknown): ProfileTreeNode[] {
   const folders = new Map<string, ProfileTreeNode>();
   for (const distribution of distributions) {
     const id = distribution["@id"];
-    if (distribution["@type"] === "cr:FileSet" && id) {
+    if (id && FOLDER_TYPES.has(distribution["@type"] ?? "")) {
       folders.set(id, {
         id,
         name: distribution.name ?? "",
@@ -338,7 +341,7 @@ export function buildFileTree(raw: unknown): ProfileTreeNode[] {
     if (!id) continue;
 
     let node: ProfileTreeNode | undefined;
-    if (distribution["@type"] === "cr:FileSet") {
+    if (FOLDER_TYPES.has(distribution["@type"] ?? "")) {
       node = folders.get(id);
     } else {
       node = {

@@ -207,3 +207,41 @@ test("buildFilePreviews classifies pdf and json files by mime type", () => {
   assert.equal(previews.find((p) => p.id === "f2")?.data.type, "pdf");
   assert.equal(previews.find((p) => p.id === "f3")?.data.type, "json");
 });
+
+// Mirrors the real profiler output: a dg:DatabaseConnection whose tables
+// (text/sql FileObjects) reference it via containedIn.
+const DB_PROFILE = {
+  distribution: [
+    { "@type": "dg:DatabaseConnection", "@id": "db1", name: "ds_mathe" },
+    {
+      "@type": "cr:FileObject",
+      "@id": "t1",
+      name: "users",
+      encodingFormat: "text/sql",
+      containedIn: { "@id": "db1" },
+    },
+    {
+      "@type": "cr:FileObject",
+      "@id": "t2",
+      name: "roles",
+      encodingFormat: "text/sql",
+      containedIn: { "@id": "db1" },
+    },
+  ],
+};
+
+test("buildFileTree treats a DatabaseConnection as a folder of its tables", () => {
+  const tree = buildFileTree(DB_PROFILE);
+  assert.equal(tree.length, 1);
+  assert.equal(tree[0].kind, "folder");
+  assert.equal(tree[0].name, "ds_mathe");
+  assert.deepEqual(
+    tree[0].children?.map((child) => child.id),
+    ["t1", "t2"],
+  );
+});
+
+test("buildFilePreviews does not emit a DatabaseConnection container", () => {
+  const ids = buildFilePreviews(DB_PROFILE).map((p) => p.id);
+  assert.ok(!ids.includes("db1"));
+});
