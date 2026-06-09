@@ -40,4 +40,5 @@ export enum ApiErrorMessage {
   FETCH_ALLOWED_EXTENSIONS_FAILED = "Failed to fetch allowed file extensions",
   ONBOARD_DATASET_FAILED = "Failed to onboard dataset",
   PROFILE_DATASET_FAILED = "Failed to profile dataset",
+  DOWNLOAD_FILE_FAILED = "Failed to download file",
 }

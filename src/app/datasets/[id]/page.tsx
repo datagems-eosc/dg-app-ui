@@ -82,6 +82,7 @@ export default function DatasetDetailsPage() {
               "language",
               "country",
               "citation",
+              "profileRaw",
             ],
           },
           ids: [datasetId],
@@ -334,5 +335,6 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     language: obj.language ? String(obj.language) : undefined,
     country: obj.country ? String(obj.country) : undefined,
     citation: obj.citation ? String(obj.citation) : undefined,
+    profileRaw: obj.profileRaw ?? null,
   };
 }

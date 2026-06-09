@@ -3,14 +3,18 @@
 import { Button } from "@ui/Button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
 import { getDisplayCategory } from "@/config/collectionConstants";
 import type { DatasetPlus } from "@/data/dataset";
-import { getFilePreviewData } from "@/data/mockFilePreview";
+import { useApi } from "@/hooks/useApi";
+import { buildFilePreviews } from "@/lib/datasetProfile";
+import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
+import type { FilePreviewDataUnion } from "@/types/filePreview";
 import DatasetDescriptionSection from "./DatasetDescriptionSection/DatasetDescriptionSection";
 import styles from "./DatasetDetailsPageContent.module.scss";
+import type { FileNode } from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetHeader from "./DatasetHeader/DatasetHeader";
 import DatasetMetadataBar from "./DatasetMetadataBar/DatasetMetadataBar";
@@ -20,6 +24,17 @@ import DatasetSpecificationSection from "./DatasetSpecificationSection/DatasetSp
 import DatasetTagsSection from "./DatasetTagsSection/DatasetTagsSection";
 import DatasetUseCasesSection from "./DatasetUseCasesSection/DatasetUseCasesSection";
 import FilePreview from "./FilePreview/FilePreview";
+
+const JSON_PREVIEW_MAX_LINES = 150;
+
+function extensionFromMime(mime?: string): string | undefined {
+  if (!mime) return undefined;
+  if (mime.includes("csv")) return "csv";
+  if (mime.includes("spreadsheet") || mime.includes("excel")) return "xlsx";
+  if (mime.includes("pdf")) return "pdf";
+  if (mime.includes("json")) return "json";
+  return undefined;
+}
 
 interface DatasetDetailsPageContentProps {
   dataset: DatasetPlus;
@@ -31,28 +46,102 @@ export default function DatasetDetailsPageContent({
   returnToRoles = false,
 }: DatasetDetailsPageContentProps) {
   const router = useRouter();
-  const [selectedFileId, setSelectedFileId] = useState<string>("file1-csv");
+  const { downloadDatasetFile } = useApi();
 
-  const handleFileSelect = (
-    fileId: string,
-    _fileName: string,
-    extension?: string,
-  ) => {
-    const mockFileMap: Record<string, string> = {
-      file1: "file1-csv",
-      "csv-file1": "file1-csv",
-      "csv-file2": "file1-csv",
-      file2: "file2-xlsx",
-      "excel-file1": "file2-xlsx",
-      "pdf-file1": "file-pdf",
-      "json-file1": "file-json",
+  const previewEntries = useMemo(
+    () => buildFilePreviews(dataset.profileRaw),
+    [dataset.profileRaw],
+  );
+
+  const fileNodes: FileNode[] = useMemo(
+    () =>
+      previewEntries.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        type: "file",
+        extension: extensionFromMime(entry.mimeType),
+      })),
+    [previewEntries],
+  );
+
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [loadedContent, setLoadedContent] = useState<
+    Record<string, FilePreviewDataUnion>
+  >({});
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedFileId && previewEntries.length > 0) {
+      setSelectedFileId(previewEntries[0].id);
+    }
+  }, [previewEntries, selectedFileId]);
+
+  const selectedEntry = previewEntries.find(
+    (entry) => entry.id === selectedFileId,
+  );
+
+  // Tabular previews are fully described by the profile; JSON/PDF need the
+  // file bytes, fetched lazily on selection to save bandwidth.
+  useEffect(() => {
+    if (!selectedEntry) return;
+    const { id, data } = selectedEntry;
+    if (data.type === "tabular" || loadedContent[id]) return;
+
+    let cancelled = false;
+    setIsPreviewLoading(true);
+    (async () => {
+      try {
+        const response = await downloadDatasetFile(dataset.id, id);
+        if (data.type === "json") {
+          const text = await response.text();
+          const content = text
+            .split("\n")
+            .slice(0, JSON_PREVIEW_MAX_LINES)
+            .join("\n");
+          if (!cancelled) {
+            setLoadedContent((prev) => ({
+              ...prev,
+              [id]: { ...data, content },
+            }));
+          }
+        } else if (data.type === "pdf") {
+          const blob = await response.blob();
+          const fileUrl = URL.createObjectURL(blob);
+          if (!cancelled) {
+            setLoadedContent((prev) => ({
+              ...prev,
+              [id]: { ...data, fileUrl },
+            }));
+          }
+        }
+      } catch (error) {
+        logError("Failed to load file preview content", error, {
+          datasetId: dataset.id,
+          fileId: id,
+        });
+      } finally {
+        if (!cancelled) setIsPreviewLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
     };
+  }, [selectedEntry, dataset.id, downloadDatasetFile, loadedContent]);
 
-    const mappedFileId = mockFileMap[fileId] ?? "file1-csv";
-    setSelectedFileId(mappedFileId);
+  const filePreviewData: FilePreviewDataUnion | null = selectedEntry
+    ? (loadedContent[selectedEntry.id] ?? selectedEntry.data)
+    : null;
+
+  const isAwaitingContent =
+    selectedEntry != null &&
+    selectedEntry.data.type !== "tabular" &&
+    !loadedContent[selectedEntry.id] &&
+    isPreviewLoading;
+
+  const handleFileSelect = (fileId: string) => {
+    setSelectedFileId(fileId);
   };
-
-  const filePreviewData = getFilePreviewData(selectedFileId);
 
   const displayCategory = getDisplayCategory(
     dataset.collections,
@@ -154,11 +243,21 @@ export default function DatasetDetailsPageContent({
               <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
                 File Preview
               </h2>
-              <FilePreview fileData={filePreviewData} />
+              {isAwaitingContent ? (
+                <div
+                  aria-busy="true"
+                  className="h-96 w-full animate-pulse rounded-lg bg-slate-100"
+                />
+              ) : (
+                <FilePreview fileData={filePreviewData} />
+              )}
             </div>
 
             <div className={styles.datasetDetailsPageContent__rowRight}>
-              <DatasetFilesTree onFileSelect={handleFileSelect} />
+              <DatasetFilesTree
+                files={fileNodes}
+                onFileSelect={handleFileSelect}
+              />
             </div>
           </div>
 
