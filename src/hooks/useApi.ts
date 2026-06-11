@@ -1014,6 +1014,78 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getDatasetRecommendations = useCallback(
+    async (
+      datasetId: string,
+      n = 6,
+      fields: string[] = [
+        "id",
+        "name",
+        "description",
+        "keywords",
+        "fieldOfScience",
+        "license",
+        "url",
+        "mimeType",
+        "datePublished",
+        "collections.id",
+        "collections.name",
+        "collections.code",
+        "permissions",
+      ],
+    ): Promise<any[]> => {
+      if (!token) return [];
+
+      const params = fields.map((f) => `f=${encodeURIComponent(f)}`);
+      params.push(`n=${n}`);
+      const url = `${baseUrl}/gw/api/search/dataset/${encodeURIComponent(
+        datasetId,
+      )}/recommend?${params.join("&")}`;
+
+      logApiRequest("getDatasetRecommendations", { datasetId, n });
+
+      try {
+        // Plain fetch (NOT fetchWithAuth): the recommend endpoint returns
+        // 401 "insufficient rights" for datasets the user can't access, and
+        // fetchWithAuth would treat that as an auth failure and force a logout.
+        // Recommendations are a non-critical footer, so degrade to empty.
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            oauth2: token,
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+            "X-Request-Type": "getDatasetRecommendations",
+          },
+        });
+
+        if (!response.ok) {
+          logApiError(
+            "getDatasetRecommendations",
+            { status: response.status },
+            { datasetId },
+          );
+          return [];
+        }
+
+        const result = await response.json();
+        const items = Array.isArray(result) ? result : [];
+        logApiResponse("getDatasetRecommendations", {
+          datasetId,
+          count: items.length,
+        });
+        return items;
+      } catch (error) {
+        logApiError("getDatasetRecommendations", error, { datasetId });
+        return [];
+      }
+    },
+    [token, baseUrl],
+  );
+
   const getUserFavorites = useCallback(
     async (
       fields: string[] = [
@@ -1593,6 +1665,7 @@ export function useApi() {
     removeDatasetFromUserCollection,
     getDatasetById,
     downloadDatasetFile,
+    getDatasetRecommendations,
     getUserFavorites,
     addFavoriteDataset,
     removeFavoriteDataset,

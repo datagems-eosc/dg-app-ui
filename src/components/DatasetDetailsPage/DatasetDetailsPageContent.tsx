@@ -277,7 +277,7 @@ export default function DatasetDetailsPageContent({
             </div>
           </div>
 
-          <DatasetRecommendationsSection />
+          <DatasetRecommendationsSection datasetId={dataset.id} />
         </div>
       </div>
     </div>
