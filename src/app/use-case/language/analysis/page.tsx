@@ -24,6 +24,11 @@ interface CollocationRow {
   pmi: number;
 }
 
+interface RetrievedTextRow {
+  content: string;
+  similarity: number;
+}
+
 interface AnalysisState {
   query: string;
   features: {
@@ -34,14 +39,23 @@ interface AnalysisState {
   termFreqData: TermFreqRow[];
   sentimentData: SentimentData | null;
   collocationData: CollocationRow[];
+  retrievedTexts: RetrievedTextRow[];
 }
 
 function mapResponse(
   raw: any,
-): Pick<AnalysisState, "termFreqData" | "sentimentData" | "collocationData"> {
+): Pick<
+  AnalysisState,
+  "termFreqData" | "sentimentData" | "collocationData" | "retrievedTexts"
+> {
   const features: any[] = Array.isArray(raw?.features) ? raw.features : [];
   if (features.length === 0) {
-    return { termFreqData: [], sentimentData: null, collocationData: [] };
+    return {
+      termFreqData: [],
+      sentimentData: null,
+      collocationData: [],
+      retrievedTexts: [],
+    };
   }
 
   // Aggregate term frequency — sum counts across all feature chunks, sort by count desc
@@ -122,7 +136,19 @@ function mapResponse(
     .sort((a, b) => b.pmi - a.pmi)
     .slice(0, 20);
 
-  return { termFreqData, sentimentData, collocationData };
+  const ragResults: any[] = Array.isArray(raw?.rag_output?.results)
+    ? raw.rag_output.results
+    : [];
+  const retrievedTexts: RetrievedTextRow[] = ragResults
+    .filter((r) => typeof r?.content === "string")
+    .sort((a, b) => Number(b.similarity ?? 0) - Number(a.similarity ?? 0))
+    .slice(0, 10)
+    .map((r) => ({
+      content: String(r.content),
+      similarity: Number(r.similarity ?? 0),
+    }));
+
+  return { termFreqData, sentimentData, collocationData, retrievedTexts };
 }
 
 function DonutChart({ data }: { data: SentimentData }) {
@@ -213,6 +239,7 @@ export default function LanguageAnalysisPage() {
   const termFreqData = state?.termFreqData ?? [];
   const sentimentData = state?.sentimentData ?? null;
   const collocationData = state?.collocationData ?? [];
+  const retrievedTexts = state?.retrievedTexts ?? [];
 
   return (
     <div className="flex justify-center px-5 py-10">
@@ -410,11 +437,59 @@ export default function LanguageAnalysisPage() {
           </div>
         )}
 
+        {/* Retrieved Texts */}
+        {retrievedTexts.length > 0 && (
+          <div className="bg-white border border-[#e2e8f0] rounded-2xl p-5 flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-[20px] font-semibold text-[#1d293d] leading-[1.4]">
+                Retrieved Texts
+              </h2>
+              <p className="text-[14px] font-normal text-[#5b708f] leading-[1.5]">
+                Shows the top 10 texts retrieved based on their similarity to
+                the user&apos;s question. The total number of retrieved
+                documents may be higher, and the features above were calculated
+                using all retrieved documents.
+              </p>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#e2e8f0]">
+                  <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3 w-10">
+                    #
+                  </th>
+                  <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3">
+                    Text
+                  </th>
+                  <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
+                    Similarity
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e2e8f0]">
+                {retrievedTexts.map((row, i) => (
+                  <tr key={i}>
+                    <td className="py-3 text-[14px] text-[#8095ad] align-top">
+                      {i + 1}
+                    </td>
+                    <td className="py-3 text-[14px] font-medium text-[#314158]">
+                      {row.content}
+                    </td>
+                    <td className="py-3 text-[14px] text-[#314158] text-right align-top">
+                      {row.similarity.toFixed(4)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {/* Empty state when no data and no features selected */}
         {state &&
           !termFreqData.length &&
           !sentimentData &&
-          !collocationData.length && (
+          !collocationData.length &&
+          !retrievedTexts.length && (
             <div className="bg-white border border-[#e2e8f0] rounded-2xl p-10 flex flex-col items-center gap-2">
               <p className="text-[16px] font-medium text-[#314158]">
                 No analysis data available
