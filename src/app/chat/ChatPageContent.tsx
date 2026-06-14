@@ -76,6 +76,7 @@ export interface ChatPageContentProps {
   hideCollectionActions?: boolean;
   withLayout?: boolean;
   forcedCollectionId?: string | null;
+  forcedDatasetIds?: string[];
 }
 
 export function ChatPageContent({
@@ -83,8 +84,11 @@ export function ChatPageContent({
   hideCollectionActions,
   withLayout = true,
   forcedCollectionId,
+  forcedDatasetIds,
 }: ChatPageContentProps) {
-  const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
+  const [selectedDatasets, setSelectedDatasets] = useState<string[]>(
+    forcedDatasetIds ?? [],
+  );
   const api = useApi();
   const [isMounted, setIsMounted] = useState(false);
   const [chatInitialMessages, setChatInitialMessages] = useState<
@@ -161,7 +165,7 @@ export function ChatPageContent({
             }
           });
         }
-        setSelectedDatasets(datasetIds);
+        setSelectedDatasets(forcedDatasetIds ?? datasetIds);
       };
       fetchHistory();
     } else if (!id && conversationId !== null) {
@@ -171,13 +175,13 @@ export function ChatPageContent({
       isInitializedRef.current = true;
 
       if (isTransitioningFromConversation) {
-        setSelectedDatasets([]);
+        setSelectedDatasets(forcedDatasetIds ?? []);
         sessionStorage.removeItem("lastConversationId");
       }
     } else if (!id && !isInitializedRef.current) {
       isInitializedRef.current = true;
     }
-  }, [isMounted, params, api.hasToken]);
+  }, [isMounted, params, api.hasToken, forcedDatasetIds]);
 
   useEffect(() => {
     const id = params?.conversationId as string | undefined;
@@ -290,7 +294,7 @@ export function ChatPageContent({
       selectedDatasets={selectedDatasets}
       datasets={normalizeDatasets(datasets) as Dataset[]}
       onSelectedDatasetsChange={(datasets) => {
-        setSelectedDatasets(datasets);
+        setSelectedDatasets(forcedDatasetIds ?? datasets);
       }}
       conversationId={conversationId}
       initialMessages={chatInitialMessages ?? undefined}
