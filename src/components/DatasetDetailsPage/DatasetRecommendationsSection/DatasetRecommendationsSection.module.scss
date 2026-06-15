@@ -17,16 +17,18 @@
 
   &__grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    // minmax(0, 1fr) (not 1fr) so non-shrinkable card content can't widen a
+    // track — keeps all columns in a row equal and lets text truncate.
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: $spacing-lg;
     row-gap: 20px;
 
     @media (max-width: $breakpoint-xl - 1px) {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     @media (max-width: $breakpoint-md - 1px) {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
@@ -36,6 +38,7 @@
     background: $color-background;
     padding: 20px;
     cursor: pointer;
+    min-width: 0;
     @include transition-base;
 
     &:hover {
@@ -51,24 +54,27 @@
   &__cardContent {
     @include flex-column;
     gap: $spacing-lg;
+    min-width: 0;
   }
 
   &__cardHeader {
     @include flex-column;
     gap: $spacing-xs;
+    min-width: 0;
   }
 
   &__cardTitle {
     @include font-semibold;
     font-size: $font-size-lg;
     color: $color-primary;
-    line-height: $line-height-tight;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    // block + line-height (not flex centering): text-overflow: ellipsis does
+    // not apply to a flex container's anonymous text item.
     height: 32px;
-    display: flex;
-    align-items: center;
+    line-height: 32px;
+    min-width: 0;
     margin: 0;
   }
 
