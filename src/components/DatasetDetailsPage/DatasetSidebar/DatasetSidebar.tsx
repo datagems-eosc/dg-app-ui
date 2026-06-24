@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import AddToCollectionModal from "@/components/AddToCollectionModal";
-import type { DatasetPlus } from "@/data/dataset";
+import CreateCollectionModal from "@/components/CreateCollectionModal";
+import type { Dataset, DatasetPlus } from "@/data/dataset";
 import DatasetCitationSection from "./DatasetCitationSection";
 import DatasetCollectionSection from "./DatasetCollectionSection";
 import DatasetCountrySection from "./DatasetCountrySection";
@@ -34,14 +34,14 @@ export default function DatasetSidebar({
   hasDownloadPermission,
   hasManagePermission,
 }: DatasetSidebarProps) {
-  const [showAddToCollectionModal, setShowAddToCollectionModal] =
+  const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
 
   return (
     <div className={styles.datasetSidebar}>
       <DatasetCollectionSection
         displayCategory={displayCategory}
-        onAddClick={() => setShowAddToCollectionModal(true)}
+        onAddClick={() => setShowCreateCollectionModal(true)}
       />
 
       <DatasetPermissionsSection
@@ -68,10 +68,11 @@ export default function DatasetSidebar({
         <DatasetCitationSection citation={dataset.citation} />
       )}
 
-      <AddToCollectionModal
-        isVisible={showAddToCollectionModal}
-        onClose={() => setShowAddToCollectionModal(false)}
-        dataset={dataset}
+      <CreateCollectionModal
+        isVisible={showCreateCollectionModal}
+        onClose={() => setShowCreateCollectionModal(false)}
+        selectedDatasets={dataset.id ? [dataset.id] : []}
+        datasets={[dataset as Dataset]}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { publicEnv } from "@/lib/env";
+import type { UserFavorite } from "@/lib/favorites";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import { fetchWithAuth, getApiBaseUrl, getLogoutUrl } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
@@ -952,6 +953,250 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getDatasetById = useCallback(
+    async (id: string, fields?: string[]): Promise<any> => {
+      const qs = buildFieldsQuery(fields);
+      logApiRequest("getDatasetById", { endpoint: `/dataset/${id}` });
+
+      const response = await makeRequest(
+        `/dataset/${encodeURIComponent(id)}${qs}`,
+        {
+          method: "GET",
+          headers: { "X-Request-Type": "getDatasetById" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("getDatasetById", errorData, { id });
+        }
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
+        );
+      }
+
+      const result = await response.json();
+      logApiResponse("getDatasetById", { id });
+      return result;
+    },
+    [makeRequest],
+  );
+
+  const downloadDatasetFile = useCallback(
+    async (datasetId: string, fileObjectNodeId: string): Promise<Response> => {
+      logApiRequest("downloadDatasetFile", { datasetId, fileObjectNodeId });
+
+      const response = await makeRequest(
+        `/storage/download/dataset/${encodeURIComponent(datasetId)}/file-object/${encodeURIComponent(fileObjectNodeId)}`,
+        {
+          method: "GET",
+          headers: { "X-Request-Type": "downloadDatasetFile" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("downloadDatasetFile", errorData, {
+            datasetId,
+            fileObjectNodeId,
+          });
+        }
+        throw new Error(
+          errorData.error || ApiErrorMessage.DOWNLOAD_FILE_FAILED,
+        );
+      }
+
+      logApiResponse("downloadDatasetFile", { datasetId, fileObjectNodeId });
+      return response;
+    },
+    [makeRequest],
+  );
+
+  const getDatasetRecommendations = useCallback(
+    async (
+      datasetId: string,
+      n = 6,
+      fields: string[] = [
+        "id",
+        "name",
+        "description",
+        "keywords",
+        "fieldOfScience",
+        "license",
+        "url",
+        "mimeType",
+        "datePublished",
+        "collections.id",
+        "collections.name",
+        "collections.code",
+        "permissions",
+      ],
+    ): Promise<any[]> => {
+      if (!token) return [];
+
+      const params = fields.map((f) => `f=${encodeURIComponent(f)}`);
+      params.push(`n=${n}`);
+      const url = `${baseUrl}/gw/api/search/dataset/${encodeURIComponent(
+        datasetId,
+      )}/recommend?${params.join("&")}`;
+
+      logApiRequest("getDatasetRecommendations", { datasetId, n });
+
+      try {
+        // Plain fetch (NOT fetchWithAuth): the recommend endpoint returns
+        // 401 "insufficient rights" for datasets the user can't access, and
+        // fetchWithAuth would treat that as an auth failure and force a logout.
+        // Recommendations are a non-critical footer, so degrade to empty.
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            oauth2: token,
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+            "X-Request-Type": "getDatasetRecommendations",
+          },
+        });
+
+        if (!response.ok) {
+          logApiError(
+            "getDatasetRecommendations",
+            { status: response.status },
+            { datasetId },
+          );
+          return [];
+        }
+
+        const result = await response.json();
+        const items = Array.isArray(result) ? result : [];
+        logApiResponse("getDatasetRecommendations", {
+          datasetId,
+          count: items.length,
+        });
+        return items;
+      } catch (error) {
+        logApiError("getDatasetRecommendations", error, { datasetId });
+        return [];
+      }
+    },
+    [token, baseUrl],
+  );
+
+  const getUserFavorites = useCallback(
+    async (
+      fields: string[] = [
+        "id",
+        "dataset.id",
+        "dataset.name",
+        "dataset.description",
+        "dataset.keywords",
+        "dataset.fieldOfScience",
+        "dataset.datePublished",
+        "dataset.license",
+        "dataset.url",
+        "dataset.permissions",
+        "dataset.collections.id",
+        "dataset.collections.name",
+        "dataset.collections.code",
+      ],
+    ): Promise<UserFavorite[]> => {
+      const qs = buildFieldsQuery(fields);
+      logApiRequest("getUserFavorites", {
+        endpoint: "/user/settings/favorites/dataset",
+      });
+
+      const response = await makeRequest(
+        `/user/settings/favorites/dataset${qs}`,
+        {
+          method: "GET",
+          headers: { "X-Request-Type": "getUserFavorites" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("getUserFavorites", errorData);
+        }
+        throw new Error(
+          errorData.error || ApiErrorMessage.FETCH_FAVORITES_FAILED,
+        );
+      }
+
+      const result = await response.json();
+      logApiResponse("getUserFavorites", {
+        count: Array.isArray(result) ? result.length : 0,
+      });
+      return Array.isArray(result) ? result : [];
+    },
+    [makeRequest],
+  );
+
+  const addFavoriteDataset = useCallback(
+    async (datasetId: string): Promise<UserFavorite> => {
+      logApiRequest("addFavoriteDataset", {
+        endpoint: "/user/settings/favorites/dataset/persist",
+        datasetId,
+      });
+
+      const response = await makeRequest(
+        "/user/settings/favorites/dataset/persist?f=id&f=dataset.id",
+        {
+          method: "POST",
+          body: JSON.stringify({ datasetId }),
+          headers: { "X-Request-Type": "addFavoriteDataset" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("addFavoriteDataset", errorData, { datasetId });
+        }
+        throw new Error(errorData.error || ApiErrorMessage.ADD_FAVORITE_FAILED);
+      }
+
+      const result = await response.json();
+      logApiResponse("addFavoriteDataset", { datasetId });
+      return result;
+    },
+    [makeRequest],
+  );
+
+  const removeFavoriteDataset = useCallback(
+    async (datasetId: string): Promise<void> => {
+      logApiRequest("removeFavoriteDataset", {
+        endpoint: `/user/settings/favorites/dataset/${datasetId}`,
+        datasetId,
+      });
+
+      const response = await makeRequest(
+        `/user/settings/favorites/dataset/${encodeURIComponent(datasetId)}`,
+        {
+          method: "DELETE",
+          headers: { "X-Request-Type": "removeFavoriteDataset" },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData && Object.keys(errorData).length > 0) {
+          logApiError("removeFavoriteDataset", errorData, { datasetId });
+        }
+        throw new Error(
+          errorData.error || ApiErrorMessage.REMOVE_FAVORITE_FAILED,
+        );
+      }
+
+      logApiResponse("removeFavoriteDataset", { datasetId });
+    },
+    [makeRequest],
+  );
+
   const getUserSettingsById = useCallback(
     async (
       id: string,
@@ -1354,6 +1599,35 @@ export function useApi() {
     [makeRequest],
   );
 
+  const getLinguisticFeatures = useCallback(
+    async (payload: { DatasetIds: string[]; Query: string }): Promise<any> => {
+      logApiRequest("getLinguisticFeatures", {
+        endpoint: "/pilot/language/linguistic-features",
+        payload,
+      });
+      const response = await makeRequest(
+        "/pilot/language/linguistic-features",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logApiError("getLinguisticFeatures", errorData);
+        throw new Error(
+          errorData.error ||
+            errorData.message ||
+            "Failed to get linguistic features",
+        );
+      }
+      const result = await response.json();
+      logApiResponse("getLinguisticFeatures", result);
+      return result;
+    },
+    [makeRequest],
+  );
+
   const profileDataset = useCallback(
     async (datasetId: string, dataStoreKind: number): Promise<string> => {
       logApiRequest("profileDataset", {
@@ -1389,6 +1663,12 @@ export function useApi() {
     createUserCollection,
     addDatasetToUserCollection,
     removeDatasetFromUserCollection,
+    getDatasetById,
+    downloadDatasetFile,
+    getDatasetRecommendations,
+    getUserFavorites,
+    addFavoriteDataset,
+    removeFavoriteDataset,
     getCollectionGrants,
     grantCollectionPermission,
     deleteCollection,
@@ -1429,5 +1709,6 @@ export function useApi() {
     uploadDatasetFiles,
     onboardDataset,
     profileDataset,
+    getLinguisticFeatures,
   };
 }

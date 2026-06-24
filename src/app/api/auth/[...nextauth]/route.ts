@@ -52,12 +52,6 @@ const handler = NextAuth({
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
-  pages: {
-    signIn: "/api/auth/signin",
-    signOut: "/api/auth/signout",
-    error: "/api/auth/error",
-    verifyRequest: "/api/auth/verify-request",
-  },
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days

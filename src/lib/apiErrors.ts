@@ -30,6 +30,9 @@ export enum ApiErrorMessage {
   UNEXPECTED_ERROR = "An unexpected error occurred",
   NO_ACCESS_TOKEN = "No access token available",
   NO_AUTH_TOKEN_OR_FAVORITES_ID = "No authentication token or favorites collection ID",
+  FETCH_FAVORITES_FAILED = "Failed to fetch favorite datasets",
+  ADD_FAVORITE_FAILED = "Failed to add dataset to favorites",
+  REMOVE_FAVORITE_FAILED = "Failed to remove dataset from favorites",
   NO_CONVERSATION_ID = "No conversation ID returned from server",
   NO_AUTH_TOKEN_FOUND = "No authentication token found. Please log in again.",
   FETCH_DATASET_DETAILS_FAILED = "Failed to fetch dataset details. Please try again.",
@@ -37,4 +40,5 @@ export enum ApiErrorMessage {
   FETCH_ALLOWED_EXTENSIONS_FAILED = "Failed to fetch allowed file extensions",
   ONBOARD_DATASET_FAILED = "Failed to onboard dataset",
   PROFILE_DATASET_FAILED = "Failed to profile dataset",
+  DOWNLOAD_FILE_FAILED = "Failed to download file",
 }

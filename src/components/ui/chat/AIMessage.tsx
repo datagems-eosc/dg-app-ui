@@ -5,6 +5,7 @@ import { AIMessageHeader } from "@ui/chat/AIMessageHeader";
 import { ChatRecommendations } from "@ui/chat/ChatRecommendations";
 import DatasetProposalBlock from "@ui/chat/DatasetProposalBlock";
 import { TemperatureMap } from "@ui/chat/TemperatureMap";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import type { Message } from "@/types/chat";
 
 interface AIMessageProps {
@@ -22,7 +23,12 @@ export function AIMessage({
   onDatasetProposalConfirm,
   isLastAIMessage = false,
 }: AIMessageProps) {
+  const questionRecommendationEnabled = useFeatureFlag(
+    "questionRecommendation",
+  );
+  const datasetRecommendationEnabled = useFeatureFlag("datasetRecommendation");
   const shouldShowRecommendations =
+    questionRecommendationEnabled &&
     isLastAIMessage &&
     (message.recommendationsLoading ||
       (message.recommendations && message.recommendations.length > 0));
@@ -34,7 +40,9 @@ export function AIMessage({
         onSourcesClick={onSourcesClick}
       />
 
-      {message.datasetProposal && message.datasetProposal.length > 0 ? (
+      {datasetRecommendationEnabled &&
+      message.datasetProposal &&
+      message.datasetProposal.length > 0 ? (
         <DatasetProposalBlock
           datasets={message.datasetProposal}
           onConfirm={onDatasetProposalConfirm ?? (() => {})}

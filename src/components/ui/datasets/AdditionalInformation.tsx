@@ -37,7 +37,6 @@ export function AdditionalInformation({
       <div>
         <Textarea
           label="Reference String (Citation)"
-          required
           value={data.referenceString}
           onChange={(e) => handleFieldChange("referenceString", e.target.value)}
           placeholder="How should this dataset be cited?"
@@ -52,7 +51,6 @@ export function AdditionalInformation({
 
       <Input
         label="Dataset Source Link"
-        required
         value={data.sourceLink}
         onChange={(e) => handleFieldChange("sourceLink", e.target.value)}
         placeholder="https://..."

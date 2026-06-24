@@ -39,6 +39,7 @@ import {
 import { UI_CONSTANTS } from "@/config/uiConstants";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import type { Dataset } from "@/data/dataset";
 import { mockDatasets } from "@/data/dataset";
 import { filterPackagesBySearchTerm, mockPackages } from "@/data/package";
@@ -76,6 +77,7 @@ interface BrowseProps {
   isModal?: boolean;
   isEditMode?: boolean;
   onRemoveDataset?: (datasetId: string) => void;
+  onBulkRemoveDatasets?: (datasetIds: string[]) => Promise<void> | void;
   customActionButtons?: Array<{
     label: string;
     icon?: React.ComponentType<{ className?: string }>;
@@ -86,11 +88,6 @@ interface BrowseProps {
   }>;
   showAddButton?: boolean; // NEW PROP
   showSearchAndFilters?: boolean; // NEW PROP
-  favoriteDatasetIds?: string[]; // NEW PROP
-  favoritesCollectionId?: string; // NEW PROP
-  hasFetchedFavorites?: boolean; // NEW PROP
-  onAddToFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
-  onRemoveFromFavorites?: (datasetId: string) => Promise<void>; // NEW PROP
   /**
    * The current value of the search input (controlled from parent).
    */
@@ -194,14 +191,10 @@ export default function Browse({
   isModal = false,
   isEditMode = false,
   onRemoveDataset,
+  onBulkRemoveDatasets,
   customActionButtons,
   showAddButton = true, // default true for backward compatibility
   showSearchAndFilters = true, // Default to true
-  favoriteDatasetIds = [], // Default to empty array
-  favoritesCollectionId = "", // Default to empty string
-  hasFetchedFavorites = false, // Default to false
-  onAddToFavorites, // NEW PROP
-  onRemoveFromFavorites, // NEW PROP
   searchTerm = "",
   onSearchTermChange,
   onSearchTermSubmit,
@@ -266,6 +259,7 @@ export default function Browse({
     useState(false);
   const [isPackageCarouselCollapsed, setIsPackageCarouselCollapsed] =
     useState(false);
+  const datasetPackagingEnabled = useFeatureFlag("datasetPackage");
   const isSmartSearchEnabled =
     typeof controlledSmartSearchEnabled === "boolean"
       ? controlledSmartSearchEnabled
@@ -776,7 +770,9 @@ export default function Browse({
   }, [searchTerm, datasetsWithMockFallback]);
 
   const shouldShowPackageCarousel =
-    showSearchAndFilters !== false && (searchTerm ?? "").trim().length > 0;
+    datasetPackagingEnabled &&
+    showSearchAndFilters !== false &&
+    (searchTerm ?? "").trim().length > 0;
 
   return (
     <div className="flex relative min-h-screen">
@@ -1032,18 +1028,24 @@ export default function Browse({
                           <Tag className="w-4 h-4 text-icon" />
                           Rename
                         </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowActionsDropdown(false);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4 text-icon" />
-                          Delete
-                        </button>
+                        {onBulkRemoveDatasets && (
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setShowActionsDropdown(false);
+                              if (currentSelectedDatasets.length === 0) return;
+                              await onBulkRemoveDatasets([
+                                ...currentSelectedDatasets,
+                              ]);
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-icon" />
+                            Delete
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1239,11 +1241,6 @@ export default function Browse({
                       viewMode={viewMode}
                       onAddToCollection={() => handleAddToCollection(dataset)}
                       showAddButton={showAddButton}
-                      isFavorite={favoriteDatasetIds.includes(dataset.id)}
-                      favoritesCollectionId={favoritesCollectionId}
-                      onAddToFavorites={onAddToFavorites}
-                      hasFetchedFavorites={hasFetchedFavorites}
-                      onRemoveFromFavorites={onRemoveFromFavorites}
                       hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
                       isSmartSearchEnabled={isSmartSearchEnabled}
                     />

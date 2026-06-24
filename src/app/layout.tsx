@@ -7,6 +7,7 @@ import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 import { CollectionsProvider } from "@/contexts/CollectionsContext";
 import { DatasetProvider } from "@/contexts/DatasetContext";
 import { ErrorProvider } from "@/contexts/ErrorContext";
+import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
 import { UserProvider } from "@/contexts/UserContext";
 import { getAppVersion } from "@/lib/appVersion";
 
@@ -47,12 +48,14 @@ export default function RootLayout({
               <UserProvider>
                 <DatasetProvider>
                   <CollectionsProvider>
-                    {children}
-                    {appVersion ? (
-                      <div className="fixed bottom-3 right-4 text-[10px] leading-[150%] text-gray-650 tracking-[0.12px]">
-                        {appVersion}
-                      </div>
-                    ) : null}
+                    <FeatureFlagsProvider>
+                      {children}
+                      {appVersion ? (
+                        <div className="fixed bottom-3 right-4 text-[10px] leading-[150%] text-gray-650 tracking-[0.12px]">
+                          {appVersion}
+                        </div>
+                      ) : null}
+                    </FeatureFlagsProvider>
                   </CollectionsProvider>
                 </DatasetProvider>
               </UserProvider>

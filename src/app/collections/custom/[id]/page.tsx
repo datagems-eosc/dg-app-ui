@@ -1,5 +1,6 @@
 "use client";
 
+import { Toast } from "@ui/Toast";
 import { Edit3, Plus, Save, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -7,9 +8,13 @@ import AddDatasetsModal from "@/components/AddDatasetsModal";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
+import { FeatureFlagGuard } from "@/components/FeatureFlagGuard";
 import { APP_ROUTES } from "@/config/appUrls";
+import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { mockDatasets } from "@/data/dataset";
+import { useApi } from "@/hooks/useApi";
+import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 
 export default function CustomCollectionPage() {
@@ -34,6 +39,10 @@ export default function CustomCollectionPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editedDatasetIds, setEditedDatasetIds] = useState<string[]>([]);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const api = useApi();
 
   useEffect(() => {
     // Non-chat page: always clear saved selection to avoid leakage
@@ -140,8 +149,101 @@ export default function CustomCollectionPage() {
     alert("Collection updated successfully!");
   };
 
-  const handleRemoveDataset = (datasetId: string) => {
+  const showToastFromConfig = (config: {
+    message: string;
+    type: "success" | "error";
+  }) => {
+    setToastType(config.type);
+    setToastMessage(config.message);
+    setShowToast(true);
+  };
+
+  const handleRemoveDataset = async (datasetId: string) => {
+    if (!collection?.id) return;
+    // Optimistic UI update
+    const previousIds = editedDatasetIds;
     setEditedDatasetIds((prev) => prev.filter((id) => id !== datasetId));
+    try {
+      await api.removeDatasetFromUserCollection(collection.id, datasetId);
+      notifyCollectionModified();
+      showToastFromConfig(
+        TOAST_MESSAGES.datasetRemovedFromCollection(collection.name),
+      );
+    } catch (error) {
+      logError("Failed to remove dataset from collection", error, {
+        collectionId: collection.id,
+        datasetId,
+      });
+      // Revert on failure
+      setEditedDatasetIds(previousIds);
+      showToastFromConfig(TOAST_MESSAGES.datasetRemoveFailed);
+    }
+  };
+
+  const handleBulkRemoveSelectedDatasets = async (datasetIds: string[]) => {
+    if (!collection?.id || datasetIds.length === 0) return;
+    const collectionId = collection.id;
+    const collectionName = collection.name;
+
+    // Optimistic UI: remove from edited list (used for display in edit mode)
+    // and clear selection.
+    const previousIds = editedDatasetIds;
+    const previousSelection = selectedDatasets;
+    const removeSet = new Set(datasetIds);
+    setEditedDatasetIds((prev) => prev.filter((id) => !removeSet.has(id)));
+    setSelectedDatasets([]);
+
+    const results = await Promise.allSettled(
+      datasetIds.map((id) =>
+        api.removeDatasetFromUserCollection(collectionId, id),
+      ),
+    );
+    const failures = results
+      .map((result, index) => ({ result, datasetId: datasetIds[index] }))
+      .filter(({ result }) => result.status === "rejected");
+
+    if (failures.length === 0) {
+      notifyCollectionModified();
+      showToastFromConfig(
+        datasetIds.length === 1
+          ? TOAST_MESSAGES.datasetRemovedFromCollection(collectionName)
+          : TOAST_MESSAGES.datasetsRemovedFromCollection(
+              datasetIds.length,
+              collectionName,
+            ),
+      );
+      return;
+    }
+
+    failures.forEach(({ result, datasetId }) => {
+      if (result.status === "rejected") {
+        logError(
+          "Failed to remove dataset from collection (bulk)",
+          result.reason,
+          {
+            collectionId,
+            datasetId,
+          },
+        );
+      }
+    });
+
+    // Revert UI for failed datasets — only their IDs come back
+    const failedIds = new Set(failures.map((f) => f.datasetId));
+    setEditedDatasetIds((current) => {
+      const merged = [...current];
+      for (const id of previousIds) {
+        if (failedIds.has(id) && !merged.includes(id)) merged.push(id);
+      }
+      return merged;
+    });
+    setSelectedDatasets(previousSelection.filter((id) => failedIds.has(id)));
+
+    // Some succeeded — still notify so sidebar refreshes
+    if (failures.length < datasetIds.length) {
+      notifyCollectionModified();
+    }
+    showToastFromConfig(TOAST_MESSAGES.datasetRemoveFailed);
   };
 
   const handleAddDatasetsFromModal = (newSelectedDatasets: string[]) => {
@@ -233,43 +335,53 @@ export default function CustomCollectionPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="relative p-6">
-        <Browse
-          datasets={collectionDatasets}
-          title={collection.name}
-          subtitle={`Custom collection • ${displayDatasetIds.length} datasets`}
-          showSelectAll={!isEditMode}
-          selectedDatasets={selectedDatasets}
-          onSelectedDatasetsChange={setSelectedDatasets}
-          showSelectedPanel={showSelectedPanel}
-          onCloseSidebar={handleCloseSidebar}
-          onReopenSidebar={handleReopenSidebar}
-          onChatWithData={!isEditMode ? handleChatWithData : undefined}
-          onAddToCollection={handleAddToCollection}
-          isEditMode={isEditMode}
-          onRemoveDataset={isEditMode ? handleRemoveDataset : undefined}
-          customActionButtons={getCustomActionButtons()}
-          isCustomCollection={true}
-          collectionName={collection.name}
-          collectionId={collection.id}
-        />
+    <FeatureFlagGuard flag="customCollection">
+      <DashboardLayout>
+        <div className="relative p-6">
+          <Browse
+            datasets={collectionDatasets}
+            title={collection.name}
+            subtitle={`Custom collection • ${displayDatasetIds.length} datasets`}
+            showSelectAll={!isEditMode}
+            selectedDatasets={selectedDatasets}
+            onSelectedDatasetsChange={setSelectedDatasets}
+            showSelectedPanel={showSelectedPanel}
+            onCloseSidebar={handleCloseSidebar}
+            onReopenSidebar={handleReopenSidebar}
+            onChatWithData={!isEditMode ? handleChatWithData : undefined}
+            onAddToCollection={handleAddToCollection}
+            isEditMode={isEditMode}
+            onRemoveDataset={isEditMode ? handleRemoveDataset : undefined}
+            onBulkRemoveDatasets={handleBulkRemoveSelectedDatasets}
+            customActionButtons={getCustomActionButtons()}
+            isCustomCollection={true}
+            collectionName={collection.name}
+            collectionId={collection.id}
+          />
 
-        <CreateCollectionModal
-          isVisible={showCreateCollectionModal}
-          onClose={() => setShowCreateCollectionModal(false)}
-          onCreateCollection={handleCreateCollection}
-          selectedDatasets={selectedDatasets}
-          datasets={mockDatasets}
-        />
+          <CreateCollectionModal
+            isVisible={showCreateCollectionModal}
+            onClose={() => setShowCreateCollectionModal(false)}
+            onCreateCollection={handleCreateCollection}
+            selectedDatasets={selectedDatasets}
+            datasets={mockDatasets}
+          />
 
-        <AddDatasetsModal
-          isVisible={showAddDatasetsModal}
-          onClose={() => setShowAddDatasetsModal(false)}
-          datasets={mockDatasets}
-          onSelectedDatasetsChange={handleAddDatasetsFromModal}
-        />
-      </div>
-    </DashboardLayout>
+          <AddDatasetsModal
+            isVisible={showAddDatasetsModal}
+            onClose={() => setShowAddDatasetsModal(false)}
+            datasets={mockDatasets}
+            onSelectedDatasetsChange={handleAddDatasetsFromModal}
+          />
+
+          <Toast
+            message={toastMessage}
+            isVisible={showToast}
+            onClose={() => setShowToast(false)}
+            type={toastType}
+          />
+        </div>
+      </DashboardLayout>
+    </FeatureFlagGuard>
   );
 }

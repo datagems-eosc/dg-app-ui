@@ -43,11 +43,29 @@ export default function CreateCollectionModal({
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-  const showDatasetAddedToast = () => {
-    const { message, type } = TOAST_MESSAGES.datasetAddedToCollection;
-    setToastType(type);
-    setToastMessage(message);
+  const showToastFromConfig = (config: {
+    message: string;
+    type: "success" | "error";
+  }) => {
+    setToastType(config.type);
+    setToastMessage(config.message);
     setShowToast(true);
+  };
+
+  const showDatasetAddedToast = (collectionNames: string[]) => {
+    if (collectionNames.length === 1) {
+      showToastFromConfig(
+        TOAST_MESSAGES.datasetAddedToNamedCollection(collectionNames[0]),
+      );
+    } else if (collectionNames.length > 1) {
+      showToastFromConfig(
+        TOAST_MESSAGES.datasetAddedToMultipleCollections(
+          collectionNames.length,
+        ),
+      );
+    } else {
+      showToastFromConfig(TOAST_MESSAGES.datasetAddedToCollection);
+    }
   };
 
   const {
@@ -98,6 +116,8 @@ export default function CreateCollectionModal({
       const response = await api.createUserCollection(collectionName.trim());
 
       if (response.id) {
+        const newCollectionName = collectionName.trim();
+
         // Add selected datasets to the newly created collection
         for (const datasetId of selectedDatasets) {
           await api.addDatasetToUserCollection(response.id, datasetId);
@@ -106,10 +126,13 @@ export default function CreateCollectionModal({
         // Refresh the sidebar to show the newly created collection
         await refreshExtraCollections();
         notifyCollectionModified();
-        showDatasetAddedToast();
+
+        if (selectedDatasets.length > 0) {
+          showDatasetAddedToast([newCollectionName]);
+        }
 
         if (onCreateCollection) {
-          onCreateCollection(collectionName.trim());
+          onCreateCollection(newCollectionName);
         }
 
         setCollectionName("Custom Collection");
@@ -139,6 +162,12 @@ export default function CreateCollectionModal({
 
     setIsAdding(true);
     try {
+      // Resolve target collections (id + name) before reset
+      const targetCollections = selectedCollectionIds
+        .map((id) => customCollections.find((c) => c.id === id))
+        .filter((c): c is NonNullable<typeof c> => Boolean(c))
+        .map((c) => ({ id: c.id, name: c.name }));
+
       // Add datasets to all selected collections via API
       for (const collectionId of selectedCollectionIds) {
         for (const datasetId of selectedDatasets) {
@@ -156,7 +185,7 @@ export default function CreateCollectionModal({
       await refreshExtraCollections();
       // Also notify that collections have been modified to refresh sidebar
       notifyCollectionModified();
-      showDatasetAddedToast();
+      showDatasetAddedToast(targetCollections.map((c) => c.name));
     } catch (error) {
       logError("Failed to add datasets to collections", error);
       alert("Failed to add datasets to collections. Please try again.");

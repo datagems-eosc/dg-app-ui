@@ -29,12 +29,13 @@ interface FormData {
     headline: string;
     description: string;
     keywords: string[];
-    authors: string;
   };
   classification: {
     fieldsOfScience: string[];
     collection: string;
     license: string;
+    languages: string[];
+    countries: string[];
   };
   additionalInfo: {
     referenceString: string;
@@ -49,12 +50,13 @@ interface FormErrors {
     headline?: string;
     description?: string;
     keywords?: string;
-    authors?: string;
   };
   classification: {
     fieldsOfScience?: string;
     collection?: string;
     license?: string;
+    languages?: string;
+    countries?: string;
   };
   additionalInfo: {
     referenceString?: string;
@@ -69,12 +71,13 @@ const initialFormData: FormData = {
     headline: "",
     description: "",
     keywords: [],
-    authors: "",
   },
   classification: {
     fieldsOfScience: [],
     collection: "",
     license: "",
+    languages: [],
+    countries: [],
   },
   additionalInfo: {
     referenceString: "",
@@ -87,8 +90,6 @@ const initialErrors: FormErrors = {
   classification: {},
   additionalInfo: {},
 };
-
-const AUTHORS_MAX_LENGTH = 250;
 
 // data-flows.md: staged files use Kind 0 (File) with the path returned by upload.
 // Backend expects /storage/datagems/gw/dataset_upload\<filename> format (Postman).
@@ -309,7 +310,6 @@ export default function AddDatasetForm() {
             headline: headline || name,
             description,
             keywords,
-            authors: prev.basicInfo.authors,
           },
           classification: {
             ...prev.classification,
@@ -362,10 +362,6 @@ export default function AddDatasetForm() {
         "Description must be 3000 characters or less";
     }
 
-    if (formData.basicInfo.authors.length > AUTHORS_MAX_LENGTH) {
-      newErrors.basicInfo.authors = `Authors must be ${AUTHORS_MAX_LENGTH} characters or less`;
-    }
-
     // Validate keywords: required and max combined length 250
     const combinedKeywords = formData.basicInfo.keywords
       .filter(Boolean)
@@ -385,17 +381,15 @@ export default function AddDatasetForm() {
       newErrors.classification.license = "License is required";
     }
 
-    if (!formData.additionalInfo.referenceString.trim()) {
-      newErrors.additionalInfo.referenceString =
-        "Reference string (citation) is required";
-    } else if (formData.additionalInfo.referenceString.length > 3000) {
+    if (formData.additionalInfo.referenceString.length > 3000) {
       newErrors.additionalInfo.referenceString =
         "Reference string must be 3000 characters or less";
     }
 
-    if (!formData.additionalInfo.sourceLink.trim()) {
-      newErrors.additionalInfo.sourceLink = "Dataset source URL is required";
-    } else if (!isValidUrl(formData.additionalInfo.sourceLink)) {
+    if (
+      formData.additionalInfo.sourceLink.trim() &&
+      !isValidUrl(formData.additionalInfo.sourceLink)
+    ) {
       newErrors.additionalInfo.sourceLink = "Please enter a valid URL";
     }
 
@@ -485,8 +479,8 @@ export default function AddDatasetForm() {
         headline: formData.basicInfo.headline,
         keywords: formData.basicInfo.keywords,
         fieldOfScience: formData.classification.fieldsOfScience,
-        language: [],
-        country: [],
+        language: formData.classification.languages,
+        country: formData.classification.countries,
         datePublished: new Date().toISOString().split("T")[0],
         citeAs: formData.additionalInfo.referenceString.trim(),
         conformsTo: "https://schema.org/Dataset",
