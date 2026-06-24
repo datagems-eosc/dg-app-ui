@@ -2,6 +2,7 @@
   "name": "data-gems-frontend",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"

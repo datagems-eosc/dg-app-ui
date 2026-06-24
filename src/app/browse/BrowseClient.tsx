@@ -6,7 +6,6 @@ import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
 import { APP_ROUTES } from "@/config/appUrls";
-import { COLLECTION_NAMES } from "@/config/collectionConstants";
 import {
   convertToBackendFilters,
   type FilterState,
@@ -16,6 +15,7 @@ import type { Collection, Dataset, DatasetPlus } from "@/data/dataset";
 import { mockPackages } from "@/data/package";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { mapApiDatasetToDataset } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
 import { logDebug, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
@@ -93,91 +93,6 @@ const USER_COLLECTION_API_PAYLOAD = {
     CountAll: true,
   },
 };
-
-function mapApiDatasetToDataset(api: unknown): Dataset & {
-  collections?: Collection[];
-  license?: string;
-  mimeType?: string;
-  fieldsOfScience?: string[];
-  size?: string;
-  datePublished?: string;
-} {
-  if (typeof api !== "object" || api === null) {
-    return {
-      id: "",
-      title: "Untitled",
-      category: "Math",
-      access: "Restricted",
-      description: "",
-      size: "N/A",
-      lastUpdated: "2024-01-01",
-      tags: [],
-      collections: [],
-      license: undefined,
-      mimeType: undefined,
-      fieldsOfScience: undefined,
-      datePublished: undefined,
-      keywords: undefined,
-    };
-  }
-  const obj = api as Record<string, unknown>;
-  const collections: Collection[] = Array.isArray(obj.collections)
-    ? obj.collections
-        .map((c) =>
-          typeof c === "object" && c !== null && "name" in c && "id" in c
-            ? {
-                id: String((c as Record<string, unknown>).id ?? ""),
-                name: String((c as Record<string, unknown>).name),
-                code: String((c as Record<string, unknown>).code ?? ""),
-              }
-            : undefined,
-        )
-        .filter(
-          (c): c is Collection =>
-            !!c && typeof c.id === "string" && typeof c.name === "string",
-        )
-    : [];
-
-  let fieldOfScience: string[] | undefined;
-  if (obj.fieldOfScience) {
-    if (Array.isArray(obj.fieldOfScience)) {
-      fieldOfScience = obj.fieldOfScience.map(String);
-    } else if (typeof obj.fieldOfScience === "string") {
-      fieldOfScience = [obj.fieldOfScience];
-    }
-  }
-
-  let keywords: string[] | undefined;
-  if (obj.keywords) {
-    if (Array.isArray(obj.keywords)) {
-      keywords = obj.keywords.map(String);
-    } else if (typeof obj.keywords === "string") {
-      keywords = [obj.keywords];
-    }
-  }
-
-  return {
-    id: String(obj.id ?? ""),
-    title: String(obj.name ?? obj.code ?? "Untitled"),
-    category: "Math", // fallback only
-    access:
-      Array.isArray(obj.permissions) &&
-      obj.permissions.includes("browsedataset")
-        ? "Open Access"
-        : "Restricted",
-    description: String(obj.description ?? ""),
-    size: obj.size ? String(obj.size) : "N/A",
-    lastUpdated: obj.datePublished ? String(obj.datePublished) : "2024-01-01",
-    tags: [], // Provide empty array for tags
-    collections,
-    license: obj.license ? String(obj.license) : undefined,
-    mimeType: obj.mimeType ? String(obj.mimeType) : undefined,
-    fieldOfScience,
-    datePublished: obj.datePublished ? String(obj.datePublished) : undefined,
-    keywords,
-    url: obj.url ? String(obj.url) : undefined,
-  };
-}
 
 function _mapUserCollectionToDatasets(userCollection: unknown): DatasetPlus[] {
   if (typeof userCollection !== "object" || userCollection === null) {
@@ -279,10 +194,6 @@ export default function BrowseClient() {
   const [isMounted, setIsMounted] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
-  const [favoriteDatasetIds, setFavoriteDatasetIds] = useState<string[]>([]);
-  const [favoritesCollectionId, setFavoritesCollectionId] =
-    useState<string>("");
-  const [hasFetchedFavorites, setHasFetchedFavorites] = useState(false);
   const {
     apiCollections,
     extraCollections,
@@ -313,239 +224,6 @@ export default function BrowseClient() {
     const base = collectionDisplayName || "Browse";
     return /\bdatasets$/i.test(base) ? base : `${base} Datasets`;
   }, [selectedCollection, collectionDisplayName]);
-
-  const isFavoritesCollectionName = (name: unknown) => {
-    if (typeof name !== "string") return false;
-    const normalized = name.trim().toLowerCase();
-    return (
-      normalized === COLLECTION_NAMES.FAVORITES.toLowerCase() ||
-      normalized === COLLECTION_NAMES.FAVORITES_DATASETS.toLowerCase() ||
-      normalized.includes("favorite")
-    );
-  };
-
-  /**
-   * Fetch favorites collection to get dataset IDs for favorite state
-   */
-  const fetchFavoritesCollection = useCallback(async (): Promise<string> => {
-    logDebug("fetchFavoritesCollection called");
-    try {
-      if (!api.hasToken) {
-        logDebug("No token available for fetchFavoritesCollection");
-        return "";
-      }
-
-      logDebug("Fetching favorites collection", { hasToken: api.hasToken });
-      const favoritesPayload = {
-        project: {
-          fields: ["id", "name", "datasets.id"],
-        },
-        page: {
-          Offset: 0,
-          Size: 100,
-        },
-        Order: {
-          Items: ["+name"],
-        },
-        Metadata: {
-          CountAll: true,
-        },
-      };
-
-      const data = await api.queryUserCollections(favoritesPayload);
-      logDebug("Favorites collection response", { response: data });
-      const items = Array.isArray(data.items) ? data.items : [];
-      logDebug("Items from response", { itemsCount: items.length });
-
-      const favoritesCollection = items.find((item: any) =>
-        isFavoritesCollectionName(item?.name),
-      );
-
-      logDebug("Found favorites collection", {
-        found: !!favoritesCollection,
-        collectionNames: items.map((item: any) =>
-          typeof item === "object" && item !== null && "name" in item
-            ? item.name
-            : "unknown",
-        ),
-      });
-
-      if (favoritesCollection && "datasets" in favoritesCollection) {
-        const datasets = Array.isArray(favoritesCollection.datasets)
-          ? favoritesCollection.datasets
-          : [];
-
-        const datasetIds = datasets
-          .map((dataset: any) => {
-            if (
-              typeof dataset === "object" &&
-              dataset !== null &&
-              "id" in dataset
-            ) {
-              return typeof dataset.id === "string" ? dataset.id : null;
-            }
-            return null;
-          })
-          .filter((id: any): id is string => id !== null);
-
-        logDebug("Setting favorite dataset IDs", {
-          datasetIds,
-          count: datasetIds.length,
-        });
-        setFavoriteDatasetIds(datasetIds);
-        setFavoritesCollectionId(favoritesCollection.id as string);
-        setHasFetchedFavorites(true);
-        logDebug("Setting favorites collection ID", {
-          id: favoritesCollection.id,
-        });
-        return favoritesCollection.id as string;
-      } else if (favoritesCollection) {
-        logDebug("Favorites collection exists but is empty");
-        setFavoriteDatasetIds([]);
-        setFavoritesCollectionId(favoritesCollection.id as string);
-        setHasFetchedFavorites(true);
-        logDebug("Setting favorites collection ID", {
-          id: favoritesCollection.id,
-        });
-        return favoritesCollection.id as string;
-      } else {
-        logDebug("No favorites collection found, creating one");
-        const created = await api.createUserCollection(
-          COLLECTION_NAMES.FAVORITES,
-        );
-        if (created?.id) {
-          setFavoriteDatasetIds([]);
-          setFavoritesCollectionId(created.id as string);
-          setHasFetchedFavorites(true);
-          await refreshExtraCollections();
-          notifyCollectionModified();
-          logDebug("Created favorites collection", { id: created.id });
-          return created.id as string;
-        }
-        setFavoriteDatasetIds([]);
-        setFavoritesCollectionId("");
-        setHasFetchedFavorites(true);
-      }
-    } catch (err: unknown) {
-      logError("Failed to fetch favorites collection", err);
-      setFavoriteDatasetIds([]);
-      setFavoritesCollectionId("");
-      setHasFetchedFavorites(true);
-      return "";
-    }
-    return "";
-  }, [
-    api.hasToken,
-    api.createUserCollection,
-    api.queryUserCollections,
-    isFavoritesCollectionName,
-    notifyCollectionModified,
-    refreshExtraCollections,
-  ]);
-
-  /**
-   * Add dataset to favorites collection
-   */
-  const handleAddToFavorites = useCallback(
-    async (datasetId: string) => {
-      logDebug("handleAddToFavorites called", { datasetId });
-      try {
-        if (!api.hasToken) {
-          logDebug("Token missing", { hasToken: api.hasToken });
-          throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
-        }
-
-        let collectionId = favoritesCollectionId;
-        if (!collectionId) {
-          collectionId = await fetchFavoritesCollection();
-        }
-
-        if (!collectionId) {
-          logDebug("Token or favoritesCollectionId missing", {
-            hasToken: api.hasToken,
-            favoritesCollectionId,
-          });
-          throw new Error(ApiErrorMessage.NO_AUTH_TOKEN_OR_FAVORITES_ID);
-        }
-
-        logDebug("Adding dataset to favorites collection", {
-          collectionId,
-          datasetId,
-        });
-
-        await api.addDatasetToUserCollection(collectionId, datasetId);
-
-        setFavoriteDatasetIds((prev) =>
-          prev.includes(datasetId) ? prev : [...prev, datasetId],
-        );
-      } catch (err: unknown) {
-        logError("Failed to add dataset to favorites", err);
-        throw err;
-      }
-    },
-    [
-      api.hasToken,
-      api.addDatasetToUserCollection,
-      favoritesCollectionId,
-      fetchFavoritesCollection,
-    ],
-  );
-
-  /**
-   * Remove dataset from favorites collection
-   */
-  const handleRemoveFromFavorites = useCallback(
-    async (datasetId: string) => {
-      logDebug("handleRemoveFromFavorites called", { datasetId });
-      try {
-        if (!api.hasToken || !favoritesCollectionId) {
-          logDebug("Token or favoritesCollectionId missing", {
-            hasToken: api.hasToken,
-            favoritesCollectionId,
-          });
-          throw new Error(ApiErrorMessage.NO_AUTH_TOKEN_OR_FAVORITES_ID);
-        }
-
-        logDebug("Removing dataset from favorites collection", {
-          collectionId: favoritesCollectionId,
-          datasetId,
-        });
-
-        await api.removeDatasetFromUserCollection(
-          favoritesCollectionId,
-          datasetId,
-        );
-
-        logDebug(
-          "Successfully removed dataset from favorites, updating local state",
-        );
-
-        setFavoriteDatasetIds((prev) => prev.filter((id) => id !== datasetId));
-
-        if (
-          selectedCollection === favoritesCollectionId &&
-          isCustomCollection
-        ) {
-          logDebug(
-            "Removing dataset from local state since we're on favorites collection page",
-          );
-          setAllDatasets((prevDatasets) =>
-            prevDatasets.filter((dataset) => dataset.id !== datasetId),
-          );
-        }
-      } catch (err: unknown) {
-        logError("Failed to remove dataset from favorites", err);
-        throw err;
-      }
-    },
-    [
-      api.hasToken,
-      api.removeDatasetFromUserCollection,
-      favoritesCollectionId,
-      selectedCollection,
-      isCustomCollection,
-    ],
-  );
 
   /**
    * Fetch datasets from API. If searchTerm is at least 3 chars, add 'like' to payload.
@@ -1082,14 +760,6 @@ export default function BrowseClient() {
   }, []);
 
   useEffect(() => {
-    logDebug("Browse props", {
-      favoriteDatasetIds,
-      favoritesCollectionId,
-      hasOnAddToFavorites: !!handleAddToFavorites,
-    });
-  }, [favoriteDatasetIds, favoritesCollectionId, handleAddToFavorites]);
-
-  useEffect(() => {
     logDebug("Session info", {
       hasToken: api.hasToken,
     });
@@ -1106,15 +776,6 @@ export default function BrowseClient() {
       setSearchTerm("");
     }
   }, [selectedCollection]);
-
-  useEffect(() => {
-    if (api.hasToken && !hasFetchedFavorites) {
-      logDebug("Token available, fetching favorites collection");
-      fetchFavoritesCollection();
-    } else {
-      logDebug("No access token available or already fetched");
-    }
-  }, [api.hasToken, hasFetchedFavorites, fetchFavoritesCollection]);
 
   useEffect(() => {
     if (isMounted) {
@@ -1196,11 +857,6 @@ export default function BrowseClient() {
           showSelectAll={true}
           showAddButton={true}
           showSearchAndFilters={!selectedCollection}
-          favoriteDatasetIds={favoriteDatasetIds}
-          favoritesCollectionId={favoritesCollectionId}
-          hasFetchedFavorites={hasFetchedFavorites}
-          onAddToFavorites={handleAddToFavorites}
-          onRemoveFromFavorites={handleRemoveFromFavorites}
           searchTerm={pendingSearchTerm}
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}

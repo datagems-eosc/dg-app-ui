@@ -48,68 +48,48 @@ export default function DatasetDetailsPage() {
       setError(null);
 
       try {
-        const payload = {
-          project: {
-            fields: [
-              "id",
-              "code",
-              "name",
-              "description",
-              "license",
-              "mimeType",
-              "url",
-              "version",
-              "fieldOfScience",
-              "keywords",
-              "size",
-              "datePublished",
-              "lastUpdated",
-              "collections.id",
-              "collections.code",
-              "collections.name",
-              "collections.datasetCount",
-              "permissions.browseDataset",
-              "permissions.editDataset",
-              "permissions.downloadDataset",
-              "permissions.manageDataset",
-              "specification.totalRecords",
-              "specification.timeRange",
-              "specification.geographicCoverage",
-              "specification.populationDensity",
-              "specification.climateZones",
-              "specification.keyBiodiversityAreas",
-              "useCases",
-              "language",
-              "country",
-              "citation",
-            ],
-          },
-          ids: [datasetId],
-          page: {
-            Offset: 0,
-            Size: 1,
-          },
-          Order: {
-            Items: ["+code"],
-          },
-          Metadata: {
-            CountAll: true,
-          },
-        };
-
-        const response = await api.queryDatasets(payload);
+        const apiDataset = await api.getDatasetById(datasetId, [
+          "id",
+          "code",
+          "name",
+          "description",
+          "license",
+          "mimeType",
+          "url",
+          "version",
+          "fieldOfScience",
+          "keywords",
+          "size",
+          "datePublished",
+          "lastUpdated",
+          "collections.id",
+          "collections.code",
+          "collections.name",
+          "collections.datasetCount",
+          "permissions.browseDataset",
+          "permissions.editDataset",
+          "permissions.downloadDataset",
+          "permissions.manageDataset",
+          "specification.totalRecords",
+          "specification.timeRange",
+          "specification.geographicCoverage",
+          "specification.populationDensity",
+          "specification.climateZones",
+          "specification.keyBiodiversityAreas",
+          "useCases",
+          "language",
+          "country",
+          "citation",
+          "profileRaw",
+        ]);
 
         if (isCancelled) return;
 
-        const items = Array.isArray(response.items) ? response.items : [];
-
-        if (items.length === 0) {
+        if (!apiDataset || typeof apiDataset !== "object") {
           setError("Dataset not found");
           setIsLoading(false);
           return;
         }
-
-        const apiDataset = items[0];
         let mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
         const hasManageFromDataset = mappedDataset.permissions?.some(
           (p) => p.toLowerCase() === "manage",
@@ -334,5 +314,6 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     language: obj.language ? String(obj.language) : undefined,
     country: obj.country ? String(obj.country) : undefined,
     citation: obj.citation ? String(obj.citation) : undefined,
+    profileRaw: obj.profileRaw ?? null,
   };
 }

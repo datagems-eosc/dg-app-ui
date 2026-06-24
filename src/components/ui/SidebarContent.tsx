@@ -1,31 +1,20 @@
 "use client";
 import {
-  Bot,
-  BotMessageSquare,
   Calculator,
   CloudSun,
   FolderSearch,
   GraduationCap,
   Languages,
-  Settings,
+  LayoutDashboard,
   Star,
 } from "lucide-react";
 import type React from "react";
 import { Suspense } from "react";
-import { APP_ROUTES, generateBrowseUrl } from "@/config/appUrls";
-import type { ApiCollection } from "@/types/collection";
-import { CollectionItem } from "./CollectionItem";
+import { APP_ROUTES } from "@/config/appUrls";
+import type { FeatureFlagId } from "@/config/featureFlags";
+import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { ChatHistoryList } from "./chat/ChatHistoryList";
 import { MenuItem } from "./MenuItem";
-
-// Component that wraps CollectionItem in Suspense
-function CollectionItemWithSuspense(props: any) {
-  return (
-    <Suspense fallback={<CollectionItemSkeleton />}>
-      <CollectionItem {...props} />
-    </Suspense>
-  );
-}
 
 // Component that wraps MenuItem in Suspense
 function MenuItemWithSuspense(props: any) {
@@ -33,21 +22,6 @@ function MenuItemWithSuspense(props: any) {
     <Suspense fallback={<MenuItemSkeleton />}>
       <MenuItem {...props} />
     </Suspense>
-  );
-}
-
-// Skeleton for collection item
-function CollectionItemSkeleton() {
-  return (
-    <div className="group relative flex flex-start gap-4 pr-5 min-h-12">
-      <div className="flex items-center justify-center">
-        <div className="bg-gray-200 w-1 h-[32px] rounded-r-[4px] animate-pulse" />
-      </div>
-      <div className="flex-1 flex items-center px-3 py-2 rounded-lg bg-gray-200 animate-pulse">
-        <div className="w-5 h-5 bg-gray-300 rounded mr-3 animate-pulse" />
-        <div className="h-4 bg-gray-300 rounded flex-1 animate-pulse" />
-      </div>
-    </div>
   );
 }
 
@@ -66,32 +40,13 @@ function MenuItemSkeleton() {
   );
 }
 
-const getCollectionIcon = (code?: string, className?: string) => {
-  const baseClasses = "w-5 h-5 text-icon";
-  const finalClasses = className ? `${baseClasses} ${className}` : baseClasses;
-
-  if (!code) return <Star strokeWidth={1.25} className={finalClasses} />;
-
-  switch (code.toLowerCase()) {
-    case "weather":
-    case "meteo":
-      return <CloudSun strokeWidth={1.25} className={finalClasses} />;
-    case "math":
-    case "mathe":
-      return <Calculator strokeWidth={1.25} className={finalClasses} />;
-    case "lifelong":
-    case "learning":
-      return <GraduationCap strokeWidth={1.25} className={finalClasses} />;
-    case "language":
-    case "languages":
-      return <Languages strokeWidth={1.25} className={finalClasses} />;
-    default:
-      return <Star strokeWidth={1.25} className={finalClasses} />;
-  }
-};
-
-// Menu items array
 const menuItems = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    href: APP_ROUTES.DASHBOARD,
+    icon: LayoutDashboard,
+  },
   {
     id: "browse",
     label: "Browse",
@@ -99,32 +54,57 @@ const menuItems = [
     icon: FolderSearch,
   },
   {
-    id: "ask-question",
-    label: "Ask a question",
-    href: APP_ROUTES.CHAT,
-    icon: Bot,
+    id: "favourites",
+    label: "Favourites",
+    href: APP_ROUTES.COLLECTIONS.FAVORITES,
+    icon: Star,
+  },
+];
+
+const useCaseItems: {
+  id: string;
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  flag: FeatureFlagId;
+}[] = [
+  {
+    id: "weather",
+    label: "Weather",
+    href: APP_ROUTES.USE_CASES.WEATHER,
+    icon: CloudSun,
+    flag: "useCaseWeather",
   },
   {
-    id: "ask-rcai",
-    label: "Ask RCAI",
-    href: APP_ROUTES.CHAT_RCAI,
-    icon: BotMessageSquare,
+    id: "math",
+    label: "Math",
+    href: APP_ROUTES.USE_CASES.MATH,
+    icon: Calculator,
+    flag: "useCaseMath",
+  },
+  {
+    id: "lifelong-learning",
+    label: "Lifelong Learning",
+    href: APP_ROUTES.USE_CASES.LIFELONG_LEARNING,
+    icon: GraduationCap,
+    flag: "useCaseLifelongLearning",
+  },
+  {
+    id: "language",
+    label: "Language",
+    href: APP_ROUTES.USE_CASES.LANGUAGE,
+    icon: Languages,
+    flag: "useCaseLanguage",
   },
 ];
 
 interface SidebarContentProps {
   isSidebarOpen: boolean;
   isMobile: boolean;
-  isLoadingApiCollections: boolean;
-  isLoadingExtraCollections: boolean;
-  finalSortedCollections: any[];
-  extraCollections: ApiCollection[];
   session: any;
   currentConversationId?: string;
   conversations: any[];
-  onCollectionSettingsOpen: () => void;
   onMobileSidebarClose: () => void;
-  onCollectionAskQuestion: (collectionId: string) => void;
   onDeleteConversation: (
     conversationId: string,
     conversationName: string,
@@ -136,20 +116,17 @@ interface SidebarContentProps {
 export function SidebarContent({
   isSidebarOpen,
   isMobile,
-  isLoadingApiCollections,
-  isLoadingExtraCollections,
-  finalSortedCollections,
-  extraCollections,
   session,
   currentConversationId,
   conversations,
-  onCollectionSettingsOpen,
   onMobileSidebarClose,
-  onCollectionAskQuestion,
   onDeleteConversation,
   onConversationUpdate,
   setConversations,
 }: SidebarContentProps) {
+  const { flags } = useFeatureFlags();
+  const visibleUseCaseItems = useCaseItems.filter((item) => flags[item.flag]);
+
   return (
     <div
       className={`flex-1 min-h-0 overflow-y-hidden transition-all duration-300 ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
@@ -173,74 +150,25 @@ export function SidebarContent({
           </nav>
         </div>
 
-        {/* Collections Section */}
-        <div className="mb-4 pb-4 border-b border-slate-200">
-          <div className="px-5 flex items-center justify-between mb-3">
-            <h3 className="text-descriptions-12-medium text-gray-500 uppercase tracking-wider">
-              COLLECTIONS
+        {/* Use-Cases Section */}
+        {visibleUseCaseItems.length > 0 && (
+          <div className="mb-4 pb-4 border-b border-slate-200">
+            <h3 className="px-5 text-descriptions-12-medium text-gray-500 uppercase tracking-wider mb-3">
+              USE-CASES
             </h3>
-            <button
-              onClick={onCollectionSettingsOpen}
-              className="p-2 hover:bg-gray-100 rounded-md transition-colors"
-            >
-              <Settings
-                strokeWidth={1.25}
-                className="w-4 h-4 text-icon hover:text-gray-600"
-              />
-            </button>
+            <nav className="space-y-2">
+              {visibleUseCaseItems.map((item) => (
+                <MenuItemWithSuspense
+                  key={item.id}
+                  href={item.href}
+                  icon={item.icon}
+                  label={item.label}
+                  onClick={onMobileSidebarClose}
+                />
+              ))}
+            </nav>
           </div>
-          <nav className="space-y-1 max-h-54 overflow-y-auto scrollbar-hover">
-            {/* Loading States */}
-            {isLoadingApiCollections || isLoadingExtraCollections ? (
-              <div className="flex items-center px-3 py-2 text-body-16-medium text-gray-500">
-                <div className="w-4 h-4 mr-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-                Loading collections...
-              </div>
-            ) : (
-              <>
-                {/* Combine and sort all collections */}
-                {finalSortedCollections.map((collection) => {
-                  // Check if this collection is from extraCollections (custom collections)
-                  const isExtra = extraCollections.some(
-                    (ec) => ec.id === collection.id,
-                  );
-
-                  return (
-                    <CollectionItemWithSuspense
-                      key={collection.id}
-                      id={collection.id}
-                      name={
-                        isExtra
-                          ? collection.name
-                          : collection.name.replace(/ Collection$/i, "")
-                      }
-                      icon={getCollectionIcon(collection.code)}
-                      href={
-                        isExtra
-                          ? generateBrowseUrl({
-                              collection: collection.id,
-                              isCustom: true,
-                            })
-                          : generateBrowseUrl({
-                              collection: collection.id,
-                            })
-                      }
-                      title={
-                        isExtra
-                          ? `${collection.datasets?.length || 0} datasets`
-                          : `${collection.datasetCount} datasets`
-                      }
-                      onClick={onMobileSidebarClose}
-                      onMessageClick={() =>
-                        onCollectionAskQuestion(collection.id)
-                      }
-                    />
-                  );
-                })}
-              </>
-            )}
-          </nav>
-        </div>
+        )}
 
         {/* Recent Chats Section */}
         <div className="flex-1 flex flex-col min-h-0">

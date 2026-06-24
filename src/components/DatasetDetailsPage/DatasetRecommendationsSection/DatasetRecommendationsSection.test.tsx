@@ -1,80 +1,78 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import DatasetRecommendationsSection from "./DatasetRecommendationsSection";
 
-const mockPush = vi.fn();
-const mockUseRouter = vi.fn();
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => mockUseRouter(),
+const { getDatasetRecommendations } = vi.hoisted(() => ({
+  getDatasetRecommendations: vi.fn(),
 }));
+const mockPush = vi.fn();
+
+vi.mock("@/hooks/useApi", () => ({
+  useApi: () => ({ getDatasetRecommendations }),
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+import DatasetRecommendationsSection from "./DatasetRecommendationsSection";
 
 describe("DatasetRecommendationsSection", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockUseRouter.mockReturnValue({
-      push: mockPush,
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-      replace: vi.fn(),
-      prefetch: vi.fn(),
-    });
+    getDatasetRecommendations.mockReset();
+    mockPush.mockReset();
   });
 
-  it("renders recommendations from mock data", async () => {
-    render(<DatasetRecommendationsSection />);
+  it("shows the section while loading, then renders the recommended datasets", async () => {
+    let resolve: (value: unknown[]) => void = () => {};
+    getDatasetRecommendations.mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
 
-    await waitFor(() => {
-      expect(screen.getByText("You may also like")).toBeInTheDocument();
-    });
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+    expect(screen.getByText("Recommended datasets")).toBeInTheDocument();
 
-    expect(screen.getByText("ERA5 Land")).toBeInTheDocument();
-    expect(screen.getByText("Horizon Europe")).toBeInTheDocument();
-    expect(screen.getByText("Copernicus")).toBeInTheDocument();
-    expect(screen.getByText("EUREKA")).toBeInTheDocument();
-    expect(screen.getByText("Digital Europe")).toBeInTheDocument();
-    expect(
-      screen.getByText("Fifth Space Weather Services"),
-    ).toBeInTheDocument();
+    resolve([
+      {
+        id: "r1",
+        name: "Alpha Dataset",
+        description: "desc",
+        permissions: ["browsedataset"],
+      },
+    ]);
+
+    await waitFor(() =>
+      expect(screen.getByText("Alpha Dataset")).toBeInTheDocument(),
+    );
+    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1");
   });
 
-  it("navigates to dataset details on card click", async () => {
-    render(<DatasetRecommendationsSection />);
+  it("navigates to the dataset details page on card click", async () => {
+    getDatasetRecommendations.mockResolvedValue([
+      { id: "r1", name: "Alpha Dataset", description: "desc" },
+    ]);
+    render(<DatasetRecommendationsSection datasetId="d1" />);
 
-    await waitFor(() => {
-      expect(screen.getByText("ERA5 Land")).toBeInTheDocument();
-    });
-
+    await waitFor(() =>
+      expect(screen.getByText("Alpha Dataset")).toBeInTheDocument(),
+    );
     const card = screen
-      .getByText("ERA5 Land")
+      .getByText("Alpha Dataset")
       .closest("div[role='button']") as HTMLElement | null;
-    if (card) {
-      fireEvent.click(card);
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith(
-          expect.stringContaining(`/datasets/recommendation-1`),
-        );
-      });
-    }
+    if (card) fireEvent.click(card);
+
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining("/datasets/r1"),
+      ),
+    );
   });
 
-  it("handles keyboard navigation", async () => {
-    render(<DatasetRecommendationsSection />);
-
-    await waitFor(() => {
-      expect(screen.getByText("ERA5 Land")).toBeInTheDocument();
-    });
-
-    const card = screen
-      .getByText("ERA5 Land")
-      .closest("div[role='button']") as HTMLElement | null;
-    if (card) {
-      fireEvent.keyDown(card, { key: "Enter" });
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalled();
-      });
-    }
+  it("renders nothing when there are no recommendations", async () => {
+    getDatasetRecommendations.mockResolvedValue([]);
+    const { container } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 });

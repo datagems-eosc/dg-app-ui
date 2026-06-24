@@ -4,9 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { Dataset } from "@/data/dataset";
 import DatasetCard from "./DatasetCard";
 
+const { toggleFavorite } = vi.hoisted(() => ({ toggleFavorite: vi.fn() }));
+
 vi.mock("@/contexts/DatasetContext", () => ({
   useDataset: () => ({
-    toggleFavorite: vi.fn(),
+    toggleFavorite,
     isFavorite: () => false,
   }),
 }));
@@ -27,14 +29,7 @@ describe("DatasetCard", () => {
     dataset: mockDataset,
     isSelected: false,
     onSelect: vi.fn(),
-    onDeselect: vi.fn(),
     onAddToCollection: vi.fn(),
-    isFavorite: false,
-    onAddToFavorites: vi.fn(),
-    onRemoveFromFavorites: vi.fn(),
-    favoriteDatasetIds: [],
-    favoritesCollectionId: "",
-    hasFetchedFavorites: false,
   };
 
   it("should render dataset title", () => {
@@ -47,46 +42,12 @@ describe("DatasetCard", () => {
     expect(screen.getByText("Test description")).toBeInTheDocument();
   });
 
-  it("calls onAddToFavorites when star is clicked", async () => {
-    const user = userEvent.setup();
-    const onAddToFavorites = vi.fn().mockResolvedValue(undefined);
-    render(
-      <DatasetCard
-        {...defaultProps}
-        isFavorite={false}
-        favoritesCollectionId="favorites-1"
-        hasFetchedFavorites={true}
-        onAddToFavorites={onAddToFavorites}
-        onRemoveFromFavorites={vi.fn()}
-      />,
-    );
-
-    await user.click(screen.getByLabelText("Add to favorites"));
-
-    expect(onAddToFavorites).toHaveBeenCalledWith("1");
-  });
-
-  it("should call onSelect when card is clicked and not selected", async () => {
+  it("toggles favorite via context when the star is clicked", async () => {
     const user = userEvent.setup();
     render(<DatasetCard {...defaultProps} />);
 
-    const card = screen.getByText("Test Dataset").closest("div");
-    if (card) {
-      await user.click(card);
-    }
+    await user.click(screen.getByLabelText("Add to favorites"));
 
-    expect(defaultProps.onSelect).toHaveBeenCalledWith("1");
-  });
-
-  it("should call onDeselect when card is clicked and selected", async () => {
-    const user = userEvent.setup();
-    render(<DatasetCard {...defaultProps} isSelected={true} />);
-
-    const card = screen.getByText("Test Dataset").closest("div");
-    if (card) {
-      await user.click(card);
-    }
-
-    expect(defaultProps.onDeselect).toHaveBeenCalledWith("1");
+    expect(toggleFavorite).toHaveBeenCalledWith("1");
   });
 });

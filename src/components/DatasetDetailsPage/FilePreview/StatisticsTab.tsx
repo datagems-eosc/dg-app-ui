@@ -132,7 +132,7 @@ export default function StatisticsTab({
               Total rows
             </span>
             <span className={styles.statisticsTab__summaryValue}>
-              {totalRows}
+              {totalRows.toLocaleString()}
             </span>
           </div>
           <div className={styles.statisticsTab__summaryItem}>
@@ -140,7 +140,7 @@ export default function StatisticsTab({
               Missing values
             </span>
             <span className={styles.statisticsTab__summaryValue}>
-              {totalMissingPercentage}%
+              {Math.round(totalMissingPercentage)}%
             </span>
           </div>
         </div>

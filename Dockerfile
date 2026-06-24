@@ -27,6 +27,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_BASE_PATH=""
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+# CI=true tells pnpm that this is a non-interactive environment;
+# without it pnpm aborts on no-TTY when it wants to purge stale
+# node_modules (ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY).
+ENV CI=true
 RUN pnpm run build
 
 # Production image, copy all the files and run next
@@ -67,7 +72,7 @@ ENV HOSTNAME="0.0.0.0"
 
 # Health check configuration
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget -q --spider http://localhost:3000/healthz || exit 1
+  CMD wget -q --spider http://127.0.0.1:3000/healthz || exit 1
 
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/next-config-js/output

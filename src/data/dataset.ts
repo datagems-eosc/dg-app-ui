@@ -39,6 +39,7 @@ export type DatasetPlus = Dataset & {
   language?: string;
   country?: string;
   citation?: string;
+  profileRaw?: unknown;
 };
 
 export type DatasetWithCollections = Dataset & { collections?: Collection[] };
