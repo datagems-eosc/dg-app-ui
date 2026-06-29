@@ -43,7 +43,7 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
   },
   {
     id: "generalChat",
-    label: "General chat",
+    label: "Hide general chat",
     defaults: standardDefaults(),
   },
   {
