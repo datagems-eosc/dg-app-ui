@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - develop
+    tags:
+      - "v*.*.*"
 
 env:
   REGISTRY: ghcr.io
@@ -73,6 +75,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+            type=ref,event=tag
 
       - name: Build and push Docker image for dg-app-ui
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
