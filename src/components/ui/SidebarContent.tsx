@@ -1,5 +1,6 @@
 "use client";
 import {
+  Bot,
   Calculator,
   CloudSun,
   FolderSearch,
@@ -60,6 +61,13 @@ const menuItems = [
     icon: Star,
   },
 ];
+
+const askAQuestionItem = {
+  id: "ask-a-question",
+  label: "Ask a Question",
+  href: APP_ROUTES.CHAT,
+  icon: Bot,
+};
 
 const useCaseItems: {
   id: string;
@@ -126,6 +134,9 @@ export function SidebarContent({
 }: SidebarContentProps) {
   const { flags } = useFeatureFlags();
   const visibleUseCaseItems = useCaseItems.filter((item) => flags[item.flag]);
+  const visibleMenuItems = flags.generalChat
+    ? menuItems
+    : [menuItems[0], menuItems[1], askAQuestionItem, menuItems[2]];
 
   return (
     <div
@@ -138,7 +149,7 @@ export function SidebarContent({
             MENU
           </h3>
           <nav className="space-y-2">
-            {menuItems.map((item) => (
+            {visibleMenuItems.map((item) => (
               <MenuItemWithSuspense
                 key={item.id}
                 href={item.href}
