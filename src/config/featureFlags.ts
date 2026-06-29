@@ -19,8 +19,14 @@ export interface FeatureFlagDefinition {
   defaults: Record<DeploymentEnv, boolean>;
 }
 
-const standardDefaults = (): Record<DeploymentEnv, boolean> => ({
+const enabledEverywhere = (): Record<DeploymentEnv, boolean> => ({
   playground: true,
+  staging: true,
+  production: true,
+});
+
+const disabledEverywhere = (): Record<DeploymentEnv, boolean> => ({
+  playground: false,
   staging: false,
   production: false,
 });
@@ -29,57 +35,57 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
   {
     id: "datasetRecommendation",
     label: "Dataset recommendation",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "questionRecommendation",
     label: "Question recommendation",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "customCollection",
     label: "Custom collection",
-    defaults: standardDefaults(),
+    defaults: disabledEverywhere(),
   },
   {
     id: "generalChat",
     label: "Hide general chat",
-    defaults: standardDefaults(),
+    defaults: disabledEverywhere(),
   },
   {
     id: "expertMode",
     label: "Expert mode",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "datasetPackage",
     label: "Dataset packaging",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "useCaseWeather",
     label: "Use case – Weather",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "useCaseMath",
     label: "Use case – Math",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "useCaseLifelongLearning",
     label: "Use case – Lifelong learning",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "useCaseLanguage",
     label: "Use case – Language",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "datasetOnboarding",
     label: "Dataset onboarding",
-    defaults: standardDefaults(),
+    defaults: enabledEverywhere(),
   },
 ] as const;
 
