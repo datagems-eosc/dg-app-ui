@@ -5,10 +5,21 @@ import { normalizeDeploymentEnv } from "../src/lib/featureFlags/environment";
 import { resolveAllFlags, resolveFlag } from "../src/lib/featureFlags/resolve";
 import { parseOverrides } from "../src/lib/featureFlags/storage";
 
-test("resolveFlag returns the environment default when no override is set", () => {
-  assert.equal(resolveFlag("datasetPackage", "playground", {}), true);
-  assert.equal(resolveFlag("datasetPackage", "staging", {}), false);
-  assert.equal(resolveFlag("datasetPackage", "production", {}), false);
+const DISABLED_EVERYWHERE = new Set(["customCollection", "generalChat"]);
+const ENVS = ["playground", "staging", "production"] as const;
+
+test("flags enabled everywhere default to true on every environment", () => {
+  for (const env of ENVS) {
+    assert.equal(resolveFlag("datasetPackage", env, {}), true);
+    assert.equal(resolveFlag("useCaseWeather", env, {}), true);
+  }
+});
+
+test("customCollection and generalChat default to false on every environment", () => {
+  for (const env of ENVS) {
+    assert.equal(resolveFlag("customCollection", env, {}), false);
+    assert.equal(resolveFlag("generalChat", env, {}), false);
+  }
 });
 
 test("resolveFlag lets an override win over the environment default", () => {
@@ -25,7 +36,7 @@ test("resolveFlag lets an override win over the environment default", () => {
 test("resolveFlag ignores a non-boolean override value", () => {
   assert.equal(
     // @ts-expect-error guarding against malformed persisted storage
-    resolveFlag("datasetPackage", "staging", { datasetPackage: "yes" }),
+    resolveFlag("customCollection", "staging", { customCollection: "yes" }),
     false,
   );
 });
@@ -35,12 +46,14 @@ test("resolveFlag returns false for an unknown flag id", () => {
   assert.equal(resolveFlag("doesNotExist", "playground", {}), false);
 });
 
-test("resolveAllFlags resolves every registered flag", () => {
-  const resolved = resolveAllFlags("playground", {});
-  for (const def of FEATURE_FLAGS) {
-    assert.equal(resolved[def.id], true);
+test("resolveAllFlags resolves every registered flag per policy", () => {
+  for (const env of ENVS) {
+    const resolved = resolveAllFlags(env, {});
+    assert.equal(Object.keys(resolved).length, FEATURE_FLAGS.length);
+    for (const def of FEATURE_FLAGS) {
+      assert.equal(resolved[def.id], !DISABLED_EVERYWHERE.has(def.id));
+    }
   }
-  assert.equal(Object.keys(resolved).length, FEATURE_FLAGS.length);
 });
 
 test("normalizeDeploymentEnv accepts the three known targets", () => {
