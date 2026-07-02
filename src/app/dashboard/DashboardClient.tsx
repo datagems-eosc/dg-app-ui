@@ -34,13 +34,13 @@ function UseCaseCard({
   href,
 }: UseCaseCardProps) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between flex-1 min-w-0">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col flex-1 min-w-0">
       <div
         className={`${iconBg} rounded-lg p-2 w-11 h-11 flex items-center justify-center mb-4`}
       >
         {icon}
       </div>
-      <div className="flex flex-col gap-2 mb-5">
+      <div className="flex flex-col gap-2 mb-5 grow">
         <p className="text-body-16-semibold text-gray-800">{title}</p>
         <p className="text-body-14-regular text-gray-500">{description}</p>
       </div>
@@ -101,15 +101,17 @@ export default function DashboardClient() {
 
   const useCaseCards: UseCaseCardProps[] = [
     {
-      title: "Ask Weather Question",
-      description: "Explore forecasts and weather insights using AI.",
+      title: "Explore Weather Data",
+      description:
+        "Ask questions in natural language and get answers grounded in real weather datasets.",
       icon: <CloudSun strokeWidth={1.25} className="w-5 h-5 text-purple-500" />,
       iconBg: "bg-purple-50",
       href: APP_ROUTES.USE_CASES.WEATHER_HOME,
     },
     {
-      title: "Ask Math Question",
-      description: "Solve complex math problems with AI.",
+      title: "Explore MathE Platform",
+      description:
+        "Access the MathE platform to discover and work with mathematics datasets.",
       icon: (
         <Calculator strokeWidth={1.25} className="w-5 h-5 text-emerald-600" />
       ),
@@ -117,15 +119,17 @@ export default function DashboardClient() {
       href: APP_ROUTES.USE_CASES.MATH_HOME,
     },
     {
-      title: "Ask Lifelong Learning Question",
-      description: "Expand your skills and knowledge with AI.",
+      title: "Explore Lifelong Learning",
+      description:
+        "Identify skill gaps and discover training opportunities for individuals and organizations.",
       icon: <BookOpen strokeWidth={1.25} className="w-5 h-5 text-rose-500" />,
       iconBg: "bg-rose-50",
       href: APP_ROUTES.USE_CASES.LIFELONG_LEARNING,
     },
     {
-      title: "Ask Language Question",
-      description: "Language-related questions and AI-power.",
+      title: "Explore Language Data",
+      description:
+        "Research linguistic trends and concepts through natural language questions.",
       icon: <Languages strokeWidth={1.25} className="w-5 h-5 text-amber-600" />,
       iconBg: "bg-amber-50",
       href: APP_ROUTES.USE_CASES.LANGUAGE_HOME,

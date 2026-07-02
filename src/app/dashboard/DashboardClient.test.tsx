@@ -68,6 +68,14 @@ describe("DashboardClient – UseCaseCard", () => {
     expect(languageLink).toBeDefined();
   });
 
+  it("renders updated tile titles", () => {
+    render(<DashboardClient />);
+    expect(screen.getByText("Explore Weather Data")).toBeInTheDocument();
+    expect(screen.getByText("Explore MathE Platform")).toBeInTheDocument();
+    expect(screen.getByText("Explore Lifelong Learning")).toBeInTheDocument();
+    expect(screen.getByText("Explore Language Data")).toBeInTheDocument();
+  });
+
   it("use-case tile card wrapper is not a link", () => {
     render(<DashboardClient />);
     const browseLinks = screen.getAllByRole("link", {
