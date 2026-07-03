@@ -99,7 +99,7 @@ export default function MathHomePage() {
                   Practice &amp; Solve
                 </h4>
                 <p className="text-[14px] font-normal text-[#5b708f] leading-[1.5]">
-                  Work through exercises and problems, applying what you've
+                  Work through exercises and problems, applying what you&apos;ve
                   learned.
                 </p>
               </div>
