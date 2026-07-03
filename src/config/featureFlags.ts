@@ -11,12 +11,16 @@ export type FeatureFlagId =
   | "useCaseMath"
   | "useCaseLifelongLearning"
   | "useCaseLanguage"
-  | "datasetOnboarding";
+  | "datasetOnboarding"
+  | "pinnedDatasetWeather"
+  | "pinnedDatasetLanguage"
+  | "pinnedDatasetMath";
 
 export interface FeatureFlagDefinition {
   id: FeatureFlagId;
   label: string;
   defaults: Record<DeploymentEnv, boolean>;
+  defaultDatasetId?: Record<DeploymentEnv, string | null>;
 }
 
 const enabledEverywhere = (): Record<DeploymentEnv, boolean> => ({
@@ -86,6 +90,36 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
     id: "datasetOnboarding",
     label: "Dataset onboarding",
     defaults: enabledEverywhere(),
+  },
+  {
+    id: "pinnedDatasetWeather",
+    label: "Use case – Weather - Dataset ID",
+    defaults: disabledEverywhere(),
+    defaultDatasetId: {
+      playground: "3166e649-54c1-4ebf-904e-de9a46cb1b18",
+      staging: "3166e649-54c1-4ebf-904e-de9a46cb1b18",
+      production: "ecd7c0eb-fbfe-4d61-bfed-df8048f648ed",
+    },
+  },
+  {
+    id: "pinnedDatasetLanguage",
+    label: "Use case – Language - Dataset ID",
+    defaults: disabledEverywhere(),
+    defaultDatasetId: {
+      playground: "d84d1a2e-127d-4393-91d0-afb7e4fd9c68",
+      staging: "d84d1a2e-127d-4393-91d0-afb7e4fd9c68",
+      production: "d84d1a2e-127d-4393-91d0-afb7e4fd9c68",
+    },
+  },
+  {
+    id: "pinnedDatasetMath",
+    label: "Use case – Math - Dataset ID",
+    defaults: disabledEverywhere(),
+    defaultDatasetId: {
+      playground: null,
+      staging: null,
+      production: null,
+    },
   },
 ] as const;
 

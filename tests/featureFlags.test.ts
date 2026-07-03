@@ -2,10 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { FEATURE_FLAGS } from "../src/config/featureFlags";
 import { normalizeDeploymentEnv } from "../src/lib/featureFlags/environment";
-import { resolveAllFlags, resolveFlag } from "../src/lib/featureFlags/resolve";
+import {
+  resolveAllFlags,
+  resolveDatasetId,
+  resolveFlag,
+} from "../src/lib/featureFlags/resolve";
 import { parseOverrides } from "../src/lib/featureFlags/storage";
 
-const DISABLED_EVERYWHERE = new Set(["customCollection", "generalChat"]);
+const DISABLED_EVERYWHERE = new Set([
+  "customCollection",
+  "generalChat",
+  "pinnedDatasetWeather",
+  "pinnedDatasetLanguage",
+  "pinnedDatasetMath",
+]);
 const ENVS = ["playground", "staging", "production"] as const;
 
 test("flags enabled everywhere default to true on every environment", () => {
@@ -76,6 +86,39 @@ test("parseOverrides returns an empty object for null or invalid JSON", () => {
   assert.deepEqual(parseOverrides(null), {});
   assert.deepEqual(parseOverrides("{not json"), {});
   assert.deepEqual(parseOverrides("[1,2,3]"), {});
+});
+
+test("resolveDatasetId returns env default when no override is set", () => {
+  assert.equal(
+    resolveDatasetId("pinnedDatasetWeather", "playground", {}),
+    "3166e649-54c1-4ebf-904e-de9a46cb1b18",
+  );
+  assert.equal(
+    resolveDatasetId("pinnedDatasetWeather", "production", {}),
+    "ecd7c0eb-fbfe-4d61-bfed-df8048f648ed",
+  );
+});
+
+test("resolveDatasetId lets a string override win over the environment default", () => {
+  assert.equal(
+    resolveDatasetId("pinnedDatasetWeather", "playground", {
+      pinnedDatasetWeather: "custom-id",
+    }),
+    "custom-id",
+  );
+});
+
+test("resolveDatasetId returns null for a flag with no defaultDatasetId", () => {
+  assert.equal(resolveDatasetId("datasetPackage", "playground", {}), null);
+});
+
+test("resolveDatasetId falls back to env default when override is empty string", () => {
+  assert.equal(
+    resolveDatasetId("pinnedDatasetWeather", "playground", {
+      pinnedDatasetWeather: "",
+    }),
+    "3166e649-54c1-4ebf-904e-de9a46cb1b18",
+  );
 });
 
 test("parseOverrides keeps only known flag ids with boolean values", () => {
