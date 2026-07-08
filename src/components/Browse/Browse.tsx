@@ -260,6 +260,7 @@ export default function Browse({
   const [isPackageCarouselCollapsed, setIsPackageCarouselCollapsed] =
     useState(false);
   const datasetPackagingEnabled = useFeatureFlag("datasetPackage");
+  const hideGeneralChat = useFeatureFlag("generalChat");
   const isSmartSearchEnabled =
     typeof controlledSmartSearchEnabled === "boolean"
       ? controlledSmartSearchEnabled
@@ -959,17 +960,19 @@ export default function Browse({
                   </Button>
                 ))}
                 {/* Selected datasets counter - clickable when sidebar is closed */}
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (showSelectedPanel) handleClosePanel();
-                    else handleOpenPanel();
-                  }}
-                  className="flex items-center gap-2 transition-all duration-200"
-                >
-                  <Database className="w-4 h-4 text-icon" />
-                  {currentSelectedDatasets.length} Selected
-                </Button>
+                {!hideGeneralChat && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (showSelectedPanel) handleClosePanel();
+                      else handleOpenPanel();
+                    }}
+                    className="flex items-center gap-2 transition-all duration-200"
+                  >
+                    <Database className="w-4 h-4 text-icon" />
+                    {currentSelectedDatasets.length} Selected
+                  </Button>
+                )}
                 {/* Actions dropdown button */}
                 {currentSelectedDatasets.length > 0 && (
                   <div className="relative" data-actions-dropdown>
@@ -1231,7 +1234,7 @@ export default function Browse({
                       onSelect={(isSelected) =>
                         handleDatasetSelect(dataset.id, isSelected)
                       }
-                      showSelectButton={true}
+                      showSelectButton={!hideGeneralChat}
                       isEditMode={isEditMode}
                       onRemove={
                         isEditMode && onRemoveDataset
@@ -1240,7 +1243,7 @@ export default function Browse({
                       }
                       viewMode={viewMode}
                       onAddToCollection={() => handleAddToCollection(dataset)}
-                      showAddButton={showAddButton}
+                      showAddButton={showAddButton && !hideGeneralChat}
                       hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
                       isSmartSearchEnabled={isSmartSearchEnabled}
                     />
