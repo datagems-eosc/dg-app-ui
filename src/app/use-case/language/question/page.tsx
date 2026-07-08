@@ -4,11 +4,8 @@ import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import DGIcon from "@/components/ui/chat/DGIcon";
+import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
-
-// Set to a specific dataset ID to restrict analysis to that dataset,
-// or null to use all datasets from the language collection.
-const PINNED_DATASET_ID: string | null = "d84d1a2e-127d-4393-91d0-afb7e4fd9c68";
 
 function Toggle({
   checked,
@@ -33,6 +30,12 @@ function Toggle({
 export default function LanguageQuestionPage() {
   const router = useRouter();
   const api = useApi();
+  const { flags, datasetIds } = useFeatureFlags();
+
+  const pinnedDatasetId =
+    flags.pinnedDatasetLanguage && datasetIds.pinnedDatasetLanguage
+      ? datasetIds.pinnedDatasetLanguage
+      : null;
   const [question, setQuestion] = useState("");
   const [submittedQuestion, setSubmittedQuestion] = useState("");
   const [phase, setPhase] = useState<"input" | "analysis">("input");
@@ -77,8 +80,8 @@ export default function LanguageQuestionPage() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const datasetIds = PINNED_DATASET_ID
-        ? [PINNED_DATASET_ID]
+      const datasetIds = pinnedDatasetId
+        ? [pinnedDatasetId]
         : await fetchLanguageDatasetIds();
       const result = await api.getLinguisticFeatures({
         DatasetIds: datasetIds,

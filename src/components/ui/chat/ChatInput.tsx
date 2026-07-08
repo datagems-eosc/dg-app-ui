@@ -215,7 +215,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
                       </span>
                     </div>
                   ) : null}
-                  {generalChatEnabled &&
+                  {!generalChatEnabled &&
                     (collections && onSelectCollection ? (
                       <CollectionsDropdown
                         collections={collections}

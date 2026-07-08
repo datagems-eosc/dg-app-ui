@@ -8,10 +8,10 @@ export default function MathHomePage() {
         {/* Hero */}
         <div className="flex flex-col gap-2">
           <h1 className="text-[32px] font-semibold text-[#314158] leading-[1.4]">
-            Explore Math data with AI
+            Explore math data on MathE
           </h1>
           <p className="text-[20px] font-normal text-[#5b708f] leading-[1.4]">
-            Ask questions in natural language get answers from real data
+            Solve complex math problems with AI support
           </p>
         </div>
 
@@ -23,22 +23,26 @@ export default function MathHomePage() {
             </div>
             <div className="flex flex-col gap-2">
               <h2 className="text-[20px] font-semibold text-[#314158] leading-[1.4]">
-                Start Your Research
+                Open MathE platform
               </h2>
               <p className="text-[14px] font-normal text-[#5b708f] leading-[1.5]">
-                Get reliable answers grounded in real math data.
-                <br />
-                Explore patterns, trends, and evidence across trusted datasets.
+                Get access to reliable math resources on MathE. Explore topics,
+                exercises, and evidence across trusted materials.
               </p>
             </div>
           </div>
-          <Link
-            href="/use-case/math/chat"
-            className="inline-flex items-center gap-2 bg-[#052f4a] text-white text-[14px] font-medium leading-[1.5] px-4 h-10 rounded-[40px] w-fit shadow-[0px_1px_0.5px_rgba(213,218,227,0.3)]"
-          >
-            Start Research
-            <ArrowRight size={16} />
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link
+              href="/use-case/math/chat"
+              className="inline-flex items-center gap-2 bg-[#052f4a] text-white text-[14px] font-medium leading-[1.5] px-4 h-10 rounded-[40px] w-fit shadow-[0px_1px_0.5px_rgba(213,218,227,0.3)]"
+            >
+              Go to MathE
+              <ArrowRight size={16} />
+            </Link>
+            <p className="text-[12px] font-normal text-[#5b708f] leading-[1.5]">
+              Clicking this button takes you to the external platform.
+            </p>
+          </div>
         </div>
 
         {/* How it works */}
@@ -51,15 +55,15 @@ export default function MathHomePage() {
             <div className="bg-white border border-[#e2e8f0] rounded-2xl p-5 flex flex-col gap-4">
               <div className="bg-[#f5f9ff] inline-flex items-center px-3 h-6 rounded-full w-fit">
                 <span className="text-[12px] font-medium text-[#193cb8] tracking-[0.12px]">
-                  1. Ask
+                  1. Browse
                 </span>
               </div>
               <div className="flex flex-col gap-2">
                 <h4 className="text-[16px] font-semibold text-[#1d293d] leading-[1.5]">
-                  Ask Your Question
+                  Browse MathE
                 </h4>
                 <p className="text-[14px] font-normal text-[#5b708f] leading-[1.5]">
-                  Enter your research question in natural language to start the
+                  Browse mathematics topics and resources to start the
                   exploration.
                 </p>
               </div>
@@ -69,16 +73,16 @@ export default function MathHomePage() {
             <div className="bg-white border border-[#e2e8f0] rounded-2xl p-5 flex flex-col gap-4">
               <div className="bg-[#ecfdf5] inline-flex items-center px-3 h-6 rounded-full w-fit">
                 <span className="text-[12px] font-medium text-[#006045] tracking-[0.12px]">
-                  2. Select data
+                  2. Learn
                 </span>
               </div>
               <div className="flex flex-col gap-2">
                 <h4 className="text-[16px] font-semibold text-[#1d293d] leading-[1.5]">
-                  Select Data Sources
+                  Study the Material
                 </h4>
                 <p className="text-[14px] font-normal text-[#5b708f] leading-[1.5]">
-                  Choose relevant datasets that help answer and support your
-                  question.
+                  Access explanations and materials, with hints along the way
+                  and the option to ask questions as you learn.
                 </p>
               </div>
             </div>
@@ -87,16 +91,16 @@ export default function MathHomePage() {
             <div className="bg-white border border-[#e2e8f0] rounded-2xl p-5 flex flex-col gap-4">
               <div className="bg-[#fff7ed] inline-flex items-center px-3 h-6 rounded-full w-fit">
                 <span className="text-[12px] font-medium text-[#f54900] tracking-[0.12px]">
-                  3. Explore results
+                  3. Solve
                 </span>
               </div>
               <div className="flex flex-col gap-2">
                 <h4 className="text-[16px] font-semibold text-[#1d293d] leading-[1.5]">
-                  Analyze &amp; Explore
+                  Practice &amp; Solve
                 </h4>
                 <p className="text-[14px] font-normal text-[#5b708f] leading-[1.5]">
-                  Review explanations and insights showing how findings were
-                  generated.
+                  Work through exercises and problems, applying what you&apos;ve
+                  learned.
                 </p>
               </div>
             </div>

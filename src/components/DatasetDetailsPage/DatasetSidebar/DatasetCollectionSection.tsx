@@ -3,6 +3,7 @@
 import { Button } from "@ui/Button";
 import { Chip } from "@ui/Chip";
 import { Box, Plus } from "lucide-react";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import styles from "./DatasetSidebarSection.module.scss";
 
 interface DatasetCollectionSectionProps {
@@ -14,6 +15,8 @@ export default function DatasetCollectionSection({
   displayCategory,
   onAddClick,
 }: DatasetCollectionSectionProps) {
+  const hideGeneralChat = useFeatureFlag("generalChat");
+
   return (
     <div className={styles.datasetSidebarSection}>
       <div className={styles.datasetSidebarSection__header}>
@@ -21,15 +24,17 @@ export default function DatasetCollectionSection({
           <Box className={styles.datasetSidebarSection__icon} />
           <h3 className={styles.datasetSidebarSection__title}>Collection</h3>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAddClick}
-          className={styles.datasetSidebarSection__button}
-        >
-          <Plus className={styles.datasetSidebarSection__buttonIcon} />
-          Add
-        </Button>
+        {!hideGeneralChat && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddClick}
+            className={styles.datasetSidebarSection__button}
+          >
+            <Plus className={styles.datasetSidebarSection__buttonIcon} />
+            Add
+          </Button>
+        )}
       </div>
       {displayCategory && (
         <Chip color="grey" variant="regular" size="sm">

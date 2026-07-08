@@ -6,9 +6,18 @@ import Browse from "./Browse";
 const mockUseApi = vi.fn();
 const mockUseCollections = vi.fn();
 const mockUseRouter = vi.fn();
+const mockUseFeatureFlag = vi.fn().mockReturnValue(false);
 
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => mockUseApi(),
+}));
+
+vi.mock("@/contexts/FeatureFlagsContext", () => ({
+  useFeatureFlag: (id: string) => mockUseFeatureFlag(id),
+}));
+
+vi.mock("../DatasetCard", () => ({
+  default: () => null,
 }));
 
 vi.mock("@/contexts/CollectionsContext", () => ({
@@ -37,6 +46,14 @@ describe("Browse - Delete Collection Feature", () => {
     },
   ];
 
+  const baseApiMock = () => ({
+    hasToken: true,
+    getCollectionGrants: vi.fn().mockResolvedValue([]),
+    getFieldsOfScience: vi.fn().mockResolvedValue([]),
+    getLicenses: vi.fn().mockResolvedValue([]),
+    deleteCollection: vi.fn().mockResolvedValue({}),
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -58,7 +75,7 @@ describe("Browse - Delete Collection Feature", () => {
       .mockResolvedValue(["dg_col-delete"]);
 
     mockUseApi.mockReturnValue({
-      hasToken: true,
+      ...baseApiMock(),
       getCollectionGrants: mockGetCollectionGrants,
     });
 
@@ -89,7 +106,7 @@ describe("Browse - Delete Collection Feature", () => {
     const mockGetCollectionGrants = vi.fn().mockResolvedValue([]);
 
     mockUseApi.mockReturnValue({
-      hasToken: true,
+      ...baseApiMock(),
       getCollectionGrants: mockGetCollectionGrants,
     });
 
@@ -122,7 +139,7 @@ describe("Browse - Delete Collection Feature", () => {
       .mockResolvedValue(["dg_col-delete"]);
 
     mockUseApi.mockReturnValue({
-      hasToken: true,
+      ...baseApiMock(),
       getCollectionGrants: mockGetCollectionGrants,
     });
 
@@ -146,7 +163,7 @@ describe("Browse - Delete Collection Feature", () => {
       .mockResolvedValue(["dg_col-delete"]);
 
     mockUseApi.mockReturnValue({
-      hasToken: true,
+      ...baseApiMock(),
       getCollectionGrants: mockGetCollectionGrants,
     });
 
@@ -188,7 +205,7 @@ describe("Browse - Delete Collection Feature", () => {
     const mockPush = vi.fn();
 
     mockUseApi.mockReturnValue({
-      hasToken: true,
+      ...baseApiMock(),
       getCollectionGrants: mockGetCollectionGrants,
       deleteCollection: mockDeleteCollection,
     });
@@ -252,7 +269,7 @@ describe("Browse - Delete Collection Feature", () => {
       .mockRejectedValue(new Error("API Error"));
 
     mockUseApi.mockReturnValue({
-      hasToken: true,
+      ...baseApiMock(),
       getCollectionGrants: mockGetCollectionGrants,
       deleteCollection: mockDeleteCollection,
     });
@@ -288,5 +305,55 @@ describe("Browse - Delete Collection Feature", () => {
         screen.getByText(/Failed to delete collection/i),
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe("Browse – generalChat flag (Hide general chat)", () => {
+  const mockDatasets = [
+    {
+      id: "1",
+      title: "Test Dataset",
+      description: "Test description",
+      license: "MIT",
+      size: "1 MB",
+      datePublished: "2024-01-01",
+      category: "Math" as const,
+      access: "Open Access" as const,
+      lastUpdated: "2024-01-01",
+      tags: ["test"],
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseRouter.mockReturnValue({ push: vi.fn() });
+    mockUseCollections.mockReturnValue({
+      apiCollections: [],
+      extraCollections: [],
+      refreshExtraCollections: vi.fn(),
+      notifyCollectionModified: vi.fn(),
+    });
+    mockUseApi.mockReturnValue({
+      hasToken: false,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+    });
+  });
+
+  const renderBrowse = () =>
+    render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
+
+  it("shows X Selected button when flag is OFF (false)", () => {
+    mockUseFeatureFlag.mockReturnValue(false);
+    renderBrowse();
+    expect(
+      screen.getByRole("button", { name: /selected/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides X Selected button when flag is ON (true)", () => {
+    mockUseFeatureFlag.mockReturnValue(true);
+    renderBrowse();
+    expect(screen.queryByRole("button", { name: /selected/i })).toBeNull();
   });
 });

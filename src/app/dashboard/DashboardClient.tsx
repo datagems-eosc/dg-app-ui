@@ -14,20 +14,9 @@ import Link from "next/link";
 import type React from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { APP_ROUTES, generateChatUrl } from "@/config/appUrls";
-import { useCollections } from "@/contexts/CollectionsContext";
+import { APP_ROUTES } from "@/config/appUrls";
 import { useUser } from "@/contexts/UserContext";
 import { createUrl } from "@/lib/utils";
-import type { ApiCollection } from "@/types/collection";
-
-function findCollectionByCode(
-  collections: ApiCollection[],
-  codes: string[],
-): ApiCollection | undefined {
-  return collections.find((c) =>
-    codes.some((code) => c.code?.toLowerCase() === code.toLowerCase()),
-  );
-}
 
 interface UseCaseCardProps {
   title: string;
@@ -45,25 +34,25 @@ function UseCaseCard({
   href,
 }: UseCaseCardProps) {
   return (
-    <Link
-      href={href}
-      className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between flex-1 min-w-0 hover:shadow-s2 transition-shadow"
-    >
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col flex-1 min-w-0">
       <div
         className={`${iconBg} rounded-lg p-2 w-11 h-11 flex items-center justify-center mb-4`}
       >
         {icon}
       </div>
-      <div className="flex flex-col gap-2 mb-5">
+      <div className="flex flex-col gap-2 mb-5 grow">
         <p className="text-body-16-semibold text-gray-800">{title}</p>
         <p className="text-body-14-regular text-gray-500">{description}</p>
       </div>
-      <div className="border border-slate-300 shadow-s1 rounded-full h-10 flex items-center justify-center">
+      <Link
+        href={href}
+        className="border border-slate-300 shadow-s1 rounded-full h-10 flex items-center justify-center hover:shadow-s2 transition-shadow"
+      >
         <span className="text-body-14-medium text-gray-700">
           Browse Datasets
         </span>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
@@ -107,73 +96,43 @@ function ComingSoonCard({
 
 export default function DashboardClient() {
   const { userData } = useUser();
-  const { apiCollections } = useCollections();
-
-  const weatherCollection = findCollectionByCode(apiCollections, [
-    "weather",
-    "meteo",
-  ]);
-  const mathCollection = findCollectionByCode(apiCollections, [
-    "math",
-    "mathe",
-  ]);
-  const lifelongCollection = findCollectionByCode(apiCollections, [
-    "lifelong",
-    "learning",
-  ]);
-  const languageCollection = findCollectionByCode(apiCollections, [
-    "language",
-    "languages",
-  ]);
 
   const firstName = userData.name || "there";
 
   const useCaseCards: UseCaseCardProps[] = [
     {
-      title: "Ask Weather Question",
-      description: "Explore forecasts and weather insights using AI.",
+      title: "Explore Weather Data",
+      description:
+        "Ask questions in natural language and get answers grounded in real weather datasets.",
       icon: <CloudSun strokeWidth={1.25} className="w-5 h-5 text-purple-500" />,
       iconBg: "bg-purple-50",
-      href: createUrl(
-        weatherCollection
-          ? generateChatUrl({ collection: weatherCollection.id })
-          : APP_ROUTES.CHAT,
-      ),
+      href: APP_ROUTES.USE_CASES.WEATHER_HOME,
     },
     {
-      title: "Ask Math Question",
-      description: "Solve complex math problems with AI.",
+      title: "Explore MathE Platform",
+      description:
+        "Access the MathE platform to discover and work with mathematics datasets.",
       icon: (
         <Calculator strokeWidth={1.25} className="w-5 h-5 text-emerald-600" />
       ),
       iconBg: "bg-emerald-50",
-      href: createUrl(
-        mathCollection
-          ? generateChatUrl({ collection: mathCollection.id })
-          : APP_ROUTES.CHAT,
-      ),
+      href: APP_ROUTES.USE_CASES.MATH_HOME,
     },
     {
-      title: "Ask Lifelong Learning Question",
-      description: "Expand your skills and knowledge with AI.",
+      title: "Explore Lifelong Learning",
+      description:
+        "Identify skill gaps and discover training opportunities for individuals and organizations.",
       icon: <BookOpen strokeWidth={1.25} className="w-5 h-5 text-rose-500" />,
       iconBg: "bg-rose-50",
-      href: createUrl(
-        lifelongCollection
-          ? generateChatUrl({ collection: lifelongCollection.id })
-          : APP_ROUTES.CHAT,
-      ),
+      href: APP_ROUTES.USE_CASES.LIFELONG_LEARNING,
     },
     {
-      title: "Ask Language Question",
-      description: "Language-related questions and AI-power.",
+      title: "Explore Language Data",
+      description:
+        "Research linguistic trends and concepts through natural language questions.",
       icon: <Languages strokeWidth={1.25} className="w-5 h-5 text-amber-600" />,
       iconBg: "bg-amber-50",
-      href: createUrl(
-        languageCollection
-          ? generateChatUrl({ collection: languageCollection.id })
-          : APP_ROUTES.CHAT,
-      ),
+      href: APP_ROUTES.USE_CASES.LANGUAGE_HOME,
     },
   ];
 

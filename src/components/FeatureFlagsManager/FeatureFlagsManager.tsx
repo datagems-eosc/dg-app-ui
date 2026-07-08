@@ -5,7 +5,8 @@ import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { FeatureFlagRow } from "./FeatureFlagRow";
 
 export function FeatureFlagsManager() {
-  const { flags, setOverride } = useFeatureFlags();
+  const { flags, setOverride, datasetIds, setDatasetOverride } =
+    useFeatureFlags();
 
   return (
     <div className="flex min-h-full justify-center bg-[#f5f7fa] px-4 py-6">
@@ -19,14 +20,22 @@ export function FeatureFlagsManager() {
             <span className="w-[120px]">Current value</span>
             <span className="w-[88px] text-right">Edit</span>
           </div>
-          {FEATURE_FLAGS.map((flag) => (
-            <FeatureFlagRow
-              key={flag.id}
-              label={flag.label}
-              value={flags[flag.id]}
-              onSave={(next) => setOverride(flag.id, next)}
-            />
-          ))}
+          {FEATURE_FLAGS.map((flag) => {
+            const hasDatasetId = flag.defaultDatasetId !== undefined;
+            return (
+              <FeatureFlagRow
+                key={flag.id}
+                label={flag.label}
+                value={flags[flag.id]}
+                onSave={(next) => setOverride(flag.id, next)}
+                {...(hasDatasetId && {
+                  datasetId: datasetIds[flag.id] ?? null,
+                  onSaveDatasetId: (value) =>
+                    setDatasetOverride(flag.id, value),
+                })}
+              />
+            );
+          })}
         </div>
       </div>
     </div>

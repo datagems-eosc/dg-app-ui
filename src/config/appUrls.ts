@@ -39,9 +39,12 @@ export const APP_ROUTES = {
   // Use cases
   USE_CASES: {
     LANGUAGE: "/use-case/language",
+    LANGUAGE_HOME: "/use-case/language/home",
     LIFELONG_LEARNING: "/use-case/lifelong-learning",
     MATH: "/use-case/math",
+    MATH_HOME: "/use-case/math/home",
     WEATHER: "/use-case/weather",
+    WEATHER_HOME: "/use-case/weather/home",
   },
 } as const;
 
