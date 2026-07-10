@@ -15,6 +15,7 @@ interface ChatInputProps {
   onSend: () => void;
   onAddDatasets: () => void;
   staticCollectionLabel?: string;
+  staticCollectionIcon?: React.ComponentType<{ className?: string }>;
   collections?: {
     apiCollections: Collection[];
     collections: Collection[];
@@ -43,6 +44,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
       onSend,
       onAddDatasets,
       staticCollectionLabel,
+      staticCollectionIcon: StaticCollectionIcon = CloudSun,
       collections,
       selectedCollection,
       onSelectCollection,
@@ -209,7 +211,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
                           "opacity-50 cursor-not-allowed pointer-events-none",
                       )}
                     >
-                      <CloudSun className="w-4 h-4 text-slate-700" />
+                      <StaticCollectionIcon className="w-4 h-4 text-slate-700" />
                       <span className="text-body-14-regular text-gray-750 whitespace-nowrap select-none">
                         {staticCollectionLabel}
                       </span>

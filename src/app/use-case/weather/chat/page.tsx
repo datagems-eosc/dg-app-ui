@@ -27,6 +27,7 @@ function WeatherChatInner() {
       forcedDatasetIds={pinnedDatasetId ? [pinnedDatasetId] : undefined}
       showConversationName={false}
       hideCollectionActions={true}
+      staticCollectionLabel="Meteo"
     />
   );
 }

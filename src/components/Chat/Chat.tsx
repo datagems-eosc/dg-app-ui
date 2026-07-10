@@ -39,6 +39,8 @@ interface ChatProps {
   showConversationName?: boolean;
   hideCollectionActions?: boolean;
   initialCollectionId?: string | null; // Collection ID from URL parameter
+  staticCollectionLabel?: string; // Non-interactive data-source pill (pilot chats)
+  staticCollectionIcon?: React.ComponentType<{ className?: string }>;
 }
 
 // Add type for cross-dataset search result
@@ -59,6 +61,8 @@ export default function Chat({
   showConversationName = true,
   hideCollectionActions = false,
   initialCollectionId = null,
+  staticCollectionLabel,
+  staticCollectionIcon,
 }: ChatProps) {
   // Store only Message[] for UI rendering
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1275,6 +1279,8 @@ export default function Chat({
                 disabled={isInputDisabled}
                 error={error}
                 showAddDatasetsModal={showAddDatasetsModal}
+                staticCollectionLabel={staticCollectionLabel}
+                staticCollectionIcon={staticCollectionIcon}
               />
             </div>
           </div>
@@ -1310,6 +1316,8 @@ export default function Chat({
               disabled={isInputDisabled}
               error={error}
               showAddDatasetsModal={showAddDatasetsModal}
+              staticCollectionLabel={staticCollectionLabel}
+              staticCollectionIcon={staticCollectionIcon}
             />
           </div>
         </div>

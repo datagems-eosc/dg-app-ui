@@ -77,6 +77,9 @@ export interface ChatPageContentProps {
   withLayout?: boolean;
   forcedCollectionId?: string | null;
   forcedDatasetIds?: string[];
+  /** Non-interactive data-source pill shown in the chat input (pilot chats). */
+  staticCollectionLabel?: string;
+  staticCollectionIcon?: React.ComponentType<{ className?: string }>;
 }
 
 export function ChatPageContent({
@@ -85,6 +88,8 @@ export function ChatPageContent({
   withLayout = true,
   forcedCollectionId,
   forcedDatasetIds,
+  staticCollectionLabel,
+  staticCollectionIcon,
 }: ChatPageContentProps) {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>(
     forcedDatasetIds ?? [],
@@ -301,6 +306,8 @@ export function ChatPageContent({
       showConversationName={showConversationName}
       hideCollectionActions={hideCollectionActions}
       initialCollectionId={initialCollectionId}
+      staticCollectionLabel={staticCollectionLabel}
+      staticCollectionIcon={staticCollectionIcon}
     />
   );
 

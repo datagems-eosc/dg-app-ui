@@ -1,5 +1,6 @@
 "use client";
 
+import { Calculator } from "lucide-react";
 import { Suspense } from "react";
 import { ChatPageContent } from "@/app/chat/ChatPageContent";
 import { useCollections } from "@/contexts/CollectionsContext";
@@ -16,6 +17,8 @@ function MathChatInner() {
       forcedCollectionId={mathCollection?.id ?? null}
       showConversationName={false}
       hideCollectionActions={true}
+      staticCollectionLabel="Math"
+      staticCollectionIcon={Calculator}
     />
   );
 }
