@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
+import { FEATURE_FLAGS_STORAGE_KEY } from "@/lib/featureFlags/storage";
 import { SidebarContent } from "./SidebarContent";
 
 vi.mock("next/navigation", () => ({
@@ -36,22 +37,36 @@ describe("SidebarContent – generalChat flag (Hide general chat)", () => {
     window.localStorage.clear();
   });
 
-  it("hides Ask a Question when flag is ON (true)", () => {
+  it("hides Ask a Question by default (flag ON in every environment)", () => {
+    window.__env = { DEPLOYMENT_ENV: "production" };
+    renderSidebar();
+    expect(screen.queryByRole("link", { name: /ask a question/i })).toBeNull();
+  });
+
+  it("hides Ask a Question by default on playground", () => {
     window.__env = { DEPLOYMENT_ENV: "playground" };
     renderSidebar();
     expect(screen.queryByRole("link", { name: /ask a question/i })).toBeNull();
   });
 
-  it("shows Ask a Question when flag is OFF (false)", () => {
-    window.__env = { DEPLOYMENT_ENV: "staging" };
+  it("shows Ask a Question when the flag is overridden OFF (false)", () => {
+    window.__env = { DEPLOYMENT_ENV: "production" };
+    window.localStorage.setItem(
+      FEATURE_FLAGS_STORAGE_KEY,
+      JSON.stringify({ generalChat: false }),
+    );
     renderSidebar();
     expect(
       screen.getByRole("link", { name: /ask a question/i }),
     ).toBeInTheDocument();
   });
 
-  it("positions Ask a Question between Browse and Favourites", () => {
-    window.__env = { DEPLOYMENT_ENV: "staging" };
+  it("positions Ask a Question between Browse and Favourites when shown", () => {
+    window.__env = { DEPLOYMENT_ENV: "production" };
+    window.localStorage.setItem(
+      FEATURE_FLAGS_STORAGE_KEY,
+      JSON.stringify({ generalChat: false }),
+    );
     renderSidebar();
 
     const links = screen.getAllByRole("link");

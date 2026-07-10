@@ -54,7 +54,9 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
   {
     id: "generalChat",
     label: "Hide general chat",
-    defaults: disabledEverywhere(),
+    // DG-238: the Dashboard is the entry point, so "Ask a Question" (general
+    // chat) is hidden by default; re-enable per browser via the flags manager.
+    defaults: enabledEverywhere(),
   },
   {
     id: "expertMode",

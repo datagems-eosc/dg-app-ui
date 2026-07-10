@@ -11,7 +11,6 @@ import { parseOverrides } from "../src/lib/featureFlags/storage";
 
 const DISABLED_EVERYWHERE = new Set([
   "customCollection",
-  "generalChat",
   "pinnedDatasetWeather",
   "pinnedDatasetLanguage",
   "pinnedDatasetMath",
@@ -25,10 +24,15 @@ test("flags enabled everywhere default to true on every environment", () => {
   }
 });
 
-test("customCollection and generalChat default to false on every environment", () => {
+test("customCollection defaults to false on every environment", () => {
   for (const env of ENVS) {
     assert.equal(resolveFlag("customCollection", env, {}), false);
-    assert.equal(resolveFlag("generalChat", env, {}), false);
+  }
+});
+
+test("generalChat (Hide general chat) defaults to true on every environment (DG-238)", () => {
+  for (const env of ENVS) {
+    assert.equal(resolveFlag("generalChat", env, {}), true);
   }
 });
 
