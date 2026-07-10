@@ -1,7 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
+import { writeOverrides } from "@/lib/featureFlags/storage";
 import { ChatHistoryList } from "../ChatHistoryList";
+
+// ChatHistoryList reads the generalChat flag, so every render needs the provider.
+const render = (ui: ReactElement) =>
+  rtlRender(<FeatureFlagsProvider>{ui}</FeatureFlagsProvider>);
 
 const mockUseApi = vi.fn();
 
@@ -51,7 +58,7 @@ vi.mock("../ChatItem", () => ({
   ),
 }));
 
-vi.mock("../Search", () => ({
+vi.mock("../../Search", () => ({
   Search: ({
     placeholder,
     value,
@@ -85,7 +92,7 @@ vi.mock("../Search", () => ({
   ),
 }));
 
-vi.mock("../NoData", () => ({
+vi.mock("../../NoData", () => ({
   NoData: ({
     icon: Icon,
     title,
@@ -132,6 +139,7 @@ describe("ChatHistoryList", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
   });
 
   it("should render loading skeleton when isLoading is true", async () => {
@@ -236,7 +244,7 @@ describe("ChatHistoryList", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should render empty state when no conversations", async () => {
+  it("should render empty state pointing at use-cases when general chat is hidden (default)", async () => {
     mockUseApi.mockReturnValue({
       hasToken: true,
       queryConversations: vi.fn().mockResolvedValue({
@@ -251,6 +259,25 @@ describe("ChatHistoryList", () => {
       expect(screen.getByTestId("no-data-title")).toHaveTextContent(
         "Your Chat history will appear here",
       );
+      expect(screen.getByTestId("no-data-description")).toHaveTextContent(
+        "Start a chat in one of the use-cases",
+      );
+    });
+  });
+
+  it("should render 'Ask a question first' empty state when general chat is shown", async () => {
+    writeOverrides({ generalChat: false });
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      queryConversations: vi.fn().mockResolvedValue({
+        items: [],
+      }),
+    });
+
+    render(<ChatHistoryList session={defaultSession} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("no-data")).toBeInTheDocument();
       expect(screen.getByTestId("no-data-description")).toHaveTextContent(
         "Ask a question first",
       );

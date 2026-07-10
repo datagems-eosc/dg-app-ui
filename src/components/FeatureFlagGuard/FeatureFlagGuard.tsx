@@ -10,16 +10,19 @@ interface FeatureFlagGuardProps {
   flag: FeatureFlagId;
   children: ReactNode;
   redirectTo?: string;
+  /** Guard passes when the flag is OFF — for "hide when enabled" flags like generalChat. */
+  invert?: boolean;
 }
 
 export function FeatureFlagGuard({
   flag,
   children,
   redirectTo = APP_ROUTES.DASHBOARD,
+  invert = false,
 }: FeatureFlagGuardProps) {
   const { flags, isHydrated } = useFeatureFlags();
   const router = useRouter();
-  const enabled = flags[flag];
+  const enabled = invert ? !flags[flag] : flags[flag];
 
   useEffect(() => {
     if (isHydrated && !enabled) {

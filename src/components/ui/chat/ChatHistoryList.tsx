@@ -3,6 +3,7 @@
 import { MessageCircleMore, SearchX } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
 import { NoData } from "../NoData";
 import { Search as SearchInput } from "../Search";
@@ -65,6 +66,7 @@ export function ChatHistoryList({
   setConversations: setExternalConversations,
 }: ChatHistoryListProps) {
   const api = useApi();
+  const { flags } = useFeatureFlags();
   const [conversations, setConversations] = useState<ConversationListItem[]>(
     [],
   );
@@ -204,7 +206,11 @@ export function ChatHistoryList({
         <NoData
           icon={MessageCircleMore}
           title="Your Chat history will appear here"
-          description="Ask a question first"
+          description={
+            flags.generalChat
+              ? "Start a chat in one of the use-cases"
+              : "Ask a question first"
+          }
           className="px-5"
         />
       ) : searchQuery.trim().length > 0 && filtered.length === 0 ? (
