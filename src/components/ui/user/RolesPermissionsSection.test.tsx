@@ -154,4 +154,70 @@ describe("RolesPermissionsSection", () => {
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
   });
+
+  it("shows the dataset id under the dataset name (DG-241)", async () => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getCurrentUserContextGrants: vi.fn().mockResolvedValue([
+        {
+          principalId: "group-1",
+          principalType: 1,
+          targetType: 0,
+          targetId: "dataset-1",
+          role: "edit",
+        },
+      ]),
+      queryUserGroups: vi.fn().mockResolvedValue({
+        items: [{ id: "group-1", name: "Research Team" }],
+      }),
+      queryDatasets: vi.fn().mockResolvedValue({
+        items: [{ id: "dataset-1", name: "Dataset One" }],
+      }),
+      queryCollections: vi.fn().mockResolvedValue({ items: [] }),
+    });
+
+    render(<RolesPermissionsSection />);
+
+    expect(await screen.findByText("Dataset One")).toBeInTheDocument();
+    expect(screen.getByText("dataset-1")).toBeInTheDocument();
+  });
+
+  it("marks grants whose dataset no longer resolves and reports them next to the result count (DG-240)", async () => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getCurrentUserContextGrants: vi.fn().mockResolvedValue([
+        {
+          principalId: "group-1",
+          principalType: 1,
+          targetType: 0,
+          targetId: "dataset-1",
+          role: "edit",
+        },
+        {
+          principalId: "group-1",
+          principalType: 1,
+          targetType: 0,
+          targetId: "dataset-deleted",
+          role: "browse",
+        },
+      ]),
+      queryUserGroups: vi.fn().mockResolvedValue({
+        items: [{ id: "group-1", name: "Research Team" }],
+      }),
+      // The API only knows dataset-1; dataset-deleted is an orphaned grant.
+      queryDatasets: vi.fn().mockResolvedValue({
+        items: [{ id: "dataset-1", name: "Dataset One" }],
+      }),
+      queryCollections: vi.fn().mockResolvedValue({ items: [] }),
+    });
+
+    render(<RolesPermissionsSection />);
+
+    expect(await screen.findByText("Unknown dataset")).toBeInTheDocument();
+    expect(screen.getByText("dataset-deleted")).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 reference datasets that no longer exist/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/2 results/)).toBeInTheDocument();
+  });
 });

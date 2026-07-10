@@ -35,6 +35,8 @@ type GrantRow = {
   targetId: string;
   targetName: string;
   targetType: string;
+  /** False when the grant references a target the API no longer returns (deleted or inaccessible). */
+  resolved: boolean;
   roles: string[];
   groupCount: number;
   groupIds: string[];
@@ -688,12 +690,15 @@ export default function RolesPermissionsSection() {
     });
 
     return Array.from(grouped.values()).map((entry) => {
-      const targetName =
+      const resolvedName =
         entry.targetType === 0
-          ? datasetNames[entry.targetId] || entry.targetId || "Unknown"
+          ? datasetNames[entry.targetId]
           : entry.targetType === 1
-            ? collectionNames[entry.targetId] || entry.targetId || "Unknown"
-            : entry.targetId || "Unknown";
+            ? collectionNames[entry.targetId]
+            : undefined;
+      const targetName =
+        resolvedName ||
+        (entry.targetType === 0 ? "Unknown dataset" : "Unknown collection");
       const uploadedBy =
         entry.targetType === 0
           ? (datasetUploadedBy[entry.targetId] ?? null)
@@ -706,6 +711,7 @@ export default function RolesPermissionsSection() {
         targetId: entry.targetId,
         targetName,
         targetType: TARGET_KIND_LABELS[entry.targetType] ?? "Unknown",
+        resolved: Boolean(resolvedName),
         roles: Array.from(entry.roles),
         groupCount: entry.groups.size,
         groupIds: Array.from(entry.groups),
@@ -742,7 +748,9 @@ export default function RolesPermissionsSection() {
         groupFilter.length === 0 ||
         row.groupIds.some((groupId) => groupFilter.includes(groupId));
       const matchesSearch =
-        !query || row.targetName.toLowerCase().includes(query);
+        !query ||
+        row.targetName.toLowerCase().includes(query) ||
+        row.targetId.toLowerCase().includes(query);
       return matchesType && matchesRole && matchesGroup && matchesSearch;
     });
   }, [
@@ -754,6 +762,11 @@ export default function RolesPermissionsSection() {
     searchQuery,
     typeFilter,
   ]);
+
+  const unresolvedCount = useMemo(
+    () => filteredRows.filter((row) => !row.resolved).length,
+    [filteredRows],
+  );
 
   const getPermissionLabel = (row: GrantRow) => row.roles[0] ?? "";
 
@@ -957,6 +970,14 @@ export default function RolesPermissionsSection() {
           <div className="text-[14px] leading-[150%] text-gray-750">
             <span className="text-gray-650">Showing:</span>{" "}
             {filteredRows.length} results
+            {!isLoading && unresolvedCount > 0 && (
+              <span className="text-gray-650">
+                {" "}
+                · {unresolvedCount} reference{" "}
+                {typeFilter === "collections" ? "collections" : "datasets"} that
+                no longer exist or are inaccessible
+              </span>
+            )}
           </div>
         </div>
 
@@ -1056,9 +1077,11 @@ export default function RolesPermissionsSection() {
                     const primaryRole = roles[0];
                     const extraCount = Math.max(roles.length - 1, 0);
                     const hasEditRights =
+                      row.resolved &&
                       row.targetType.toLowerCase() === "dataset" &&
                       (roles.includes("Edit") || roles.includes("Manage"));
                     const hasDeleteRights =
+                      row.resolved &&
                       row.targetType.toLowerCase() === "dataset" &&
                       (roles.includes("Delete") || roles.includes("Manage"));
                     const groupsTooltip =
@@ -1074,12 +1097,16 @@ export default function RolesPermissionsSection() {
                         key={row.id}
                         role="row"
                         className={`grid grid-cols-[1fr_126px_180px_122px_137px] items-center h-14 border-b border-slate-200 last:border-b-0 ${
+                          row.resolved &&
                           row.targetType.toLowerCase() === "dataset"
                             ? "cursor-pointer hover:bg-slate-50"
                             : ""
                         }`}
                         onClick={() => {
-                          if (row.targetType.toLowerCase() !== "dataset")
+                          if (
+                            !row.resolved ||
+                            row.targetType.toLowerCase() !== "dataset"
+                          )
                             return;
                           setSelectedDataset({
                             id: row.targetId,
@@ -1088,10 +1115,11 @@ export default function RolesPermissionsSection() {
                         }}
                       >
                         <div
-                          className="px-4 text-[14px] text-gray-750 truncate"
+                          className="px-4 min-w-0"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {row.targetType.toLowerCase() === "dataset" ? (
+                          {row.resolved &&
+                          row.targetType.toLowerCase() === "dataset" ? (
                             <button
                               type="button"
                               onClick={(event) => {
@@ -1102,13 +1130,27 @@ export default function RolesPermissionsSection() {
                                   ),
                                 );
                               }}
-                              className="text-left hover:underline"
+                              className="block max-w-full truncate text-left text-[14px] text-gray-750 hover:underline"
                             >
                               {row.targetName}
                             </button>
                           ) : (
-                            row.targetName
+                            <div
+                              className={`truncate text-[14px] ${
+                                row.resolved
+                                  ? "text-gray-750"
+                                  : "italic text-gray-500"
+                              }`}
+                            >
+                              {row.targetName}
+                            </div>
                           )}
+                          <div
+                            className="truncate font-mono text-[12px] text-gray-500"
+                            title={row.targetId}
+                          >
+                            {row.targetId}
+                          </div>
                         </div>
                         <div className="px-4 flex items-center justify-center">
                           {row.groupCount > 0 && groupsTooltip ? (
