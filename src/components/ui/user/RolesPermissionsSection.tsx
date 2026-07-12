@@ -470,6 +470,10 @@ export default function RolesPermissionsSection() {
   const [collectionNames, setCollectionNames] = useState<
     Record<string, string>
   >({});
+  // True when the name lookup itself failed — rows must then stay interactive
+  // with the ID as the name instead of being misreported as deleted targets.
+  const [datasetLookupFailed, setDatasetLookupFailed] = useState(false);
+  const [collectionLookupFailed, setCollectionLookupFailed] = useState(false);
   const [datasetUploadedBy, setDatasetUploadedBy] = useState<
     Record<string, string | null>
   >({});
@@ -537,13 +541,23 @@ export default function RolesPermissionsSection() {
           }, {});
         setGroupNames(groupMap);
 
-        const datasetIds = grantsResult
-          .filter((grant) => grant.targetType === 0 && grant.targetId)
-          .map((grant) => grant.targetId as string);
-        const collectionIds = grantsResult
-          .filter((grant) => grant.targetType === 1 && grant.targetId)
-          .map((grant) => grant.targetId as string);
+        const datasetIds = Array.from(
+          new Set(
+            grantsResult
+              .filter((grant) => grant.targetType === 0 && grant.targetId)
+              .map((grant) => grant.targetId as string),
+          ),
+        );
+        const collectionIds = Array.from(
+          new Set(
+            grantsResult
+              .filter((grant) => grant.targetType === 1 && grant.targetId)
+              .map((grant) => grant.targetId as string),
+          ),
+        );
 
+        let datasetsFailed = false;
+        let collectionsFailed = false;
         const [datasetsResult, collectionsResult] = await Promise.all([
           datasetIds.length > 0
             ? queryDatasets({
@@ -558,6 +572,7 @@ export default function RolesPermissionsSection() {
                 logWarn("Failed to load dataset names for grants", {
                   error: errorMessage,
                 });
+                datasetsFailed = true;
                 return { items: [] };
               })
             : Promise.resolve({ items: [] }),
@@ -574,6 +589,7 @@ export default function RolesPermissionsSection() {
                 logWarn("Failed to load collection names for grants", {
                   error: errorMessage,
                 });
+                collectionsFailed = true;
                 return { items: [] };
               })
             : Promise.resolve({ items: [] }),
@@ -586,15 +602,12 @@ export default function RolesPermissionsSection() {
           name?: string;
           createdBy?: string | null;
         }>;
+        // Every returned item counts as resolved; a blank name falls back to
+        // the ID for display but must not be misreported as a deleted target.
         const datasetMap = datasetItems
-          .map((item) => ({
-            id: item.id ?? "",
-            name: item.name ?? "",
-            uploadedBy: item.createdBy ?? null,
-          }))
-          .filter((item) => item.id && item.name)
+          .filter((item) => item.id)
           .reduce((acc: Record<string, string>, item) => {
-            acc[item.id] = item.name;
+            acc[item.id as string] = item.name?.trim() || (item.id as string);
             return acc;
           }, {});
         const datasetUploadedByMap = datasetItems
@@ -609,14 +622,9 @@ export default function RolesPermissionsSection() {
           createdBy?: string | null;
         }>;
         const collectionMap = collectionItems
-          .map((item) => ({
-            id: item.id ?? "",
-            name: item.name ?? "",
-            uploadedBy: item.createdBy ?? null,
-          }))
-          .filter((item) => item.id && item.name)
+          .filter((item) => item.id)
           .reduce((acc: Record<string, string>, item) => {
-            acc[item.id] = item.name;
+            acc[item.id as string] = item.name?.trim() || (item.id as string);
             return acc;
           }, {});
         const collectionUploadedByMap = collectionItems
@@ -626,10 +634,31 @@ export default function RolesPermissionsSection() {
             return acc;
           }, {});
 
+        if (!datasetsFailed && datasetItems.length < datasetIds.length) {
+          logWarn("Dataset name lookup returned fewer items than requested", {
+            requested: datasetIds.length,
+            returned: datasetItems.length,
+          });
+        }
+        if (
+          !collectionsFailed &&
+          collectionItems.length < collectionIds.length
+        ) {
+          logWarn(
+            "Collection name lookup returned fewer items than requested",
+            {
+              requested: collectionIds.length,
+              returned: collectionItems.length,
+            },
+          );
+        }
+
         setDatasetNames(datasetMap);
         setCollectionNames(collectionMap);
         setDatasetUploadedBy(datasetUploadedByMap);
         setCollectionUploadedBy(collectionUploadedByMap);
+        setDatasetLookupFailed(datasetsFailed);
+        setCollectionLookupFailed(collectionsFailed);
       } catch (error) {
         if (cancelled) return;
         logError("Failed to load context grants", error);
@@ -690,15 +719,27 @@ export default function RolesPermissionsSection() {
     });
 
     return Array.from(grouped.values()).map((entry) => {
+      const lookupFailed =
+        entry.targetType === 0
+          ? datasetLookupFailed
+          : entry.targetType === 1
+            ? collectionLookupFailed
+            : false;
       const resolvedName =
         entry.targetType === 0
           ? datasetNames[entry.targetId]
           : entry.targetType === 1
             ? collectionNames[entry.targetId]
             : undefined;
+      const kindLabel = TARGET_KIND_LABELS[entry.targetType] ?? "Unknown";
+      // A failed lookup says nothing about whether the target exists — keep
+      // the row fully usable and show the ID in place of the name.
+      const resolved = lookupFailed || Boolean(resolvedName);
       const targetName =
         resolvedName ||
-        (entry.targetType === 0 ? "Unknown dataset" : "Unknown collection");
+        (lookupFailed
+          ? entry.targetId
+          : `Unknown ${TARGET_KIND_LABELS[entry.targetType]?.toLowerCase() ?? "target"}`);
       const uploadedBy =
         entry.targetType === 0
           ? (datasetUploadedBy[entry.targetId] ?? null)
@@ -710,8 +751,8 @@ export default function RolesPermissionsSection() {
         id: `${entry.targetType}-${entry.targetId}`,
         targetId: entry.targetId,
         targetName,
-        targetType: TARGET_KIND_LABELS[entry.targetType] ?? "Unknown",
-        resolved: Boolean(resolvedName),
+        targetType: kindLabel,
+        resolved,
         roles: Array.from(entry.roles),
         groupCount: entry.groups.size,
         groupIds: Array.from(entry.groups),
@@ -719,8 +760,10 @@ export default function RolesPermissionsSection() {
       };
     });
   }, [
+    collectionLookupFailed,
     collectionNames,
     collectionUploadedBy,
+    datasetLookupFailed,
     datasetNames,
     datasetUploadedBy,
     grants,
@@ -768,10 +811,17 @@ export default function RolesPermissionsSection() {
     [filteredRows],
   );
 
+  const activeKind = typeFilter === "collections" ? "collection" : "dataset";
+  const activeLookupFailed =
+    typeFilter === "collections" ? collectionLookupFailed : datasetLookupFailed;
+
   const getPermissionLabel = (row: GrantRow) => row.roles[0] ?? "";
 
   const getSortValue = (row: GrantRow, key: SortKey) => {
-    if (key === "assetName") return row.targetName.toLowerCase();
+    // Tiebreak equal names (e.g. several "Unknown dataset" rows) by the
+    // visible target ID so ordering matches what the user sees.
+    if (key === "assetName")
+      return `${row.targetName.toLowerCase()} ${row.targetId}`;
     if (key === "groupsAdded") return row.groupCount;
     if (key === "permission") return getPermissionLabel(row).toLowerCase();
     return "";
@@ -970,12 +1020,19 @@ export default function RolesPermissionsSection() {
           <div className="text-[14px] leading-[150%] text-gray-750">
             <span className="text-gray-650">Showing:</span>{" "}
             {filteredRows.length} results
-            {!isLoading && unresolvedCount > 0 && (
+            {!isLoading && activeLookupFailed && (
               <span className="text-gray-650">
                 {" "}
-                · {unresolvedCount} reference{" "}
-                {typeFilter === "collections" ? "collections" : "datasets"} that
-                no longer exist or are inaccessible
+                · {activeKind} names could not be loaded — showing identifiers
+              </span>
+            )}
+            {!isLoading && !activeLookupFailed && unresolvedCount > 0 && (
+              <span className="text-gray-650">
+                {" "}
+                ·{" "}
+                {unresolvedCount === 1
+                  ? `1 references a ${activeKind} that no longer exists or is inaccessible`
+                  : `${unresolvedCount} reference ${activeKind}s that no longer exist or are inaccessible`}
               </span>
             )}
           </div>
@@ -1076,13 +1133,14 @@ export default function RolesPermissionsSection() {
                     const roles = row.roles;
                     const primaryRole = roles[0];
                     const extraCount = Math.max(roles.length - 1, 0);
-                    const hasEditRights =
+                    const isInteractiveDataset =
                       row.resolved &&
-                      row.targetType.toLowerCase() === "dataset" &&
+                      row.targetType.toLowerCase() === "dataset";
+                    const hasEditRights =
+                      isInteractiveDataset &&
                       (roles.includes("Edit") || roles.includes("Manage"));
                     const hasDeleteRights =
-                      row.resolved &&
-                      row.targetType.toLowerCase() === "dataset" &&
+                      isInteractiveDataset &&
                       (roles.includes("Delete") || roles.includes("Manage"));
                     const groupsTooltip =
                       row.groupCount > 0
@@ -1097,29 +1155,20 @@ export default function RolesPermissionsSection() {
                         key={row.id}
                         role="row"
                         className={`grid grid-cols-[1fr_126px_180px_122px_137px] items-center h-14 border-b border-slate-200 last:border-b-0 ${
-                          row.resolved &&
-                          row.targetType.toLowerCase() === "dataset"
+                          isInteractiveDataset
                             ? "cursor-pointer hover:bg-slate-50"
                             : ""
                         }`}
                         onClick={() => {
-                          if (
-                            !row.resolved ||
-                            row.targetType.toLowerCase() !== "dataset"
-                          )
-                            return;
+                          if (!isInteractiveDataset) return;
                           setSelectedDataset({
                             id: row.targetId,
                             name: row.targetName,
                           });
                         }}
                       >
-                        <div
-                          className="px-4 min-w-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {row.resolved &&
-                          row.targetType.toLowerCase() === "dataset" ? (
+                        <div className="px-4 min-w-0">
+                          {isInteractiveDataset ? (
                             <button
                               type="button"
                               onClick={(event) => {
@@ -1145,12 +1194,15 @@ export default function RolesPermissionsSection() {
                               {row.targetName}
                             </div>
                           )}
-                          <div
-                            className="truncate font-mono text-[12px] text-gray-500"
-                            title={row.targetId}
+                          <Tooltip
+                            content={row.targetId}
+                            position="top"
+                            delay={300}
                           >
-                            {row.targetId}
-                          </div>
+                            <div className="truncate font-mono text-[12px] text-gray-500">
+                              {row.targetId}
+                            </div>
+                          </Tooltip>
                         </div>
                         <div className="px-4 flex items-center justify-center">
                           {row.groupCount > 0 && groupsTooltip ? (

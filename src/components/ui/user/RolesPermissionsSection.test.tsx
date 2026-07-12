@@ -216,8 +216,66 @@ describe("RolesPermissionsSection", () => {
     expect(await screen.findByText("Unknown dataset")).toBeInTheDocument();
     expect(screen.getByText("dataset-deleted")).toBeInTheDocument();
     expect(
-      screen.getByText(/1 reference datasets that no longer exist/),
+      screen.getByText(/1 references a dataset that no longer exists/),
     ).toBeInTheDocument();
     expect(screen.getByText(/2 results/)).toBeInTheDocument();
+  });
+
+  it("keeps rows usable and reports a lookup failure instead of claiming datasets were deleted", async () => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getCurrentUserContextGrants: vi.fn().mockResolvedValue([
+        {
+          principalId: "group-1",
+          principalType: 1,
+          targetType: 0,
+          targetId: "dataset-1",
+          role: "edit",
+        },
+      ]),
+      queryUserGroups: vi.fn().mockResolvedValue({
+        items: [{ id: "group-1", name: "Research Team" }],
+      }),
+      queryDatasets: vi.fn().mockRejectedValue(new Error("gateway 500")),
+      queryCollections: vi.fn().mockResolvedValue({ items: [] }),
+    });
+
+    render(<RolesPermissionsSection />);
+
+    // The ID stands in for the name (name line + ID line), not "Unknown dataset".
+    expect((await screen.findAllByText("dataset-1")).length).toBeGreaterThan(1);
+    expect(screen.queryByText("Unknown dataset")).toBeNull();
+    expect(
+      screen.getByText(/dataset names could not be loaded/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no longer exist/)).toBeNull();
+  });
+
+  it("treats a returned dataset with a blank name as resolved, showing the id as the name", async () => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getCurrentUserContextGrants: vi.fn().mockResolvedValue([
+        {
+          principalId: "group-1",
+          principalType: 1,
+          targetType: 0,
+          targetId: "dataset-1",
+          role: "edit",
+        },
+      ]),
+      queryUserGroups: vi.fn().mockResolvedValue({
+        items: [{ id: "group-1", name: "Research Team" }],
+      }),
+      queryDatasets: vi.fn().mockResolvedValue({
+        items: [{ id: "dataset-1", name: "" }],
+      }),
+      queryCollections: vi.fn().mockResolvedValue({ items: [] }),
+    });
+
+    render(<RolesPermissionsSection />);
+
+    expect((await screen.findAllByText("dataset-1")).length).toBeGreaterThan(1);
+    expect(screen.queryByText("Unknown dataset")).toBeNull();
+    expect(screen.queryByText(/no longer exist/)).toBeNull();
   });
 });
