@@ -1,5 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ErrorProvider } from "@/contexts/ErrorContext";
 import RolesPermissionsSection from "./RolesPermissionsSection";
 
 const mockUseApi = vi.fn();
@@ -8,6 +10,10 @@ const mockPush = vi.fn();
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => mockUseApi(),
 }));
+
+// The embedded DatasetPermissionsModal reports failures via ErrorContext.
+const render = (ui: ReactElement) =>
+  rtlRender(<ErrorProvider>{ui}</ErrorProvider>);
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
