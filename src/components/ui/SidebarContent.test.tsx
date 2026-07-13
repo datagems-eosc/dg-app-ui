@@ -37,16 +37,25 @@ describe("SidebarContent – generalChat flag (Hide general chat)", () => {
     window.localStorage.clear();
   });
 
-  it("hides Ask a Question by default (flag ON in every environment)", () => {
+  it("hides Ask a Question by default on production", () => {
     window.__env = { DEPLOYMENT_ENV: "production" };
     renderSidebar();
     expect(screen.queryByRole("link", { name: /ask a question/i })).toBeNull();
   });
 
-  it("hides Ask a Question by default on playground", () => {
+  it("shows Ask a Question by default on playground and staging (kept for testing)", () => {
     window.__env = { DEPLOYMENT_ENV: "playground" };
+    const { unmount } = renderSidebar();
+    expect(
+      screen.getByRole("link", { name: /ask a question/i }),
+    ).toBeInTheDocument();
+    unmount();
+
+    window.__env = { DEPLOYMENT_ENV: "staging" };
     renderSidebar();
-    expect(screen.queryByRole("link", { name: /ask a question/i })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: /ask a question/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows Ask a Question when the flag is overridden OFF (false)", () => {

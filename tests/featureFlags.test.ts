@@ -30,10 +30,10 @@ test("customCollection defaults to false on every environment", () => {
   }
 });
 
-test("generalChat (Hide general chat) defaults to true on every environment (DG-238)", () => {
-  for (const env of ENVS) {
-    assert.equal(resolveFlag("generalChat", env, {}), true);
-  }
+test("generalChat (Hide general chat) defaults to true only on production (DG-238)", () => {
+  assert.equal(resolveFlag("generalChat", "playground", {}), false);
+  assert.equal(resolveFlag("generalChat", "staging", {}), false);
+  assert.equal(resolveFlag("generalChat", "production", {}), true);
 });
 
 test("resolveFlag lets an override win over the environment default", () => {
@@ -65,6 +65,9 @@ test("resolveAllFlags resolves every registered flag per policy", () => {
     const resolved = resolveAllFlags(env, {});
     assert.equal(Object.keys(resolved).length, FEATURE_FLAGS.length);
     for (const def of FEATURE_FLAGS) {
+      // generalChat is env-specific (hidden on production only) — covered
+      // by its dedicated test above.
+      if (def.id === "generalChat") continue;
       assert.equal(resolved[def.id], !DISABLED_EVERYWHERE.has(def.id));
     }
   }

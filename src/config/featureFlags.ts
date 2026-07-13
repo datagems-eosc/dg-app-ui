@@ -55,8 +55,13 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
     id: "generalChat",
     label: "Hide general chat",
     // DG-238: the Dashboard is the entry point, so "Ask a Question" (general
-    // chat) is hidden by default; re-enable per browser via the flags manager.
-    defaults: enabledEverywhere(),
+    // chat) is hidden on production. Per Mike's decision it stays available
+    // on playground/dev for testing; override per browser via the flags manager.
+    defaults: {
+      playground: false,
+      staging: false,
+      production: true,
+    },
   },
   {
     id: "expertMode",
