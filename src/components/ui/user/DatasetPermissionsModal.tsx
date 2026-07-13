@@ -10,6 +10,7 @@ import {
   mapRolesToPermissions,
   type PermissionKey,
 } from "@/config/contextGrantRoles";
+import { useError } from "@/contexts/ErrorContext";
 import { useApi } from "@/hooks/useApi";
 import { logError, logWarn } from "@/lib/logger";
 import { ManageGroupsModal } from "./ManageGroupsModal";
@@ -42,7 +43,6 @@ interface DatasetPermissionsModalProps {
   datasetId: string;
   datasetName: string;
   onClose: () => void;
-  hasManageRights?: boolean;
 }
 
 function PermissionSwitch({
@@ -77,9 +77,9 @@ export function DatasetPermissionsModal({
   datasetId,
   datasetName,
   onClose,
-  hasManageRights = false,
 }: DatasetPermissionsModalProps) {
   const api = useApi();
+  const { showError } = useError();
   const {
     hasToken,
     queryUserGroups,
@@ -228,6 +228,9 @@ export function DatasetPermissionsModal({
       );
     } catch (error) {
       logError("Failed to update group permission", error);
+      showError(
+        "The server rejected the permission change. You may not have manage rights for this dataset.",
+      );
     }
   };
 
@@ -260,6 +263,9 @@ export function DatasetPermissionsModal({
       );
     } catch (error) {
       logError("Failed to update user permission", error);
+      showError(
+        "The server rejected the permission change. You may not have manage rights for this dataset.",
+      );
     }
   };
 
@@ -284,6 +290,9 @@ export function DatasetPermissionsModal({
       );
     } catch (error) {
       logError("Failed to revoke group access", error);
+      showError(
+        "The server rejected revoking access. You may not have manage rights for this dataset.",
+      );
     } finally {
       setRevokeGroupId(null);
     }
@@ -451,7 +460,7 @@ export function DatasetPermissionsModal({
                                   <PermissionSwitch
                                     checked={row.permissions[column.key]}
                                     ariaLabel={`${row.name} ${column.label}`}
-                                    disabled={isLoading || !hasManageRights}
+                                    disabled={isLoading}
                                     onChange={() =>
                                       handleGroupToggle(
                                         row.id,
@@ -463,7 +472,7 @@ export function DatasetPermissionsModal({
                                 </div>
                               ))}
                             </div>
-                            {hasManageRights && hasAnyPermission && (
+                            {hasAnyPermission && (
                               <button
                                 type="button"
                                 className="ml-2 text-[14px] text-red-550 hover:underline"
@@ -557,6 +566,7 @@ export function DatasetPermissionsModal({
                             setInviteEmail("");
                           } catch (error) {
                             logError("Failed to lookup invite user", error);
+                            showError("Failed to look up the invited user.");
                           } finally {
                             setIsInviteLookupLoading(false);
                           }

@@ -1317,15 +1317,6 @@ export default function RolesPermissionsSection() {
         datasetId={selectedDataset?.id ?? ""}
         datasetName={selectedDataset?.name ?? "Dataset permissions"}
         onClose={() => setSelectedDataset(null)}
-        hasManageRights={Boolean(
-          selectedDataset &&
-            grants.some(
-              (g) =>
-                g.targetId === selectedDataset.id &&
-                g.targetType === 0 &&
-                (g.role?.toLowerCase().includes("manage") ?? false),
-            ),
-        )}
       />
       <ConfirmationModal
         isVisible={Boolean(deleteConfirmDataset)}
