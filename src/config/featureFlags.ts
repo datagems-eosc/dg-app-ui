@@ -94,7 +94,10 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
   {
     id: "pinnedDatasetWeather",
     label: "Use case – Weather - Dataset ID",
-    defaults: disabledEverywhere(),
+    // DG-239: pinning must work out of the box — with the flag off it only
+    // activated for browsers with a manual override, so reviewers saw no
+    // ERA5-Land auto-selected while testers with the override did.
+    defaults: enabledEverywhere(),
     defaultDatasetId: {
       playground: "3166e649-54c1-4ebf-904e-de9a46cb1b18",
       staging: "3166e649-54c1-4ebf-904e-de9a46cb1b18",
@@ -104,7 +107,9 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
   {
     id: "pinnedDatasetLanguage",
     label: "Use case – Language - Dataset ID",
-    defaults: disabledEverywhere(),
+    // DG-239: see pinnedDatasetWeather — enabled so the Britannica pin
+    // applies without a per-browser override.
+    defaults: enabledEverywhere(),
     defaultDatasetId: {
       playground: "d84d1a2e-127d-4393-91d0-afb7e4fd9c68",
       staging: "d84d1a2e-127d-4393-91d0-afb7e4fd9c68",

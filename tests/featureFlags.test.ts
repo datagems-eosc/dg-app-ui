@@ -12,8 +12,6 @@ import { parseOverrides } from "../src/lib/featureFlags/storage";
 const DISABLED_EVERYWHERE = new Set([
   "customCollection",
   "generalChat",
-  "pinnedDatasetWeather",
-  "pinnedDatasetLanguage",
   "pinnedDatasetMath",
 ]);
 const ENVS = ["playground", "staging", "production"] as const;
@@ -29,6 +27,15 @@ test("customCollection and generalChat default to false on every environment", (
   for (const env of ENVS) {
     assert.equal(resolveFlag("customCollection", env, {}), false);
     assert.equal(resolveFlag("generalChat", env, {}), false);
+  }
+});
+
+test("weather and language dataset pins are enabled by default (DG-239)", () => {
+  for (const env of ENVS) {
+    assert.equal(resolveFlag("pinnedDatasetWeather", env, {}), true);
+    assert.equal(resolveFlag("pinnedDatasetLanguage", env, {}), true);
+    // Math has no default dataset id yet, so its pin stays off.
+    assert.equal(resolveFlag("pinnedDatasetMath", env, {}), false);
   }
 });
 
