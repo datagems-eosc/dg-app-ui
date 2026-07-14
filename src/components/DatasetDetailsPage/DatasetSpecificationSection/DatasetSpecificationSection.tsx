@@ -15,59 +15,47 @@ interface SpecificationItem {
 export default function DatasetSpecificationSection({
   specification,
 }: DatasetSpecificationSectionProps) {
-  const items: SpecificationItem[] = [
-    {
-      label: "Total Records:",
-      value: specification?.totalRecords || "782 records",
-    },
-    {
-      label: "Time range:",
-      value:
-        specification?.timeRange ||
-        "January 1, 2001 to December 31, 2022 (22 years)",
-    },
-    {
-      label: "Geographic Coverage:",
-      value:
-        specification?.geographicCoverage ||
-        "Global (Latitude: -61.85° to 71.63°, Longitude: -179.97° to 179.66°)",
-    },
-    {
-      label: "Population Density:",
-      value:
-        specification?.populationDensity ||
-        "Varies by region, average of 55 people per km².",
-    },
-    {
-      label: "Climate Zones:",
-      value:
-        specification?.climateZones || "Tropical, Temperate, Arid, and Polar.",
-    },
+  const candidates: { label: string; value?: string }[] = [
+    { label: "Total Records:", value: specification?.totalRecords },
+    { label: "Time range:", value: specification?.timeRange },
+    { label: "Geographic Coverage:", value: specification?.geographicCoverage },
+    { label: "Population Density:", value: specification?.populationDensity },
+    { label: "Climate Zones:", value: specification?.climateZones },
     {
       label: "Key Biodiversity Areas:",
-      value:
-        specification?.keyBiodiversityAreas ||
-        "Amazon Rainforest, Coral Reefs, Himalayas.",
+      value: specification?.keyBiodiversityAreas,
     },
   ];
+  const items: SpecificationItem[] = candidates.filter(
+    (item): item is SpecificationItem => Boolean(item.value?.trim()),
+  );
 
   return (
     <div className={styles.datasetSpecificationSection}>
       <h3 className={styles.datasetSpecificationSection__title}>
         Specification
       </h3>
-      <div className={styles.datasetSpecificationSection__list}>
-        {items.map((item, index) => (
-          <div key={index} className={styles.datasetSpecificationSection__item}>
-            <span className={styles.datasetSpecificationSection__label}>
-              {item.label}
-            </span>
-            <span className={styles.datasetSpecificationSection__value}>
-              {item.value}
-            </span>
-          </div>
-        ))}
-      </div>
+      {items.length > 0 ? (
+        <div className={styles.datasetSpecificationSection__list}>
+          {items.map((item) => (
+            <div
+              key={item.label}
+              className={styles.datasetSpecificationSection__item}
+            >
+              <span className={styles.datasetSpecificationSection__label}>
+                {item.label}
+              </span>
+              <span className={styles.datasetSpecificationSection__value}>
+                {item.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className={styles.datasetSpecificationSection__empty}>
+          No specification available for this dataset.
+        </p>
+      )}
     </div>
   );
 }
