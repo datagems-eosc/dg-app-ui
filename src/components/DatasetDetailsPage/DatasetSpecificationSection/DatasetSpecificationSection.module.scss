@@ -40,4 +40,9 @@
     @include text-secondary;
     flex: 1;
   }
+
+  &__empty {
+    @include text-md;
+    @include text-secondary;
+  }
 }
