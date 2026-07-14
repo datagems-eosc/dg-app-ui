@@ -26,7 +26,6 @@ interface CollocationRow {
 
 interface RetrievedTextRow {
   content: string;
-  similarity: number;
 }
 
 interface AnalysisState {
@@ -145,7 +144,6 @@ function mapResponse(
     .slice(0, 10)
     .map((r) => ({
       content: String(r.content),
-      similarity: Number(r.similarity ?? 0),
     }));
 
   return { termFreqData, sentimentData, collocationData, retrievedTexts };
@@ -460,9 +458,6 @@ export default function LanguageAnalysisPage() {
                   <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3">
                     Text
                   </th>
-                  <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
-                    Similarity
-                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e2e8f0]">
@@ -473,9 +468,6 @@ export default function LanguageAnalysisPage() {
                     </td>
                     <td className="py-3 text-[14px] font-medium text-[#314158]">
                       {row.content}
-                    </td>
-                    <td className="py-3 text-[14px] text-[#314158] text-right align-top">
-                      {row.similarity.toFixed(4)}
                     </td>
                   </tr>
                 ))}
