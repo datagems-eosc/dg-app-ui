@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureEmptyState } from "@ui/FeatureEmptyState";
 import { ArrowLeft, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -26,7 +27,6 @@ interface CollocationRow {
 
 interface RetrievedTextRow {
   content: string;
-  similarity: number;
 }
 
 interface AnalysisState {
@@ -145,7 +145,6 @@ function mapResponse(
     .slice(0, 10)
     .map((r) => ({
       content: String(r.content),
-      similarity: Number(r.similarity ?? 0),
     }));
 
   return { termFreqData, sentimentData, collocationData, retrievedTexts };
@@ -280,7 +279,7 @@ export default function LanguageAnalysisPage() {
         </div>
 
         {/* Term Frequency */}
-        {showTermFreq && termFreqData.length > 0 && (
+        {state && showTermFreq && (
           <div className="bg-white border border-[#e2e8f0] rounded-2xl p-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <h2 className="text-[20px] font-semibold text-[#1d293d] leading-[1.4]">
@@ -290,106 +289,116 @@ export default function LanguageAnalysisPage() {
                 Most frequent tokens across selected documents
               </p>
             </div>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#e2e8f0]">
-                  <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3 w-10">
-                    #
-                  </th>
-                  <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3">
-                    Token
-                  </th>
-                  <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
-                    Frequency
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e2e8f0]">
-                {termFreqData.map((row, i) => (
-                  <tr key={row.token}>
-                    <td className="py-3 text-[14px] text-[#8095ad]">{i + 1}</td>
-                    <td className="py-3 text-[14px] font-medium text-[#314158]">
-                      {row.token}
-                    </td>
-                    <td className="py-3 text-[14px] text-[#314158] text-right">
-                      {row.frequency.toLocaleString()}
-                    </td>
+            {termFreqData.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#e2e8f0]">
+                    <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3 w-10">
+                      #
+                    </th>
+                    <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3">
+                      Token
+                    </th>
+                    <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
+                      Frequency
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#e2e8f0]">
+                  {termFreqData.map((row, i) => (
+                    <tr key={row.token}>
+                      <td className="py-3 text-[14px] text-[#8095ad]">
+                        {i + 1}
+                      </td>
+                      <td className="py-3 text-[14px] font-medium text-[#314158]">
+                        {row.token}
+                      </td>
+                      <td className="py-3 text-[14px] text-[#314158] text-right">
+                        {row.frequency.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <FeatureEmptyState />
+            )}
           </div>
         )}
 
         {/* Sentiment Profile */}
-        {showSentiment && sentimentData && (
+        {state && showSentiment && (
           <div className="bg-white border border-[#e2e8f0] rounded-2xl p-5 flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <h2 className="text-[20px] font-semibold text-[#1d293d] leading-[1.4] flex-1">
                 Sentiment Profile
               </h2>
-              {sentimentData.totalDocs > 0 && (
+              {sentimentData && sentimentData.totalDocs > 0 && (
                 <span className="inline-flex items-center px-3 h-6 rounded-full bg-[#f1f5f9] text-[12px] font-medium text-[#5b708f]">
                   {sentimentData.totalDocs.toLocaleString()} docs
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-8">
-              <DonutChart data={sentimentData} />
-              <div className="flex flex-col gap-3 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#2b7fff] shrink-0" />
-                  <span className="flex-1 text-[14px] text-[#314158]">
-                    Positive
-                  </span>
-                  <span className="text-[14px] font-medium text-[#314158]">
-                    {Math.round(sentimentData.positive)}%
-                  </span>
+            {sentimentData && sentimentData.totalDocs > 0 ? (
+              <div className="flex items-center gap-8">
+                <DonutChart data={sentimentData} />
+                <div className="flex flex-col gap-3 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-[#2b7fff] shrink-0" />
+                    <span className="flex-1 text-[14px] text-[#314158]">
+                      Positive
+                    </span>
+                    <span className="text-[14px] font-medium text-[#314158]">
+                      {Math.round(sentimentData.positive)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-[#94a3b8] shrink-0" />
+                    <span className="flex-1 text-[14px] text-[#314158]">
+                      Neutral
+                    </span>
+                    <span className="text-[14px] font-medium text-[#314158]">
+                      {Math.round(sentimentData.neutral)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-[#f54900] shrink-0" />
+                    <span className="flex-1 text-[14px] text-[#314158]">
+                      Negative
+                    </span>
+                    <span className="text-[14px] font-medium text-[#314158]">
+                      {Math.round(sentimentData.negative)}%
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#94a3b8] shrink-0" />
-                  <span className="flex-1 text-[14px] text-[#314158]">
-                    Neutral
-                  </span>
-                  <span className="text-[14px] font-medium text-[#314158]">
-                    {Math.round(sentimentData.neutral)}%
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#f54900] shrink-0" />
-                  <span className="flex-1 text-[14px] text-[#314158]">
-                    Negative
-                  </span>
-                  <span className="text-[14px] font-medium text-[#314158]">
-                    {Math.round(sentimentData.negative)}%
-                  </span>
+                <div className="flex flex-col gap-3">
+                  <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-4 flex flex-col gap-1">
+                    <span className="text-[24px] font-semibold text-[#314158]">
+                      {sentimentData.avgSentiment >= 0 ? "+" : ""}
+                      {sentimentData.avgSentiment.toFixed(3)}
+                    </span>
+                    <span className="text-[12px] font-normal text-[#5b708f]">
+                      avg sentiment
+                    </span>
+                  </div>
+                  <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-4 flex flex-col gap-1">
+                    <span className="text-[24px] font-semibold text-[#314158]">
+                      {sentimentData.confidence.toFixed(3)}
+                    </span>
+                    <span className="text-[12px] font-normal text-[#5b708f]">
+                      confidence score
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-3">
-                <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-4 flex flex-col gap-1">
-                  <span className="text-[24px] font-semibold text-[#314158]">
-                    {sentimentData.avgSentiment >= 0 ? "+" : ""}
-                    {sentimentData.avgSentiment.toFixed(3)}
-                  </span>
-                  <span className="text-[12px] font-normal text-[#5b708f]">
-                    avg sentiment
-                  </span>
-                </div>
-                <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-4 flex flex-col gap-1">
-                  <span className="text-[24px] font-semibold text-[#314158]">
-                    {sentimentData.confidence.toFixed(3)}
-                  </span>
-                  <span className="text-[12px] font-normal text-[#5b708f]">
-                    confidence score
-                  </span>
-                </div>
-              </div>
-            </div>
+            ) : (
+              <FeatureEmptyState />
+            )}
           </div>
         )}
 
         {/* Collocations */}
-        {showCollocations && collocationData.length > 0 && (
+        {state && showCollocations && (
           <div className="bg-white border border-[#e2e8f0] rounded-2xl p-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <h2 className="text-[20px] font-semibold text-[#1d293d] leading-[1.4]">
@@ -400,45 +409,51 @@ export default function LanguageAnalysisPage() {
                 information
               </p>
             </div>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#e2e8f0]">
-                  <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3 w-10">
-                    #
-                  </th>
-                  <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3">
-                    Bigram
-                  </th>
-                  <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
-                    Frequency
-                  </th>
-                  <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
-                    PMI
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e2e8f0]">
-                {collocationData.map((row, i) => (
-                  <tr key={row.bigram}>
-                    <td className="py-3 text-[14px] text-[#8095ad]">{i + 1}</td>
-                    <td className="py-3 text-[14px] font-medium text-[#314158]">
-                      {row.bigram}
-                    </td>
-                    <td className="py-3 text-[14px] text-[#314158] text-right">
-                      {row.frequency}
-                    </td>
-                    <td className="py-3 text-[14px] text-[#314158] text-right">
-                      {row.pmi.toFixed(2)}
-                    </td>
+            {collocationData.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#e2e8f0]">
+                    <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3 w-10">
+                      #
+                    </th>
+                    <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3">
+                      Bigram
+                    </th>
+                    <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
+                      Frequency
+                    </th>
+                    <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
+                      PMI
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#e2e8f0]">
+                  {collocationData.map((row, i) => (
+                    <tr key={row.bigram}>
+                      <td className="py-3 text-[14px] text-[#8095ad]">
+                        {i + 1}
+                      </td>
+                      <td className="py-3 text-[14px] font-medium text-[#314158]">
+                        {row.bigram}
+                      </td>
+                      <td className="py-3 text-[14px] text-[#314158] text-right">
+                        {row.frequency}
+                      </td>
+                      <td className="py-3 text-[14px] text-[#314158] text-right">
+                        {row.pmi.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <FeatureEmptyState />
+            )}
           </div>
         )}
 
         {/* Retrieved Texts */}
-        {retrievedTexts.length > 0 && (
+        {state && (
           <div className="bg-white border border-[#e2e8f0] rounded-2xl p-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <h2 className="text-[20px] font-semibold text-[#1d293d] leading-[1.4]">
@@ -451,55 +466,36 @@ export default function LanguageAnalysisPage() {
                 using all retrieved documents.
               </p>
             </div>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#e2e8f0]">
-                  <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3 w-10">
-                    #
-                  </th>
-                  <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3">
-                    Text
-                  </th>
-                  <th className="text-right text-[12px] font-medium text-[#8095ad] pb-3">
-                    Similarity
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e2e8f0]">
-                {retrievedTexts.map((row, i) => (
-                  <tr key={i}>
-                    <td className="py-3 text-[14px] text-[#8095ad] align-top">
-                      {i + 1}
-                    </td>
-                    <td className="py-3 text-[14px] font-medium text-[#314158]">
-                      {row.content}
-                    </td>
-                    <td className="py-3 text-[14px] text-[#314158] text-right align-top">
-                      {row.similarity.toFixed(4)}
-                    </td>
+            {retrievedTexts.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#e2e8f0]">
+                    <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3 w-10">
+                      #
+                    </th>
+                    <th className="text-left text-[12px] font-medium text-[#8095ad] pb-3">
+                      Text
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#e2e8f0]">
+                  {retrievedTexts.map((row, i) => (
+                    <tr key={i}>
+                      <td className="py-3 text-[14px] text-[#8095ad] align-top">
+                        {i + 1}
+                      </td>
+                      <td className="py-3 text-[14px] font-medium text-[#314158]">
+                        {row.content}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <FeatureEmptyState />
+            )}
           </div>
         )}
-
-        {/* Empty state when no data and no features selected */}
-        {state &&
-          !termFreqData.length &&
-          !sentimentData &&
-          !collocationData.length &&
-          !retrievedTexts.length && (
-            <div className="bg-white border border-[#e2e8f0] rounded-2xl p-10 flex flex-col items-center gap-2">
-              <p className="text-[16px] font-medium text-[#314158]">
-                No analysis data available
-              </p>
-              <p className="text-[14px] text-[#5b708f]">
-                Try enabling analysis components or selecting datasets with more
-                data.
-              </p>
-            </div>
-          )}
       </div>
     </div>
   );
