@@ -1,0 +1,2386 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://datagems-eosc.github.io/dg-app-ui/v0.3.0/ui-components/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/favicon.jpg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>UI Components - DataGEMS Front-end Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom-footer.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+     
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+/>
+
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ui-components" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+                
+<div>
+  You're not viewing the latest version.
+  <a href="../..">
+    <strong>Click here to go to latest.</strong>
+  </a>
+</div>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DataGEMS Front-end Docs" class="md-header__button md-logo" aria-label="DataGEMS Front-end Docs" data-md-component="logo">
+      
+  <img src="../images/datagems-portal-icon.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DataGEMS Front-end Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              UI Components
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/datagems-eosc/dg-app-ui" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DataGEMS Front-end Docs" class="md-nav__button md-logo" aria-label="DataGEMS Front-end Docs" data-md-component="logo">
+      
+  <img src="../images/datagems-portal-icon.png" alt="logo">
+
+    </a>
+    DataGEMS Front-end Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/datagems-eosc/dg-app-ui" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    System
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Material
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../onboarding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Key Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Key Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../smart-search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Smart Search
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design System
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design System
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Storybook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3_2" id="__nav_3_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Components
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    UI Components
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook-form-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Form Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook-navigation-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Navigation Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook-display-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Display Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook-interactive-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interactive Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook-specialized-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specialized Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook-dataset-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dataset Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook-chat-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chat Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storybook-modal-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modal Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../component-guidelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Component Guidelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup & Monitoring
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Setup & Monitoring
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../code-quality/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code Quality
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality Assurance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quality Assurance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CypressLogin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Login in Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    License
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../licence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../licence-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Licence Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ & Known Issues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://datagems-eosc.github.io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#component-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Library
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component Library">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#modal-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Modal Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Modal Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#confirmationmodal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ConfirmationModal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filtermodal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FilterModal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#features_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collectionsettingsmodal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CollectionSettingsModal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#features_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#layout-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Layout Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Layout Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#formsectionlayout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FormSectionLayout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#features_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#formattedtext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FormattedText
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#features_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Features:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#external-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External Resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="ui-components">UI Components<a class="headerlink" href="#ui-components" title="Permanent link">&para;</a></h1>
+<p>DataGEMS Front-end uses a comprehensive design system built with reusable React components. This documentation describes the component library that powers the user interface.</p>
+<!-- ## What is Storybook?
+
+[Storybook](https://storybook.js.org/) is an open-source tool for developing UI components in isolation. It provides a dedicated environment where developers can build, test, and document components outside of the main application context.
+
+### Key Concepts
+
+**Stories**: Individual component states and variations that can be viewed and tested independently.
+
+**Controls**: Interactive controls that allow you to dynamically change component props and see results in real-time.
+
+**Documentation**: Auto-generated documentation from component code, including props, types, and usage examples.
+
+**Addons**: Extensions that enhance functionality with features like accessibility testing, responsive design testing, and more.
+
+## Why Storybook?
+
+### Benefits for Large Projects
+
+**1. Component Isolation**
+
+Develop and test components independently without needing to navigate through the entire application. This speeds up development and makes debugging easier.
+
+**2. Visual Testing**
+
+See all component variations side-by-side, making it easy to:
+- Catch visual regressions
+- Test edge cases
+- Ensure consistency across the design system
+- Review UI changes before deployment
+
+**3. Documentation**
+
+Storybook serves as living documentation that:
+- Always stays up-to-date with the code
+- Shows real examples with actual components
+- Provides interactive playground for designers and developers
+- Helps onboard new team members faster
+
+**4. Collaboration**
+
+Facilitates collaboration between:
+- **Designers** can review components without running the full application
+- **Developers** can build components matching design specs exactly
+- **QA Team** can test components in all states
+- **Stakeholders** can preview UI changes early
+
+**5. Quality Assurance**
+
+Built-in testing capabilities:
+- Visual regression testing
+- Accessibility testing with a11y addon
+- Interaction testing
+- Cross-browser compatibility testing
+
+### Advantages in Development Workflow
+
+- **Faster Development**: Build components without running the entire app
+- **Better Testing**: Test all component states easily
+- **Improved Quality**: Catch UI bugs before they reach production
+- **Shared Understanding**: Common reference point for entire team
+- **Reusability**: Encourage component reuse across the application -->
+
+<h2 id="component-library">Component Library<a class="headerlink" href="#component-library" title="Permanent link">&para;</a></h2>
+<p>DataGEMS Front-end includes a comprehensive set of UI components organized into categories. Below is a detailed overview of the available components.</p>
+<!-- ### Foundation Components
+
+These are the building blocks used throughout the application.
+
+## Form Controls
+
+#### Button
+
+Versatile button component with multiple variants and sizes.
+
+#### Variants:
+- `primary`: (Blue) - Main actions like "Save" or "Create"
+- `outline`: (White with border) - Secondary actions like "Cancel"  
+- `secondary`: (gray background) Alternative primary actions 
+- `ghost`: (Transparent) - Subtle actions in toolbars
+- `tertiary`: (Light gray) - Minor actions
+
+#### Sizes:
+- `icon`: 32px square for icon-only buttons
+- `sm`: Small 32px height
+- `md`: Medium 40px height (default)
+- `lg`: Large 48px height
+
+#### Features:
+- Click the button to perform an action
+- Primary buttons show the most important action on a page
+- Outline buttons are for less important actions
+
+**Usage Example:**
+<div class="highlight"><pre><span></span><code><span class="o">&lt;</span><span class="nx">Button</span><span class="w"> </span><span class="nx">variant</span><span class="o">=</span><span class="s2">&quot;primary&quot;</span><span class="w"> </span><span class="nx">size</span><span class="o">=</span><span class="s2">&quot;md&quot;</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="nx">Save</span><span class="w"> </span><span class="nx">Changes</span>
+<span class="o">&lt;</span><span class="err">/Button&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">Button</span><span class="w"> </span><span class="nx">variant</span><span class="o">=</span><span class="s2">&quot;outline&quot;</span><span class="w"> </span><span class="nx">size</span><span class="o">=</span><span class="s2">&quot;sm&quot;</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="nx">Cancel</span>
+<span class="o">&lt;</span><span class="err">/Button&gt;</span>
+</code></pre></div>
+
+#### Text Input
+
+Text inputs let you type information like names, descriptions, or search terms.
+
+#### Sizes:
+- `medium`: Standard height (default)
+- `large`: Increased height for emphasis
+
+#### Features:
+- **Label** - Shows what information to enter
+- **Placeholder** - Light gray text showing example input
+- **Error message** - Red text if something is wrong
+- **Required indicator** (red asterisk *) - Must be filled out
+- **Icons** - Small images on the left or right side
+
+#### Props:
+- `label`: Optional label text
+- `error`: Error message to display
+- `icon`: Left-side icon component
+- `rightIcon`: Right-side icon component
+- `required`: Shows asterisk in label
+- `disabled`: Disables input with visual feedback
+
+#### States:
+- Normal - Ready to type
+- Focused - Blue ring when you click inside
+- Error - Red border when there's a problem
+- Disabled - Grayed out, cannot edit
+
+#### How to use:
+1. Click inside the input box
+2. Type your text
+3. Press Tab or click outside to move to the next field
+
+**Usage Example:**
+<div class="highlight"><pre><span></span><code><span class="o">&lt;</span><span class="nx">Input</span>
+<span class="w">  </span><span class="nx">label</span><span class="o">=</span><span class="s2">&quot;Email Address&quot;</span>
+<span class="w">  </span><span class="kr">type</span><span class="o">=</span><span class="s2">&quot;email&quot;</span>
+<span class="w">  </span><span class="nx">placeholder</span><span class="o">=</span><span class="s2">&quot;Enter your email&quot;</span>
+<span class="w">  </span><span class="nx">required</span>
+<span class="w">  </span><span class="nx">error</span><span class="o">=</span><span class="p">{</span><span class="nx">errors</span><span class="p">.</span><span class="nx">email</span><span class="p">}</span>
+<span class="err">/&gt;</span>
+</code></pre></div>
+
+#### Chip
+
+Small, compact elements displaying tags, filters, or status information.
+
+#### Variants:
+- `regular`: Solid background (default)
+- `outline`: Border with transparent background
+
+#### Colors:
+- `default`: Blue theme
+- `warning`: Orange/amber theme
+- `info`: Blue theme for information
+- `success`: Green theme
+- `error`: Red theme
+- `grey`: Neutral gray theme
+- `smart-search`: Special theme for AI-powered features
+
+#### Sizes:
+- `xs`: Extra small for compact spaces
+- `sm`: Small size
+- `md`: Medium size (default)
+
+#### Features:
+- Optional remove button (X icon)
+- Customizable colors and variants
+- Compact design for data display
+- Letter spacing for readability
+
+**Usage Example:**
+<div class="highlight"><pre><span></span><code><span class="o">&lt;</span><span class="nx">Chip</span><span class="w"> </span><span class="nx">color</span><span class="o">=</span><span class="s2">&quot;success&quot;</span><span class="w"> </span><span class="nx">size</span><span class="o">=</span><span class="s2">&quot;sm&quot;</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="nx">Active</span>
+<span class="o">&lt;</span><span class="err">/Chip&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">Chip</span><span class="w"> </span><span class="nx">color</span><span class="o">=</span><span class="s2">&quot;grey&quot;</span><span class="w"> </span><span class="nx">onRemove</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">removeFilter</span><span class="p">()}</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="nx">Filter</span><span class="o">:</span><span class="w"> </span><span class="kt">Category</span>
+<span class="o">&lt;</span><span class="err">/Chip&gt;</span>
+</code></pre></div>
+
+### Form Components
+
+Components for building forms and collecting user input.
+
+#### Textarea
+
+Multi-line text input with auto-resize capability.
+
+#### Features:
+- Label with optional required indicator
+- Error message display
+- Character counter (when `maxLength` provided)
+- Auto-resize based on content
+- Disabled state support
+- Placeholder text
+
+#### Props:
+- `label`: Field label
+- `error`: Error message
+- `required`: Shows asterisk
+- `maxLength`: Maximum characters allowed
+- `rows`: Minimum number of rows
+
+#### Checkbox
+
+Standard checkbox input with label support.
+
+#### Features:
+- Custom styled checkbox
+- Label text with proper spacing
+- Checked/unchecked states
+- Disabled state
+- Focus visible indicators
+- Accessible keyboard navigation
+
+#### Radio
+
+Radio button input for mutually exclusive options.
+
+#### Features:
+- Custom styled radio button
+- Label text support
+- Selected/unselected states
+- Disabled state handling
+- Focus indicators
+- Group support for multiple options
+
+#### Select
+
+Dropdown selection component for choosing from options.
+
+#### Features:
+- Label with optional required indicator
+- Error message display
+- Placeholder text
+- Disabled state
+- Custom styling matching design system
+- Native select functionality
+
+#### MultiSelect
+
+Multi-option selection component with checkbox support.
+
+#### Features:
+- Select multiple options
+- Search/filter capability
+- Select all/deselect all
+- Visual indication of selected items
+- Dropdown interface
+- Keyboard navigation -->
+
+<!-- ### Navigation Components
+
+Components for application navigation and layout.
+
+#### Logo
+
+Application logo component with consistent styling.
+
+#### Features:
+- SVG-based logo
+- Responsive sizing
+- Link to home page
+- Accessible alt text
+
+#### MenuItem
+
+Sidebar navigation item with active state.
+
+#### Features:
+- Icon support
+- Active state highlighting
+- Hover effects
+- Badge/counter support
+- Nested menu support
+
+#### MainHeader
+
+Top navigation header component.
+
+#### Features:
+- Logo placement
+- User profile dropdown
+- Navigation items
+- Search integration
+- Responsive layout
+
+#### SidebarHeader
+
+Sidebar header with branding and controls.
+
+#### Features:
+- Logo display
+- Collapse/expand controls
+- Responsive behavior
+- Consistent styling
+
+#### SidebarContent
+
+Main sidebar navigation content.
+
+#### Features:
+- Collection list
+- Quick actions
+- Chat history
+- Settings access
+- Scrollable content area -->
+<!-- 
+### Display Components
+
+Components for displaying information and data.
+
+#### Avatar
+
+User avatar with fallback to initials.
+
+#### Features:
+- Image support
+- Initials fallback
+- Customizable size
+- Border and styling options
+- Accessibility attributes
+
+#### Toast
+
+Notification messages that appear temporarily.
+
+#### Types:
+- `success`: Green theme for positive feedback
+- `error`: Red theme for errors
+- `warning`: Orange theme for warnings
+- `info`: Blue theme for information
+
+#### Features:
+- Auto-dismiss timer
+- Manual close button
+- Icon based on type
+- Animation on show/hide
+- Stacking multiple toasts
+
+#### Tooltip
+
+Contextual information on hover.
+
+#### Features:
+- Multiple positions (top, right, bottom, left)
+- Automatic positioning
+- Hover trigger
+- Customizable content
+- Arrow indicator
+- Accessible implementation
+
+#### NoData
+
+Empty state component when no data is available.
+
+#### Features:
+- Custom icon support
+- Title and description
+- Action button option
+- Centered layout
+- Consistent empty state design -->
+
+<!-- ### Interactive Components
+
+Advanced interactive components for rich user experiences.
+
+#### Switch
+
+Toggle component for binary choices (e.g., view modes).
+
+#### Features:
+- Left and right icon support
+- Optional labels
+- Active state highlighting
+- Smooth transitions
+- Data attributes for testing (`data-cy`)
+- Accessible button implementation
+
+**Usage Example:**
+<div class="highlight"><pre><span></span><code><span class="o">&lt;</span><span class="nx">Switch</span>
+<span class="w">  </span><span class="nx">leftIcon</span><span class="o">=</span><span class="p">{</span><span class="nx">ListIcon</span><span class="p">}</span>
+<span class="w">  </span><span class="nx">rightIcon</span><span class="o">=</span><span class="p">{</span><span class="nx">GridIcon</span><span class="p">}</span>
+<span class="w">  </span><span class="nx">value</span><span class="o">=</span><span class="p">{</span><span class="nx">viewMode</span><span class="p">}</span>
+<span class="w">  </span><span class="nx">onChange</span><span class="o">=</span><span class="p">{(</span><span class="nx">value</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setViewMode</span><span class="p">(</span><span class="nx">value</span><span class="p">)}</span>
+<span class="w">  </span><span class="nx">leftLabel</span><span class="o">=</span><span class="s2">&quot;List View&quot;</span>
+<span class="w">  </span><span class="nx">rightLabel</span><span class="o">=</span><span class="s2">&quot;Grid View&quot;</span>
+<span class="err">/&gt;</span>
+</code></pre></div>
+
+#### Dropdown
+
+Generic dropdown menu component.
+
+#### Features:
+- Trigger button customization
+- Menu items with icons
+- Dividers between sections
+- Click outside to close
+- Keyboard navigation
+- Portal rendering for proper z-index
+
+#### CollectionsDropdown
+
+Specialized dropdown for managing collections.
+
+#### Features:
+- Collection list
+- Create new collection
+- Add to collection
+- Visual feedback
+- Search collections
+
+#### UserProfileDropdown
+
+User account menu dropdown.
+
+#### Features:
+- User info display
+- Settings link
+- Logout option
+- Profile picture
+- Keyboard accessible -->
+<!-- 
+### Specialized Components
+
+Domain-specific components for DataGEMS features.
+
+#### Search
+
+Advanced search input with clear functionality.
+
+#### Features:
+- Search icon
+- Clear button
+- Submit on Enter
+- Loading state
+- Placeholder text
+- Debouncing support
+
+#### SmartSearch
+
+AI-powered search interface.
+
+#### Features:
+- Toggle for smart search mode
+- Visual indicators
+- Example queries
+- Integration with AI backend
+- Match highlighting
+
+#### SmartSearchRecommendation
+
+Pre-defined search examples for smart search.
+
+#### Features:
+- Clickable example queries
+- Categorized examples
+- Quick start for users
+- Visual cards
+
+#### SmartSearchMatchItem
+
+Display component for search results with AI matching.
+
+#### Features:
+- Match percentage display
+- Highlighted matches
+- Result metadata
+- Click to view details -->
+<!-- 
+### Dataset Components
+
+Components specific to dataset management and display.
+
+#### DatasetCard
+
+Card component for displaying dataset information.
+
+#### Features:
+- Two view modes: grid and list
+- Favorite/star functionality
+- Selection checkbox
+- Collection badges
+- Metadata display
+- Smart search match indicator
+- Click to view details
+- Expandable sections
+
+#### DatasetCardSkeleton
+
+Loading placeholder for dataset cards.
+
+#### Features:
+- Matches DatasetCard layout
+- Animated loading effect
+- Grid and list variants
+- Smooth transitions
+
+#### FileUploadCard
+
+File upload interface for datasets.
+
+#### Features:
+- Drag and drop support
+- File type validation
+- Progress indicator
+- File preview
+- Multiple file support
+- Error handling
+
+#### LicenseCard
+
+License selection for datasets.
+
+#### Features:
+- License dropdown
+- Description display
+- Custom license option
+- Validation support
+
+#### VisibilityCard
+
+Dataset visibility settings.
+
+#### Features:
+- Public/private toggle
+- Access control options
+- Visual indicators
+- Permission settings -->
+<!-- 
+### Chat Components
+
+Components for the AI chat interface.
+
+#### ChatInput
+
+Text input for chat messages.
+
+#### Features:
+- Multi-line support
+- Auto-resize
+- Submit button
+- File attachment option
+- Character limit indicator
+- Disabled state during processing
+
+#### ChatMessages
+
+Container for displaying chat conversation.
+
+#### Features:
+- Auto-scroll to bottom
+- Loading states
+- Empty state handling
+- Message grouping
+- Date separators
+
+#### AIMessage
+
+AI-generated message component.
+
+#### Features:
+- Markdown rendering
+- Code syntax highlighting
+- Source citations
+- Copy to clipboard
+- Expandable sections
+
+#### UserMessage
+
+User-sent message component.
+
+#### Features:
+- User avatar
+- Timestamp
+- Edit capability
+- Delete option
+- Consistent styling
+
+#### DataTable
+
+Table component for displaying data in AI responses.
+
+#### Features:
+- Sortable columns
+- Responsive design
+- Cell formatting
+- Striped rows
+- Loading states
+
+#### TemperatureMap
+
+Visualization component for temperature data.
+
+#### Features:
+- Color-coded heatmap
+- Interactive tooltips
+- Legend
+- Responsive sizing
+- Data point highlighting -->
+
+<h3 id="modal-components">Modal Components<a class="headerlink" href="#modal-components" title="Permanent link">&para;</a></h3>
+<p>Overlay components for focused interactions.</p>
+<h4 id="confirmationmodal">ConfirmationModal<a class="headerlink" href="#confirmationmodal" title="Permanent link">&para;</a></h4>
+<p>Generic confirmation dialog.</p>
+<h4 id="features">Features:<a class="headerlink" href="#features" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Title and message</li>
+<li>Confirm and cancel buttons</li>
+<li>Customizable actions</li>
+<li>Focus trap</li>
+<li>Escape key to close</li>
+<li>Backdrop click to close</li>
+</ul>
+<h4 id="filtermodal">FilterModal<a class="headerlink" href="#filtermodal" title="Permanent link">&para;</a></h4>
+<p>Advanced filtering interface.</p>
+<h4 id="features_1">Features:<a class="headerlink" href="#features_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Multiple filter types</li>
+<li>Date range pickers</li>
+<li>Hierarchical categories</li>
+<li>Apply and reset buttons</li>
+<li>Preview of active filters</li>
+</ul>
+<h4 id="collectionsettingsmodal">CollectionSettingsModal<a class="headerlink" href="#collectionsettingsmodal" title="Permanent link">&para;</a></h4>
+<p>Manage collection visibility and order.</p>
+<h4 id="features_2">Features:<a class="headerlink" href="#features_2" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Drag and drop reordering</li>
+<li>Visibility toggle</li>
+<li>Persist preferences</li>
+<li>Reset to default option</li>
+</ul>
+<h3 id="layout-components">Layout Components<a class="headerlink" href="#layout-components" title="Permanent link">&para;</a></h3>
+<p>Components for structuring page layouts.</p>
+<h4 id="formsectionlayout">FormSectionLayout<a class="headerlink" href="#formsectionlayout" title="Permanent link">&para;</a></h4>
+<p>Consistent layout for form sections.</p>
+<h4 id="features_3">Features:<a class="headerlink" href="#features_3" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Section header</li>
+<li>Description text</li>
+<li>Content area</li>
+<li>Divider lines</li>
+<li>Responsive spacing</li>
+</ul>
+<h4 id="formattedtext">FormattedText<a class="headerlink" href="#formattedtext" title="Permanent link">&para;</a></h4>
+<p>Text component with formatting support.</p>
+<h4 id="features_4">Features:<a class="headerlink" href="#features_4" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Markdown rendering</li>
+<li>Link handling</li>
+<li>Heading styles</li>
+<li>List formatting</li>
+<li>Code blocks</li>
+</ul>
+<!-- ## Component Guidelines
+
+### Accessibility
+
+All components follow accessibility best practices:
+
+- **Keyboard Navigation**: All interactive elements are keyboard accessible
+- **ARIA Labels**: Proper ARIA attributes for screen readers
+- **Focus Indicators**: Clear visual focus states
+- **Color Contrast**: WCAG AA compliant color contrast ratios
+- **Semantic HTML**: Use of proper HTML elements
+
+### Responsive Design
+
+Components adapt to different screen sizes:
+
+- **Mobile First**: Optimized for mobile devices
+- **Tablet Support**: Adjusted layouts for tablet screens
+- **Desktop Enhancement**: Full feature set on desktop
+- **Touch Friendly**: Adequate touch target sizes
+
+### Theming
+
+Components use design tokens for consistent theming:
+
+- **Colors**: Defined in Tailwind config
+- **Typography**: Consistent font scales
+- **Spacing**: Standard spacing units
+- **Shadows**: Elevation system
+- **Border Radius**: Consistent corner rounding
+
+### Performance
+
+Components are optimized for performance:
+
+- **Code Splitting**: Components lazy-loaded when needed
+- **Memoization**: Prevent unnecessary re-renders
+- **Optimized Re-renders**: React.memo for pure components
+- **Efficient Event Handlers**: Debounced and throttled where appropriate
+
+## Testing
+
+Components are thoroughly tested:
+
+- **Unit Tests**: Individual component behavior
+- **Integration Tests**: Component interactions
+- **E2E Tests**: Full user workflows with Cypress
+- **Visual Regression**: Automated screenshot comparison
+- **Accessibility Tests**: Automated a11y checks
+
+## Best Practices
+
+### Using Components
+
+1. **Import from UI folder**: `import { Button } from '@/components/ui/Button'`
+2. **Use TypeScript types**: Leverage type safety for props
+3. **Follow naming conventions**: Use descriptive prop names
+4. **Compose components**: Build complex UIs from simple components
+5. **Handle edge cases**: Test with empty states, errors, loading
+
+### Styling
+
+1. **Use Tailwind classes**: Leverage utility classes for consistency
+2. **Follow design system**: Use defined colors, spacing, typography
+3. **Avoid inline styles**: Prefer className composition
+4. **Responsive utilities**: Use Tailwind responsive prefixes (sm:, md:, lg:)
+5. **Custom styles sparingly**: Only when design system doesn't cover use case
+
+### State Management
+
+1. **Local state first**: Use useState for component-specific state
+2. **Lift state up**: Share state between components via props
+3. **Context for shared state**: Use React Context for wider scope
+4. **Props over context**: Prefer explicit props for clarity
+5. **Controlled components**: Let parent control component state when needed -->
+
+<h2 id="related-documentation">Related Documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../component-guidelines/">Component Guidelines</a> - Design principles and patterns</li>
+<li><a href="theming.md">Theming</a> - Color schemes and customization</li>
+<li><a href="qa.md">Testing Methods</a> - Testing strategies and practices</li>
+</ul>
+<h2 id="external-resources">External Resources<a class="headerlink" href="#external-resources" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://storybook.js.org/docs">Storybook Documentation</a> - Official Storybook docs</li>
+<li><a href="https://react.dev/">React Documentation</a> - React framework documentation</li>
+<li><a href="https://tailwindcss.com/">Tailwind CSS</a> - Utility-first CSS framework</li>
+<li><a href="https://www.typescriptlang.org/docs/">TypeScript Handbook</a> - TypeScript language guide</li>
+<li><a href="https://www.w3.org/WAI/WCAG21/quickref/">WCAG Guidelines</a> - Web accessibility standards</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+<footer class="custom-footer">
+  <div class="footer-content">
+    <img
+      src="../images/EN-Funded-by-the-EU-POS-7.png"
+      alt="EU logo"
+      class="footer-logo"
+    />
+    <p class="footer-text">
+      DataGEMS is a Research and Innovation Action funded by the European Union
+      under the Horizon Europe Research and Innovation Programme via Grant
+      Agreement No 101188416.
+    </p>
+
+    <div class="footer-social-icons">
+      
+      <a href="https://github.com/datagems-eosc/" target="_blank" rel="noopener">
+        <span class="icon">
+          <i
+            class="fab fa-github"
+          ></i>
+        </span>
+      </a>
+      
+      <a href="https://www.instagram.com/datagems_eosc" target="_blank" rel="noopener">
+        <span class="icon">
+          <i
+            class="fab fa-instagram"
+          ></i>
+        </span>
+      </a>
+      
+      <a href="https://x.com/datagems_eosc" target="_blank" rel="noopener">
+        <span class="icon">
+          <i
+            class="fab fa-x-twitter"
+          ></i>
+        </span>
+      </a>
+      
+      <a href="https://www.youtube.com/@DataGEMS-65n" target="_blank" rel="noopener">
+        <span class="icon">
+          <i
+            class="fab fa-youtube"
+          ></i>
+        </span>
+      </a>
+      
+      <a href="https://www.linkedin.com/company/eosc-datagems" target="_blank" rel="noopener">
+        <span class="icon">
+          <i
+            class="fab fa-linkedin"
+          ></i>
+        </span>
+      </a>
+      
+      <a href="https://www.facebook.com/datagems.eosc/" target="_blank" rel="noopener">
+        <span class="icon">
+          <i
+            class="fab fa-facebook"
+          ></i>
+        </span>
+      </a>
+      
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.top"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
