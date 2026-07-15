@@ -1,11 +1,13 @@
 import {
   fireEvent,
-  render,
+  render as rtlRender,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ErrorProvider } from "@/contexts/ErrorContext";
 import { DatasetPermissionsModal } from "./DatasetPermissionsModal";
 
 const mockUseApi = vi.fn();
@@ -13,6 +15,10 @@ const mockUseApi = vi.fn();
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => mockUseApi(),
 }));
+
+// The modal reports API failures through the ErrorContext toast.
+const render = (ui: ReactElement) =>
+  rtlRender(<ErrorProvider>{ui}</ErrorProvider>);
 
 describe("DatasetPermissionsModal", () => {
   it("updates group permissions via context grants", async () => {
@@ -107,7 +113,7 @@ describe("DatasetPermissionsModal", () => {
     );
 
     fireEvent.click(await screen.findByText("Invite by E-mail"));
-    const emailInput = screen.getByPlaceholderText("Enter e-mail");
+    const emailInput = screen.getByPlaceholderText("Email address");
     fireEvent.change(emailInput, { target: { value: "ada@example.com" } });
     fireEvent.click(screen.getByText("Invite"));
 
@@ -126,6 +132,47 @@ describe("DatasetPermissionsModal", () => {
         "dg_ds-download",
       );
     });
+  });
+
+  it("shows an error toast and keeps the switch state when the server rejects the change", async () => {
+    const assignGroupDatasetGrant = vi
+      .fn()
+      .mockRejectedValue(new Error("403 Forbidden"));
+
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      queryUserGroups: vi.fn().mockResolvedValue({
+        items: [{ id: "group-1", name: "Research Team" }],
+      }),
+      getGroupDatasetGrants: vi.fn().mockResolvedValue({ "dataset-1": [] }),
+      assignGroupDatasetGrant,
+      unassignGroupDatasetGrant: vi.fn().mockResolvedValue(undefined),
+      queryUsers: vi.fn().mockResolvedValue({ items: [] }),
+      getUserDatasetGrants: vi.fn().mockResolvedValue({}),
+      assignUserDatasetGrant: vi.fn().mockResolvedValue(undefined),
+      unassignUserDatasetGrant: vi.fn().mockResolvedValue(undefined),
+    });
+
+    render(
+      <DatasetPermissionsModal
+        isOpen
+        datasetId="dataset-1"
+        datasetName="Dataset One"
+        onClose={vi.fn()}
+      />,
+    );
+
+    const browseToggle = await screen.findByLabelText("Research Team Browse");
+    expect(browseToggle).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(browseToggle);
+
+    await waitFor(() => {
+      expect(assignGroupDatasetGrant).toHaveBeenCalled();
+      expect(
+        screen.getByText(/server rejected the permission change/i),
+      ).toBeInTheDocument();
+    });
+    expect(browseToggle).toHaveAttribute("aria-pressed", "false");
   });
 
   it("filters groups with Manage Groups selection", async () => {
