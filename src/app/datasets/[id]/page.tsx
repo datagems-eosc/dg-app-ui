@@ -70,13 +70,6 @@ export default function DatasetDetailsPage() {
           "permissions.editDataset",
           "permissions.downloadDataset",
           "permissions.manageDataset",
-          "specification.totalRecords",
-          "specification.timeRange",
-          "specification.geographicCoverage",
-          "specification.populationDensity",
-          "specification.climateZones",
-          "specification.keyBiodiversityAreas",
-          "useCases",
           "language",
           "country",
           "citation",
@@ -247,40 +240,6 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     permissionArray = permissions.map(String);
   }
 
-  const specification = obj.specification;
-  let specData:
-    | {
-        totalRecords?: string;
-        timeRange?: string;
-        geographicCoverage?: string;
-        populationDensity?: string;
-        climateZones?: string;
-        keyBiodiversityAreas?: string;
-      }
-    | undefined;
-  if (typeof specification === "object" && specification !== null) {
-    const spec = specification as Record<string, unknown>;
-    specData = {
-      totalRecords: spec.totalRecords ? String(spec.totalRecords) : undefined,
-      timeRange: spec.timeRange ? String(spec.timeRange) : undefined,
-      geographicCoverage: spec.geographicCoverage
-        ? String(spec.geographicCoverage)
-        : undefined,
-      populationDensity: spec.populationDensity
-        ? String(spec.populationDensity)
-        : undefined,
-      climateZones: spec.climateZones ? String(spec.climateZones) : undefined,
-      keyBiodiversityAreas: spec.keyBiodiversityAreas
-        ? String(spec.keyBiodiversityAreas)
-        : undefined,
-    };
-  }
-
-  let useCases: string | undefined;
-  if (obj.useCases) {
-    useCases = String(obj.useCases);
-  }
-
   return {
     id: String(obj.id ?? ""),
     title: String(obj.name ?? obj.code ?? "Untitled"),
@@ -309,8 +268,6 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     url: obj.url ? String(obj.url) : undefined,
     version: obj.version ? String(obj.version) : undefined,
     permissions: permissionArray,
-    specification: specData,
-    useCases,
     language: obj.language ? String(obj.language) : undefined,
     country: obj.country ? String(obj.country) : undefined,
     citation: obj.citation ? String(obj.citation) : undefined,
