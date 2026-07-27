@@ -25,9 +25,7 @@ import DatasetHeader from "./DatasetHeader/DatasetHeader";
 import DatasetMetadataBar from "./DatasetMetadataBar/DatasetMetadataBar";
 import DatasetRecommendationsSection from "./DatasetRecommendationsSection/DatasetRecommendationsSection";
 import DatasetSidebar from "./DatasetSidebar/DatasetSidebar";
-import DatasetSpecificationSection from "./DatasetSpecificationSection/DatasetSpecificationSection";
 import DatasetTagsSection from "./DatasetTagsSection/DatasetTagsSection";
-import DatasetUseCasesSection from "./DatasetUseCasesSection/DatasetUseCasesSection";
 import FilePreview from "./FilePreview/FilePreview";
 
 const JSON_PREVIEW_MAX_LINES = 150;
@@ -225,10 +223,6 @@ export default function DatasetDetailsPageContent({
                 <DatasetDescriptionSection
                   description={dataset.description || ""}
                 />
-                <DatasetSpecificationSection
-                  specification={dataset.specification}
-                />
-                <DatasetUseCasesSection useCases={dataset.useCases} />
                 {dataset.fieldOfScience &&
                   dataset.fieldOfScience.length > 0 && (
                     <DatasetTagsSection

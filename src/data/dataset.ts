@@ -27,15 +27,6 @@ export type DatasetPlus = Dataset & {
   maxSimilarity?: number;
   hits?: { number: number; text: string; similarity: number }[];
   permissions?: string[];
-  specification?: {
-    totalRecords?: string;
-    timeRange?: string;
-    geographicCoverage?: string;
-    populationDensity?: string;
-    climateZones?: string;
-    keyBiodiversityAreas?: string;
-  };
-  useCases?: string;
   language?: string;
   country?: string;
   citation?: string;

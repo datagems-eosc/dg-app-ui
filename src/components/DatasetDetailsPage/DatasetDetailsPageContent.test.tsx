@@ -39,13 +39,7 @@ vi.mock(
 vi.mock("./DatasetSidebar/DatasetSidebar", () => ({
   default: () => null,
 }));
-vi.mock("./DatasetSpecificationSection/DatasetSpecificationSection", () => ({
-  default: () => null,
-}));
 vi.mock("./DatasetTagsSection/DatasetTagsSection", () => ({
-  default: () => null,
-}));
-vi.mock("./DatasetUseCasesSection/DatasetUseCasesSection", () => ({
   default: () => null,
 }));
 vi.mock("./FilePreview/FilePreview", () => ({
