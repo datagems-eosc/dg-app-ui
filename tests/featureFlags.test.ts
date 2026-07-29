@@ -12,6 +12,7 @@ import { parseOverrides } from "../src/lib/featureFlags/storage";
 const DISABLED_EVERYWHERE = new Set([
   "customCollection",
   "generalChat",
+  "notification",
   "pinnedDatasetWeather",
   "pinnedDatasetLanguage",
   "pinnedDatasetMath",
