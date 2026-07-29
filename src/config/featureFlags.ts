@@ -12,6 +12,7 @@ export type FeatureFlagId =
   | "useCaseLifelongLearning"
   | "useCaseLanguage"
   | "datasetOnboarding"
+  | "notification"
   | "pinnedDatasetWeather"
   | "pinnedDatasetLanguage"
   | "pinnedDatasetMath";
@@ -90,6 +91,11 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
     id: "datasetOnboarding",
     label: "Dataset onboarding",
     defaults: enabledEverywhere(),
+  },
+  {
+    id: "notification",
+    label: "Notification",
+    defaults: disabledEverywhere(),
   },
   {
     id: "pinnedDatasetWeather",
