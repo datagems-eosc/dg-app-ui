@@ -1,7 +1,6 @@
 "use client";
 
-import FormattedText from "@ui/FormattedText";
-import type { DatasetPlus } from "@/data/dataset";
+import Markdown from "@ui/Markdown";
 import styles from "./DatasetDescriptionSection.module.scss";
 
 interface DatasetDescriptionSectionProps {
@@ -14,11 +13,16 @@ export default function DatasetDescriptionSection({
   return (
     <div className={styles.datasetDescriptionSection}>
       <h3 className={styles.datasetDescriptionSection__title}>Description</h3>
-      <FormattedText
-        as="p"
-        className={styles.datasetDescriptionSection__text}
-        text={description || "No description available."}
-      />
+      {description?.trim() ? (
+        <Markdown
+          className={styles.datasetDescriptionSection__text}
+          content={description}
+        />
+      ) : (
+        <p className={styles.datasetDescriptionSection__text}>
+          No description available.
+        </p>
+      )}
     </div>
   );
 }
