@@ -3,7 +3,7 @@
 import { Button } from "@ui/Button";
 import { Chip } from "@ui/Chip";
 import MetadataItem from "@ui/datasets/MetadataItem";
-import FormattedText from "@ui/FormattedText";
+import Markdown from "@ui/Markdown";
 import {
   CalendarPlus,
   FileCheck,
@@ -238,10 +238,9 @@ export default function DatasetDetailsPanel({
             <h4 className="text-body-14-medium text-slate-850">Description</h4>
           </div>
 
-          <FormattedText
-            as="p"
+          <Markdown
             className="text-body-14-regular text-gray-650 break-words"
-            text={dataset.description}
+            content={dataset.description}
           />
         </div>
 
