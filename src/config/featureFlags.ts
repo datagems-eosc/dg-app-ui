@@ -12,6 +12,7 @@ export type FeatureFlagId =
   | "useCaseLifelongLearning"
   | "useCaseLanguage"
   | "datasetOnboarding"
+  | "datasetOnboardingMonitoring"
   | "notification"
   | "pinnedDatasetWeather"
   | "pinnedDatasetLanguage"
@@ -91,6 +92,19 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
     id: "datasetOnboarding",
     label: "Dataset onboarding",
     defaults: enabledEverywhere(),
+  },
+  {
+    // Rollout switch for the managed onboarding process. New submissions
+    // require this *and* `datasetOnboarding`; either one off disables starting
+    // a dataset, with no legacy creation path behind it. Reading an already
+    // started process is not gated by either flag.
+    //
+    // Default false everywhere: enabling it is a deliberate per-environment
+    // decision that the target-environment creation/access checks (G2) still
+    // precede. A client flag is a rollout mechanism, not a security control.
+    id: "datasetOnboardingMonitoring",
+    label: "Dataset onboarding – managed process",
+    defaults: disabledEverywhere(),
   },
   {
     id: "notification",

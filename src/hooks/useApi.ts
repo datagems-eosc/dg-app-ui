@@ -3,10 +3,24 @@
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import {
+  createDatasetAccessReader,
+  type DatasetAccessReader,
+} from "@/lib/datasetOnboarding/access";
+import {
+  createOnboardingGateway,
+  type OnboardingGateway,
+  type OnboardingTransport,
+} from "@/lib/datasetOnboarding/gateway";
 import { publicEnv } from "@/lib/env";
 import type { UserFavorite } from "@/lib/favorites";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
-import { fetchWithAuth, getApiBaseUrl, getLogoutUrl } from "@/lib/utils";
+import {
+  type AuthRetryPolicy,
+  fetchWithAuth,
+  getApiBaseUrl,
+  getLogoutUrl,
+} from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
 import type {
   UserGroupLookup,
@@ -16,13 +30,79 @@ import type {
 } from "@/types/userDirectory";
 import type { UserSettings, UserSettingsPersist } from "@/types/userSettings";
 
+/**
+ * Whether this session can be used for dataset-onboarding feature requests,
+ * and if not, why. The distinctions matter to the consumer: "loading" is not
+ * "signed out", and a stored recovery reference may only be cleared on the
+ * latter.
+ */
+export type OnboardingAuthAvailability =
+  | "loading"
+  | "unauthenticated"
+  /** Authenticated, but the session reports an error such as a failed refresh. */
+  | "session-error"
+  /** Authenticated without an access token; nothing can be sent. */
+  | "credentials-unavailable"
+  /** Authenticated with a token, but no usable stable `user.id`. */
+  | "identity-unavailable"
+  | "available";
+
+/** Identity and environment one onboarding scope belongs to. */
+export interface OnboardingScope {
+  readonly principalId: string;
+  readonly gatewayOrigin: string;
+}
+
+export interface DatasetOnboardingBinding {
+  readonly auth: OnboardingAuthAvailability;
+  /** Non-null only when `auth === "available"`. */
+  readonly scope: OnboardingScope | null;
+  /**
+   * The accepted adapter, bound to this session's transport. It deliberately
+   * exposes no token: callers get operations, not credentials.
+   */
+  readonly gateway: OnboardingGateway;
+  /**
+   * Scoped read-only dataset metadata, for confirming that a dataset can
+   * actually be read before the processing view offers to open it (task 5.3).
+   *
+   * It is bound to the *same* captured transport as `gateway` above, so it
+   * inherits the feature's principal-checked 401 policy rather than the generic
+   * `getDatasetById` default. It is an additional member: no existing operation
+   * or default behaviour changes.
+   */
+  readonly readDataset: DatasetAccessReader["readDataset"];
+}
+
+/**
+ * The configured API base is the environment identity — the whole base, not
+ * just its origin, because two deployments can differ only by path. Trailing
+ * slashes are normalised so `…/api` and `…/api/` are one environment rather
+ * than two.
+ */
+const normalizeGatewayEnvironment = (baseUrl: string): string =>
+  baseUrl.trim().replace(/\/+$/, "");
+
+const readablePrincipalId = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() !== "" ? value : null;
+
 export function useApi() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const token = (session as any)?.accessToken;
   const baseUrl = useMemo(() => getApiBaseUrl(), []);
 
   const makeRequest = useCallback(
-    async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
+    async (
+      endpoint: string,
+      options: RequestInit = {},
+      /**
+       * Local 401 policy for this one call. It is never serialised into the
+       * request: it is forwarded as `fetchWithAuth`'s own third argument,
+       * beside the `RequestInit`, not merged into it. Existing callers omit it
+       * and keep the transport's default refresh/retry behaviour.
+       */
+      policy?: AuthRetryPolicy,
+    ): Promise<Response> => {
       if (!token) {
         throw new Error(ApiErrorMessage.NO_AUTH_TOKEN);
       }
@@ -43,13 +123,104 @@ export function useApi() {
       headers.Authorization = `Bearer ${token}`;
       headers.oauth2 = token;
 
-      return fetchWithAuth(url, {
-        ...options,
-        headers,
-      });
+      return fetchWithAuth(
+        url,
+        {
+          ...options,
+          headers,
+        },
+        policy,
+      );
     },
     [token, baseUrl],
   );
+
+  // -------------------------------------------------------------------------
+  // Dataset onboarding (UI #333) — the single integration seam
+  // -------------------------------------------------------------------------
+  //
+  // This member composes the accepted `lib/datasetOnboarding` adapter over the
+  // private `makeRequest` above, so the feature reuses the existing bearer
+  // token, `/gw/api` prefix and headers rather than growing a second client.
+  // It adds no workflow interpretation, no storage and no polling: those
+  // belong to the feature's own hooks.
+  //
+  // `useApi()` returns a fresh containing object on every render. Consumers
+  // must depend on *this* member, which is memoised, not on the object holding
+  // it.
+
+  const gatewayOrigin = useMemo(
+    () => normalizeGatewayEnvironment(baseUrl),
+    [baseUrl],
+  );
+
+  const sessionError = (session as any)?.error;
+  const principalId = readablePrincipalId((session as any)?.user?.id);
+
+  // Identity resolves only when all four conditions hold. A missing or blank
+  // id is never substituted with an email, a display name or claims decoded
+  // from the bearer token: those are not stable application principals.
+  const onboardingAuth: OnboardingAuthAvailability =
+    sessionStatus === "loading"
+      ? "loading"
+      : sessionStatus === "unauthenticated"
+        ? "unauthenticated"
+        : sessionError
+          ? "session-error"
+          : !token
+            ? "credentials-unavailable"
+            : principalId === null
+              ? "identity-unavailable"
+              : "available";
+
+  const datasetOnboarding = useMemo<DatasetOnboardingBinding>(() => {
+    const scope: OnboardingScope | null =
+      onboardingAuth === "available" && principalId !== null
+        ? { principalId, gatewayOrigin }
+        : null;
+
+    const transport: OnboardingTransport = (path, init) => {
+      if (scope === null) {
+        // No resolved identity: the operation is refused here, before any
+        // request is built. The adapter turns this into a failed read or an
+        // unknown start, which is the honest answer — we never reached the
+        // Gateway, so we know nothing about the process.
+        return Promise.reject(new Error(ApiErrorMessage.NO_AUTH_TOKEN));
+      }
+
+      const method = (init.method ?? "GET").toUpperCase();
+      const isRead = method === "GET" || method === "HEAD";
+
+      return makeRequest(
+        path,
+        init,
+        isRead
+          ? // One ordinary refresh/retry, but only for the principal that
+            // started the read. A refreshed token is not by itself evidence
+            // that the same person is still signed in.
+            { retryOn401: true, expectedPrincipalId: scope.principalId }
+          : // A mutation is never replayed by the transport. Not because a 401
+            // start may have persisted something — the accepted mapping treats
+            // 400 and 401 as rejections raised before the action body runs —
+            // but because resubmission has to stay the caller's decision. The
+            // transport sees only a status; the adapter is what separates a
+            // definite rejection from an uncertain outcome such as 403 or a
+            // lost response, and only those uncertain ones are dangerous to
+            // repeat. Refreshing and resending here would take that
+            // classification away from the caller entirely.
+            { retryOn401: false },
+      );
+    };
+
+    return {
+      auth: onboardingAuth,
+      scope,
+      gateway: createOnboardingGateway(transport),
+      // Same `transport` closure as the gateway above — same auth, same prefix,
+      // same 401 policy, same refusal when no identity is resolved.
+      readDataset: createDatasetAccessReader(transport).readDataset,
+    };
+  }, [makeRequest, onboardingAuth, principalId, gatewayOrigin]);
 
   const queryDatasets = useCallback(
     async (payload: any): Promise<any> => {
@@ -1657,6 +1828,7 @@ export function useApi() {
   return {
     hasToken: !!token,
     token,
+    datasetOnboarding,
     queryDatasets,
     queryCollections,
     queryUserCollections,

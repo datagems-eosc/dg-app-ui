@@ -29,9 +29,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
-    "test": "tsx --test",
-    "test:coverage": "tsx --test",
+    "test": "tsx --test tests/*.test.ts tests/*.test.mjs",
+    "test:coverage": "npm test",
     "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:onboarding": "vitest run --config vitest.unit.config.ts src/app/datasets/onboarding/ src/app/datasets/add/ src/lib/datasetOnboarding/ src/components/DatasetOnboarding/ src/components/AddDatasetForm/ src/components/ui/datasets/Classification src/hooks/useDatasetOnboarding src/hooks/useApi.onboarding src/lib/utils.auth",
     "prepare": "husky",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
