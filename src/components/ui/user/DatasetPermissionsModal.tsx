@@ -21,6 +21,21 @@ type GroupPermissionsRow = {
   permissions: Record<PermissionKey, boolean>;
 };
 
+// Group discovery and every recipient-grant lookup of the current load must
+// succeed before rows are shown, so a failed read is never presented as an
+// empty result or as guessed switches.
+type GroupPermissionsState =
+  | { status: "loading" }
+  | { status: "loaded"; rows: GroupPermissionsRow[] }
+  | { status: "failed" };
+
+const LOADING_GROUP_PERMISSIONS: GroupPermissionsState = { status: "loading" };
+const FAILED_GROUP_PERMISSIONS: GroupPermissionsState = { status: "failed" };
+const NO_GROUP_ROWS: GroupPermissionsRow[] = [];
+
+const GROUP_READ_FAILURE_MESSAGE =
+  "We couldn't load group permissions. Close and reopen this window to try again.";
+
 type InvitedUser = {
   id?: string;
   name: string;
@@ -97,10 +112,9 @@ export function DatasetPermissionsModal({
   const [inviteSearch, setInviteSearch] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviteLookupLoading, setIsInviteLookupLoading] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [groupPermissions, setGroupPermissions] = useState<
-    GroupPermissionsRow[]
-  >([]);
+  const [groupState, setGroupState] = useState<GroupPermissionsState>(
+    LOADING_GROUP_PERMISSIONS,
+  );
   const [visibleGroupIds, setVisibleGroupIds] = useState<string[] | null>(null);
   const [invitedUsers, setInvitedUsers] = useState<InvitedUser[]>([]);
   const [invitePermissions, setInvitePermissions] = useState<
@@ -121,9 +135,12 @@ export function DatasetPermissionsModal({
   }, [isOpen]);
 
   useEffect(() => {
+    // Every load starts from scratch: rows and their selection belong to the
+    // dataset currently being read, never to a previous dataset or load.
+    setGroupState(LOADING_GROUP_PERMISSIONS);
+    setVisibleGroupIds(null);
     if (!isOpen || !hasToken || !datasetId) return;
     let cancelled = false;
-    setIsLoading(true);
     (async () => {
       try {
         const result = await queryUserGroups({
@@ -139,7 +156,7 @@ export function DatasetPermissionsModal({
           })) ?? [];
         const validGroups = groups.filter((group) => group.id && group.name);
 
-        const grants = await Promise.all(
+        const rows = await Promise.all(
           validGroups.map(async (group) => {
             const response = await getGroupDatasetGrants(group.id, [datasetId]);
             const roles = response?.[datasetId] ?? [];
@@ -151,16 +168,16 @@ export function DatasetPermissionsModal({
         );
 
         if (cancelled) return;
-        setGroupPermissions(grants);
-        setVisibleGroupIds((prev) => prev ?? grants.map((group) => group.id));
+        setGroupState({ status: "loaded", rows });
+        setVisibleGroupIds(rows.map((group) => group.id));
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         logWarn("Failed to load groups for permissions", {
           error: errorMessage,
         });
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        if (cancelled) return;
+        setGroupState(FAILED_GROUP_PERMISSIONS);
       }
     })();
     return () => {
@@ -181,14 +198,27 @@ export function DatasetPermissionsModal({
     };
   }, [isOpen, onClose]);
 
+  const groupRows =
+    groupState.status === "loaded" ? groupState.rows : NO_GROUP_ROWS;
+
+  const updateLoadedGroupRows = (
+    update: (rows: GroupPermissionsRow[]) => GroupPermissionsRow[],
+  ) => {
+    setGroupState((prev) =>
+      prev.status === "loaded"
+        ? { status: "loaded", rows: update(prev.rows) }
+        : prev,
+    );
+  };
+
   const filteredGroupRows = useMemo(() => {
     const query = groupSearch.trim().toLowerCase();
-    const base = groupPermissions.filter((row) =>
+    const base = groupRows.filter((row) =>
       visibleGroupIds === null ? true : visibleGroupIds.includes(row.id),
     );
     if (!query) return base;
     return base.filter((row) => row.name.toLowerCase().includes(query));
-  }, [groupPermissions, groupSearch, visibleGroupIds]);
+  }, [groupRows, groupSearch, visibleGroupIds]);
 
   const filteredInvitedUsers = useMemo(() => {
     const query = inviteSearch.trim().toLowerCase();
@@ -213,8 +243,8 @@ export function DatasetPermissionsModal({
       } else {
         await unassignGroupDatasetGrant(groupId, datasetId, role);
       }
-      setGroupPermissions((prev) =>
-        prev.map((row) =>
+      updateLoadedGroupRows((rows) =>
+        rows.map((row) =>
           row.id === groupId
             ? {
                 ...row,
@@ -270,7 +300,7 @@ export function DatasetPermissionsModal({
   };
 
   const handleRevokeGroupAccess = async (groupId: string) => {
-    const row = groupPermissions.find((r) => r.id === groupId);
+    const row = groupRows.find((r) => r.id === groupId);
     if (!row) return;
     const rolesToRemove = (
       Object.keys(row.permissions) as PermissionKey[]
@@ -284,7 +314,7 @@ export function DatasetPermissionsModal({
             : Promise.resolve();
         }),
       );
-      setGroupPermissions((prev) => prev.filter((r) => r.id !== groupId));
+      updateLoadedGroupRows((rows) => rows.filter((r) => r.id !== groupId));
       setVisibleGroupIds((prev) =>
         prev ? prev.filter((id) => id !== groupId) : null,
       );
@@ -404,6 +434,7 @@ export function DatasetPermissionsModal({
                     variant="outline"
                     size="md"
                     onClick={() => setIsManageOpen(true)}
+                    disabled={groupState.status !== "loaded"}
                     className="rounded-full gap-2"
                   >
                     <Settings2
@@ -428,17 +459,26 @@ export function DatasetPermissionsModal({
                     </div>
                   </div>
                   <div className="max-h-[401px] overflow-y-auto border-t border-b border-slate-200">
-                    {isLoading && (
+                    {groupState.status === "loading" && (
                       <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
                         Loading groups...
                       </div>
                     )}
-                    {!isLoading && filteredGroupRows.length === 0 && (
-                      <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
-                        No groups found
+                    {groupState.status === "failed" && (
+                      <div
+                        role="alert"
+                        className="min-h-[72px] flex items-center px-4 py-4 text-[14px] text-red-600"
+                      >
+                        {GROUP_READ_FAILURE_MESSAGE}
                       </div>
                     )}
-                    {!isLoading &&
+                    {groupState.status === "loaded" &&
+                      filteredGroupRows.length === 0 && (
+                        <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                          No groups found
+                        </div>
+                      )}
+                    {groupState.status === "loaded" &&
                       filteredGroupRows.map((row) => {
                         const hasAnyPermission = permissionColumns.some(
                           (col) => row.permissions[col.key],
@@ -460,7 +500,6 @@ export function DatasetPermissionsModal({
                                   <PermissionSwitch
                                     checked={row.permissions[column.key]}
                                     ariaLabel={`${row.name} ${column.label}`}
-                                    disabled={isLoading}
                                     onChange={() =>
                                       handleGroupToggle(
                                         row.id,
