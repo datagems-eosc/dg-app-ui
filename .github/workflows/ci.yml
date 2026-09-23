@@ -64,6 +64,12 @@ jobs:
           pnpm run test:coverage
           echo "✅ Tests passed"
 
+      - name: Run dataset onboarding tests (Vitest)
+        run: |
+          echo "🧪 Running dataset onboarding Vitest suite..."
+          pnpm run test:onboarding
+          echo "✅ Dataset onboarding tests passed"
+
       - name: Security audit
         run: |
           echo "🔒 Running security audit..."
