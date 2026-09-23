@@ -1,8 +1,16 @@
+import type { DatasetSharingState } from "@/lib/datasetPermissions/types";
+
 export interface Dataset {
   id: string;
   title: string;
   category: "Weather" | "Math" | "Lifelong Learning" | "Language";
-  access: "Open Access" | "Restricted";
+  /**
+   * The binary publication badge. Optional because it is a claim, and a source
+   * that cannot establish publication must be able to make no claim at all
+   * rather than defaulting to "Restricted". Details-page datasets carry
+   * `DatasetPlus.sharing` instead; see `@/lib/datasetPermissions/model`.
+   */
+  access?: "Open Access" | "Restricted";
   description: string;
   size: string;
   lastUpdated: string;
@@ -15,7 +23,13 @@ export interface Dataset {
   url?: string;
 }
 
+/**
+ * Details-page datasets carry publication state separately from the binary
+ * `access` badge, because "we have no evidence either way" is a real state and
+ * neither existing label can express it. See `@/lib/datasetPermissions/model`.
+ */
 export type DatasetPlus = Dataset & {
+  sharing?: DatasetSharingState;
   collections?: { id: string; name: string; code: string }[];
   license?: string;
   mimeType?: string;

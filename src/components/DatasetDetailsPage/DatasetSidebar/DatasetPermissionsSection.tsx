@@ -24,8 +24,17 @@ interface DatasetPermissionsSectionProps {
   hasEditPermission: boolean;
   hasDownloadPermission: boolean;
   hasManagePermission: boolean;
-  permissions: string[];
+  /**
+   * Capability labels the caller holds, `[]` when the read returned none, and
+   * `undefined` when the permission evidence could not be read at all. The
+   * last two look different on screen and must not be merged.
+   */
+  permissions: string[] | undefined;
 }
+
+/** Neutral copy, reusing the application's existing empty-state type role. */
+const EMPTY_TEXT_CLASS =
+  "text-descriptions-12-regular tracking-1p text-gray-650";
 
 export default function DatasetPermissionsSection({
   datasetId,
@@ -35,22 +44,36 @@ export default function DatasetPermissionsSection({
 }: DatasetPermissionsSectionProps) {
   const router = useRouter();
 
-  const displayPermissions = PERMISSION_ORDER.filter((key) =>
-    permissions.some((p) => p.toLowerCase() === key.toLowerCase()),
-  );
+  // Known capabilities first, in a stable order, then anything else the caller
+  // was given. Nothing is invented: a "Viewer" chip used to be rendered
+  // whenever this list was empty, which presented a role the Gateway had never
+  // reported and that does not exist in its permission vocabulary.
+  const displayPermissions = permissions
+    ? [
+        ...PERMISSION_ORDER.filter((key) =>
+          permissions.some((p) => p.toLowerCase() === key.toLowerCase()),
+        ),
+        ...permissions.filter(
+          (p) =>
+            !PERMISSION_ORDER.some(
+              (key) => key.toLowerCase() === p.toLowerCase(),
+            ),
+        ),
+      ]
+    : [];
 
-  const permissionChips =
-    displayPermissions.length > 0
-      ? displayPermissions.map((key) => (
-          <Chip key={key} color="grey" variant="regular" size="sm">
-            {PERMISSION_LABELS[key] ?? key}
-          </Chip>
-        ))
-      : [
-          <Chip key="viewer" color="grey" variant="regular" size="sm">
-            Viewer
-          </Chip>,
-        ];
+  const permissionsContent =
+    permissions === undefined ? (
+      <span className={EMPTY_TEXT_CLASS}>Not available</span>
+    ) : displayPermissions.length === 0 ? (
+      <span className={EMPTY_TEXT_CLASS}>No permissions</span>
+    ) : (
+      displayPermissions.map((key) => (
+        <Chip key={key} color="grey" variant="regular" size="sm">
+          {PERMISSION_LABELS[key] ?? key}
+        </Chip>
+      ))
+    );
 
   return (
     <div className={styles.datasetSidebarSection}>
@@ -82,7 +105,7 @@ export default function DatasetPermissionsSection({
         )}
       </div>
       <div className={styles.datasetSidebarSection__chips}>
-        {permissionChips}
+        {permissionsContent}
       </div>
     </div>
   );

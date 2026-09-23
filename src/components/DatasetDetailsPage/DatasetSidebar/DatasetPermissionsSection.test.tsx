@@ -122,11 +122,25 @@ describe("DatasetPermissionsSection", () => {
     expect(pushedUrl).not.toContain("datasetId=");
   });
 
-  it("displays Viewer chip when permissions array is empty", () => {
+  it("displays the Download chip, which now comes from DownloadDatasetFile", () => {
+    const { container } = render(
+      <DatasetPermissionsSection
+        {...defaultProps}
+        hasDownloadPermission
+        permissions={["Browse", "Download"]}
+      />,
+    );
+    const section = container.firstChild as HTMLElement;
+
+    expect(within(section).getByText("Download")).toBeInTheDocument();
+  });
+
+  it("reports an empty read as no permissions, never as an invented Viewer role", () => {
     const { container } = render(
       <DatasetPermissionsSection
         {...defaultProps}
         permissions={[]}
+        hasBrowsePermission={false}
         hasEditPermission={false}
         hasDownloadPermission={false}
         hasManagePermission={false}
@@ -134,6 +148,39 @@ describe("DatasetPermissionsSection", () => {
     );
     const section = container.firstChild as HTMLElement;
 
-    expect(within(section).getByText("Viewer")).toBeInTheDocument();
+    expect(within(section).getByText("No permissions")).toBeInTheDocument();
+    expect(within(section).queryByText("Viewer")).not.toBeInTheDocument();
+  });
+
+  it("reports unreadable permission evidence as unavailable, not as empty", () => {
+    const { container } = render(
+      <DatasetPermissionsSection
+        {...defaultProps}
+        permissions={undefined}
+        hasBrowsePermission={false}
+        hasEditPermission={false}
+        hasDownloadPermission={false}
+        hasManagePermission={false}
+      />,
+    );
+    const section = container.firstChild as HTMLElement;
+
+    expect(within(section).getByText("Not available")).toBeInTheDocument();
+    expect(within(section).queryByText("Viewer")).not.toBeInTheDocument();
+    expect(
+      within(section).queryByText("No permissions"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps a capability it holds visible instead of claiming there are none", () => {
+    const { container } = render(
+      <DatasetPermissionsSection {...defaultProps} permissions={["Delete"]} />,
+    );
+    const section = container.firstChild as HTMLElement;
+
+    expect(within(section).getByText("Delete")).toBeInTheDocument();
+    expect(
+      within(section).queryByText("No permissions"),
+    ).not.toBeInTheDocument();
   });
 });
