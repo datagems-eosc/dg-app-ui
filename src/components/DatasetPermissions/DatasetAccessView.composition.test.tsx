@@ -9,13 +9,16 @@
  * question would prove nothing about it.
  */
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { type ReactNode, useRef } from "react";
 import { describe, expect, it } from "vitest";
 import { DATASET_ROLE_MAP } from "@/config/contextGrantRoles";
 import {
   type DatasetRoleOperations,
   useDatasetPermissions,
 } from "@/hooks/useDatasetPermissions";
+import { useModalFocus } from "@/hooks/useModalFocus";
 import { RESEARCH_GROUP_ID } from "@/lib/datasetPermissions/fixtures";
 import type { OperationStorageLike } from "@/lib/datasetPermissions/journal";
 import type {
@@ -29,6 +32,7 @@ import {
   DISCOVERED_GROUPS,
   EVERYONE_IDENTIFIED,
   KNOWN_GRANTS,
+  RECIPIENTS_UNSUPPORTED,
 } from "./fixtures";
 
 const DATASET_ID = "dataset-1";
@@ -84,9 +88,12 @@ const deferredOperations = () => {
 function Harness({
   operations,
   storage,
+  grantOnly = false,
 }: {
   operations: DatasetRoleOperations;
   storage: OperationStorageLike | null;
+  /** The presentation for a caller who may grant but not read recipients. */
+  grantOnly?: boolean;
 }) {
   const controller = useDatasetPermissions({
     scope: SCOPE,
@@ -101,14 +108,16 @@ function Harness({
       // Readable recipients: the full editor is the presentation this
       // composition is about, and `selectAccessMode` selects it from exactly
       // the reads passed below.
-      mode={{ kind: "full-editor" }}
+      mode={{ kind: grantOnly ? "grant-only" : "full-editor" }}
       scopeKey={`${SCOPE.principalId}|${SCOPE.gatewayOrigin}|${SCOPE.datasetId}`}
       reads={{
         status: "settled",
         groups: { kind: "read", groups: DISCOVERED_GROUPS },
-        recipients: { kind: "known", grants: [...KNOWN_GRANTS] },
+        recipients: grantOnly
+          ? { kind: "unknown", reason: "not-supported" }
+          : { kind: "known", grants: [...KNOWN_GRANTS] },
       }}
-      capabilities={ALL_ALLOWED}
+      capabilities={grantOnly ? RECIPIENTS_UNSUPPORTED : ALL_ALLOWED}
       everyone={EVERYONE_IDENTIFIED}
       operations={controller.operations}
       storageAvailable={controller.storageAvailable}
@@ -175,7 +184,7 @@ describe("DatasetAccessView over useDatasetPermissions", () => {
     expect(control).toHaveAttribute("aria-checked", "false");
 
     // Repeating it and undoing it are equally unknown, so neither is offered.
-    expect(control).toBeDisabled();
+    expect(control).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(control);
     expect(transport.sent).toHaveLength(1);
 
@@ -197,5 +206,149 @@ describe("DatasetAccessView over useDatasetPermissions", () => {
     ).toBeInTheDocument();
     fireEvent.click(switchFor(RESEARCH, "Edit"));
     expect(transport.sent).toHaveLength(0);
+  });
+});
+
+describe("DatasetAccessView over useDatasetPermissions — keyboard focus", () => {
+  it("keeps focus on the switch through a keyboard grant and its acknowledgement", async () => {
+    const user = userEvent.setup();
+    const transport = deferredOperations();
+    render(
+      <Harness operations={transport.operations} storage={memoryStorage()} />,
+    );
+    const control = switchFor(RESEARCH, "Edit");
+    control.focus();
+    await user.keyboard(" ");
+
+    expect(transport.sent).toHaveLength(1);
+    expect(control).toHaveFocus();
+    // The one-write guard holds against every activation route.
+    await user.keyboard(" ");
+    await user.keyboard("{Enter}");
+    await user.click(control);
+    expect(transport.sent).toHaveLength(1);
+
+    await transport.reply({ kind: "acknowledged", httpStatus: 204 });
+    expect(control).toHaveFocus();
+    expect(control).toHaveAttribute("aria-checked", "true");
+    expect(control).toBeEnabled();
+  });
+
+  it("returns focus to the switch after confirming a removal, and keeps it when unconfirmed", async () => {
+    const user = userEvent.setup();
+    const transport = deferredOperations();
+    render(
+      <Harness operations={transport.operations} storage={memoryStorage()} />,
+    );
+    // Browse is a known grant, so switching it off is a confirmed removal.
+    const control = switchFor(RESEARCH, "Browse");
+    control.focus();
+    await user.keyboard("{Enter}");
+    const buttons = within(screen.getByRole("dialog")).getAllByRole("button");
+    buttons[buttons.length - 1]?.focus();
+    await user.keyboard("{Enter}");
+
+    // Pending is recorded in the same event that closes the dialog, so the
+    // switch is already refused when focus comes back to it.
+    expect(transport.sent).toHaveLength(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(control).toHaveFocus();
+    expect(control).toHaveAttribute("aria-disabled", "true");
+
+    await transport.reply({ kind: "uncertain", reason: "no-response" });
+    expect(control).toHaveFocus();
+    await user.keyboard(" ");
+    await user.keyboard("{Enter}");
+    expect(transport.sent).toHaveLength(1);
+  });
+
+  it("moves no focus when a change completes after the view has closed", async () => {
+    const user = userEvent.setup();
+    const transport = deferredOperations();
+    const storage = memoryStorage();
+    const { rerender } = render(
+      <>
+        <button type="button">Elsewhere</button>
+        <Harness operations={transport.operations} storage={storage} />
+      </>,
+    );
+    switchFor(RESEARCH, "Edit").focus();
+    await user.keyboard(" ");
+    expect(transport.sent).toHaveLength(1);
+
+    rerender(<button type="button">Elsewhere</button>);
+    const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+    elsewhere.focus();
+    await transport.reply({ kind: "acknowledged", httpStatus: 204 });
+    expect(elsewhere).toHaveFocus();
+  });
+
+  it("hands focus from the shell to the grant results when Grant can no longer take it", async () => {
+    // The real shell is a focus layer too: the closing confirmation falls back
+    // to it because Grant is already disabled, and the form takes it from there.
+    function Shell({ children }: { children: ReactNode }) {
+      const ref = useRef<HTMLDivElement>(null);
+      useModalFocus({
+        active: true,
+        containerRef: ref,
+        initialFocus: "container",
+      });
+      return (
+        <div ref={ref} role="dialog" aria-label="Shell" tabIndex={-1}>
+          {children}
+        </div>
+      );
+    }
+    const user = userEvent.setup();
+    const transport = deferredOperations();
+    render(
+      <Shell>
+        <Harness
+          operations={transport.operations}
+          storage={memoryStorage()}
+          grantOnly
+        />
+      </Shell>,
+    );
+    await user.selectOptions(screen.getByLabelText("Group"), RESEARCH_GROUP_ID);
+    await user.click(screen.getByRole("radio", { name: "Manage" }));
+    screen.getByRole("button", { name: "Grant access" }).focus();
+    await user.keyboard("{Enter}");
+    const buttons = within(
+      screen.getByRole("dialog", { name: /grant manage/i }),
+    ).getAllByRole("button");
+    buttons[buttons.length - 1]?.focus();
+    await user.keyboard("{Enter}");
+
+    expect(transport.sent).toHaveLength(1);
+    expect(screen.getByText("Your changes").parentElement).toHaveFocus();
+  });
+
+  it("puts focus on the grant results after a confirmed grant disables the form", async () => {
+    const user = userEvent.setup();
+    const transport = deferredOperations();
+    render(
+      <Harness
+        operations={transport.operations}
+        storage={memoryStorage()}
+        grantOnly
+      />,
+    );
+    await user.selectOptions(screen.getByLabelText("Group"), RESEARCH_GROUP_ID);
+    await user.click(screen.getByRole("radio", { name: "Manage" }));
+    const grant = screen.getByRole("button", { name: "Grant access" });
+    grant.focus();
+    await user.keyboard("{Enter}");
+    const buttons = within(screen.getByRole("dialog")).getAllByRole("button");
+    buttons[buttons.length - 1]?.focus();
+    await user.keyboard("{Enter}");
+
+    expect(transport.sent).toHaveLength(1);
+    expect(grant).toBeDisabled();
+    const results = screen.getByText("Your changes").parentElement;
+    expect(results).toHaveFocus();
+
+    await transport.reply({ kind: "acknowledged", httpStatus: 204 });
+    expect(results).toHaveFocus();
   });
 });

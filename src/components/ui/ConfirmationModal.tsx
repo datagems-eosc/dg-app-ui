@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { useModalFocus } from "@/hooks/useModalFocus";
 import { Button } from "./Button";
 
 interface ConfirmationModalProps {
@@ -23,6 +24,14 @@ interface ConfirmationModalProps {
    * one line and drops the Cancel icon, which repeats the header's close.
    */
   actionLayout?: "inline" | "responsive";
+  /**
+   * `"default"` keeps this dialog's own Escape, Tab and focus-restore
+   * listeners. `"layered"` hands them to `useModalFocus`, for a confirmation
+   * opened over another `useModalFocus` dialog: only the top dialog answers
+   * the keyboard, one Escape closes only it, and the page stays scroll-locked
+   * until the last one closes.
+   */
+  focusScope?: "default" | "layered";
 }
 
 export function ConfirmationModal({
@@ -38,13 +47,23 @@ export function ConfirmationModal({
   icon,
   isLoading = false,
   actionLayout = "inline",
+  focusScope = "default",
 }: ConfirmationModalProps) {
   const responsive = actionLayout === "responsive";
+  const layered = focusScope === "layered";
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
+  useModalFocus({
+    active: layered && isVisible,
+    containerRef: modalRef,
+    onEscape: () => {
+      if (!isLoading) onClose();
+    },
+  });
+
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || layered) return;
 
     previousFocusRef.current = document.activeElement as HTMLElement;
 
@@ -88,7 +107,7 @@ export function ConfirmationModal({
       clearTimeout(timer);
       previousFocusRef.current?.focus();
     };
-  }, [isVisible, onClose, isLoading]);
+  }, [isVisible, onClose, isLoading, layered]);
 
   if (!isVisible) return null;
 
@@ -123,7 +142,10 @@ export function ConfirmationModal({
     >
       <div
         ref={modalRef}
-        className="bg-white rounded-lg shadow-md max-w-[95%] sm:max-w-[468px] w-full"
+        tabIndex={layered ? -1 : undefined}
+        className={`bg-white rounded-lg shadow-md max-w-[95%] sm:max-w-[468px] w-full${
+          layered ? " focus:outline-none" : ""
+        }`}
         onClick={handleModalClick}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4.5">

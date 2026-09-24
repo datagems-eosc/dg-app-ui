@@ -319,7 +319,11 @@ describe("the full editor, through the real binding", () => {
         screen.getByText(/^Edit: we couldn't confirm whether it was granted/),
       ).toBeInTheDocument(),
     );
-    expect(switchFor(RESEARCH, "Edit")).toBeDisabled();
+    // Refused, but kept focusable: it is the switch the user just operated.
+    expect(switchFor(RESEARCH, "Edit")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     // Neither repeating it nor sending its inverse is offered.
     fireEvent.click(switchFor(RESEARCH, "Edit"));
     expect(mutationCalls(calls)).toHaveLength(1);
@@ -763,7 +767,10 @@ describe("the default operation journal store", () => {
         ),
       ).toBeInTheDocument(),
     );
-    expect(switchFor(RESEARCH, "Edit")).toBeDisabled();
+    expect(switchFor(RESEARCH, "Edit")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     fireEvent.click(switchFor(RESEARCH, "Edit"));
     expect(mutationCalls(calls)).toHaveLength(1);
   });

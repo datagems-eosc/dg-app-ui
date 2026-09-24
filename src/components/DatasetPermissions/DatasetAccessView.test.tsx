@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DATASET_ROLE_MAP } from "@/config/contextGrantRoles";
 import {
@@ -233,7 +234,7 @@ describe("DatasetAccessView — displayed states", () => {
       ],
     });
     const control = switchFor(RESEARCH, "Edit");
-    expect(control).toBeDisabled();
+    expect(control).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(control);
     expect(onRoleChange).not.toHaveBeenCalled();
     expect(
@@ -1175,6 +1176,32 @@ describe("DatasetAccessView — grant results and eligibility", () => {
 });
 
 describe("DatasetAccessView — grant-only keyboard focus", () => {
+  it("leaves focus on the dialog when the form appears already blocked", () => {
+    const props = baseProps({
+      reads: {
+        status: "settled",
+        groups: { kind: "read", groups: DISCOVERED_GROUPS },
+        recipients: { kind: "unknown", reason: "not-supported" },
+      },
+      capabilities: RECIPIENTS_UNSUPPORTED,
+      storageAvailable: false,
+    });
+    // The shell focuses its dialog on open; the reads settling later must not
+    // move that focus anywhere.
+    const { rerender } = render(
+      <div role="dialog" aria-label="Shell" tabIndex={-1} />,
+    );
+    const shell = screen.getByRole("dialog", { name: "Shell" });
+    shell.focus();
+    rerender(
+      <div role="dialog" aria-label="Shell" tabIndex={-1}>
+        <DatasetAccessView {...props} />
+      </div>,
+    );
+    expect(screen.getByRole("button", { name: "Grant access" })).toBeDisabled();
+    expect(shell).toHaveFocus();
+  });
+
   it("keeps focus on the results while a grant applies, instead of losing it", () => {
     const props = baseProps({
       reads: {
@@ -1205,5 +1232,93 @@ describe("DatasetAccessView — grant-only keyboard focus", () => {
     expect(document.activeElement).toBe(
       screen.getByText("Your changes").parentElement,
     );
+  });
+});
+
+describe("DatasetAccessView — full-editor keyboard focus", () => {
+  it.each([
+    ["acknowledged", false],
+    ["refused", false],
+    ["uncertain", true],
+  ] as const)(
+    "keeps focus on a switch used from the keyboard while pending and once %s",
+    async (status, stillHeld) => {
+      const user = userEvent.setup();
+      const onRoleChange = vi.fn();
+      const { rerenderWith } = renderView({ onRoleChange });
+      const control = switchFor(RESEARCH, "Edit");
+      control.focus();
+      await user.keyboard(" ");
+      expect(onRoleChange).toHaveBeenCalledTimes(1);
+
+      rerenderWith({
+        onRoleChange,
+        operations: [operation({ role: DATASET_ROLE_MAP.edit })],
+      });
+      // Refused, yet still where the keyboard left it.
+      expect(control).toHaveFocus();
+      expect(control).not.toBeDisabled();
+      expect(control).toHaveAttribute("aria-disabled", "true");
+      expect(control).toHaveAccessibleDescription("Granting Edit…");
+      await user.keyboard(" ");
+      await user.keyboard("{Enter}");
+      await user.click(control);
+      expect(onRoleChange).toHaveBeenCalledTimes(1);
+      // Only its own switch is held; the dataset-wide guard stays native.
+      expect(switchFor(RESEARCH, "Search")).toBeDisabled();
+
+      rerenderWith({
+        onRoleChange,
+        operations: [operation({ role: DATASET_ROLE_MAP.edit, status })],
+      });
+      expect(control).toHaveFocus();
+      if (stillHeld) {
+        expect(control).toHaveAttribute("aria-disabled", "true");
+        await user.keyboard(" ");
+        expect(onRoleChange).toHaveBeenCalledTimes(1);
+      } else {
+        expect(control).not.toHaveAttribute("aria-disabled");
+        expect(control).toBeEnabled();
+      }
+    },
+  );
+
+  it("does not hold a switch that has no change of its own", () => {
+    renderView({
+      canAttempt: () => ({ kind: "blocked", reason: "uncertain-outcome" }),
+    });
+    const control = switchFor(RESEARCH, "Edit");
+    expect(control).toBeDisabled();
+    expect(control).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("gives the confirmation Tab and Escape, then returns to the switch", async () => {
+    const user = userEvent.setup();
+    const onRoleChange = vi.fn();
+    const onDone = vi.fn();
+    renderView({ onRoleChange, onDone });
+    const control = switchFor(RESEARCH, "Manage");
+    control.focus();
+    await user.keyboard("{Enter}");
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    for (let i = 0; i < 4; i += 1) {
+      await user.tab();
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    }
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(onDone).not.toHaveBeenCalled();
+    expect(onRoleChange).not.toHaveBeenCalled();
+    expect(control).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    const buttons = within(screen.getByRole("dialog")).getAllByRole("button");
+    buttons[buttons.length - 1]?.focus();
+    await user.keyboard("{Enter}");
+    expect(onRoleChange).toHaveBeenCalledTimes(1);
+    expect(control).toHaveFocus();
   });
 });

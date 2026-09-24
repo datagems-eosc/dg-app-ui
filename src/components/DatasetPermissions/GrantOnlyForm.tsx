@@ -167,16 +167,26 @@ export function GrantOnlyForm({
   /*
    * While a change is applying the form is disabled, and a disabled control
    * drops keyboard focus to the page. Keep it here, on the results that
-   * describe the change, instead.
+   * describe the change, instead. When the form has just become blocked,
+   * focus on something that merely *contains* it — the dialog a closed
+   * confirmation handed focus back to because Grant could no longer take it —
+   * counts as dropped too. A form that appears already blocked leaves such
+   * focus alone: finishing a read is no reason to move anyone.
    */
   const sectionRef = useRef<HTMLElement>(null);
+  const previousBlock = useRef(block);
   useEffect(() => {
+    const becameBlocked = previousBlock.current === null;
+    previousBlock.current = block;
     if (block === null) return;
+    const section = sectionRef.current;
+    if (section === null) return;
     const active = document.activeElement;
     if (
       active === null ||
       active === document.body ||
-      sectionRef.current?.contains(active) === true
+      section.contains(active) ||
+      (becameBlocked && active.contains(section))
     ) {
       resultsRef.current?.focus();
     }

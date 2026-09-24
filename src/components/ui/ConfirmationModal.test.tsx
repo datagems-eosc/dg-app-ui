@@ -259,4 +259,86 @@ describe("ConfirmationModal", () => {
 
     document.body.removeChild(triggerButton);
   });
+
+  describe("focusScope", () => {
+    it("keeps the default panel free of the layered focus target", () => {
+      render(<ConfirmationModal {...defaultProps} />);
+      const panel = screen.getByRole("heading", { name: "Test Modal" })
+        .parentElement?.parentElement;
+      expect(panel).not.toHaveAttribute("tabindex");
+    });
+
+    it("takes focus, answers Escape once, and restores the trigger when layered", async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      const trigger = document.createElement("button");
+      document.body.appendChild(trigger);
+      try {
+        trigger.focus();
+        const { rerender } = render(
+          <ConfirmationModal
+            {...defaultProps}
+            onClose={onClose}
+            focusScope="layered"
+          />,
+        );
+        expect(
+          screen.getByRole("button", { name: /close modal/i }),
+        ).toHaveFocus();
+
+        await user.keyboard("{Escape}");
+        expect(onClose).toHaveBeenCalledTimes(1);
+
+        rerender(
+          <ConfirmationModal
+            {...defaultProps}
+            isVisible={false}
+            onClose={onClose}
+            focusScope="layered"
+          />,
+        );
+        expect(trigger).toHaveFocus();
+      } finally {
+        trigger.remove();
+      }
+    });
+
+    it("ignores Escape while loading when layered", async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      render(
+        <ConfirmationModal
+          {...defaultProps}
+          onClose={onClose}
+          isLoading
+          focusScope="layered"
+        />,
+      );
+      await user.keyboard("{Escape}");
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("does not move focus again when its parent re-renders with a new onClose", async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(
+        <ConfirmationModal
+          {...defaultProps}
+          onClose={() => {}}
+          focusScope="layered"
+        />,
+      );
+      await user.tab();
+      const cancel = screen.getByRole("button", { name: /cancel/i });
+      expect(cancel).toHaveFocus();
+
+      rerender(
+        <ConfirmationModal
+          {...defaultProps}
+          onClose={() => {}}
+          focusScope="layered"
+        />,
+      );
+      expect(cancel).toHaveFocus();
+    });
+  });
 });

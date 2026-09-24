@@ -6,9 +6,11 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { ReactElement } from "react";
+import userEvent from "@testing-library/user-event";
+import { type ReactElement, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorProvider } from "@/contexts/ErrorContext";
+import { ConfirmationModal } from "../ConfirmationModal";
 import { DatasetPermissionsModal } from "./DatasetPermissionsModal";
 
 const mockUseApi = vi.fn();
@@ -27,14 +29,50 @@ vi.mock("@/contexts/FeatureFlagsContext", () => ({
 }));
 
 vi.mock("@/components/DatasetPermissions/DatasetGroupAccess", () => ({
-  DatasetGroupAccess: ({
-    datasetId,
-    datasetName,
-  }: {
-    datasetId: string;
-    datasetName: string;
-  }) => <div data-testid="group-access">{`${datasetId}|${datasetName}`}</div>,
+  DatasetGroupAccess: (props: GroupAccessStandInProps) => (
+    <GroupAccessStandIn {...props} />
+  ),
 }));
+
+interface GroupAccessStandInProps {
+  datasetId: string;
+  datasetName: string;
+  onDone: () => void;
+}
+
+/**
+ * Stands in for the new surface with the shape that matters to the shell's
+ * focus handling: a control that raises the same layered confirmation the
+ * real view uses, and a Done.
+ */
+function GroupAccessStandIn({
+  datasetId,
+  datasetName,
+  onDone,
+}: GroupAccessStandInProps) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <div data-testid="group-access">
+      {`${datasetId}|${datasetName}`}
+      <button type="button" onClick={() => setConfirming(true)}>
+        Change a role
+      </button>
+      <button type="button" onClick={onDone}>
+        Done
+      </button>
+      <ConfirmationModal
+        isVisible={confirming}
+        onClose={() => setConfirming(false)}
+        onConfirm={() => setConfirming(false)}
+        title="Confirm the change"
+        message1="Confirm"
+        message2=""
+        confirmText="Apply"
+        focusScope="layered"
+      />
+    </div>
+  );
+}
 
 beforeEach(() => {
   mockUseFeatureFlag.mockReset();
@@ -555,5 +593,206 @@ describe("DatasetPermissionsModal — datasetGroupAccess rollout", () => {
 
     expect(screen.queryByTestId("group-access")).toBeNull();
     expect(api.queryUserGroups).toHaveBeenCalled();
+  });
+});
+
+describe("DatasetPermissionsModal — keyboard focus with the flag on", () => {
+  /** Closes the host from outside, as losing the rollout flag does. */
+  let closeHost = () => {};
+
+  /** A details-page-like host: a launcher that mounts the modal, and a page. */
+  function Host({ onClose = () => {} }: { onClose?: () => void }) {
+    const [open, setOpen] = useState(false);
+    closeHost = () => setOpen(false);
+    return (
+      <>
+        <button type="button" onClick={() => setOpen(true)}>
+          Manage access
+        </button>
+        <button type="button">Background link</button>
+        {open && (
+          <DatasetPermissionsModal
+            isOpen
+            datasetId="dataset-1"
+            datasetName="Dataset One"
+            onClose={() => {
+              onClose();
+              setOpen(false);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  const openFromLauncher = async (onClose?: () => void) => {
+    const user = userEvent.setup();
+    render(<Host onClose={onClose} />);
+    const launcher = screen.getByRole("button", { name: "Manage access" });
+    await user.click(launcher);
+    return { user, launcher };
+  };
+
+  beforeEach(() => {
+    mockUseApi.mockReturnValue(createApi());
+    mockUseFeatureFlag.mockReturnValue(true);
+  });
+
+  it("starts on the dialog and keeps Tab and Shift+Tab inside it", async () => {
+    const { user } = await openFromLauncher();
+    const dialog = screen.getByRole("dialog", { name: "Dataset One" });
+    expect(dialog).toHaveFocus();
+
+    const close = screen.getByRole("button", { name: "Close modal" });
+    const done = screen.getByRole("button", { name: "Done" });
+    await user.tab();
+    expect(close).toHaveFocus();
+    await user.tab();
+    await user.tab();
+    expect(done).toHaveFocus();
+    await user.tab();
+    expect(close).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(done).toHaveFocus();
+    expect(
+      screen.getByRole("button", { name: "Background link" }),
+    ).not.toHaveFocus();
+  });
+
+  it.each([
+    [
+      "Escape",
+      async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.keyboard("{Escape}");
+      },
+    ],
+    [
+      "Done",
+      async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.click(screen.getByRole("button", { name: "Done" }));
+      },
+    ],
+    [
+      "the close button",
+      async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.click(screen.getByRole("button", { name: "Close modal" }));
+      },
+    ],
+  ])(
+    "returns focus to the launcher after closing with %s",
+    async (_, close) => {
+      const onClose = vi.fn();
+      const { user, launcher } = await openFromLauncher(onClose);
+      await close(user);
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(launcher).toHaveFocus();
+      expect(document.body.style.overflow).not.toBe("hidden");
+    },
+  );
+
+  it("restores the settings-style launcher when isOpen turns false", async () => {
+    const user = userEvent.setup();
+    function SettingsHost() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open dataset
+          </button>
+          <DatasetPermissionsModal
+            isOpen={open}
+            datasetId={open ? "dataset-1" : ""}
+            datasetName="Dataset One"
+            onClose={() => setOpen(false)}
+          />
+        </>
+      );
+    }
+    render(<SettingsHost />);
+    const launcher = screen.getByRole("button", { name: "Open dataset" });
+    await user.click(launcher);
+    expect(screen.getByRole("dialog", { name: "Dataset One" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(launcher).toHaveFocus();
+  });
+
+  it("lets one Escape close only the confirmation, which owns Tab while open", async () => {
+    const onClose = vi.fn();
+    const { user, launcher } = await openFromLauncher(onClose);
+    const change = screen.getByRole("button", { name: "Change a role" });
+    change.focus();
+    await user.keyboard("{Enter}");
+
+    const confirmation = screen.getByRole("dialog", {
+      name: "Confirm the change",
+    });
+    expect(confirmation).toContainElement(
+      document.activeElement as HTMLElement,
+    );
+    for (let i = 0; i < 4; i += 1) {
+      await user.tab();
+      expect(confirmation).toContainElement(
+        document.activeElement as HTMLElement,
+      );
+    }
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("dialog", { name: "Confirm the change" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Dataset One" })).toBeVisible();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(change).toHaveFocus();
+    // Closing the confirmation must not unlock the page behind the dialog.
+    expect(document.body.style.overflow).toBe("hidden");
+
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(launcher).toHaveFocus();
+  });
+
+  it("returns to the launcher when the dialog closes with its confirmation open", async () => {
+    const { user, launcher } = await openFromLauncher();
+    await user.click(screen.getByRole("button", { name: "Change a role" }));
+    expect(
+      screen.getByRole("dialog", { name: "Confirm the change" }),
+    ).toBeInTheDocument();
+
+    // As when the rollout flag is lost: the whole surface goes at once.
+    act(() => closeHost());
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(launcher).toHaveFocus();
+  });
+});
+
+describe("DatasetPermissionsModal — flag-off focus behaviour is unchanged", () => {
+  it("keeps the legacy Escape handling and does not take over focus", async () => {
+    const user = userEvent.setup();
+    mockUseApi.mockReturnValue(createApi());
+    mockUseFeatureFlag.mockReturnValue(false);
+    const onClose = vi.fn();
+    const launcher = document.createElement("button");
+    document.body.appendChild(launcher);
+    try {
+      launcher.focus();
+      render(
+        <DatasetPermissionsModal
+          isOpen
+          datasetId="dataset-1"
+          datasetName="Dataset One"
+          onClose={onClose}
+        />,
+      );
+      await screen.findByLabelText("Research Team Browse");
+
+      expect(screen.getByRole("dialog")).not.toHaveAttribute("tabindex");
+      expect(launcher).toHaveFocus();
+      expect(document.body.style.overflow).toBe("hidden");
+      await user.keyboard("{Escape}");
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } finally {
+      launcher.remove();
+    }
   });
 });

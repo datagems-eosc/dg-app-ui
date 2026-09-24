@@ -135,10 +135,18 @@ const shownActivity = (operation: DatasetRoleOperationState): ShownActivity => {
  * is an on/off state that takes effect immediately, which is what a switch is,
  * and it gives the control a state a screen reader announces without the user
  * having to infer it from a toggle button's pressed-ness.
+ *
+ * `held` is for a switch whose *own* change is in flight or unconfirmed. It is
+ * refused like a disabled one — no click handler, so pointer, Enter and Space
+ * all do nothing, and `requestChange` re-checks anyway — but it stays
+ * focusable. Natively disabling it would drop the keyboard focus of whoever
+ * just used it to the page, and its status stays one Tab stop away through
+ * `aria-describedby`. Every other blocked switch is natively disabled.
  */
 function RoleSwitch({
   checked,
   disabled,
+  held,
   label,
   describedBy,
   attention,
@@ -146,6 +154,7 @@ function RoleSwitch({
 }: {
   checked: boolean;
   disabled: boolean;
+  held: boolean;
   label: string;
   describedBy: string | undefined;
   /** A compact marker for a change we couldn't confirm; the text explains it. */
@@ -159,13 +168,14 @@ function RoleSwitch({
       aria-checked={checked}
       aria-label={label}
       aria-describedby={describedBy}
+      aria-disabled={held || undefined}
       disabled={disabled}
-      onClick={onToggle}
+      onClick={held ? undefined : onToggle}
       className={cn(
         "flex h-4 w-7 shrink-0 items-center rounded-full p-[2px] transition-colors duration-200 motion-reduce:transition-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1",
         checked ? "justify-end bg-sky-950" : "justify-start bg-slate-200",
-        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+        disabled || held ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         attention && "ring-2 ring-amber-500 ring-offset-1",
       )}
     >
@@ -771,6 +781,11 @@ export function DatasetAccessView({
                           <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:gap-1">
                             {row.cells.map((cell) => {
                               const block = blockFor(row, cell);
+                              // Its own change, with its own feedback line —
+                              // not merely a reason reported for it.
+                              const held =
+                                cell.activity.kind === "pending" ||
+                                cell.activity.kind === "uncertain";
                               const statusId =
                                 cell.activity.kind === "idle"
                                   ? undefined
@@ -785,7 +800,8 @@ export function DatasetAccessView({
                                   </span>
                                   <RoleSwitch
                                     checked={cell.granted}
-                                    disabled={block !== null}
+                                    disabled={block !== null && !held}
+                                    held={held}
                                     label={`${row.name} — ${cell.label}`}
                                     describedBy={statusId}
                                     attention={
@@ -848,6 +864,7 @@ export function DatasetAccessView({
           cancelText="Cancel"
           confirmVariant={confirmCopy.confirmVariant}
           actionLayout="responsive"
+          focusScope="layered"
         />
       )}
     </div>

@@ -4,7 +4,7 @@ import { Button } from "@ui/Button";
 import { ConfirmationModal } from "@ui/ConfirmationModal";
 import { Input } from "@ui/Input";
 import { Search, Settings2, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DatasetGroupAccess } from "@/components/DatasetPermissions/DatasetGroupAccess";
 import {
   DATASET_ROLE_MAP,
@@ -14,6 +14,7 @@ import {
 import { useError } from "@/contexts/ErrorContext";
 import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
+import { useModalFocus } from "@/hooks/useModalFocus";
 import { logError, logWarn } from "@/lib/logger";
 import { ManageGroupsModal } from "./ManageGroupsModal";
 
@@ -215,8 +216,9 @@ export function DatasetPermissionsModal({
     useNewGroupAccess,
   ]);
 
+  // The legacy modal keeps its own Escape and scroll handling, unchanged.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || useNewGroupAccess) return;
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -226,7 +228,18 @@ export function DatasetPermissionsModal({
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, useNewGroupAccess]);
+
+  // The new surface is a real modal layer: focus starts on the dialog, stays
+  // in it, and returns to the launcher on close. Its confirmation stacks on
+  // top, so Escape there closes only the confirmation.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus({
+    active: useNewGroupAccess,
+    containerRef: dialogRef,
+    onEscape: onClose,
+    initialFocus: "container",
+  });
 
   const groupRows =
     groupState.status === "loaded" ? groupState.rows : NO_GROUP_ROWS;
@@ -394,7 +407,11 @@ export function DatasetPermissionsModal({
         }}
       >
         <div
-          className="bg-white rounded-lg shadow-[0px_4px_10px_0px_rgba(29,41,61,0.1)] w-full max-w-[960px] h-[744px] max-h-[90vh] flex flex-col"
+          ref={dialogRef}
+          tabIndex={useNewGroupAccess ? -1 : undefined}
+          className={`bg-white rounded-lg shadow-[0px_4px_10px_0px_rgba(29,41,61,0.1)] w-full max-w-[960px] h-[744px] max-h-[90vh] flex flex-col${
+            useNewGroupAccess ? " focus:outline-none" : ""
+          }`}
           onClick={(event) => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
