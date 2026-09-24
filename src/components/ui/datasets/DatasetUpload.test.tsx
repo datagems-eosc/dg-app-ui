@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type React from "react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DatasetUpload, type UploadedFile } from "./DatasetUpload";
@@ -102,5 +103,73 @@ describe("DatasetUpload file-transfer feedback", () => {
     await user.click(screen.getByRole("button", { name: "Remove file" }));
     expect(screen.queryByText("readings.csv")).toBeNull();
     expect(onUpload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DatasetUpload controls inside a form", () => {
+  /** AddDatasetForm wraps the uploader; its controls must not submit it. */
+  const renderInForm = (onRemoteUploadNotSupported?: (m: string) => void) => {
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    const utils = render(
+      <form onSubmit={onSubmit}>
+        <DatasetUpload
+          files={[]}
+          onFilesChange={vi.fn()}
+          onUpload={vi.fn<Upload>()}
+          onRemoteUploadNotSupported={onRemoteUploadNotSupported}
+        />
+      </form>,
+    );
+    return { ...utils, onSubmit };
+  };
+
+  it("opens the file picker from Browse local files without submitting", async () => {
+    const user = userEvent.setup();
+    const { container, onSubmit } = renderInForm();
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const pick = vi.spyOn(input, "click");
+
+    await user.click(
+      screen.getByRole("button", { name: "Browse local files" }),
+    );
+
+    expect(pick).toHaveBeenCalledTimes(1);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("shows remote locations from Add remote location without submitting", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderInForm();
+
+    await user.click(
+      screen.getByRole("button", { name: "Add remote location" }),
+    );
+
+    expect(screen.getByText("Choose remote location")).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("reports the remote upload refusal from Upload dataset without submitting", async () => {
+    const user = userEvent.setup();
+    const onRemoteUploadNotSupported = vi.fn();
+    const { onSubmit } = renderInForm(onRemoteUploadNotSupported);
+
+    await user.click(
+      screen.getByRole("button", { name: "Add remote location" }),
+    );
+    await user.click(screen.getByRole("button", { name: /Direct url/ }));
+    await user.type(
+      screen.getByPlaceholderText("https://server.com/file.csv..."),
+      "https://server.com/readings.csv",
+    );
+    await user.click(screen.getByRole("button", { name: "Upload dataset" }));
+
+    expect(onRemoteUploadNotSupported).toHaveBeenCalledWith(
+      "Remote URL upload requires administrator privileges.",
+    );
+    expect(screen.queryByText("Choose remote location")).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

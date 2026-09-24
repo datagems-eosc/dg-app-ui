@@ -287,6 +287,7 @@ export function DatasetUpload({
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-2 pt-2 w-full sm:w-auto">
             <Button
+              type="button"
               variant="outline"
               onClick={handleBrowseFiles}
               className="w-full sm:w-auto"
@@ -297,6 +298,7 @@ export function DatasetUpload({
               OR
             </p>
             <Button
+              type="button"
               variant="outline"
               onClick={handleAddRemoteLocation}
               className="w-full sm:w-auto"
@@ -350,6 +352,7 @@ export function DatasetUpload({
               />
             </div>
             <Button
+              type="button"
               className="w-full sm:w-auto shrink-0 whitespace-nowrap"
               onClick={handleRemoteUpload}
               disabled={!remoteUrl.trim() || !selectedRemoteType}
