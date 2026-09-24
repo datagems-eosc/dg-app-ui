@@ -72,7 +72,7 @@ const datasetPayload = (permissions: unknown) => ({
 const renderPage = async () => {
   render(<DatasetDetailsPage />);
   await waitFor(() =>
-    expect(screen.getByText("Your Permissions")).toBeInTheDocument(),
+    expect(screen.getByText("Your permissions")).toBeInTheDocument(),
   );
 };
 
@@ -84,7 +84,7 @@ const section = (title: string) => {
   const heading = screen.getByRole("heading", { level: 3, name: title });
   return heading.closest("div")?.parentElement?.parentElement as HTMLElement;
 };
-const permissions = () => within(section("Your Permissions"));
+const permissions = () => within(section("Your permissions"));
 
 describe("dataset details page – caller permissions", () => {
   beforeEach(() => {
@@ -128,7 +128,7 @@ describe("dataset details page – caller permissions", () => {
     mockGetDatasetById.mockResolvedValue(datasetPayload([]));
     await renderPage();
 
-    expect(permissions().getByText("No permissions")).toBeInTheDocument();
+    expect(permissions().getByText("No permissions shown")).toBeInTheDocument();
     expect(screen.queryByText("Viewer")).not.toBeInTheDocument();
   });
 
@@ -136,7 +136,9 @@ describe("dataset details page – caller permissions", () => {
     mockGetDatasetById.mockResolvedValue(datasetPayload(undefined));
     await renderPage();
 
-    expect(permissions().getByText("Not available")).toBeInTheDocument();
+    expect(
+      permissions().getByText("Permissions unavailable"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Viewer")).not.toBeInTheDocument();
     expect(screen.getByText("Sharing not verified")).toBeInTheDocument();
   });
@@ -145,7 +147,9 @@ describe("dataset details page – caller permissions", () => {
     mockGetDatasetById.mockResolvedValue(datasetPayload([null, 7]));
     await renderPage();
 
-    expect(permissions().getByText("Not available")).toBeInTheDocument();
+    expect(
+      permissions().getByText("Permissions unavailable"),
+    ).toBeInTheDocument();
   });
 
   it("still displays the legacy boolean object shape", async () => {

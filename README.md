@@ -251,8 +251,14 @@ pnpm run lint:biome:check # Run Biome linter (check only, no fixes)
 pnpm run format          # Format code with Prettier
 pnpm run format:check    # Check code formatting
 pnpm run type-check      # Run TypeScript type checking
-pnpm test                # Run test suite
-pnpm run test:coverage   # Run tests with coverage
+pnpm test                # Run the Node baseline tests in tests/*.test.{ts,mjs}
+pnpm run test:coverage   # Same as pnpm test (no coverage report)
+pnpm run test:unit       # Run every Vitest unit test under src/
+pnpm run test:onboarding # Run the dataset onboarding Vitest selection
+pnpm run test:dataset-permissions # Run the dataset permissions Vitest selection
+
+# Local browser journey (not run in CI; see tests/browser/dataset-permissions/README.md)
+pnpm run test:browser:dataset-permissions
 
 # Storybook
 pnpm run storybook       # Start Storybook development server
@@ -269,10 +275,12 @@ Automatically runs on push and pull requests to `main`, `develop`, and `staging`
 
 - **Lint with Biome**: Validates code quality and formatting
 - **Type Check**: Ensures TypeScript types are correct
-- **Tests**: Runs the test suite with coverage
-- **Security Audit**: Checks for known vulnerabilities in dependencies
+- **Tests**: Runs the Node baseline tests (`pnpm run test:coverage`)
+- **Dataset onboarding tests**: Runs `pnpm run test:onboarding` (Vitest)
+- **Dataset permissions tests**: Runs `pnpm run test:dataset-permissions` (Vitest)
+- **Security Audit**: Checks for known vulnerabilities in dependencies (non-blocking)
 
-All checks must pass before code can be merged.
+The job runs on Node 20.x. The two Vitest steps run named selections, not every unit test; `pnpm run test:unit` runs them all. Each selection fails if its filters match no test file. Browser journeys are not part of CI. Whether a failing check blocks merging depends on branch protection, which is configured outside this repository.
 
 ### CodeQL Analysis (Static Code Analysis)
 

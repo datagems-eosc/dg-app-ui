@@ -70,6 +70,12 @@ jobs:
           pnpm run test:onboarding
           echo "✅ Dataset onboarding tests passed"
 
+      - name: Run dataset permissions tests (Vitest)
+        run: |
+          echo "🧪 Running dataset permissions Vitest suite..."
+          pnpm run test:dataset-permissions
+          echo "✅ Dataset permissions tests passed"
+
       - name: Security audit
         run: |
           echo "🔒 Running security audit..."

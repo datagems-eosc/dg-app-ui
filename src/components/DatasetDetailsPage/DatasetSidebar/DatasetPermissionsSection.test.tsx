@@ -51,13 +51,13 @@ describe("DatasetPermissionsSection", () => {
     mockUseFeatureFlag.mockReturnValue(false);
   });
 
-  it("renders Your Permissions title and permission chips", () => {
+  it("renders Your permissions title and permission chips", () => {
     const { container } = render(
       <DatasetPermissionsSection {...defaultProps} />,
     );
     const section = container.firstChild as HTMLElement;
 
-    expect(within(section).getByText("Your Permissions")).toBeInTheDocument();
+    expect(within(section).getByText("Your permissions")).toBeInTheDocument();
     expect(within(section).getByText("Browse")).toBeInTheDocument();
   });
 
@@ -176,7 +176,9 @@ describe("DatasetPermissionsSection", () => {
     );
     const section = container.firstChild as HTMLElement;
 
-    expect(within(section).getByText("No permissions")).toBeInTheDocument();
+    expect(
+      within(section).getByText("No permissions shown"),
+    ).toBeInTheDocument();
     expect(within(section).queryByText("Viewer")).not.toBeInTheDocument();
   });
 
@@ -193,10 +195,12 @@ describe("DatasetPermissionsSection", () => {
     );
     const section = container.firstChild as HTMLElement;
 
-    expect(within(section).getByText("Not available")).toBeInTheDocument();
+    expect(
+      within(section).getByText("Permissions unavailable"),
+    ).toBeInTheDocument();
     expect(within(section).queryByText("Viewer")).not.toBeInTheDocument();
     expect(
-      within(section).queryByText("No permissions"),
+      within(section).queryByText("No permissions shown"),
     ).not.toBeInTheDocument();
   });
 
@@ -208,7 +212,7 @@ describe("DatasetPermissionsSection", () => {
 
     expect(within(section).getByText("Delete")).toBeInTheDocument();
     expect(
-      within(section).queryByText("No permissions"),
+      within(section).queryByText("No permissions shown"),
     ).not.toBeInTheDocument();
   });
 });

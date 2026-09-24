@@ -89,9 +89,9 @@ export default function DatasetPermissionsSection({
 
   const permissionsContent =
     permissions === undefined ? (
-      <span className={EMPTY_TEXT_CLASS}>Not available</span>
+      <span className={EMPTY_TEXT_CLASS}>Permissions unavailable</span>
     ) : displayPermissions.length === 0 ? (
-      <span className={EMPTY_TEXT_CLASS}>No permissions</span>
+      <span className={EMPTY_TEXT_CLASS}>No permissions shown</span>
     ) : (
       displayPermissions.map((key) => (
         <Chip key={key} color="grey" variant="regular" size="sm">
@@ -106,7 +106,7 @@ export default function DatasetPermissionsSection({
         <div className={styles.datasetSidebarSection__headerLeft}>
           <Lock className={styles.datasetSidebarSection__icon} />
           <h3 className={styles.datasetSidebarSection__title}>
-            Your Permissions
+            Your permissions
           </h3>
         </div>
         {groupAccessEnabled ? (
