@@ -278,10 +278,10 @@ export function DatasetUpload({
             aria-hidden
           />
           <div className="space-y-1 sm:space-y-2">
-            <p className="text-body-14-medium sm:text-body-16-medium text-gray-750">
+            <p className="text-body-16-medium text-gray-750">
               Drop files here or add from remote location
             </p>
-            <p className="text-body-12-regular sm:text-body-14-regular text-gray-650">
+            <p className="text-body-14-regular text-gray-650">
               Supported formats: CSV, PDF, XLSX (max 500MB per file)
             </p>
           </div>
@@ -294,7 +294,7 @@ export function DatasetUpload({
             >
               Browse local files
             </Button>
-            <p className="text-body-12-regular sm:text-body-14-regular text-gray-650 hidden sm:block">
+            <p className="text-body-14-regular text-gray-650 hidden sm:block">
               OR
             </p>
             <Button

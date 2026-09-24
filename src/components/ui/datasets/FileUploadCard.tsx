@@ -1,7 +1,6 @@
 "use client";
 
 import { HardDrive, RefreshCw, Upload, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface FileUploadCardProps {
   file: {
@@ -78,11 +77,12 @@ export function FileUploadCard({
 
   // Joined rather than merged through `cn`: tailwind-merge drops this
   // project's custom typography classes when a text colour is merged in the
-  // same call. red-600 keeps these messages readable on the slate-75 row.
+  // same call. emerald-700 and red-600 keep these messages readable on the
+  // slate-75 row.
   const statusClass = [
     "text-body-14-regular",
     file.status === "success"
-      ? "text-emerald-600"
+      ? "text-emerald-700"
       : file.status === "error"
         ? "text-red-600"
         : "text-gray-650",
@@ -93,10 +93,7 @@ export function FileUploadCard({
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           <p
-            className={cn(
-              "text-body-16-medium truncate",
-              file.status === "error" ? "text-slate-450" : "text-gray-750",
-            )}
+            className={`text-body-16-medium truncate ${file.status === "error" ? "text-gray-650" : "text-gray-750"}`}
             title={file.name}
           >
             {file.name}
@@ -106,12 +103,7 @@ export function FileUploadCard({
             <HardDrive
               className={`w-4 h-4 ${file.status === "error" ? "text-slate-450" : "text-icon"}`}
             />
-            <span
-              className={cn(
-                "text-body-14-regular",
-                file.status === "error" ? "text-slate-450" : "text-gray-650",
-              )}
-            >
+            <span className="text-body-14-regular text-gray-650">
               {formatFileSize(file.size)}
             </span>
             <span className="w-1 h-1 rounded-full bg-slate-450" />
