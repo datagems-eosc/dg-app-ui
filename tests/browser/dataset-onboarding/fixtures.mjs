@@ -90,3 +90,16 @@ export const FIELDS_OF_SCIENCE = {
 export const LICENSES = [
   { code: "cc-by-4.0", name: "CC BY 4.0", description: "Attribution 4.0." },
 ];
+
+/**
+ * Long names with no break opportunity: underscores and dots do not wrap, so
+ * each is one unbroken run far wider than a 390px row.
+ */
+export const LONG_FILE = {
+  ...FILE,
+  name: "synthetic_sensor_network_hourly_readings_2026_pilot_region_extended_export_final_version.csv",
+};
+export const LONG_FAILING_FILE = {
+  ...FILE,
+  name: "synthetic_sensor_network_minute_readings_2026_pilot_region_extended_export_with_gaps.csv",
+};

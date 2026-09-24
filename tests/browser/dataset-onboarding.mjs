@@ -20,6 +20,8 @@ import {
   ACCOUNT_A,
   ACCOUNT_B,
   FILE,
+  LONG_FAILING_FILE,
+  LONG_FILE,
   PROCESS_ID,
   SUCCEEDED,
 } from "./dataset-onboarding/fixtures.mjs";
@@ -571,6 +573,155 @@ async function ownership() {
   await second.context.close();
 }
 
+async function longFilenames() {
+  for (const viewport of [NARROW, DESKTOP]) {
+    const at = `${viewport.width}px`;
+    const w = world();
+    const { context, page } = await openContext(browser, w, {
+      baseUrl,
+      viewport,
+    });
+
+    step(`short and long names at ${at}`);
+    await openForm(page);
+    await uploadFile(page);
+    await uploadFile(page, LONG_FILE);
+    await page.getByText("File uploaded").nth(1).waitFor(SOON);
+    w.upload = "fail";
+    await uploadFile(page, LONG_FAILING_FILE);
+    await page.getByText("Upload failed").waitFor(SOON);
+    // Let the shell's sidebar and page transitions finish before measuring.
+    await page.waitForTimeout(900);
+
+    // Rendered geometry, not class names: a row that widens the page moves
+    // its controls past the viewport edge.
+    const layout = () =>
+      page.evaluate(() => {
+        const inside = (el) => {
+          const r = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(
+            r.left + r.width / 2,
+            r.top + r.height / 2,
+          );
+          return (
+            r.width >= 24 &&
+            r.height >= 24 &&
+            r.left >= 0 &&
+            r.right <= window.innerWidth &&
+            (hit === el || el.contains(hit))
+          );
+        };
+        const names = [...document.querySelectorAll("p[title]")].map((el) => ({
+          title: el.title,
+          text: el.textContent,
+          truncated: el.scrollWidth > el.clientWidth,
+          contained: el.getBoundingClientRect().right <= window.innerWidth,
+          style: getComputedStyle(el).fontSize,
+        }));
+        const controls = [
+          ...document.querySelectorAll(
+            "[aria-label='Retry upload'], [aria-label='Remove file']",
+          ),
+        ];
+        return {
+          width: document.documentElement.scrollWidth,
+          viewport: window.innerWidth,
+          names,
+          controls: controls.length,
+          reachable: controls.map((el) => {
+            el.scrollIntoView({ block: "center" });
+            return inside(el);
+          }),
+        };
+      });
+
+    const rows = await layout();
+    const row = (file) => rows.names.find((n) => n.title === file.name);
+    check(
+      `${at}: the document stays within the viewport`,
+      rows.width <= rows.viewport,
+      `document=${rows.width} viewport=${rows.viewport}`,
+    );
+    check(
+      `${at}: each name is one line at its 16px role with the full name as title`,
+      [FILE, LONG_FILE, LONG_FAILING_FILE].every(
+        (file) =>
+          row(file)?.text === file.name &&
+          row(file)?.contained &&
+          row(file)?.style === "16px",
+      ),
+      JSON.stringify(rows.names),
+    );
+    check(
+      `${at}: the short name is not truncated`,
+      row(FILE)?.truncated === false,
+    );
+    if (viewport === NARROW) {
+      check(
+        `${at}: long names are truncated, not widened`,
+        row(LONG_FILE)?.truncated && row(LONG_FAILING_FILE)?.truncated,
+      );
+    }
+    check(
+      `${at}: Retry and every Remove are fully visible and hit-testable`,
+      rows.controls === 4 && rows.reachable.every(Boolean),
+      `controls=${rows.controls} reachable=${rows.reachable}`,
+    );
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await shot(page, `06-long-filenames-${viewport.width}`);
+
+    step(`blocked start and recovery at ${at}`);
+    await fillMetadata(page);
+    await startButton(page).click();
+    await page.getByText("Some files need attention").waitFor(SOON);
+    const blocked = await layout();
+    check(
+      `${at}: the notice naming the long file stays within the viewport`,
+      blocked.width <= blocked.viewport &&
+        blocked.reachable.every(Boolean) &&
+        w.count("start") === 0,
+      `document=${blocked.width} starts=${w.count("start")}`,
+    );
+
+    const mark = w.mark();
+    await page.getByRole("button", { name: "Retry upload" }).click();
+    // Still failing: wait for this retry's transfer before the next succeeds.
+    await waitFor(async () => w.since(mark, "upload").length === 1);
+    await page.getByRole("button", { name: "Retry upload" }).waitFor(SOON);
+    w.upload = "ok";
+    await page.getByRole("button", { name: "Retry upload" }).click();
+    await page.getByText("File uploaded").nth(2).waitFor(SOON);
+    await page.getByRole("button", { name: "Remove file" }).nth(1).click();
+    // The card's own name; the notice still lists the earlier attempt's files.
+    await page
+      .locator(`p[title="${LONG_FILE.name}"]`)
+      .waitFor({ state: "detached", ...SOON });
+    await page.waitForTimeout(800);
+    check(
+      `${at}: two retries upload twice, Remove uploads nothing, and nothing starts`,
+      w.since(mark, "upload").length === 2 &&
+        w.count("upload") === 5 &&
+        w.count("start") === 0 &&
+        page.url().endsWith("/datasets/add"),
+      `uploads=${w.count("upload")} starts=${w.count("start")} url=${page.url()}`,
+    );
+    const recovered = await layout();
+    check(
+      `${at}: after recovery the page still fits and controls stay reachable`,
+      recovered.width <= recovered.viewport &&
+        recovered.controls === 2 &&
+        recovered.reachable.every(Boolean),
+      `document=${recovered.width} controls=${recovered.controls}`,
+    );
+    check(
+      `${at}: no unexpected Gateway call`,
+      w.unexpected.length === 0,
+      w.unexpected.join(", "),
+    );
+    await context.close();
+  }
+}
+
 // ---------------------------------------------------------------------------
 
 async function main() {
@@ -602,6 +753,7 @@ async function main() {
   await report.scenario("flags off", flagsOff);
   await report.scenario("refresh activity at 390px", refreshActivity);
   await report.scenario("session ownership", ownership);
+  await report.scenario("long filenames at 390px and 1440px", longFilenames);
 
   await report.scenario("request boundaries", async () => {
     const escaped = worlds.flatMap((w) => w.escaped);

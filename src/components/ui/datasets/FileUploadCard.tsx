@@ -91,7 +91,7 @@ export function FileUploadCard({
   return (
     <div className="rounded-lg p-4 bg-slate-75">
       <div className="flex items-center justify-between gap-4">
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="w-0 flex-1 min-w-0 flex flex-col gap-1">
           <p
             className={`text-body-16-medium truncate ${file.status === "error" ? "text-gray-650" : "text-gray-750"}`}
             title={file.name}

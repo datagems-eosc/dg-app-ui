@@ -279,7 +279,7 @@ const Notice = ({
         </p>
         {children === undefined ? null : (
           <div
-            className={`mt-1 space-y-1 break-words text-body-14-regular ${TONE_BODY[tone]}`}
+            className={`mt-1 space-y-1 wrap-anywhere text-body-14-regular ${TONE_BODY[tone]}`}
           >
             {children}
           </div>
