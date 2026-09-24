@@ -41,7 +41,9 @@ test("mapFavoritesToDatasets maps each valid favorite's dataset to the local sha
   assert.equal(datasets[0].id, "d1");
   assert.equal(datasets[0].title, "Alpha");
   assert.equal(datasets[1].id, "d2");
-  assert.equal(datasets[1].access, "Open Access");
+  // The caller's own Browse permission is not publication evidence, so the
+  // dataset's public/restricted state stays unknown rather than Open Access.
+  assert.equal(datasets[1].access, undefined);
 });
 
 test("mapFavoritesToDatasets returns [] for empty or nullish input", () => {

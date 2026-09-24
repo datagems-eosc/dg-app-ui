@@ -7,15 +7,39 @@ import {
   within,
 } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorProvider } from "@/contexts/ErrorContext";
 import { DatasetPermissionsModal } from "./DatasetPermissionsModal";
 
 const mockUseApi = vi.fn();
+const mockUseFeatureFlag = vi.fn();
 
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => mockUseApi(),
 }));
+
+// Every case in this file is the legacy group editor, which is what the
+// rollout flag preserves while it is off. The new surface is covered in
+// `components/DatasetPermissions`, and its flag-on wiring at the end of this
+// file.
+vi.mock("@/contexts/FeatureFlagsContext", () => ({
+  useFeatureFlag: (id: string) => mockUseFeatureFlag(id),
+}));
+
+vi.mock("@/components/DatasetPermissions/DatasetGroupAccess", () => ({
+  DatasetGroupAccess: ({
+    datasetId,
+    datasetName,
+  }: {
+    datasetId: string;
+    datasetName: string;
+  }) => <div data-testid="group-access">{`${datasetId}|${datasetName}`}</div>,
+}));
+
+beforeEach(() => {
+  mockUseFeatureFlag.mockReset();
+  mockUseFeatureFlag.mockReturnValue(false);
+});
 
 // The modal reports API failures through the ErrorContext toast.
 const render = (ui: ReactElement) => {
@@ -411,5 +435,125 @@ describe("DatasetPermissionsModal", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(api.assignGroupDatasetGrant).not.toHaveBeenCalled();
     expect(api.unassignGroupDatasetGrant).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The rollout flag at this entry point.
+ *
+ * The flag-off expectation is the whole suite above: unchanged behaviour, same
+ * requests, same controls. What is added here is that "off" also means *no new
+ * requests*, that "on" replaces this surface rather than sitting beside it, and
+ * that losing the flag mid-session closes instead of revealing the legacy
+ * editor underneath.
+ */
+describe("DatasetPermissionsModal — datasetGroupAccess rollout", () => {
+  it("issues no new-flow request and mounts nothing new while the flag is off", () => {
+    const api = createApi();
+    mockUseApi.mockReturnValue(api);
+    mockUseFeatureFlag.mockReturnValue(false);
+
+    render(renderModal());
+
+    expect(screen.queryByTestId("group-access")).toBeNull();
+    // The legacy reader is the one that ran, exactly as before.
+    expect(api.queryUserGroups).toHaveBeenCalledTimes(1);
+  });
+
+  it("replaces the legacy group editor when the flag is on, and reads nothing through it", () => {
+    const api = createApi();
+    mockUseApi.mockReturnValue(api);
+    mockUseFeatureFlag.mockReturnValue(true);
+
+    render(renderModal());
+
+    expect(screen.getByTestId("group-access")).toHaveTextContent(
+      "dataset-1|Dataset One",
+    );
+    // Two readers for one dataset would double every request and give the
+    // screen an older second answer to disagree with.
+    expect(api.queryUserGroups).not.toHaveBeenCalled();
+    expect(api.getGroupDatasetGrants).not.toHaveBeenCalled();
+    // No Save/Cancel beside a surface whose footer says closing changes
+    // nothing.
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+
+  it("is group-only while the flag is on: no invitation surface or user calls", async () => {
+    const api = createApi();
+    mockUseApi.mockReturnValue(api);
+    mockUseFeatureFlag.mockReturnValue(true);
+
+    render(renderModal());
+    expect(screen.getByTestId("group-access")).toBeInTheDocument();
+
+    expect(screen.queryByText("Invite by E-mail")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Groups" })).toBeNull();
+    expect(screen.queryByPlaceholderText("Email address")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Invite" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+
+    // Nothing reaches the individual-user helpers, however long it stays open.
+    await act(async () => {});
+    expect(api.queryUsers).not.toHaveBeenCalled();
+    expect(api.getUserDatasetGrants).not.toHaveBeenCalled();
+    expect(api.assignUserDatasetGrant).not.toHaveBeenCalled();
+    expect(api.unassignUserDatasetGrant).not.toHaveBeenCalled();
+  });
+
+  it("keeps the legacy invitation flow while the flag is off", async () => {
+    const api = createApi({
+      queryUsers: vi.fn().mockResolvedValue({
+        items: [
+          { id: "user-1", name: "Ada Lovelace", email: "ada@example.com" },
+        ],
+      }),
+    });
+    mockUseApi.mockReturnValue(api);
+    mockUseFeatureFlag.mockReturnValue(false);
+
+    render(renderModal());
+    fireEvent.click(await screen.findByText("Invite by E-mail"));
+    fireEvent.change(screen.getByPlaceholderText("Email address"), {
+      target: { value: "ada@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+
+    expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
+    expect(api.queryUsers).toHaveBeenCalledWith({ like: "ada@example.com" });
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(screen.queryByTestId("group-access")).toBeNull();
+  });
+
+  it("does not swap in the legacy editor when the flag is lost mid-session", () => {
+    const api = createApi();
+    mockUseApi.mockReturnValue(api);
+    mockUseFeatureFlag.mockReturnValue(true);
+
+    const { rerender } = render(renderModal());
+    expect(screen.getByTestId("group-access")).toBeInTheDocument();
+
+    // The flag going away is not evidence that the old path is now correct.
+    mockUseFeatureFlag.mockReturnValue(false);
+    rerender(renderModal());
+
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(api.queryUserGroups).not.toHaveBeenCalled();
+  });
+
+  it("re-evaluates the flag on the next opening", () => {
+    const api = createApi();
+    mockUseApi.mockReturnValue(api);
+    mockUseFeatureFlag.mockReturnValue(true);
+
+    const { rerender } = render(renderModal());
+    expect(screen.getByTestId("group-access")).toBeInTheDocument();
+
+    rerender(renderModal({ isOpen: false }));
+    mockUseFeatureFlag.mockReturnValue(false);
+    rerender(renderModal({ isOpen: true }));
+
+    expect(screen.queryByTestId("group-access")).toBeNull();
+    expect(api.queryUserGroups).toHaveBeenCalled();
   });
 });

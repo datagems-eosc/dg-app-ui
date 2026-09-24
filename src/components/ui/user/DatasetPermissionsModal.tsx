@@ -5,12 +5,14 @@ import { ConfirmationModal } from "@ui/ConfirmationModal";
 import { Input } from "@ui/Input";
 import { Search, Settings2, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { DatasetGroupAccess } from "@/components/DatasetPermissions/DatasetGroupAccess";
 import {
   DATASET_ROLE_MAP,
   mapRolesToPermissions,
   type PermissionKey,
 } from "@/config/contextGrantRoles";
 import { useError } from "@/contexts/ErrorContext";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
 import { logError, logWarn } from "@/lib/logger";
 import { ManageGroupsModal } from "./ManageGroupsModal";
@@ -129,6 +131,23 @@ export function DatasetPermissionsModal({
   });
   const [revokeGroupId, setRevokeGroupId] = useState<string | null>(null);
 
+  /**
+   * Which group-access surface this opening belongs to.
+   *
+   * Latched when the modal opens rather than read live, so that turning the
+   * rollout flag off with the new surface open cannot silently swap in the
+   * legacy editor underneath the user. Losing the flag closes the modal
+   * instead; the unresolved-operation journal is in storage and is untouched
+   * by either. Reopening re-evaluates, so the flag still decides every fresh
+   * session.
+   */
+  const groupAccessFlag = useFeatureFlag("datasetGroupAccess");
+  const [session, setSession] = useState({ open: false, newFlow: false });
+  if (session.open !== isOpen) {
+    setSession({ open: isOpen, newFlow: isOpen ? groupAccessFlag : false });
+  }
+  const useNewGroupAccess = isOpen && session.open && session.newFlow;
+
   useEffect(() => {
     if (!isOpen) return;
     setActiveTab("groups");
@@ -139,6 +158,10 @@ export function DatasetPermissionsModal({
     // dataset currently being read, never to a previous dataset or load.
     setGroupState(LOADING_GROUP_PERMISSIONS);
     setVisibleGroupIds(null);
+    // With the new flow selected, the legacy reads are not merely hidden —
+    // they are not issued. Two readers for one dataset would double every
+    // request and give the screen a second, older answer to disagree with.
+    if (useNewGroupAccess) return;
     if (!isOpen || !hasToken || !datasetId) return;
     let cancelled = false;
     (async () => {
@@ -183,7 +206,14 @@ export function DatasetPermissionsModal({
     return () => {
       cancelled = true;
     };
-  }, [datasetId, getGroupDatasetGrants, hasToken, isOpen, queryUserGroups]);
+  }, [
+    datasetId,
+    getGroupDatasetGrants,
+    hasToken,
+    isOpen,
+    queryUserGroups,
+    useNewGroupAccess,
+  ]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -264,12 +294,14 @@ export function DatasetPermissionsModal({
     }
   };
 
+  // Individual-user writes belong to the legacy modal only. The flag-on
+  // destination is group-only, so these refuse even if somehow reached.
   const handleUserToggle = async (
     userId: string | undefined,
     permission: PermissionKey,
     nextValue: boolean,
   ) => {
-    if (!userId) return;
+    if (useNewGroupAccess || !userId) return;
     const role = DATASET_ROLE_MAP[permission];
     if (!role) return;
     try {
@@ -329,6 +361,7 @@ export function DatasetPermissionsModal({
   };
 
   const handleRemoveUser = async (user: InvitedUser) => {
+    if (useNewGroupAccess) return;
     if (user.id) {
       const permissionsToRemove = (
         Object.keys(user.permissions) as PermissionKey[]
@@ -381,360 +414,400 @@ export function DatasetPermissionsModal({
             </button>
           </div>
 
-          <div className="border-b border-slate-200 px-6">
-            <div className="flex gap-2 h-[55px]">
-              <button
-                type="button"
-                onClick={() => setActiveTab("groups")}
-                className="relative flex items-end h-full px-2"
-              >
-                <span
-                  className={`text-[16px] font-medium leading-[150%] ${
-                    activeTab === "groups" ? "text-gray-750" : "text-gray-650"
-                  }`}
+          {/*
+            The tabs are the legacy modal's. With the new flow the destination
+            is group-only: no Invite tab, no individual-user lookup or write.
+            Invitations stay exactly as they were in the flag-off modal.
+          */}
+          {!useNewGroupAccess && (
+            <div className="border-b border-slate-200 px-6">
+              <div className="flex gap-2 h-[55px]">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("groups")}
+                  className="relative flex items-end h-full px-2"
                 >
-                  Groups
-                </span>
-                {activeTab === "groups" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-500 rounded-t-[2px]" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("invite")}
-                className="relative flex items-end h-full px-2"
-              >
-                <span
-                  className={`text-[16px] font-medium leading-[150%] ${
-                    activeTab === "invite" ? "text-gray-750" : "text-gray-650"
-                  }`}
+                  <span
+                    className={`text-[16px] font-medium leading-[150%] ${
+                      activeTab === "groups" ? "text-gray-750" : "text-gray-650"
+                    }`}
+                  >
+                    Groups
+                  </span>
+                  {activeTab === "groups" && (
+                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-500 rounded-t-[2px]" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("invite")}
+                  className="relative flex items-end h-full px-2"
                 >
-                  Invite by E-mail
-                </span>
-                {activeTab === "invite" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-500 rounded-t-[2px]" />
-                )}
-              </button>
+                  <span
+                    className={`text-[16px] font-medium leading-[150%] ${
+                      activeTab === "invite" ? "text-gray-750" : "text-gray-650"
+                    }`}
+                  >
+                    Invite by E-mail
+                  </span>
+                  {activeTab === "invite" && (
+                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-blue-500 rounded-t-[2px]" />
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex-1 overflow-y-auto px-6 pt-2">
-            {activeTab === "groups" && (
-              <div className="flex flex-col gap-6">
-                <div className="flex items-center gap-2">
+          {useNewGroupAccess && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <DatasetGroupAccess
+                datasetId={datasetId}
+                datasetName={datasetName}
+                onDone={onClose}
+                // The flag going away is not evidence that the legacy editor is
+                // now the right surface. Close, and leave the journal alone.
+                onUnavailable={onClose}
+              />
+            </div>
+          )}
+
+          {/*
+            Not merely hidden: while the new surface is open, the legacy body
+            is not in the tree at all, so nothing of it is reachable by
+            keyboard, by a screen reader, or by a test looking for a control
+            that no longer applies.
+          */}
+          {!useNewGroupAccess && (
+            <div className="flex-1 overflow-y-auto px-6 pt-2">
+              {activeTab === "groups" && (
+                <div className="flex flex-col gap-6">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      name="group-search"
+                      placeholder="Search"
+                      value={groupSearch}
+                      onChange={(event) => setGroupSearch(event.target.value)}
+                      rightIcon={<Search className="w-4 h-4 text-icon" />}
+                      className="h-10"
+                    />
+                    <Button
+                      variant="outline"
+                      size="md"
+                      onClick={() => setIsManageOpen(true)}
+                      disabled={groupState.status !== "loaded"}
+                      className="rounded-full gap-2"
+                    >
+                      <Settings2
+                        className="w-4 h-4 text-icon"
+                        strokeWidth={1.25}
+                      />
+                      Manage
+                    </Button>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center h-12">
+                      <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
+                        Group permissions
+                      </div>
+                      <div className="flex gap-1 text-[14px] text-gray-750">
+                        {permissionColumns.map((column) => (
+                          <div key={column.key} className="w-20 text-center">
+                            {column.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="max-h-[401px] overflow-y-auto border-t border-b border-slate-200">
+                      {groupState.status === "loading" && (
+                        <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                          Loading groups...
+                        </div>
+                      )}
+                      {groupState.status === "failed" && (
+                        <div
+                          role="alert"
+                          className="min-h-[72px] flex items-center px-4 py-4 text-[14px] text-red-600"
+                        >
+                          {GROUP_READ_FAILURE_MESSAGE}
+                        </div>
+                      )}
+                      {groupState.status === "loaded" &&
+                        filteredGroupRows.length === 0 && (
+                          <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
+                            No groups found
+                          </div>
+                        )}
+                      {groupState.status === "loaded" &&
+                        filteredGroupRows.map((row) => {
+                          const hasAnyPermission = permissionColumns.some(
+                            (col) => row.permissions[col.key],
+                          );
+                          return (
+                            <div
+                              key={row.id}
+                              className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
+                            >
+                              <div className="flex-1 text-[14px] font-medium text-slate-850">
+                                {row.name}
+                              </div>
+                              <div className="flex gap-1">
+                                {permissionColumns.map((column) => (
+                                  <div
+                                    key={`${row.id}-${column.key}`}
+                                    className="w-20 flex justify-center"
+                                  >
+                                    <PermissionSwitch
+                                      checked={row.permissions[column.key]}
+                                      ariaLabel={`${row.name} ${column.label}`}
+                                      onChange={() =>
+                                        handleGroupToggle(
+                                          row.id,
+                                          column.key,
+                                          !row.permissions[column.key],
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                              {hasAnyPermission && (
+                                <button
+                                  type="button"
+                                  className="ml-2 text-[14px] text-red-550 hover:underline"
+                                  onClick={() => setRevokeGroupId(row.id)}
+                                >
+                                  Revoke Access
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "invite" && (
+                <div className="flex flex-col gap-6">
                   <Input
-                    name="group-search"
+                    name="invite-search"
                     placeholder="Search"
-                    value={groupSearch}
-                    onChange={(event) => setGroupSearch(event.target.value)}
+                    value={inviteSearch}
+                    onChange={(event) => setInviteSearch(event.target.value)}
                     rightIcon={<Search className="w-4 h-4 text-icon" />}
                     className="h-10"
                   />
-                  <Button
-                    variant="outline"
-                    size="md"
-                    onClick={() => setIsManageOpen(true)}
-                    disabled={groupState.status !== "loaded"}
-                    className="rounded-full gap-2"
-                  >
-                    <Settings2
-                      className="w-4 h-4 text-icon"
-                      strokeWidth={1.25}
-                    />
-                    Manage
-                  </Button>
-                </div>
 
-                <div>
-                  <div className="flex items-center h-12">
-                    <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
-                      Group permissions
-                    </div>
-                    <div className="flex gap-1 text-[14px] text-gray-750">
-                      {permissionColumns.map((column) => (
-                        <div key={column.key} className="w-20 text-center">
-                          {column.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="max-h-[401px] overflow-y-auto border-t border-b border-slate-200">
-                    {groupState.status === "loading" && (
-                      <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
-                        Loading groups...
+                  <div>
+                    <div className="flex items-center h-12">
+                      <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
+                        Invite new user
                       </div>
-                    )}
-                    {groupState.status === "failed" && (
-                      <div
-                        role="alert"
-                        className="min-h-[72px] flex items-center px-4 py-4 text-[14px] text-red-600"
-                      >
-                        {GROUP_READ_FAILURE_MESSAGE}
-                      </div>
-                    )}
-                    {groupState.status === "loaded" &&
-                      filteredGroupRows.length === 0 && (
-                        <div className="h-[72px] flex items-center px-4 text-[14px] text-gray-650">
-                          No groups found
-                        </div>
-                      )}
-                    {groupState.status === "loaded" &&
-                      filteredGroupRows.map((row) => {
-                        const hasAnyPermission = permissionColumns.some(
-                          (col) => row.permissions[col.key],
-                        );
-                        return (
-                          <div
-                            key={row.id}
-                            className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
-                          >
-                            <div className="flex-1 text-[14px] font-medium text-slate-850">
-                              {row.name}
-                            </div>
-                            <div className="flex gap-1">
-                              {permissionColumns.map((column) => (
-                                <div
-                                  key={`${row.id}-${column.key}`}
-                                  className="w-20 flex justify-center"
-                                >
-                                  <PermissionSwitch
-                                    checked={row.permissions[column.key]}
-                                    ariaLabel={`${row.name} ${column.label}`}
-                                    onChange={() =>
-                                      handleGroupToggle(
-                                        row.id,
-                                        column.key,
-                                        !row.permissions[column.key],
-                                      )
-                                    }
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                            {hasAnyPermission && (
-                              <button
-                                type="button"
-                                className="ml-2 text-[14px] text-red-550 hover:underline"
-                                onClick={() => setRevokeGroupId(row.id)}
-                              >
-                                Revoke Access
-                              </button>
-                            )}
+                      <div className="flex gap-1 text-[14px] text-gray-750">
+                        {permissionColumns.map((column) => (
+                          <div key={column.key} className="w-20 text-center">
+                            {column.label}
                           </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "invite" && (
-              <div className="flex flex-col gap-6">
-                <Input
-                  name="invite-search"
-                  placeholder="Search"
-                  value={inviteSearch}
-                  onChange={(event) => setInviteSearch(event.target.value)}
-                  rightIcon={<Search className="w-4 h-4 text-icon" />}
-                  className="h-10"
-                />
-
-                <div>
-                  <div className="flex items-center h-12">
-                    <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
-                      Invite new user
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex gap-1 text-[14px] text-gray-750">
-                      {permissionColumns.map((column) => (
-                        <div key={column.key} className="w-20 text-center">
-                          {column.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center h-[72px] border-t border-b border-slate-200">
-                    <div className="flex-1 flex items-center gap-2">
-                      <Input
-                        name="invite-email"
-                        placeholder="Email address"
-                        value={inviteEmail}
-                        onChange={(event) => setInviteEmail(event.target.value)}
-                        className="h-10"
-                      />
-                      <Button
-                        variant="outline"
-                        size="md"
-                        onClick={async () => {
-                          if (!inviteEmail.trim()) return;
-                          const email = inviteEmail.trim();
-                          setIsInviteLookupLoading(true);
-                          try {
-                            const result = await queryUsers({
-                              like: email,
-                            });
-                            const match = result.items?.find(
-                              (user) =>
-                                user.email?.toLowerCase() ===
-                                email.toLowerCase(),
-                            );
-                            const userId = match?.id ?? undefined;
-                            let permissions = { ...invitePermissions };
-                            if (userId) {
-                              const grants = await getUserDatasetGrants(
-                                userId,
-                                [datasetId],
-                              );
-                              permissions = mapRolesToPermissions(
-                                grants?.[datasetId] ?? [],
-                                DATASET_ROLE_MAP,
-                              );
-                            }
-                            setInvitedUsers((prev) => [
-                              ...prev,
-                              {
-                                id: userId,
-                                name:
-                                  match?.name ??
-                                  email.split("@")[0] ??
-                                  "Invited User",
-                                email: match?.email ?? email,
-                                permissions,
-                                hasApiId: Boolean(userId),
-                              },
-                            ]);
-                            setInviteEmail("");
-                          } catch (error) {
-                            logError("Failed to lookup invite user", error);
-                            showError("Failed to look up the invited user.");
-                          } finally {
-                            setIsInviteLookupLoading(false);
+                    <div className="flex items-center h-[72px] border-t border-b border-slate-200">
+                      <div className="flex-1 flex items-center gap-2">
+                        <Input
+                          name="invite-email"
+                          placeholder="Email address"
+                          value={inviteEmail}
+                          onChange={(event) =>
+                            setInviteEmail(event.target.value)
                           }
-                        }}
-                        className="rounded-full"
-                        disabled={isInviteLookupLoading}
-                      >
-                        Invite
-                      </Button>
-                    </div>
-                    <div className="flex gap-1">
-                      {permissionColumns.map((column) => (
-                        <div
-                          key={column.key}
-                          className="w-20 flex justify-center"
-                        >
-                          <PermissionSwitch
-                            checked={invitePermissions[column.key]}
-                            ariaLabel={`Invite ${column.label}`}
-                            onChange={() =>
-                              setInvitePermissions((prev) => ({
-                                ...prev,
-                                [column.key]: !prev[column.key],
-                              }))
+                          className="h-10"
+                        />
+                        <Button
+                          variant="outline"
+                          size="md"
+                          onClick={async () => {
+                            if (useNewGroupAccess || !inviteEmail.trim()) {
+                              return;
                             }
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center h-12">
-                    <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
-                      Users invited
-                    </div>
-                    <div className="flex gap-1 text-[14px] text-gray-750">
-                      {permissionColumns.map((column) => (
-                        <div key={column.key} className="w-20 text-center">
-                          {column.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="border-t border-b border-slate-200">
-                    {filteredInvitedUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
-                      >
-                        <div className="flex-1 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
-                            <div className="w-full h-full flex items-center justify-center text-[12px] font-medium text-gray-750">
-                              {user.name
-                                .split(" ")
-                                .map((part) => part[0])
-                                .join("")
-                                .slice(0, 2)
-                                .toUpperCase()}
-                            </div>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-[14px] font-medium text-slate-850">
-                              {user.name}
-                            </span>
-                            <span className="text-[12px] text-gray-650 tracking-[0.12px]">
-                              {user.email}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          {permissionColumns.map((column) => (
-                            <div
-                              key={`${user.email}-${column.key}`}
-                              className="w-20 flex justify-center"
-                            >
-                              <PermissionSwitch
-                                checked={user.permissions[column.key]}
-                                ariaLabel={`${user.name} ${column.label}`}
-                                disabled={!user.hasApiId}
-                                onChange={() =>
-                                  handleUserToggle(
-                                    user.id,
-                                    column.key,
-                                    !user.permissions[column.key],
-                                  )
-                                }
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          className="w-8 h-8 flex items-center justify-center rounded"
-                          aria-label={`Remove ${user.name}`}
-                          onClick={() => handleRemoveUser(user)}
+                            const email = inviteEmail.trim();
+                            setIsInviteLookupLoading(true);
+                            try {
+                              const result = await queryUsers({
+                                like: email,
+                              });
+                              const match = result.items?.find(
+                                (user) =>
+                                  user.email?.toLowerCase() ===
+                                  email.toLowerCase(),
+                              );
+                              const userId = match?.id ?? undefined;
+                              let permissions = { ...invitePermissions };
+                              if (userId) {
+                                const grants = await getUserDatasetGrants(
+                                  userId,
+                                  [datasetId],
+                                );
+                                permissions = mapRolesToPermissions(
+                                  grants?.[datasetId] ?? [],
+                                  DATASET_ROLE_MAP,
+                                );
+                              }
+                              setInvitedUsers((prev) => [
+                                ...prev,
+                                {
+                                  id: userId,
+                                  name:
+                                    match?.name ??
+                                    email.split("@")[0] ??
+                                    "Invited User",
+                                  email: match?.email ?? email,
+                                  permissions,
+                                  hasApiId: Boolean(userId),
+                                },
+                              ]);
+                              setInviteEmail("");
+                            } catch (error) {
+                              logError("Failed to lookup invite user", error);
+                              showError("Failed to look up the invited user.");
+                            } finally {
+                              setIsInviteLookupLoading(false);
+                            }
+                          }}
+                          className="rounded-full"
+                          disabled={isInviteLookupLoading}
                         >
-                          <Trash2
-                            className="w-4 h-4 text-icon"
-                            strokeWidth={1.25}
-                          />
-                        </button>
+                          Invite
+                        </Button>
                       </div>
-                    ))}
+                      <div className="flex gap-1">
+                        {permissionColumns.map((column) => (
+                          <div
+                            key={column.key}
+                            className="w-20 flex justify-center"
+                          >
+                            <PermissionSwitch
+                              checked={invitePermissions[column.key]}
+                              ariaLabel={`Invite ${column.label}`}
+                              onChange={() =>
+                                setInvitePermissions((prev) => ({
+                                  ...prev,
+                                  [column.key]: !prev[column.key],
+                                }))
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center h-12">
+                      <div className="flex-1 text-[16px] font-semibold leading-[150%] text-gray-750">
+                        Users invited
+                      </div>
+                      <div className="flex gap-1 text-[14px] text-gray-750">
+                        {permissionColumns.map((column) => (
+                          <div key={column.key} className="w-20 text-center">
+                            {column.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="border-t border-b border-slate-200">
+                      {filteredInvitedUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center h-[72px] border-b border-slate-200 last:border-b-0"
+                        >
+                          <div className="flex-1 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
+                              <div className="w-full h-full flex items-center justify-center text-[12px] font-medium text-gray-750">
+                                {user.name
+                                  .split(" ")
+                                  .map((part) => part[0])
+                                  .join("")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[14px] font-medium text-slate-850">
+                                {user.name}
+                              </span>
+                              <span className="text-[12px] text-gray-650 tracking-[0.12px]">
+                                {user.email}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            {permissionColumns.map((column) => (
+                              <div
+                                key={`${user.email}-${column.key}`}
+                                className="w-20 flex justify-center"
+                              >
+                                <PermissionSwitch
+                                  checked={user.permissions[column.key]}
+                                  ariaLabel={`${user.name} ${column.label}`}
+                                  disabled={!user.hasApiId}
+                                  onChange={() =>
+                                    handleUserToggle(
+                                      user.id,
+                                      column.key,
+                                      !user.permissions[column.key],
+                                    )
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            className="w-8 h-8 flex items-center justify-center rounded"
+                            aria-label={`Remove ${user.name}`}
+                            onClick={() => handleRemoveUser(user)}
+                          >
+                            <Trash2
+                              className="w-4 h-4 text-icon"
+                              strokeWidth={1.25}
+                            />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
-          <div className="border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="md"
-              onClick={onClose}
-              className="rounded-full w-[148px]"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={onClose}
-              className="rounded-full w-[148px]"
-            >
-              Save
-            </Button>
-          </div>
+          {/*
+            The new surface carries its own footer, with a Done that closes and
+            says so. Showing Save/Cancel beside it would re-introduce exactly
+            the transaction promise the new view exists to remove; the legacy
+            modal, which is unchanged, still has it.
+          */}
+          {!useNewGroupAccess && (
+            <div className="border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={onClose}
+                className="rounded-full w-[148px]"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={onClose}
+                className="rounded-full w-[148px]"
+              >
+                Save
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

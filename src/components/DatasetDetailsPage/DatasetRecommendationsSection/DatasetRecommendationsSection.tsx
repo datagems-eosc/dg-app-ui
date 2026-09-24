@@ -86,14 +86,26 @@ export default function DatasetRecommendationsSection({
                   <Chip color="info" variant="outline" size="sm">
                     {getDisplayCategory(dataset.collections, dataset.category)}
                   </Chip>
-                  <Chip
-                    color={
-                      dataset.access === "Open Access" ? "success" : "warning"
-                    }
-                    size="sm"
-                  >
-                    {dataset.access}
-                  </Chip>
+                  {/*
+                    PM-01 finding F1. `Dataset.access` is optional, and this
+                    chip used to render it unguarded: a dataset with no
+                    publication evidence produced an empty chip coloured as a
+                    warning, which reads as "Restricted" without ever saying
+                    so. Recommendations carry no publication evidence at all
+                    now that the mapper no longer infers it from the caller's
+                    Browse permission, so the honest rendering is no badge —
+                    the card still shows what it does know.
+                  */}
+                  {dataset.access !== undefined && (
+                    <Chip
+                      color={
+                        dataset.access === "Open Access" ? "success" : "warning"
+                      }
+                      size="sm"
+                    >
+                      {dataset.access}
+                    </Chip>
+                  )}
                 </div>
               </div>
               <FormattedText

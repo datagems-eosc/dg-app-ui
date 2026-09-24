@@ -13,6 +13,9 @@ const DISABLED_EVERYWHERE = new Set([
   "customCollection",
   "generalChat",
   "datasetOnboardingMonitoring",
+  // Rollout control for group access: off in every environment until the
+  // target-environment checks precede an explicit enablement decision.
+  "datasetGroupAccess",
   "notification",
   "pinnedDatasetWeather",
   "pinnedDatasetLanguage",

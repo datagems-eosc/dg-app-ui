@@ -172,6 +172,37 @@ describe("ConfirmationModal", () => {
     expect(confirmButton).toHaveClass("bg-red-550");
   });
 
+  it("keeps the inline action layout, with the Cancel icon, by default", () => {
+    render(<ConfirmationModal {...defaultProps} />);
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel.querySelector("svg")).not.toBeNull();
+    expect(cancel.parentElement).toHaveClass("flex", "justify-center");
+    expect(cancel.parentElement).not.toHaveClass("flex-col");
+    expect(screen.getByRole("button", { name: "Confirm" })).not.toHaveClass(
+      "w-full",
+    );
+  });
+
+  it("stacks unwrapped full-width actions on narrow screens when asked", () => {
+    render(
+      <ConfirmationModal
+        {...defaultProps}
+        confirmText="Grant Browse"
+        actionLayout="responsive"
+      />,
+    );
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    const confirm = screen.getByRole("button", { name: "Grant Browse" });
+    // No icon repeating the header's close control.
+    expect(cancel.querySelector("svg")).toBeNull();
+    expect(cancel.parentElement).toHaveClass("flex-col", "sm:flex-row");
+    for (const action of [cancel, confirm]) {
+      expect(action).toHaveClass("w-full", "whitespace-nowrap", "sm:w-auto");
+    }
+  });
+
   it("should render with custom icon", () => {
     const customIcon = <div data-testid="custom-icon">Custom Icon</div>;
 

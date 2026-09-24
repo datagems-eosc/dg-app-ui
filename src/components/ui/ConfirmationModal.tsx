@@ -17,6 +17,12 @@ interface ConfirmationModalProps {
   confirmVariant?: "primary" | "danger";
   icon?: React.ReactNode;
   isLoading?: boolean;
+  /**
+   * `"inline"` (default) keeps the existing centred pair with a Cancel icon.
+   * `"responsive"` stacks full-width actions below `sm`, keeps each label on
+   * one line and drops the Cancel icon, which repeats the header's close.
+   */
+  actionLayout?: "inline" | "responsive";
 }
 
 export function ConfirmationModal({
@@ -31,7 +37,9 @@ export function ConfirmationModal({
   confirmVariant = "primary",
   icon,
   isLoading = false,
+  actionLayout = "inline",
 }: ConfirmationModalProps) {
+  const responsive = actionLayout === "responsive";
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -154,15 +162,27 @@ export function ConfirmationModal({
             </p>
           </div>
         </div>
-        <div className="flex justify-center gap-2 border-t border-slate-200 p-4">
+        <div
+          className={
+            responsive
+              ? "flex flex-col gap-2 border-t border-slate-200 p-4 sm:flex-row sm:justify-center"
+              : "flex justify-center gap-2 border-t border-slate-200 p-4"
+          }
+        >
           <Button
             variant="outline"
             onClick={onClose}
             disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-11"
+            className={
+              responsive
+                ? "w-full whitespace-nowrap px-11 sm:w-auto"
+                : "flex items-center justify-center gap-2 px-11"
+            }
             aria-label={cancelText}
           >
-            <X className="w-4 h-4 text-icon" strokeWidth={1.25} />
+            {!responsive && (
+              <X className="w-4 h-4 text-icon" strokeWidth={1.25} />
+            )}
             {cancelText}
           </Button>
           <Button
@@ -173,7 +193,7 @@ export function ConfirmationModal({
               confirmVariant === "danger"
                 ? "bg-red-550 border border-red-550 hover:bg-red-600 hover:border-red-600 px-11"
                 : "px-11"
-            }`}
+            }${responsive ? " w-full whitespace-nowrap sm:w-auto" : ""}`}
             aria-label={isLoading ? "Loading..." : confirmText}
           >
             {isLoading ? "Loading..." : confirmText}

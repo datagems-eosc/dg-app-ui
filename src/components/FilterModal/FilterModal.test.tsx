@@ -5,9 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FilterState } from "@/config/filterOptions";
 import FilterModal from "./FilterModal";
 
-const mockUseApi = vi.fn();
-const mockProcessFieldsOfScience = vi.fn();
-const mockProcessLicenses = vi.fn();
+// Hoisted with the `vi.mock` factories below, which reference them.
+const { mockUseApi, mockProcessFieldsOfScience, mockProcessLicenses } =
+  vi.hoisted(() => ({
+    mockUseApi: vi.fn(),
+    mockProcessFieldsOfScience: vi.fn(),
+    mockProcessLicenses: vi.fn(),
+  }));
 
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => mockUseApi(),
@@ -105,5 +109,38 @@ describe("FilterModal", () => {
     await user.click(applyButton);
 
     expect(defaultProps.onApplyFilters).toHaveBeenCalledWith(defaultFilters);
+  });
+
+  it("offers Access options when the caller does not mark them unavailable", () => {
+    render(<FilterModal {...defaultProps} />);
+    expect(screen.getByRole("radio", { name: /open/i })).toBeInTheDocument();
+  });
+
+  it("explains unavailable Access filtering and never applies a stale value", async () => {
+    const user = userEvent.setup();
+    const onApplyFilters = vi.fn();
+    const stale: FilterState = {
+      ...defaultFilters,
+      access: "restricted",
+      license: ["MIT"],
+      creationYear: { start: "2020", end: "" },
+    };
+    render(
+      <FilterModal
+        {...defaultProps}
+        currentFilters={stale}
+        onApplyFilters={onApplyFilters}
+        accessUnavailableReason="Access filtering is unavailable."
+      />,
+    );
+
+    expect(
+      screen.getByText("Access filtering is unavailable."),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+
+    await user.click(screen.getByRole("button", { name: /apply/i }));
+    // Only Access is neutralized; every other filter is applied as it was.
+    expect(onApplyFilters).toHaveBeenCalledWith({ ...stale, access: "" });
   });
 });

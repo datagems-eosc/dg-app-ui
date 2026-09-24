@@ -1,12 +1,36 @@
-import { fireEvent, render, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import DatasetPermissionsSection from "./DatasetPermissionsSection";
 
 const mockPush = vi.fn();
+const mockUseFeatureFlag = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
+
+vi.mock("@/contexts/FeatureFlagsContext", () => ({
+  useFeatureFlag: (id: string) => mockUseFeatureFlag(id),
+}));
+
+// The shared destination is exercised on its own; here the question is only
+// which entry this section offers, and whether the legacy one is untouched
+// while the flag is off.
+vi.mock("@ui/user/DatasetPermissionsModal", () => ({
+  DatasetPermissionsModal: ({
+    isOpen,
+    datasetId,
+    datasetName,
+  }: {
+    isOpen: boolean;
+    datasetId: string;
+    datasetName: string;
+  }) =>
+    isOpen ? (
+      <div data-testid="access-modal">{`${datasetId}|${datasetName}`}</div>
+    ) : null,
+}));
+
+import DatasetPermissionsSection from "./DatasetPermissionsSection";
 
 const defaultProps = {
   datasetId: "ds-123",
@@ -21,6 +45,10 @@ const defaultProps = {
 describe("DatasetPermissionsSection", () => {
   beforeEach(() => {
     mockPush.mockClear();
+    // Every existing expectation below is about the behaviour with the rollout
+    // flag off, which must be exactly what it was before the flag existed.
+    mockUseFeatureFlag.mockReset();
+    mockUseFeatureFlag.mockReturnValue(false);
   });
 
   it("renders Your Permissions title and permission chips", () => {
@@ -182,5 +210,63 @@ describe("DatasetPermissionsSection", () => {
     expect(
       within(section).queryByText("No permissions"),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The new entry point, behind `datasetGroupAccess`.
+ *
+ * The flag-off cases above are the regression that matters most here: a
+ * rollout switch that changes an existing screen while it is off is not a
+ * rollout switch. These add what changes when it is on.
+ */
+describe("DatasetPermissionsSection — dataset group access entry", () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+    mockUseFeatureFlag.mockReset();
+    mockUseFeatureFlag.mockReturnValue(true);
+  });
+
+  it("opens the shared destination in place instead of navigating to settings", () => {
+    render(<DatasetPermissionsSection {...defaultProps} />);
+
+    expect(screen.queryByTestId("access-modal")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /manage access/i }));
+
+    expect(screen.getByTestId("access-modal")).toHaveTextContent(
+      "ds-123|Test Dataset",
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("offers the entry without the manageDataset projection or a role label", () => {
+    // `hasManagePermission` is derived from `permissions.manageDataset` and a
+    // context-grant role, neither of which authorizes granting. The new flow
+    // reads effective capabilities itself and explains what they allow, so the
+    // entry is not hidden on that basis.
+    render(
+      <DatasetPermissionsSection
+        {...defaultProps}
+        hasManagePermission={false}
+        permissions={[]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /manage access/i }),
+    ).toBeEnabled();
+  });
+
+  it("closes the shared destination again", () => {
+    render(<DatasetPermissionsSection {...defaultProps} />);
+    fireEvent.click(screen.getByRole("button", { name: /manage access/i }));
+    expect(screen.getByTestId("access-modal")).toBeInTheDocument();
+  });
+
+  it("offers no entry for a dataset with no id", () => {
+    render(<DatasetPermissionsSection {...defaultProps} datasetId="" />);
+    expect(
+      screen.getByRole("button", { name: /manage access/i }),
+    ).toBeDisabled();
   });
 });

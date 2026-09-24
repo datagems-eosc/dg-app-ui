@@ -13,6 +13,7 @@ export type FeatureFlagId =
   | "useCaseLanguage"
   | "datasetOnboarding"
   | "datasetOnboardingMonitoring"
+  | "datasetGroupAccess"
   | "notification"
   | "pinnedDatasetWeather"
   | "pinnedDatasetLanguage"
@@ -104,6 +105,23 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
     // precede. A client flag is a rollout mechanism, not a security control.
     id: "datasetOnboardingMonitoring",
     label: "Dataset onboarding – managed process",
+    defaults: disabledEverywhere(),
+  },
+  {
+    // Rollout switch for the shared dataset group-access flow. Off everywhere
+    // by default, and deliberately so: the effective-capability, discovery and
+    // recipient-effect contracts this flow depends on are read from Gateway
+    // source and exercised against intercepted responses, not observed in a
+    // deployment. Enabling it is a per-environment decision that the
+    // target-environment checks still precede.
+    //
+    // Off preserves the existing permission entry behaviour exactly and mounts
+    // no part of the new reader or editor, so nothing new is requested. On
+    // routes both entry points through the shared flow only; a failure there
+    // never falls back to the legacy grant helpers. A client flag is a rollout
+    // mechanism, not authorization: the Gateway still decides every write.
+    id: "datasetGroupAccess",
+    label: "Dataset group access",
     defaults: disabledEverywhere(),
   },
   {

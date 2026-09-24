@@ -6,9 +6,17 @@ import RolesPermissionsSection from "./RolesPermissionsSection";
 
 const mockUseApi = vi.fn();
 const mockPush = vi.fn();
+const mockUseFeatureFlag = vi.fn((_id: string) => false);
 
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => mockUseApi(),
+}));
+
+// The embedded modal reads the `datasetGroupAccess` rollout flag. This file is
+// about the settings table and the entry it opens, both of which are unchanged
+// while the flag is off — which is the state asserted throughout.
+vi.mock("@/contexts/FeatureFlagsContext", () => ({
+  useFeatureFlag: (id: string) => mockUseFeatureFlag(id),
 }));
 
 // The embedded DatasetPermissionsModal reports failures via ErrorContext.

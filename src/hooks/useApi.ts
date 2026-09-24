@@ -12,6 +12,11 @@ import {
   type OnboardingGateway,
   type OnboardingTransport,
 } from "@/lib/datasetOnboarding/gateway";
+import {
+  createDatasetPermissionsGateway,
+  type DatasetPermissionsGateway,
+  type DatasetPermissionsTransport,
+} from "@/lib/datasetPermissions/gateway";
 import { publicEnv } from "@/lib/env";
 import type { UserFavorite } from "@/lib/favorites";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
@@ -72,6 +77,26 @@ export interface DatasetOnboardingBinding {
    * or default behaviour changes.
    */
   readonly readDataset: DatasetAccessReader["readDataset"];
+}
+
+/** Identity and environment one dataset-permissions scope belongs to. */
+export interface DatasetPermissionsPrincipalScope {
+  readonly principalId: string;
+  readonly gatewayOrigin: string;
+}
+
+export interface DatasetPermissionsBinding {
+  /** Reuses the onboarding availability vocabulary; the conditions are identical. */
+  readonly auth: OnboardingAuthAvailability;
+  /** Non-null only when `auth === "available"`. */
+  readonly scope: DatasetPermissionsPrincipalScope | null;
+  /**
+   * The accepted `lib/datasetPermissions` adapter bound to this session's
+   * transport. It exposes operations, never the token, and it is memoised on
+   * the members below rather than on the containing object, which `useApi()`
+   * re-creates every render.
+   */
+  readonly gateway: DatasetPermissionsGateway;
 }
 
 /**
@@ -219,6 +244,59 @@ export function useApi() {
       // Same `transport` closure as the gateway above — same auth, same prefix,
       // same 401 policy, same refusal when no identity is resolved.
       readDataset: createDatasetAccessReader(transport).readDataset,
+    };
+  }, [makeRequest, onboardingAuth, principalId, gatewayOrigin]);
+
+  // -------------------------------------------------------------------------
+  // Dataset group access (UI #321) — the permission feature's only transport
+  // -------------------------------------------------------------------------
+  //
+  // A second narrow seam over the same private `makeRequest`, for the same
+  // reason as the onboarding one above: the feature reuses the existing bearer
+  // token, `/gw/api` prefix and headers instead of growing its own client. It
+  // is deliberately *not* the onboarding binding — the two features classify
+  // responses differently and must not share a policy by accident — and it
+  // changes no existing member. The legacy `queryUserGroups`,
+  // `getGroupDatasetGrants`, `assignGroupDatasetGrant`,
+  // `unassignGroupDatasetGrant` and every individual-user and collection helper
+  // keep their behaviour exactly; nothing here is routed through them.
+  //
+  // Two rules the binding owns, rather than the adapter:
+  //
+  //  - **no resolved identity, no request.** The transport rejects before a URL
+  //    is built, so the adapter reports a failed read or an uncertain write —
+  //    honest in both cases, because nothing reached the Gateway;
+  //  - **the captured principal travels with the policy.** The adapter asks for
+  //    principal-verified refresh on reads and `retryOn401: false` on
+  //    mutations; a call that arrives with no policy at all is treated as the
+  //    mutation case, because that is the direction that cannot cause an
+  //    unintended second write.
+
+  const datasetPermissions = useMemo<DatasetPermissionsBinding>(() => {
+    const scope: DatasetPermissionsPrincipalScope | null =
+      onboardingAuth === "available" && principalId !== null
+        ? { principalId, gatewayOrigin }
+        : null;
+
+    const transport: DatasetPermissionsTransport = (path, init, policy) => {
+      if (scope === null) {
+        return Promise.reject(new Error(ApiErrorMessage.NO_AUTH_TOKEN));
+      }
+      // `init.signal` travels untouched: `fetchWithAuth` honours it, including
+      // in the gaps around a refresh, so a read abandoned by a scope change is
+      // actually abandoned rather than left to land on a replaced owner.
+      return makeRequest(path, init, policy ?? { retryOn401: false });
+    };
+
+    return {
+      auth: onboardingAuth,
+      scope,
+      // The captured principal is what makes a refreshed token usable for reads
+      // *only* while it still belongs to the account that started them.
+      gateway: createDatasetPermissionsGateway(
+        transport,
+        scope === null ? {} : { expectedPrincipalId: scope.principalId },
+      ),
     };
   }, [makeRequest, onboardingAuth, principalId, gatewayOrigin]);
 
@@ -1829,6 +1907,7 @@ export function useApi() {
     hasToken: !!token,
     token,
     datasetOnboarding,
+    datasetPermissions,
     queryDatasets,
     queryCollections,
     queryUserCollections,
