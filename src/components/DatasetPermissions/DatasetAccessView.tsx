@@ -612,245 +612,261 @@ export function DatasetAccessView({
       ? everyoneUnavailableMessage(everyone)
       : null;
 
+  const noticeList = notices.length > 0 && (
+    <div className="mt-4 flex flex-col gap-2">
+      {notices.map((notice) => (
+        <div
+          key={notice.id}
+          role={notice.tone === "error" ? "alert" : "status"}
+          className={withScale(
+            "text-body-14-regular",
+            cn("rounded-lg border px-3 py-2", NOTICE_STYLE[notice.tone]),
+          )}
+        >
+          {notice.title !== undefined && (
+            <p className="text-body-14-medium">{notice.title}</p>
+          )}
+          <p>{notice.text}</p>
+          {notice.details !== undefined && notice.details.length > 0 && (
+            <ul className="mt-1 flex list-disc flex-col gap-1 pl-5">
+              {notice.details.map((detail) => (
+                <li key={detail} className="break-words">
+                  {detail}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div
       className="flex min-h-0 flex-1 flex-col"
       aria-label={`Group access for ${datasetName}`}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-6 sm:px-6">
-        {mode.kind === "full-editor" && (
-          <p className="text-body-14-regular text-gray-650">{VIEW_INTRO}</p>
-        )}
+      {/*
+        The grant form owns its scrolling body and its action area, so Grant
+        sits beside Done outside the scroll. Every other presentation keeps
+        this body and the Done footer below.
+      */}
+      {mode.kind === "grant-only" ? (
+        <GrantOnlyForm
+          targets={grantTargets}
+          roles={GRANT_ROLE_OPTIONS}
+          block={grantBlock}
+          selectionBlock={selectionBlock}
+          audienceNote={audienceNote}
+          results={grantResults}
+          onGrant={requestGrant}
+          onDone={closeView}
+        >
+          {noticeList}
+        </GrantOnlyForm>
+      ) : (
+        <>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-6 sm:px-6">
+            {mode.kind === "full-editor" && (
+              <p className="text-body-14-regular text-gray-650">{VIEW_INTRO}</p>
+            )}
 
-        {notices.length > 0 && (
-          <div className="mt-4 flex flex-col gap-2">
-            {notices.map((notice) => (
-              <div
-                key={notice.id}
-                role={notice.tone === "error" ? "alert" : "status"}
-                className={withScale(
-                  "text-body-14-regular",
-                  cn("rounded-lg border px-3 py-2", NOTICE_STYLE[notice.tone]),
-                )}
+            {noticeList}
+
+            {mode.kind === "loading" && (
+              <p
+                role="status"
+                className="mt-2 text-body-14-regular text-gray-650"
               >
-                {notice.title !== undefined && (
-                  <p className="text-body-14-medium">{notice.title}</p>
-                )}
-                <p>{notice.text}</p>
-                {notice.details !== undefined && notice.details.length > 0 && (
-                  <ul className="mt-1 flex list-disc flex-col gap-1 pl-5">
-                    {notice.details.map((detail) => (
-                      <li key={detail} className="break-words">
-                        {detail}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {mode.kind === "loading" && (
-          <p role="status" className="mt-2 text-body-14-regular text-gray-650">
-            {LOADING_MESSAGE}
-          </p>
-        )}
-
-        {mode.kind === "unavailable" && (
-          <div className="mt-2">
-            <h3 className="text-body-16-semibold text-slate-850">
-              {ACCESS_UNAVAILABLE_TITLE}
-            </h3>
-            <p
-              role="status"
-              className="mt-2 text-body-14-regular text-gray-650"
-            >
-              {unavailableText}
-            </p>
-          </div>
-        )}
-
-        {mode.kind === "grant-only" && (
-          <GrantOnlyForm
-            datasetName={datasetName}
-            targets={grantTargets}
-            roles={GRANT_ROLE_OPTIONS}
-            block={grantBlock}
-            selectionBlock={selectionBlock}
-            audienceNote={audienceNote}
-            results={grantResults}
-            onGrant={requestGrant}
-          />
-        )}
-
-        {mode.kind === "full-editor" && rows !== null && (
-          <>
-            <div className="mt-4">
-              <Input
-                name={`${baseId}-search`}
-                aria-label="Search groups"
-                placeholder={SEARCH_PLACEHOLDER}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                rightIcon={<Search className="h-4 w-4 text-icon" />}
-                className="h-10"
-              />
-            </div>
-
-            <div className="mt-6">
-              <div className="flex items-end gap-2 pb-1">
-                <h3 className="flex-1 text-body-16-semibold text-gray-750">
-                  Group permissions
-                </h3>
-                <div className="hidden gap-1 sm:flex" aria-hidden="true">
-                  {(rows[0]?.cells ?? []).map((cell) => (
-                    <span
-                      key={cell.key}
-                      className="w-20 text-center text-descriptions-12-medium text-gray-750"
-                    >
-                      {cell.label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <p className="pb-2 text-descriptions-12-regular text-gray-650">
-                {DISCOVERY_CAVEAT}
-                {audienceNote !== null && ` ${audienceNote}`}
+                {LOADING_MESSAGE}
               </p>
+            )}
 
-              {rows.length === 0 && (
+            {mode.kind === "unavailable" && (
+              <div className="mt-2">
+                <h3 className="text-body-16-semibold text-slate-850">
+                  {ACCESS_UNAVAILABLE_TITLE}
+                </h3>
                 <p
                   role="status"
-                  className="border-t border-slate-200 py-6 text-body-14-regular text-gray-650"
+                  className="mt-2 text-body-14-regular text-gray-650"
                 >
-                  {EMPTY_DISCOVERY_MESSAGE}
+                  {unavailableText}
                 </p>
-              )}
+              </div>
+            )}
 
-              {rows.length > 0 && visibleRows?.length === 0 && (
-                <p
-                  role="status"
-                  className="border-t border-slate-200 py-6 text-body-14-regular text-gray-650"
-                >
-                  {noSearchMatchesMessage(search.trim())}
-                </p>
-              )}
+            {mode.kind === "full-editor" && rows !== null && (
+              <>
+                <div className="mt-4">
+                  <Input
+                    name={`${baseId}-search`}
+                    aria-label="Search groups"
+                    placeholder={SEARCH_PLACEHOLDER}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    rightIcon={<Search className="h-4 w-4 text-icon" />}
+                    className="h-10"
+                  />
+                </div>
 
-              {visibleRows !== null && visibleRows.length > 0 && (
-                <ul className="border-t border-b border-slate-200">
-                  {visibleRows.map((row) => {
-                    const feedback = row.cells.flatMap((cell) =>
-                      cell.activity.kind === "idle"
-                        ? []
-                        : [
-                            {
-                              cell,
-                              activity: cell.activity,
-                              id: `${baseId}-${row.groupId}-${cell.key}`,
-                            },
-                          ],
-                    );
-                    return (
-                      <li
-                        key={row.groupId}
-                        className="border-b border-slate-200 py-3 last:border-b-0"
-                      >
-                        {/*
+                <div className="mt-6">
+                  <div className="flex items-end gap-2 pb-1">
+                    <h3 className="flex-1 text-body-16-semibold text-gray-750">
+                      Group permissions
+                    </h3>
+                    <div className="hidden gap-1 sm:flex" aria-hidden="true">
+                      {(rows[0]?.cells ?? []).map((cell) => (
+                        <span
+                          key={cell.key}
+                          className="w-20 text-center text-descriptions-12-medium text-gray-750"
+                        >
+                          {cell.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="pb-2 text-descriptions-12-regular text-gray-650">
+                    {DISCOVERY_CAVEAT}
+                    {audienceNote !== null && ` ${audienceNote}`}
+                  </p>
+
+                  {rows.length === 0 && (
+                    <p
+                      role="status"
+                      className="border-t border-slate-200 py-6 text-body-14-regular text-gray-650"
+                    >
+                      {EMPTY_DISCOVERY_MESSAGE}
+                    </p>
+                  )}
+
+                  {rows.length > 0 && visibleRows?.length === 0 && (
+                    <p
+                      role="status"
+                      className="border-t border-slate-200 py-6 text-body-14-regular text-gray-650"
+                    >
+                      {noSearchMatchesMessage(search.trim())}
+                    </p>
+                  )}
+
+                  {visibleRows !== null && visibleRows.length > 0 && (
+                    <ul className="border-t border-b border-slate-200">
+                      {visibleRows.map((row) => {
+                        const feedback = row.cells.flatMap((cell) =>
+                          cell.activity.kind === "idle"
+                            ? []
+                            : [
+                                {
+                                  cell,
+                                  activity: cell.activity,
+                                  id: `${baseId}-${row.groupId}-${cell.key}`,
+                                },
+                              ],
+                        );
+                        return (
+                          <li
+                            key={row.groupId}
+                            className="border-b border-slate-200 py-3 last:border-b-0"
+                          >
+                            {/*
                           The primary row: name and six switches, aligned on
                           the name's first line whatever else the row carries.
                           Feedback goes below it, never under a switch.
                         */}
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">
-                          <div className="flex min-w-0 flex-1 flex-col gap-1">
-                            <span className="text-body-14-medium break-words text-slate-850">
-                              {row.name}
-                            </span>
-                            {row.publicAudience && (
-                              <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-descriptions-12-medium text-amber-800">
-                                {PUBLIC_AUDIENCE_BADGE}
-                              </span>
-                            )}
-                            {row.ambiguousAudience && (
-                              <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-descriptions-12-medium text-amber-800">
-                                {AMBIGUOUS_AUDIENCE_BADGE}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:gap-1">
-                            {row.cells.map((cell) => {
-                              const block = blockFor(row, cell);
-                              // Its own change, with its own feedback line —
-                              // not merely a reason reported for it.
-                              const held =
-                                cell.activity.kind === "pending" ||
-                                cell.activity.kind === "uncertain";
-                              const statusId =
-                                cell.activity.kind === "idle"
-                                  ? undefined
-                                  : `${baseId}-${row.groupId}-${cell.key}`;
-                              return (
-                                <div
-                                  key={cell.key}
-                                  className="flex items-center justify-between gap-2 sm:h-[21px] sm:w-20 sm:justify-center"
-                                >
-                                  <span className="text-descriptions-12-regular text-gray-650 sm:hidden">
-                                    {cell.label}
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">
+                              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                <span className="text-body-14-medium break-words text-slate-850">
+                                  {row.name}
+                                </span>
+                                {row.publicAudience && (
+                                  <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-descriptions-12-medium text-amber-800">
+                                    {PUBLIC_AUDIENCE_BADGE}
                                   </span>
-                                  <RoleSwitch
-                                    checked={cell.granted}
-                                    disabled={block !== null && !held}
-                                    held={held}
-                                    label={`${row.name} — ${cell.label}`}
-                                    describedBy={statusId}
-                                    attention={
-                                      cell.activity.kind === "uncertain"
-                                    }
-                                    onToggle={() => requestChange(row, cell)}
+                                )}
+                                {row.ambiguousAudience && (
+                                  <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-descriptions-12-medium text-amber-800">
+                                    {AMBIGUOUS_AUDIENCE_BADGE}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:gap-1">
+                                {row.cells.map((cell) => {
+                                  const block = blockFor(row, cell);
+                                  // Its own change, with its own feedback line —
+                                  // not merely a reason reported for it.
+                                  const held =
+                                    cell.activity.kind === "pending" ||
+                                    cell.activity.kind === "uncertain";
+                                  const statusId =
+                                    cell.activity.kind === "idle"
+                                      ? undefined
+                                      : `${baseId}-${row.groupId}-${cell.key}`;
+                                  return (
+                                    <div
+                                      key={cell.key}
+                                      className="flex items-center justify-between gap-2 sm:h-[21px] sm:w-20 sm:justify-center"
+                                    >
+                                      <span className="text-descriptions-12-regular text-gray-650 sm:hidden">
+                                        {cell.label}
+                                      </span>
+                                      <RoleSwitch
+                                        checked={cell.granted}
+                                        disabled={block !== null && !held}
+                                        held={held}
+                                        label={`${row.name} — ${cell.label}`}
+                                        describedBy={statusId}
+                                        attention={
+                                          cell.activity.kind === "uncertain"
+                                        }
+                                        onToggle={() =>
+                                          requestChange(row, cell)
+                                        }
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {feedback.length > 0 && (
+                              <ul className="mt-2 flex flex-col gap-1">
+                                {feedback.map(({ cell, activity, id }) => (
+                                  <OperationFeedback
+                                    key={cell.key}
+                                    id={id}
+                                    tone={activity.kind}
+                                    text={rowFeedbackText(activity, cell.label)}
                                   />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                                ))}
+                              </ul>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
-                        {feedback.length > 0 && (
-                          <ul className="mt-2 flex flex-col gap-1">
-                            {feedback.map(({ cell, activity, id }) => (
-                              <OperationFeedback
-                                key={cell.key}
-                                id={id}
-                                tone={activity.kind}
-                                text={rowFeedbackText(activity, cell.label)}
-                              />
-                            ))}
-                          </ul>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/*
+          {/*
         Closing never undoes an applied change, and needs no disclaimer to say
-        so. In the grant form it is secondary to the task's own action.
+        so. The grant form carries its own, secondary to Grant.
       */}
-      <div className="flex justify-end border-t border-slate-200 px-4 py-4 sm:px-6">
-        <Button
-          variant={mode.kind === "grant-only" ? "outline" : "primary"}
-          size="md"
-          onClick={closeView}
-          className="w-full rounded-full sm:w-[148px]"
-        >
-          {DONE_LABEL}
-        </Button>
-      </div>
+          <div className="flex justify-end border-t border-slate-200 px-4 py-4 sm:px-6">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={closeView}
+              className="w-full rounded-full sm:w-[148px]"
+            >
+              {DONE_LABEL}
+            </Button>
+          </div>
+        </>
+      )}
 
       {confirmCopy !== null && (
         <ConfirmationModal

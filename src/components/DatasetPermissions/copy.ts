@@ -235,8 +235,8 @@ export const unlistedGroupLabel = (groupId: string): string =>
 
 export const GRANT_ONLY_TITLE = "Grant access";
 
-export const grantOnlyIntro = (datasetName: string): string =>
-  `Choose a group and the permission you want to give it for “${datasetName}”.`;
+/** The dataset is already named in the shell's heading; not repeated here. */
+export const GRANT_ONLY_INTRO = "Choose a group and a permission.";
 
 /** The limitation, once. Not a claim that nobody has access. */
 export const GRANT_ONLY_EXISTING_ACCESS =

@@ -656,7 +656,9 @@ describe("DatasetAccessView — the grant-only presentation", () => {
     expect(
       screen.getByRole("heading", { name: "Grant access" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(DATASET_NAME))).toBeVisible();
+    expect(screen.getByText("Choose a group and a permission.")).toBeVisible();
+    // The shell's heading names the dataset; the form does not repeat it.
+    expect(screen.queryByText(new RegExp(DATASET_NAME))).toBeNull();
     expect(screen.getAllByText(/existing permissions/i)).toHaveLength(1);
     // No removal action exists here, so no warning about one.
     expect(
@@ -665,6 +667,24 @@ describe("DatasetAccessView — the grant-only presentation", () => {
     // No explanation of absent controls, and no banners at all.
     expect(screen.queryByText(/save|undo/i)).not.toBeInTheDocument();
     expect(screen.queryAllByRole("alert")).toHaveLength(0);
+  });
+
+  it("keeps one Grant beside Done, outside the scrolling fields", () => {
+    grantOnly();
+    const grants = screen.getAllByRole("button", { name: "Grant access" });
+    expect(grants).toHaveLength(1);
+    const [grant] = grants;
+    const done = screen.getByRole("button", { name: "Done" });
+    expect(screen.getAllByRole("button", { name: "Done" })).toHaveLength(1);
+    // One action area, Grant first in the tab order.
+    expect(grant?.parentElement).toBe(done.parentElement);
+    expect(
+      grant?.compareDocumentPosition(done) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const body = screen.getByLabelText("Group").closest(".overflow-y-auto");
+    expect(body).not.toBeNull();
+    expect(body).not.toContainElement(grant ?? null);
+    expect(body).not.toContainElement(done);
   });
 
   it("makes closing secondary to the Grant action", () => {
@@ -1232,6 +1252,36 @@ describe("DatasetAccessView — grant-only keyboard focus", () => {
     expect(document.activeElement).toBe(
       screen.getByText("Your changes").parentElement,
     );
+  });
+
+  it("leaves focus on Done, which stays usable while a grant applies", () => {
+    const onDone = vi.fn();
+    const props = baseProps({
+      reads: {
+        status: "settled",
+        groups: { kind: "read", groups: DISCOVERED_GROUPS },
+        recipients: { kind: "unknown", reason: "not-supported" },
+      },
+      capabilities: RECIPIENTS_UNSUPPORTED,
+      onDone,
+    });
+    const { rerender } = render(<DatasetAccessView {...props} />);
+    const done = screen.getByRole("button", { name: "Done" });
+    done.focus();
+
+    rerender(
+      <DatasetAccessView
+        {...props}
+        operations={[
+          operation({ role: DATASET_ROLE_MAP.browse, status: "pending" }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Grant access" })).toBeDisabled();
+    expect(done).toHaveFocus();
+    fireEvent.click(done);
+    expect(onDone).toHaveBeenCalledTimes(1);
   });
 });
 

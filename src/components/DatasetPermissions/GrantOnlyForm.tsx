@@ -35,25 +35,30 @@
  * one role is granted per action; and its "Select All" row is dropped, because
  * here it would be a bulk mutation. The submit control is the shared pill
  * `Button` from `18-shared-controls/Button.pdf`.
+ *
+ * Grant and Done share one action area outside the scrolling fields, so on a
+ * phone the task's own action is not below a long form while only Done stays
+ * in view. The form owns that area because it owns the selection Grant sends.
  */
 
 import { Button } from "@ui/Button";
 import { Info } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   AMBIGUOUS_AUDIENCE_BADGE,
   AMBIGUOUS_CHOOSER_HINT,
   blockMessage,
+  DONE_LABEL,
   GRANT_GROUP_LABEL,
   GRANT_GROUP_PLACEHOLDER,
   GRANT_INCOMPLETE_MESSAGE,
   GRANT_ONLY_EXISTING_ACCESS,
+  GRANT_ONLY_INTRO,
   GRANT_ONLY_TITLE,
   GRANT_RESULTS_LABEL,
   GRANT_ROLE_LABEL,
   GRANT_SUBMIT_LABEL,
-  grantOnlyIntro,
   PUBLIC_AUDIENCE_BADGE,
   PUBLIC_AUDIENCE_HINT,
   selectedGrantBlockMessage,
@@ -69,7 +74,6 @@ export interface GrantResult {
 }
 
 export interface GrantOnlyFormProps {
-  readonly datasetName: string;
   readonly targets: readonly GrantTargetOption[];
   readonly roles: readonly GrantRoleOption[];
   /**
@@ -97,6 +101,10 @@ export interface GrantOnlyFormProps {
    * decision at dispatch, so nothing here is trusted as still valid.
    */
   readonly onGrant: (groupId: string, role: string) => void;
+  /** Closes the surface. Secondary to Grant, beside it. */
+  readonly onDone: () => void;
+  /** The view's notices, at the top of the scrolling body. */
+  readonly children?: ReactNode;
 }
 
 /**
@@ -109,7 +117,6 @@ const EXPLAINED_ELSEWHERE: readonly ControlBlock[] = [
 ];
 
 export function GrantOnlyForm({
-  datasetName,
   targets,
   roles,
   block,
@@ -117,6 +124,8 @@ export function GrantOnlyForm({
   audienceNote,
   results,
   onGrant,
+  onDone,
+  children,
 }: GrantOnlyFormProps) {
   const baseId = useId();
   const [groupId, setGroupId] = useState("");
@@ -150,7 +159,7 @@ export function GrantOnlyForm({
 
   /*
    * Bring a result into view when it changes after mount, so the outcome of a
-   * click is never off-screen below the button — on a phone it otherwise is.
+   * click is never off-screen below the fields — on a phone it otherwise is.
    * Not on mount: a restored result is pointed to by the view's summary, and
    * the page should not jump when the form opens.
    */
@@ -171,9 +180,11 @@ export function GrantOnlyForm({
    * focus on something that merely *contains* it — the dialog a closed
    * confirmation handed focus back to because Grant could no longer take it —
    * counts as dropped too. A form that appears already blocked leaves such
-   * focus alone: finishing a read is no reason to move anyone.
+   * focus alone: finishing a read is no reason to move anyone. Done is in
+   * this section but never disabled, so focus on it stays where it is.
    */
   const sectionRef = useRef<HTMLElement>(null);
+  const doneId = `${baseId}-done`;
   const previousBlock = useRef(block);
   useEffect(() => {
     const becameBlocked = previousBlock.current === null;
@@ -185,7 +196,7 @@ export function GrantOnlyForm({
     if (
       active === null ||
       active === document.body ||
-      section.contains(active) ||
+      (section.contains(active) && active.id !== doneId) ||
       (becameBlocked && active.contains(section))
     ) {
       resultsRef.current?.focus();
@@ -201,136 +212,165 @@ export function GrantOnlyForm({
   return (
     <section
       ref={sectionRef}
-      className="mt-2 flex flex-col gap-5"
+      className="flex min-h-0 flex-1 flex-col"
       aria-labelledby={`${baseId}-title`}
     >
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h3
-            id={`${baseId}-title`}
-            className="text-body-16-semibold text-slate-850"
-          >
-            {GRANT_ONLY_TITLE}
-          </h3>
-          <p className="text-body-14-regular break-words text-gray-650">
-            {grantOnlyIntro(datasetName)}
-          </p>
-        </div>
-        <p className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-body-14-regular text-gray-750">
-          <Info
-            aria-hidden="true"
-            strokeWidth={1.5}
-            className="mt-[3px] h-4 w-4 shrink-0 text-icon"
-          />
-          <span>{GRANT_ONLY_EXISTING_ACCESS}</span>
-        </p>
-      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-6 sm:px-6">
+        {children}
+        <div className="mt-2 flex flex-col gap-5">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <h3
+                id={`${baseId}-title`}
+                className="text-body-16-semibold text-slate-850"
+              >
+                {GRANT_ONLY_TITLE}
+              </h3>
+              <p className="text-body-14-regular break-words text-gray-650">
+                {GRANT_ONLY_INTRO}
+              </p>
+            </div>
+            <p className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-body-14-regular text-gray-750">
+              <Info
+                aria-hidden="true"
+                strokeWidth={1.5}
+                className="mt-[3px] h-4 w-4 shrink-0 text-icon"
+              />
+              <span>{GRANT_ONLY_EXISTING_ACCESS}</span>
+            </p>
+          </div>
 
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor={`${baseId}-group`}
-          className="text-body-14-medium text-gray-750"
-        >
-          {GRANT_GROUP_LABEL}
-        </label>
-        {/*
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor={`${baseId}-group`}
+              className="text-body-14-medium text-gray-750"
+            >
+              {GRANT_GROUP_LABEL}
+            </label>
+            {/*
           A native select: the platform control is keyboard- and screen-reader-
           correct without a custom listbox. The shared `ui/Select` is a
           protected component outside this feature's paths.
         */}
-        <select
-          id={`${baseId}-group`}
-          value={groupId}
-          disabled={disabled}
-          aria-describedby={
-            hasAmbiguous || audienceNote !== null ? groupHintId : undefined
-          }
-          onChange={(event) => setGroupId(event.target.value)}
-          // The type scale stays out of `cn`: tailwind-merge reads
-          // `text-body-14-regular` as a colour utility and `text-slate-850`
-          // would silently remove it. See `withScale` in `DatasetAccessView`.
-          className={`text-body-14-regular ${cn(
-            "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-slate-850",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1",
-            disabled && "cursor-not-allowed opacity-50",
-          )}`}
-        >
-          <option value="">{GRANT_GROUP_PLACEHOLDER}</option>
-          {targets.map((target) => (
-            <option
-              key={target.groupId}
-              value={target.groupId}
-              disabled={target.ambiguousAudience}
+            <select
+              id={`${baseId}-group`}
+              value={groupId}
+              disabled={disabled}
+              aria-describedby={
+                hasAmbiguous || audienceNote !== null ? groupHintId : undefined
+              }
+              onChange={(event) => setGroupId(event.target.value)}
+              // The type scale stays out of `cn`: tailwind-merge reads
+              // `text-body-14-regular` as a colour utility and `text-slate-850`
+              // would silently remove it. See `withScale` in `DatasetAccessView`.
+              className={`text-body-14-regular ${cn(
+                "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-slate-850",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1",
+                disabled && "cursor-not-allowed opacity-50",
+              )}`}
             >
-              {target.publicAudience
-                ? `${target.name} (${PUBLIC_AUDIENCE_BADGE})`
-                : target.ambiguousAudience
-                  ? `${target.name} (${AMBIGUOUS_AUDIENCE_BADGE.toLowerCase()})`
-                  : target.name}
-            </option>
-          ))}
-        </select>
-        {(hasAmbiguous || audienceNote !== null) && (
-          <p
-            id={groupHintId}
-            className="text-descriptions-12-regular text-gray-650"
+              <option value="">{GRANT_GROUP_PLACEHOLDER}</option>
+              {targets.map((target) => (
+                <option
+                  key={target.groupId}
+                  value={target.groupId}
+                  disabled={target.ambiguousAudience}
+                >
+                  {target.publicAudience
+                    ? `${target.name} (${PUBLIC_AUDIENCE_BADGE})`
+                    : target.ambiguousAudience
+                      ? `${target.name} (${AMBIGUOUS_AUDIENCE_BADGE.toLowerCase()})`
+                      : target.name}
+                </option>
+              ))}
+            </select>
+            {(hasAmbiguous || audienceNote !== null) && (
+              <p
+                id={groupHintId}
+                className="text-descriptions-12-regular text-gray-650"
+              >
+                {hasAmbiguous ? AMBIGUOUS_CHOOSER_HINT : audienceNote}
+              </p>
+            )}
+            {selectedTarget?.publicAudience === true && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-body-14-regular text-amber-800">
+                {PUBLIC_AUDIENCE_HINT}
+              </p>
+            )}
+          </div>
+
+          <fieldset
+            className="flex flex-col gap-2 border-0 p-0"
+            disabled={disabled}
           >
-            {hasAmbiguous ? AMBIGUOUS_CHOOSER_HINT : audienceNote}
-          </p>
-        )}
-        {selectedTarget?.publicAudience === true && (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-body-14-regular text-amber-800">
-            {PUBLIC_AUDIENCE_HINT}
-          </p>
-        )}
+            <legend className="pb-2 text-body-14-medium text-gray-750">
+              {GRANT_ROLE_LABEL}
+            </legend>
+            <div className="flex flex-col rounded-lg border border-slate-200 bg-white py-1">
+              {roles.map((option) => (
+                <label
+                  key={option.key}
+                  htmlFor={`${baseId}-role-${option.key}`}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-1.5",
+                    disabled ? "cursor-not-allowed" : "cursor-pointer",
+                  )}
+                >
+                  <input
+                    id={`${baseId}-role-${option.key}`}
+                    type="radio"
+                    name={`${baseId}-role`}
+                    value={option.role}
+                    checked={role === option.role}
+                    disabled={disabled}
+                    onChange={() => setRole(option.role)}
+                    className="h-4 w-4 accent-sky-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1"
+                  />
+                  <span className="text-body-14-regular text-slate-850">
+                    {option.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          {/*
+        Always mounted, so a result that appears is announced. It lists this
+        caller's changes only, newest first.
+      */}
+          <div
+            ref={resultsRef}
+            role="status"
+            aria-live="polite"
+            tabIndex={-1}
+            className="flex flex-col gap-2 focus:outline-none"
+          >
+            {results.length > 0 && (
+              <>
+                <h4 className="text-descriptions-12-medium text-gray-750">
+                  {GRANT_RESULTS_LABEL}
+                </h4>
+                <ul className="flex flex-col gap-2">
+                  {results.map((result) => (
+                    <OperationFeedback
+                      key={result.id}
+                      tone={result.tone}
+                      text={result.text}
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      <fieldset
-        className="flex flex-col gap-2 border-0 p-0"
-        disabled={disabled}
-      >
-        <legend className="pb-2 text-body-14-medium text-gray-750">
-          {GRANT_ROLE_LABEL}
-        </legend>
-        <div className="flex flex-col rounded-lg border border-slate-200 bg-white py-1">
-          {roles.map((option) => (
-            <label
-              key={option.key}
-              htmlFor={`${baseId}-role-${option.key}`}
-              className={cn(
-                "flex items-center gap-3 px-4 py-1.5",
-                disabled ? "cursor-not-allowed" : "cursor-pointer",
-              )}
-            >
-              <input
-                id={`${baseId}-role-${option.key}`}
-                type="radio"
-                name={`${baseId}-role`}
-                value={option.role}
-                checked={role === option.role}
-                disabled={disabled}
-                onChange={() => setRole(option.role)}
-                className="h-4 w-4 accent-sky-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1"
-              />
-              <span className="text-body-14-regular text-slate-850">
-                {option.label}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
-      <div className="flex flex-col gap-2">
-        <Button
-          variant="primary"
-          size="md"
-          onClick={submit}
-          disabled={disabled || incomplete || chosenBlock !== null}
-          aria-describedby={note === null ? undefined : noteId}
-          className="w-full whitespace-nowrap rounded-full sm:w-[180px]"
-        >
-          {GRANT_SUBMIT_LABEL}
-        </Button>
+      {/*
+        Outside the scroll: the reason Grant is unavailable stays beside it.
+        Stacked on a phone with Grant first; Done left of Grant from `sm`.
+        Grant stays first in the tab order either way.
+      */}
+      <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:px-6">
         {note !== null && (
           <p
             id={noteId}
@@ -343,35 +383,27 @@ export function GrantOnlyForm({
             {note}
           </p>
         )}
-      </div>
-
-      {/*
-        Always mounted, so a result that appears is announced. It lists this
-        caller's changes only, newest first.
-      */}
-      <div
-        ref={resultsRef}
-        role="status"
-        aria-live="polite"
-        tabIndex={-1}
-        className="flex flex-col gap-2 focus:outline-none"
-      >
-        {results.length > 0 && (
-          <>
-            <h4 className="text-descriptions-12-medium text-gray-750">
-              {GRANT_RESULTS_LABEL}
-            </h4>
-            <ul className="flex flex-col gap-2">
-              {results.map((result) => (
-                <OperationFeedback
-                  key={result.id}
-                  tone={result.tone}
-                  text={result.text}
-                />
-              ))}
-            </ul>
-          </>
-        )}
+        <div className="flex flex-col gap-2 sm:flex-row-reverse sm:justify-start">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={submit}
+            disabled={disabled || incomplete || chosenBlock !== null}
+            aria-describedby={note === null ? undefined : noteId}
+            className="w-full whitespace-nowrap rounded-full sm:w-[180px]"
+          >
+            {GRANT_SUBMIT_LABEL}
+          </Button>
+          <Button
+            id={doneId}
+            variant="outline"
+            size="md"
+            onClick={onDone}
+            className="w-full whitespace-nowrap rounded-full sm:w-[148px]"
+          >
+            {DONE_LABEL}
+          </Button>
+        </div>
       </div>
     </section>
   );
