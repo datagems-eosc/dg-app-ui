@@ -4,16 +4,22 @@ import {
   datasetPermissionEvidence,
   decideAction,
   decideSharing,
+  describeEveryoneDiscovery,
+  exhaustivePermissionsRead,
   findEveryoneGroup,
   mayAttempt,
   PERMISSIONS_FAILED,
   PERMISSIONS_NOT_READ,
   permissionLabelsForDisplay,
-  permissionsRead,
+  projectedPermissionsRead,
   recipientGrantsForDisplay,
   sharingStateFromLegacyAccess,
 } from "./model";
-import type { GroupDiscoveryState, RecipientGrantsState } from "./types";
+import type {
+  GroupDiscoveryState,
+  RecipientGrantsState,
+  UserGroupRef,
+} from "./types";
 
 /**
  * Fixture provenance: permission and role spellings come from dg-app-api
@@ -28,12 +34,19 @@ const GRANT = "AddUserToContextGrantGroup";
 const REVOKE = "RemoveUserFromContextGrantGroup";
 const LOOKUP = "LookupContextGrantOther";
 
+/** What the adapter's dataset projection asks for. See `gateway.ts`. */
+const ACTION_PROJECTION = [GRANT, REVOKE];
+
+/** A completed dataset-scoped read of the two action names. */
+const datasetActions = (names: readonly string[]) =>
+  projectedPermissionsRead(names, ACTION_PROJECTION);
+
 describe("decideAction", () => {
   it("allows the action on positive global evidence alone", () => {
     expect(
       decideAction("grant", {
-        global: permissionsRead([GRANT]),
-        datasetContext: permissionsRead([]),
+        global: exhaustivePermissionsRead([GRANT]),
+        datasetContext: datasetActions([]),
       }),
     ).toBe("allowed");
   });
@@ -41,17 +54,17 @@ describe("decideAction", () => {
   it("allows the action on positive dataset-context evidence alone", () => {
     expect(
       decideAction("grant", {
-        global: permissionsRead([]),
-        datasetContext: permissionsRead(["addusertocontextgrantgroup"]),
+        global: exhaustivePermissionsRead([]),
+        datasetContext: datasetActions(["addusertocontextgrantgroup"]),
       }),
     ).toBe("allowed");
   });
 
-  it("refuses only when both reads completed without the permission", () => {
+  it("refuses only when both reads completed and covered the name", () => {
     expect(
       decideAction("grant", {
-        global: permissionsRead(["BrowseDataset"]),
-        datasetContext: permissionsRead(["browsedataset", "editdataset"]),
+        global: exhaustivePermissionsRead(["BrowseDataset"]),
+        datasetContext: datasetActions([]),
       }),
     ).toBe("not-permitted");
   });
@@ -60,7 +73,7 @@ describe("decideAction", () => {
     expect(
       decideAction("grant", {
         global: PERMISSIONS_FAILED,
-        datasetContext: permissionsRead([]),
+        datasetContext: datasetActions([]),
       }),
     ).toBe("unknown");
   });
@@ -68,7 +81,7 @@ describe("decideAction", () => {
   it("stays unknown when a necessary read was never attempted", () => {
     expect(
       decideAction("grant", {
-        global: permissionsRead([]),
+        global: exhaustivePermissionsRead([]),
         datasetContext: PERMISSIONS_NOT_READ,
       }),
     ).toBe("unknown");
@@ -77,8 +90,8 @@ describe("decideAction", () => {
   it("does not let a role identifier or manager label authorize a grant", () => {
     expect(
       decideAction("grant", {
-        global: permissionsRead(["dg_ds-manage", "Administrator"]),
-        datasetContext: permissionsRead(["dg_ds-manage"]),
+        global: exhaustivePermissionsRead(["dg_ds-manage", "Administrator"]),
+        datasetContext: datasetActions(["dg_ds-manage"]),
       }),
     ).toBe("not-permitted");
   });
@@ -90,7 +103,7 @@ describe("decideAction", () => {
     // the dataset read is what is actually missing, the answer is unknown.
     expect(
       decideAction("grant", {
-        global: permissionsRead([]),
+        global: exhaustivePermissionsRead([]),
         datasetContext: PERMISSIONS_NOT_READ,
       }),
     ).toBe("unknown");
@@ -98,16 +111,19 @@ describe("decideAction", () => {
 
   it("decides recipient lookup and revoke separately from granting", () => {
     const evidence = {
-      global: permissionsRead([GRANT]),
-      datasetContext: permissionsRead([]),
+      global: exhaustivePermissionsRead([GRANT]),
+      datasetContext: datasetActions([]),
     };
 
     expect(decideAction("grant", evidence)).toBe("allowed");
     expect(decideAction("revoke", evidence)).toBe("not-permitted");
+    // The dataset projection never asks about the lookup permission — it is
+    // checked globally with no affiliated-context alternative — so an
+    // exhaustive global read is on its own enough to settle it.
     expect(decideAction("lookupRecipients", evidence)).toBe("not-permitted");
 
     const withAll = {
-      global: permissionsRead([GRANT, REVOKE, LOOKUP]),
+      global: exhaustivePermissionsRead([GRANT, REVOKE, LOOKUP]),
       datasetContext: PERMISSIONS_NOT_READ,
     };
     expect(decideAction("revoke", withAll)).toBe("allowed");
@@ -130,8 +146,8 @@ describe("datasetPermissionEvidence", () => {
 
     expect(
       decideAction("grant", {
-        global: permissionsRead([]),
-        datasetContext: datasetPermissionEvidence(decoded),
+        global: exhaustivePermissionsRead([]),
+        datasetContext: datasetPermissionEvidence(decoded, ACTION_PROJECTION),
       }),
     ).toBe("allowed");
   });
@@ -139,13 +155,83 @@ describe("datasetPermissionEvidence", () => {
   it("turns missing permission evidence into not-read, never an empty read", () => {
     const evidence = datasetPermissionEvidence(
       decodeCallerPermissions(undefined),
+      ACTION_PROJECTION,
     );
 
     expect(evidence).toEqual({ kind: "not-read" });
     expect(
       decideAction("grant", {
-        global: permissionsRead([]),
+        global: exhaustivePermissionsRead([]),
         datasetContext: evidence,
+      }),
+    ).toBe("unknown");
+  });
+
+  /**
+   * PM-01 finding F3. Before coverage was carried, this returned
+   * `not-permitted`: `decideAction` saw two completed reads and concluded a
+   * negative about a name the dataset read had never asked for. The details
+   * page projects browse, edit and download, so its decoded result is silent
+   * about granting — and silence is not denial.
+   */
+  it("does not let an unrequested name become a refusal (F3)", () => {
+    const detailsPageProjection = [
+      "BrowseDataset",
+      "EditDataset",
+      "DownloadDatasetFile",
+    ];
+    const detailsPageResult = datasetPermissionEvidence(
+      decodeCallerPermissions(
+        detailsPageProjection.map((name) => name.toLowerCase()),
+      ),
+      detailsPageProjection,
+    );
+
+    expect(
+      decideAction("grant", {
+        global: PERMISSIONS_NOT_READ,
+        datasetContext: detailsPageResult,
+      }),
+    ).toBe("unknown");
+
+    // Even beside a completed global read, the dataset half stays silent, so
+    // the pair cannot support a negative.
+    expect(
+      decideAction("grant", {
+        global: exhaustivePermissionsRead(["BrowseDataset"]),
+        datasetContext: detailsPageResult,
+      }),
+    ).toBe("unknown");
+
+    // ...and the one thing that must never change direction: an explicit
+    // positive is still usable, whichever half supplies it.
+    expect(
+      decideAction("grant", {
+        global: exhaustivePermissionsRead([GRANT]),
+        datasetContext: detailsPageResult,
+      }),
+    ).toBe("allowed");
+  });
+
+  it("keeps a partial projection partial: one name answered, the other not", () => {
+    const grantOnly = datasetPermissionEvidence(decodeCallerPermissions([]), [
+      GRANT,
+    ]);
+
+    // Grant was asked about and did not come back: a real negative, once the
+    // global half is also complete.
+    expect(
+      decideAction("grant", {
+        global: exhaustivePermissionsRead([]),
+        datasetContext: grantOnly,
+      }),
+    ).toBe("not-permitted");
+
+    // Revoke was never asked about, so the same evidence says nothing at all.
+    expect(
+      decideAction("revoke", {
+        global: PERMISSIONS_NOT_READ,
+        datasetContext: grantOnly,
       }),
     ).toBe("unknown");
   });
@@ -297,5 +383,63 @@ describe("sharingStateFromLegacyAccess", () => {
   it("maps a missing label to unknown rather than to restricted", () => {
     expect(sharingStateFromLegacyAccess(undefined)).toBe("unknown");
     expect(sharingStateFromLegacyAccess("")).toBe("unknown");
+  });
+});
+
+describe("describeEveryoneDiscovery", () => {
+  const groupsRead = (groups: UserGroupRef[]): GroupDiscoveryState => ({
+    kind: "read",
+    groups,
+  });
+
+  it("identifies the single group carrying the semantic", () => {
+    const everyone = { id: "g-1", name: "Public", semantics: ["everyone"] };
+    expect(
+      describeEveryoneDiscovery(
+        groupsRead([everyone, { id: "g-2", name: "Everyone", semantics: [] }]),
+      ),
+    ).toEqual({ kind: "identified", group: everyone });
+  });
+
+  it("separates several matches from none", () => {
+    expect(
+      describeEveryoneDiscovery(
+        groupsRead([
+          { id: "g-1", semantics: ["everyone"] },
+          { id: "g-2", semantics: ["EVERYONE"] },
+        ]),
+      ),
+    ).toEqual({ kind: "unavailable", reason: "multiple-matches" });
+
+    expect(
+      describeEveryoneDiscovery(groupsRead([{ id: "g-1", semantics: [] }])),
+    ).toEqual({ kind: "unavailable", reason: "no-match" });
+  });
+
+  it("reports a dropped semantics projection as its own reason", () => {
+    // A group named "Everyone" with no semantics field is not a match, and the
+    // explanation has to say that nothing could be matched against — otherwise
+    // an operator reads "no Everyone group exists" and goes looking for one.
+    expect(
+      describeEveryoneDiscovery(groupsRead([{ id: "g-1", name: "Everyone" }])),
+    ).toEqual({ kind: "unavailable", reason: "semantics-unavailable" });
+  });
+
+  it("treats an empty visible group list as no match, not a dropped field", () => {
+    expect(describeEveryoneDiscovery(groupsRead([]))).toEqual({
+      kind: "unavailable",
+      reason: "no-match",
+    });
+  });
+
+  it("stays unknown when groups were not read", () => {
+    expect(describeEveryoneDiscovery({ kind: "failed" })).toEqual({
+      kind: "unavailable",
+      reason: "groups-unknown",
+    });
+    expect(describeEveryoneDiscovery({ kind: "unknown" })).toEqual({
+      kind: "unavailable",
+      reason: "groups-unknown",
+    });
   });
 });
