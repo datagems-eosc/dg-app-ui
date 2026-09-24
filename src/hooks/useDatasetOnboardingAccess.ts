@@ -92,6 +92,12 @@ export interface DatasetOnboardingAccessState {
    */
   readonly automaticStopped: boolean;
   /**
+   * A dataset read for the current scope, automatic or manual, has been
+   * dispatched and has not settled. Presentation evidence only; it neither
+   * spends nor restores the budget and never schedules anything.
+   */
+  readonly checking: boolean;
+  /**
    * One read, on request, whenever the scope is resolved. Outside the
    * automatic budget: it is not an attempt, it never stops the automatic
    * cycle and it never schedules a retry. Coalesces with a read in flight.
@@ -131,6 +137,8 @@ interface AccessState {
   readonly attemptsUsed: number;
   /** Automatic cycle only; see `DatasetOnboardingAccessState`. */
   readonly automaticStopped: boolean;
+  /** Mirrors this scope's `inFlight`; see `DatasetOnboardingAccessState`. */
+  readonly checking: boolean;
 }
 
 const emptyState = (scopeKey: string): AccessState => ({
@@ -138,6 +146,7 @@ const emptyState = (scopeKey: string): AccessState => ({
   availability: "unknown",
   attemptsUsed: 0,
   automaticStopped: false,
+  checking: false,
 });
 
 /**
@@ -289,7 +298,21 @@ export const useDatasetOnboardingAccess = ({
         ...(name === undefined ? {} : { datasetName: name }),
         attemptsUsed: budgetRef.current.attempts,
         automaticStopped: automaticExhausted(),
+        checking: false,
       });
+    };
+
+    /**
+     * Observational only. Guarded by generation and scope, so a read that
+     * belongs to an abandoned generation can neither set nor clear it.
+     */
+    const setChecking = (checking: boolean) => {
+      if (!isCurrent()) return;
+      setState((previous) =>
+        previous.scopeKey === scopeKey && previous.checking !== checking
+          ? { ...previous, checking }
+          : previous,
+      );
     };
 
     const scheduleNext = () => {
@@ -319,6 +342,13 @@ export const useDatasetOnboardingAccess = ({
 
       inFlight = isAutomatic ? "automatic" : "manual";
       controller = new AbortController();
+      // The state may still belong to an earlier scope on the first read; the
+      // flag is written into this scope's state either way.
+      setState((previous) =>
+        previous.scopeKey === scopeKey
+          ? { ...previous, checking: true }
+          : { ...emptyState(scopeKey), checking: true },
+      );
       let outcome: DatasetAccessOutcome;
       try {
         outcome = await readRef.current(datasetId, controller.signal);
@@ -334,6 +364,7 @@ export const useDatasetOnboardingAccess = ({
       // A late body for a scope we have left is discarded, whether or not the
       // transport honoured the abort signal.
       if (!isCurrent()) return;
+      setChecking(false);
       if (outcome.kind !== "cancelled") {
         commit(outcome, isAutomatic);
         if (isAutomatic) scheduleNext();
@@ -395,6 +426,15 @@ export const useDatasetOnboardingAccess = ({
     }
 
     return () => {
+      // An aborted read of this generation never settles into state. Same
+      // scope (an eligibility flip re-runs this effect) must not inherit it.
+      if (inFlight !== null) {
+        setState((previous) =>
+          previous.scopeKey === scopeKey && previous.checking
+            ? { ...previous, checking: false }
+            : previous,
+        );
+      }
       generationRef.current += 1;
       clearTimer();
       controller?.abort();
@@ -425,6 +465,7 @@ export const useDatasetOnboardingAccess = ({
       : { datasetName: current.datasetName }),
     attemptsUsed: current.attemptsUsed,
     automaticStopped: current.automaticStopped,
+    checking: active && current.checking,
     checkNow,
   };
 };

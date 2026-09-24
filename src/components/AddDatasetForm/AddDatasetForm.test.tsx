@@ -345,11 +345,9 @@ describe("AddDatasetForm sections and validation", () => {
     expect(screen.queryByRole("button", { name: /Publish/i })).toBeNull();
     expect(screen.queryByText("Collection")).toBeNull();
     expect(screen.queryByText(/Who can access/i)).toBeNull();
-    expect(
-      screen.getByText(
-        "Sharing and collection assignment are separate from uploading.",
-      ),
-    ).toBeInTheDocument();
+    // The implementation-plan sentence is gone, and nothing replaces it with a
+    // promise that a sharing destination is available.
+    expect(screen.queryByText(/sharing|collection assignment/i)).toBeNull();
   });
 
   it("still reports the existing field validation, and sends nothing", async () => {
@@ -390,9 +388,7 @@ describe("AddDatasetForm managed submission", () => {
     fireEvent.submit(container.querySelector("form") as HTMLFormElement);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Starting the onboarding process"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Submitting your dataset…")).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -400,7 +396,7 @@ describe("AddDatasetForm managed submission", () => {
       await Promise.resolve();
     });
     await waitFor(() => {
-      expect(screen.getByText("Processing started")).toBeInTheDocument();
+      expect(screen.getByText("Dataset submitted")).toBeInTheDocument();
     });
 
     const starts = ledger.starts();
@@ -489,14 +485,17 @@ describe("AddDatasetForm managed submission", () => {
     await user.click(startButton());
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Some files are not ready to be sent"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Some files need attention")).toBeInTheDocument();
     });
-    // Named rather than silently dropped, which is what the old form did.
-    expect(
-      screen.getByText(/readings\.csv — the upload failed/),
-    ).toBeInTheDocument();
+    // Named rather than silently dropped, which is what the old form did, and
+    // pointed at the file card's own Retry upload / Remove controls.
+    const feedback = screen.getByTestId("submission-feedback");
+    expect(feedback.textContent).toContain(
+      "readings.csv: Upload failed. Retry the upload, or remove this file if you don't need it.",
+    );
+    // The server's own error text is not shown anywhere on the form.
+    expect(container.textContent).not.toContain("disk full");
+    expect(screen.getByRole("button", { name: "Retry upload" })).toBeEnabled();
     expect(ledger.starts()).toHaveLength(0);
     expect(mockPush).not.toHaveBeenCalled();
   });
@@ -517,13 +516,17 @@ describe("AddDatasetForm managed submission", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("The dataset was not created"),
+        screen.getByText("Your dataset wasn't created"),
       ).toBeInTheDocument();
     });
-    expect(screen.getByText(/HTTP 400/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Upload the files again before trying again."),
+    ).toBeInTheDocument();
+    // The status code is diagnostics, not guidance.
+    expect(screen.queryByText(/HTTP|400/)).toBeNull();
     expect(ledger.starts()).toHaveLength(1);
     expect(mockPush).not.toHaveBeenCalled();
-    expect(screen.queryByText("Processing started")).toBeNull();
+    expect(screen.queryByText("Dataset submitted")).toBeNull();
   });
 
   it("keeps an uncertain outcome uncertain and refuses to resubmit it", async () => {
@@ -542,20 +545,28 @@ describe("AddDatasetForm managed submission", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("We could not confirm what happened"),
+        screen.getByText("We couldn't confirm your submission"),
       ).toBeInTheDocument();
     });
     // Browse assistance, never an automatic replay or a success claim.
     expect(screen.getByRole("button", { name: "Go to Browse" })).toBeEnabled();
     expect(mockPush).not.toHaveBeenCalled();
 
+    expect(
+      screen.getByText(/Please don't upload it again yet\./),
+    ).toBeInTheDocument();
+
+    // Refused again, and said once: the outcome already explains it, so the
+    // refusal does not stack a second, equivalent notice.
     await user.click(startButton());
-    await waitFor(() => {
-      expect(
-        screen.getByText("The previous attempt has not been resolved"),
-      ).toBeInTheDocument();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(ledger.starts()).toHaveLength(1);
+    expect(screen.getAllByTestId("submission-notice")).toHaveLength(1);
+    expect(
+      screen.getAllByText(/Please don't upload it again yet\./),
+    ).toHaveLength(1);
   });
 
   it("retains the accepted process and offers navigation again when it fails", async () => {
@@ -575,13 +586,11 @@ describe("AddDatasetForm managed submission", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/The processing page did not open/),
+        screen.getByText(/We couldn't open its progress page/),
       ).toBeInTheDocument();
     });
 
-    await user.click(
-      screen.getByRole("button", { name: "Open processing page" }),
-    );
+    await user.click(screen.getByRole("button", { name: "View progress" }));
 
     expect(mockPush).toHaveBeenCalledTimes(2);
     expect(mockPush).toHaveBeenLastCalledWith(
@@ -614,14 +623,14 @@ describe("AddDatasetForm rollout flags", () => {
           expect(startButton()).toBeEnabled();
         });
         expect(
-          screen.queryByText("New dataset uploads are turned off"),
+          screen.queryByText("Adding datasets is currently unavailable"),
         ).toBeNull();
         return;
       }
 
       await waitFor(() => {
         expect(
-          screen.getByText("New dataset uploads are turned off"),
+          screen.getByText("Adding datasets is currently unavailable"),
         ).toBeInTheDocument();
       });
       expect(startButton()).toBeDisabled();
@@ -654,9 +663,7 @@ describe("AddDatasetForm rollout flags", () => {
     await uploadFile(user, container);
     await fillMetadata(user);
     await user.click(startButton());
-    expect(
-      screen.getByText("Starting the onboarding process"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Submitting your dataset…")).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", {
@@ -665,7 +672,7 @@ describe("AddDatasetForm rollout flags", () => {
     );
     await waitFor(() => {
       expect(
-        screen.getByText("New dataset uploads are turned off"),
+        screen.getByText("Adding datasets is currently unavailable"),
       ).toBeInTheDocument();
     });
     expect(startButton()).toBeDisabled();
@@ -677,7 +684,7 @@ describe("AddDatasetForm rollout flags", () => {
 
     // The request the server already received is not undone by a client flag.
     await waitFor(() => {
-      expect(screen.getByText("Processing started")).toBeInTheDocument();
+      expect(screen.getByText("Dataset submitted")).toBeInTheDocument();
     });
     expect(ledger.starts()).toHaveLength(1);
   });
@@ -690,9 +697,7 @@ describe("AddDatasetForm identity and edit guards", () => {
     const { container } = mount();
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Your sign-in is not usable right now"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Please sign in again")).toBeInTheDocument();
     });
     expect(startButton()).toBeDisabled();
 
@@ -714,7 +719,7 @@ describe("AddDatasetForm identity and edit guards", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Editing a dataset is not supported here"),
+        screen.getByText("This page can't edit an existing dataset"),
       ).toBeInTheDocument();
     });
     expect(startButton()).toBeDisabled();
@@ -727,7 +732,7 @@ describe("AddDatasetForm identity and edit guards", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Dataset update is not supported. Metadata changes cannot be saved.",
+          "This page can't edit an existing dataset. Your changes haven't been saved.",
         ),
       ).toBeInTheDocument();
     });
@@ -963,7 +968,7 @@ describe("AddDatasetForm draft ownership", () => {
     await user.click(startButton());
     await waitFor(() => {
       expect(
-        screen.getByText("We could not confirm what happened"),
+        screen.getByText("We couldn't confirm your submission"),
       ).toBeInTheDocument();
     });
 
@@ -984,7 +989,9 @@ describe("AddDatasetForm draft ownership", () => {
     // The outcome notice goes too — that one is the accepted controller's own
     // scope isolation, recorded here as a companion fact, not as this
     // correction's proof.
-    expect(screen.queryByText("We could not confirm what happened")).toBeNull();
+    expect(
+      screen.queryByText("We couldn't confirm your submission"),
+    ).toBeNull();
     // Still exactly the one start the first account dispatched; a dispatched
     // request is never undone by a scope change.
     expect(ledger.starts()).toHaveLength(1);
@@ -1018,7 +1025,7 @@ describe("AddDatasetForm draft lifetime across an unavailable session", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("We could not confirm what happened"),
+        screen.getByText("We couldn't confirm your submission"),
       ).toBeInTheDocument();
     });
     expect(ledger.starts()).toHaveLength(1);

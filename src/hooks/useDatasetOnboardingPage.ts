@@ -149,18 +149,25 @@ export const useDatasetOnboardingPage = ({
     ],
   );
 
+  // Activity is each owner's own dispatch/settlement for the current scope,
+  // never inferred from `phase`. Both owners reset it on a scope change, so a
+  // late settlement from a previous owner cannot clear the new one's reads.
   const read = useMemo<ProcessingReadState>(
     () => ({
       phase: controller.phase,
       failure: controller.lastFailure,
       reference: controller.reference,
       session: sessionUsability(controller.auth),
+      reading: controller.reading,
+      checkingAccess: access.checking,
     }),
     [
       controller.phase,
       controller.lastFailure,
       controller.reference,
       controller.auth,
+      controller.reading,
+      access.checking,
     ],
   );
 

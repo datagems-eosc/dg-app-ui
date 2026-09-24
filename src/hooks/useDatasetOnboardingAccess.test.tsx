@@ -828,4 +828,106 @@ describe("useDatasetOnboardingAccess", () => {
     });
     expect(read).toHaveBeenCalledTimes(1);
   });
+
+  // --- read activity (presentation evidence only) --------------------------
+
+  it("reports checking only while a read is actually in flight", async () => {
+    const { read, pending } = deferredReader();
+    const view = renderAccess({ read });
+
+    await act(async () => {});
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(view.result.current.checking).toBe(true);
+
+    await act(async () => {
+      pending[0]?.settle({ kind: "unavailable", httpStatus: 404 });
+    });
+    // Waiting for the scheduled retry is not a request.
+    expect(view.result.current.checking).toBe(false);
+    expect(view.result.current.attemptsUsed).toBe(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(TIMING.retryDelayMs);
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(view.result.current.checking).toBe(true);
+  });
+
+  it("reports a manual read without spending the automatic budget", async () => {
+    const { read, pending } = deferredReader();
+    const view = renderAccess({ read, automatic: false });
+
+    await act(async () => {});
+    expect(view.result.current.checking).toBe(false);
+
+    act(() => {
+      view.result.current.checkNow();
+      view.result.current.checkNow();
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(view.result.current.checking).toBe(true);
+
+    await act(async () => {
+      pending[0]?.settle({ kind: "unknown", reason: "transient" });
+    });
+    expect(view.result.current.checking).toBe(false);
+    expect(view.result.current.attemptsUsed).toBe(0);
+    expect(view.result.current.automaticStopped).toBe(false);
+  });
+
+  it("does not let a previous scope's late settlement clear the current read", async () => {
+    const { read, pending } = deferredReader();
+    const view = renderAccess({ read });
+
+    await act(async () => {});
+    view.rerender({
+      scope: scopeOf({ principalId: OTHER_PRINCIPAL }),
+      read,
+      automatic: true,
+    });
+    await act(async () => {});
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(view.result.current.checking).toBe(true);
+
+    // The first principal's transport ignores its abort and answers late.
+    await act(async () => {
+      pending[0]?.settle(READABLE);
+    });
+    expect(view.result.current.checking).toBe(true);
+
+    await act(async () => {
+      pending[1]?.settle(READABLE);
+    });
+    expect(view.result.current.checking).toBe(false);
+  });
+
+  it("clears an abandoned manual read when completion restarts the cycle", async () => {
+    const { read, pending } = deferredReader();
+    const view = renderAccess({ read, automatic: false });
+
+    await act(async () => {});
+    act(() => {
+      view.result.current.checkNow();
+    });
+    expect(view.result.current.checking).toBe(true);
+
+    // Completion re-runs the lifecycle for the same scope and aborts the
+    // manual read; the automatic read that replaces it is what is shown.
+    view.rerender({ scope: scopeOf(), read, automatic: true });
+    await act(async () => {});
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(view.result.current.checking).toBe(true);
+
+    await act(async () => {
+      pending[0]?.settle(READABLE);
+    });
+    expect(view.result.current.checking).toBe(true);
+    expect(view.result.current.availability).toBe("unknown");
+
+    await act(async () => {
+      pending[1]?.settle(READABLE);
+    });
+    expect(view.result.current.checking).toBe(false);
+    expect(view.result.current.availability).toBe("readable");
+  });
 });

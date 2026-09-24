@@ -103,6 +103,12 @@ export interface DatasetOnboardingProcessMonitor {
   readonly phase: MonitoringPhase;
   readonly stopReason?: MonitoringStopReason;
   readonly lastFailure: GatewayFailure | null;
+  /**
+   * A status read for the current scope has been dispatched and has not yet
+   * settled. Presentation evidence only: `phase === "polling"` is a schedule,
+   * this is a request. Configuration reads are deliberately not included.
+   */
+  readonly reading: boolean;
   /** Read-only. Never a mutation, never a rerun, never a stage start. */
   readonly checkAgain: () => void;
   /** Re-reads configuration only. Also read-only. */
@@ -123,6 +129,8 @@ interface MonitoringState {
   readonly lastFailure: GatewayFailure | null;
   readonly phase: MonitoringPhase;
   readonly stopReason?: MonitoringStopReason;
+  /** Mirrors this scope's `readInFlight`; see the monitor's `reading`. */
+  readonly reading: boolean;
 }
 
 const INACTIVE_SCOPE = "\u0000inactive";
@@ -148,6 +156,7 @@ const emptyState = (scopeKey: string): MonitoringState => ({
   connection: "fresh",
   lastFailure: null,
   phase: "idle",
+  reading: false,
 });
 
 /**
@@ -357,6 +366,9 @@ export const useDatasetOnboardingProcess = ({
       clearTimer();
       const controller = new AbortController();
       processController = controller;
+      // Observational only. `commit` is generation- and scope-guarded, so a
+      // superseded generation can neither set nor clear the current flag.
+      commit({ reading: true });
 
       let result: ReadResult<ProcessSnapshot>;
       try {
@@ -373,6 +385,7 @@ export const useDatasetOnboardingProcess = ({
       readInFlight = false;
       // Late response from a superseded scope, or after teardown.
       if (!isCurrent()) return;
+      commit({ reading: false });
       applyResult(result);
       schedule();
     };
@@ -442,6 +455,15 @@ export const useDatasetOnboardingProcess = ({
     if (!paused) void readProcess();
 
     return () => {
+      // An aborted read of this generation never settles into state, so its
+      // flag is cleared here rather than left for a later scope to inherit.
+      if (readInFlight) {
+        setState((previous) =>
+          previous.scopeKey === scopeKey && previous.reading
+            ? { ...previous, reading: false }
+            : previous,
+        );
+      }
       cancelled = true;
       // Bumping here as well means a response that arrives after teardown is
       // rejected even if the transport ignored the abort signal entirely.
@@ -500,6 +522,7 @@ export const useDatasetOnboardingProcess = ({
       ? {}
       : { stopReason: current.stopReason }),
     lastFailure: current.lastFailure,
+    reading: active && current.reading,
     checkAgain,
     retryConfiguration,
   };

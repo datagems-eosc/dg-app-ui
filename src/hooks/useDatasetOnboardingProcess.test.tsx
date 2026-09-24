@@ -1385,3 +1385,129 @@ describe("model semantics passed through the hook", () => {
     expect(result.current.view.processing).toBe("running");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Read activity (presentation evidence only)
+// ---------------------------------------------------------------------------
+
+describe("read activity", () => {
+  it("is set by an actual read, not by the polling schedule", async () => {
+    const slow = deferred<ReadResult<ProcessSnapshot>>();
+    const { reads, processIds } = createReads((call) =>
+      call === 1 ? slow.promise : ok(runningProcess),
+    );
+
+    const { result } = renderMonitor({
+      identity: IDENTITY,
+      processInstanceId: PROCESS,
+      operations: reads,
+    });
+    await settle();
+    expect(processIds).toHaveLength(1);
+    expect(result.current.phase).toBe("polling");
+    expect(result.current.reading).toBe(true);
+
+    await act(async () => {
+      slow.settle(ok(runningProcess));
+      await Promise.resolve();
+    });
+    // Still polling, but waiting for the next scheduled read.
+    expect(result.current.phase).toBe("polling");
+    expect(result.current.reading).toBe(false);
+
+    await advance(5_000);
+    expect(processIds).toHaveLength(2);
+    expect(result.current.reading).toBe(false);
+  });
+
+  it("covers a manual recheck while stopped, without resuming polling", async () => {
+    const recheck = deferred<ReadResult<ProcessSnapshot>>();
+    const { reads, processIds } = createReads((call) =>
+      call === 1 ? ok(succeededProcess) : recheck.promise,
+    );
+
+    const { result } = renderMonitor({
+      identity: IDENTITY,
+      processInstanceId: PROCESS,
+      operations: reads,
+    });
+    await settle();
+    expect(result.current.phase).toBe("stopped");
+    expect(result.current.reading).toBe(false);
+
+    await act(async () => {
+      result.current.checkAgain();
+      result.current.checkAgain();
+      await Promise.resolve();
+    });
+    expect(processIds).toHaveLength(2);
+    expect(result.current.reading).toBe(true);
+
+    await act(async () => {
+      recheck.settle(fails(TRANSIENT));
+      await Promise.resolve();
+    });
+    expect(result.current.reading).toBe(false);
+    expect(result.current.phase).toBe("stopped");
+    await advance(60_000);
+    expect(processIds).toHaveLength(2);
+  });
+
+  it("is not set while paused", async () => {
+    const { reads, processIds } = createReads(() => ok(runningProcess));
+    const { result } = renderMonitor({
+      identity: IDENTITY,
+      processInstanceId: PROCESS,
+      operations: reads,
+    });
+    await settle();
+
+    await setVisibility("hidden");
+    await advance(30_000);
+    expect(processIds).toHaveLength(1);
+    expect(result.current.phase).toBe("paused");
+    expect(result.current.reading).toBe(false);
+  });
+
+  it("does not let a previous scope's late settlement clear the current read", async () => {
+    const first = deferred<ReadResult<ProcessSnapshot>>();
+    const second = deferred<ReadResult<ProcessSnapshot>>();
+    const { reads, processIds } = createReads((call) =>
+      call === 1 ? first.promise : second.promise,
+    );
+    const base = { processInstanceId: PROCESS, operations: reads };
+
+    const { result, rerender } = renderMonitor({ identity: IDENTITY, ...base });
+    await settle();
+    rerender({ identity: OTHER_IDENTITY, ...base });
+    await settle();
+    expect(processIds).toHaveLength(2);
+    expect(result.current.reading).toBe(true);
+
+    await act(async () => {
+      first.settle(ok(succeededProcess));
+      await Promise.resolve();
+    });
+    expect(result.current.reading).toBe(true);
+    expect(result.current.snapshot).toBeNull();
+
+    await act(async () => {
+      second.settle(ok(runningProcess));
+      await Promise.resolve();
+    });
+    expect(result.current.reading).toBe(false);
+  });
+
+  it("does not carry a previous scope's in-flight read into an inactive one", async () => {
+    const slow = deferred<ReadResult<ProcessSnapshot>>();
+    const { reads } = createReads(() => slow.promise);
+    const base = { processInstanceId: PROCESS, operations: reads };
+
+    const { result, rerender } = renderMonitor({ identity: IDENTITY, ...base });
+    await settle();
+    expect(result.current.reading).toBe(true);
+
+    rerender({ identity: null, ...base });
+    expect(result.current.reading).toBe(false);
+  });
+});

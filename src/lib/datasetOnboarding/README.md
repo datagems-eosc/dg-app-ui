@@ -423,10 +423,39 @@ split is the point: the library decides *what is true*, the components decide
 *how it reads*. They add no state machine of their own, and every status, stage
 order and permitted action on screen came from `model.ts`.
 
-- `ProcessingView.tsx` — heading, aggregate banner, stage panels, notices and
-  the two read-only actions. It takes an `OnboardingView` plus plain props for
-  read health (`phase`, `lastFailure`, `reference`, session availability) and
-  the recovery marker, all supplied by the caller from the accepted controller.
+- `ProcessingView.tsx` — heading, one primary outcome banner, the
+  **Processing steps** panel and the read-only actions. It takes an
+  `OnboardingView` plus plain props for read health (`phase`, `lastFailure`,
+  `reference`, session availability, and the two activity flags below) and the
+  recovery marker, all supplied by the caller from the accepted controllers.
+
+  Hierarchy (24 September presentation amendment): read-health notices sit
+  under the headline; step-list facts (configuration unavailable/mismatched/
+  duplicated, step details absent) are short lines inside the steps panel,
+  with **Reload steps** for the configuration read; access is a local line
+  beside **View dataset** (with a local **Check again** while readability is
+  unconfirmed); sharing appears only for an earlier attempt that recorded an
+  unconfirmed or failed outcome, and then once, even when the saved record and
+  the model's notice both say it. A current private upload requests no sharing
+  and shows nothing about it. `status-inconsistent`/`status-unknown` are
+  carried by the headline and not repeated.
+
+  The steps header carries **Refresh status** (the same combined process +
+  availability read as before) and an automatic-update status:
+  "Updates automatically" between scheduled reads, "Updating…" only while
+  `reading` (the process monitor's dispatched, unsettled status read) or
+  `checkingAccess` (the availability hook's dispatched, unsettled read) is
+  true, "Couldn't update. Trying again…" while polling after a failed read,
+  "Automatic updates stopped" when a read problem stopped the monitor, "Updates
+  paused" while hidden, and nothing after a normal terminal stop. `phase` is a
+  schedule and never drives "Updating…"; configuration reads are not counted.
+  Both flags are scope- and generation-guarded in their hooks and cleared on
+  teardown, so a late settlement from a previous owner cannot clear the
+  current one. The control stays enabled during a read because the hooks
+  already coalesce; no budget, timer, guard or request was added. Status text
+  is the button's description, not a live region, so background requests are
+  never announced. No step timings or last-updated time are shown: the Gateway
+  exposes no stable execution timestamps.
 - `StageList.tsx` — the stage rows. Configured stages render as an ordered
   list; steps with no configuration match render as an unordered one, so the
   markup itself cannot imply a sequence we have not confirmed.
@@ -456,7 +485,7 @@ imports `flowbite-react/plugin/tailwindcss`, which exposes CSS only under the
 instead and fails with `Unknown word import`. Next's build is unaffected.
 
 What the components deliberately do **not** do: fetch, poll, store, own a timer
-or a busy flag, derive availability or sharing from a status or an id, offer a
+or a busy flag of their own, derive availability or sharing from a status or an id, offer a
 rerun, cancel, percentage or time estimate, or move focus on mount. Initial
 heading focus after route navigation is done by the page (task 5.3, below);
 the heading carries `tabIndex={-1}` only so that it is a valid focus target.
@@ -735,13 +764,29 @@ submit control is disabled and the handler refuses before anything else is
 considered. Every retained file is passed to the accepted validation — nothing
 is silently excluded, which is what the old `stagedFiles.filter(...)` did — and
 the separate `blocked` refusal is rendered without replacing the attempt's
-status.
+status. A refusal that only restates the current outcome (`already-starting`
+while starting, `attempt-accepted` once accepted, `attempt-unknown` while
+unknown) is not shown as a second notice; the refusal still sends nothing.
+
+Feedback wording follows the 24 September copy review: short, actionable, no
+request counts, HTTP statuses or implementation narration. Each unresolved file
+is named with an action that matches the file card's controls. The file card
+(`components/ui/datasets/FileUploadCard.tsx`) shows "Upload failed" plus a
+wrapping instruction — "Retry the upload, or remove this file if you don't
+need it.", or only removal when no local file can be retried — and never the
+transfer's `error` text (arbitrary server text, or the internal "No path
+returned"), not even as a tooltip. Its Retry upload/Remove buttons are
+`type="button"`, so they no longer also submit the surrounding form. Retry
+upload repeats only that file's transfer; it is never recovery for an accepted
+or uncertain submission. Upload progress is shared by the files of one request;
+the bar is not per-file measurement and is not labelled as one.
 
 An accepted start navigates once to `/datasets/onboarding/<encoded id>` using a
 bare Next route, matching the accepted monitoring page. If that navigation
-fails the accepted process is retained and offered again; navigating again is
-never another start. An uncertain outcome stays in the form with Browse
-assistance and no automatic replay.
+fails the accepted process is retained and offered again as **View progress**;
+navigating again is never another start. An uncertain outcome stays in the form
+with Browse navigation, a request not to upload again yet and administrator
+guidance, and no automatic replay.
 
 ### Rollout flag
 

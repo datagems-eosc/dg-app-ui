@@ -15,8 +15,12 @@
  *    only two actions are reads, and each one appears only when its caller
  *    supplied a callback — no callback, no control;
  *  - completion never leaks into availability. "Processing complete" describes
- *    configured processing; whether the dataset can be opened, searched or
- *    downloaded is a separate, explicitly unconfirmed notice;
+ *    processing; whether this user can open the dataset is a separate, local
+ *    message beside View dataset, and sharing only appears for an earlier
+ *    attempt that actually recorded an unconfirmed or failed outcome;
+ *  - one primary outcome, then the steps panel with its automatic-update
+ *    status. "Updating…" reflects reads the hooks actually dispatched, never
+ *    the polling schedule;
  *  - nothing is focused on mount. Initial heading focus after route navigation
  *    belongs to the page (task 5.3), not to a component that may be mounted
  *    anywhere.
@@ -27,6 +31,7 @@ import {
   CircleX,
   Info,
   LoaderCircle,
+  RefreshCw,
   TriangleAlert,
 } from "lucide-react";
 import {
@@ -38,6 +43,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/Button";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { hasNotice } from "@/lib/datasetOnboarding/model";
 import type {
   DatasetId,
@@ -57,6 +63,8 @@ import {
   readNoticeCopyOf,
   readNoticeOf,
   staleBodyOf,
+  updateStatusOf,
+  updateStatusTextOf,
 } from "./presentation";
 import { StageList } from "./StageList";
 
@@ -143,9 +151,10 @@ const BannerIcon = ({
 
 /**
  * Adapted from the Notifications export: tinted surface, matching border, icon
- * beside a title and an explanatory line. One thing is deliberately missing —
- * the export's dismiss control. A processing outcome that can be closed is an
- * outcome a user can lose, and every state here is meant to persist.
+ * beside a title and an optional explanatory line. One thing is deliberately
+ * missing — the export's dismiss control. A processing outcome that can be
+ * closed is an outcome a user can lose, and every state here is meant to
+ * persist.
  */
 const Banner = ({
   copy,
@@ -171,51 +180,98 @@ const Banner = ({
         >
           {copy.title}
         </p>
-        <p
-          className={classes(
-            "mt-1 break-words text-body-14-regular",
-            TONE_BODY[copy.tone],
-          )}
-        >
-          {copy.body}
-        </p>
+        {copy.body === undefined ? null : (
+          <p
+            className={classes(
+              "mt-1 break-words text-body-14-regular",
+              TONE_BODY[copy.tone],
+            )}
+          >
+            {copy.body}
+          </p>
+        )}
         {children === undefined ? null : <div className="mt-3">{children}</div>}
       </div>
     </div>
   </div>
 );
 
+/**
+ * A short line inside a panel, for a fact that qualifies the content right
+ * next to it (the steps list, the dataset action). A full banner there would
+ * turn every qualification into another warning box.
+ */
+const InlineNote = ({
+  copy,
+  busy = false,
+  children,
+}: {
+  copy: NoticeCopy;
+  busy?: boolean;
+  children?: ReactNode;
+}) => {
+  const iconClass = classes("mt-0.5 h-4 w-4 shrink-0", TONE_ICON[copy.tone]);
+  const Icon = busy
+    ? LoaderCircle
+    : copy.tone === "caution"
+      ? TriangleAlert
+      : copy.tone === "problem"
+        ? CircleX
+        : Info;
+  return (
+    <div className="flex items-start gap-2">
+      <Icon
+        className={classes(
+          iconClass,
+          busy && "animate-spin motion-reduce:animate-none",
+        )}
+        aria-hidden="true"
+      />
+      <div className="min-w-0 flex-1">
+        <p
+          className={classes(
+            "break-words text-body-14-regular",
+            TONE_TITLE[copy.tone],
+          )}
+        >
+          {copy.title}
+          {copy.body === undefined ? null : ` ${copy.body}`}
+        </p>
+        {children === undefined ? null : <div className="mt-2">{children}</div>}
+      </div>
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------------------
-// Notice ordering
+// Notice placement
 // ---------------------------------------------------------------------------
 
 /**
- * Read health first — it explains why everything below it may be incomplete —
- * then status integrity, then what we could not resolve, then access. Sharing
- * and access sit last so they stay adjacent to the actions they qualify.
+ * Whether the page can be kept current, and whether the process says more than
+ * its headline. Shown directly below the headline, because it explains why the
+ * content below it may be out of date.
  */
-const NOTICE_ORDER: readonly NoticeCode[] = [
+const READ_HEALTH_NOTICES: readonly NoticeCode[] = [
   "connection-stale",
   "connection-unavailable",
   "connection-forbidden",
-  "status-inconsistent",
-  "status-unknown",
+  "dmm-ready-while-incomplete",
+];
+
+/** Facts about the steps list, shown inside the steps panel. */
+const STEP_NOTICES: readonly NoticeCode[] = [
   "configuration-unavailable",
   "configuration-mismatch",
   "configuration-duplicate",
   "step-details-unavailable",
-  "unmatched-steps",
-  "dmm-ready-while-incomplete",
-  "availability-denied",
-  "availability-unconfirmed",
-  "sharing-failed",
-  "sharing-unconfirmed",
 ];
 
-const orderOf = (code: NoticeCode): number => {
-  const index = NOTICE_ORDER.indexOf(code);
-  return index < 0 ? NOTICE_ORDER.length : index;
-};
+const CONNECTION_PROBLEMS: readonly NoticeCode[] = [
+  "connection-stale",
+  "connection-unavailable",
+  "connection-forbidden",
+];
 
 // ---------------------------------------------------------------------------
 // Props
@@ -233,9 +289,16 @@ export interface ProcessingViewProps {
   readonly read?: ProcessingReadState;
   /** The accepted same-tab recovery marker. A reminder, never a grant. */
   readonly sharingNeedsReconciliation?: boolean;
-  /** Read-only re-read. Absent callback means no control at all. */
+  /**
+   * Read-only re-read of the status and, when in scope, dataset access. Shown
+   * as the steps header's Refresh status control. Absent callback means no
+   * control at all.
+   */
   readonly onCheckAgain?: () => void;
-  /** Read-only configuration re-read. Separate from the status read. */
+  /**
+   * Read-only configuration re-read ("Reload steps"). Separate from the status
+   * read, and never reported by the automatic-update status.
+   */
   readonly onRetryConfiguration?: () => void;
   /** Navigation only, and only with the model's validated dataset id. */
   readonly onViewDataset?: (datasetId: DatasetId) => void;
@@ -260,6 +323,7 @@ export function ProcessingView({
   const sectionId = useId();
   const stagesHeadingId = `${sectionId}-stages`;
   const unmatchedHeadingId = `${sectionId}-unmatched`;
+  const updateStatusId = `${sectionId}-update-status`;
 
   const forbiddenConnection = hasNotice(view, "connection-forbidden");
   const readNotice = readNoticeOf(read, forbiddenConnection);
@@ -284,19 +348,32 @@ export function ProcessingView({
         : null;
 
   const promoted = view.processing === "loading" && stalledCopy !== null;
-  const headline: HeadlineCopy =
-    view.processing === "loading" && stalledCopy !== null
-      ? { ...stalledCopy, active: false }
-      : headlineOf(view.processing);
+  const headline: HeadlineCopy = promoted
+    ? { ...stalledCopy, active: false }
+    : headlineOf(view.processing);
 
   // --- notices -----------------------------------------------------------
-  const modelNotices = [...view.notices]
-    .map((notice) => notice.code)
-    .filter((code) => !(promoted && code === promotableNotice))
-    .sort((a, b) => orderOf(a) - orderOf(b));
+  // Every model notice is still placed somewhere, or is carried in full by
+  // another element; placement changes, meaning does not.
+  const codes = view.notices.map((notice) => notice.code);
+  const present = (code: NoticeCode) => codes.includes(code);
 
-  const configurationUnavailable = hasNotice(view, "configuration-unavailable");
-  const stalePhase = hasNotice(view, "connection-stale");
+  const readHealthNotices = READ_HEALTH_NOTICES.filter(
+    (code) => present(code) && !(promoted && code === promotableNotice),
+  );
+  const stepNotices = STEP_NOTICES.filter(present);
+  const hasConnectionProblem = CONNECTION_PROBLEMS.some(present);
+  // A saved earlier attempt and the model's own unconfirmed-sharing notice say
+  // the same thing; one message is enough. A current private upload has
+  // neither, so it shows nothing about sharing at all.
+  const sharingCopy: NoticeCopy | null = present("sharing-failed")
+    ? noticeCopyOf("sharing-failed")
+    : present("sharing-unconfirmed") || sharingNeedsReconciliation
+      ? RECOVERY_NOTICE
+      : null;
+  // `status-inconsistent` / `status-unknown` are carried in full by the
+  // headline of the matching processing state, and `unmatched-steps` is the
+  // helper of its own section, so none of them becomes a second banner.
 
   // --- actions -----------------------------------------------------------
   const referenceInvalid = read.reference === "invalid";
@@ -310,7 +387,7 @@ export function ProcessingView({
     readNotice !== "read-session-unavailable" &&
     readNotice !== "read-reference-invalid";
 
-  const showCheckAgain =
+  const showRefresh =
     onCheckAgain !== undefined &&
     !referenceInvalid &&
     (modelOffersCheck || fallbackOffersCheck);
@@ -321,9 +398,19 @@ export function ProcessingView({
     (action): action is PermittedAction & { datasetId: DatasetId } =>
       action.code === "view-dataset" && action.datasetId !== undefined,
   )?.datasetId;
+  const showViewDataset =
+    onViewDataset !== undefined && viewDatasetId !== undefined;
 
-  const showRetryConfiguration =
-    onRetryConfiguration !== undefined && configurationUnavailable;
+  const showReloadSteps =
+    onRetryConfiguration !== undefined && present("configuration-unavailable");
+
+  // The steps panel carries the refresh control, so it exists whenever there
+  // is a snapshot to keep current, even if no step could be placed in it.
+  const showStepsPanel = view.processing !== "loading";
+
+  const updateStatus = updateStatusOf(read, hasConnectionProblem);
+  const updateStatusText = updateStatusTextOf(updateStatus);
+  const updating = updateStatus === "updating";
 
   // --- announcement ------------------------------------------------------
   const readHealth =
@@ -331,9 +418,9 @@ export function ProcessingView({
       ? readNotice
       : forbiddenConnection
         ? "forbidden"
-        : hasNotice(view, "connection-unavailable")
+        : present("connection-unavailable")
           ? "unavailable"
-          : stalePhase
+          : present("connection-stale")
             ? read.phase === "stopped"
               ? "stale-stopped"
               : "stale"
@@ -350,7 +437,8 @@ export function ProcessingView({
   useEffect(() => {
     // Mount is not a transition, and an equivalent poll is not either. Only a
     // genuine change in outcome or read health reaches the live region, so a
-    // long run does not re-announce itself every few seconds.
+    // long run does not re-announce itself every few seconds. Background
+    // requests ("Updating…") are deliberately never announced.
     if (lastKeyRef.current === null) {
       lastKeyRef.current = announcement.key;
       return;
@@ -359,6 +447,43 @@ export function ProcessingView({
     lastKeyRef.current = announcement.key;
     setAnnounced(announcement.text);
   }, [announcement]);
+
+  const refreshButton = showRefresh ? (
+    <Tooltip content="Refresh status" position="top" className="flex shrink-0">
+      {/* Stays enabled while a read runs: the hooks already coalesce a
+          request with the one in flight, so guarding here would only change
+          which reads a click is allowed to ask for. Focus never moves. */}
+      <button
+        type="button"
+        onClick={onCheckAgain}
+        aria-label="Refresh status"
+        {...(updateStatusText === ""
+          ? {}
+          : { "aria-describedby": updateStatusId })}
+        className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm bg-white transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      >
+        <RefreshCw
+          className={classes(
+            "h-5 w-5 text-icon",
+            updating && "animate-spin motion-reduce:animate-none",
+          )}
+          aria-hidden="true"
+        />
+      </button>
+    </Tooltip>
+  ) : null;
+
+  const availabilityCopy: NoticeCopy | null = present("availability-denied")
+    ? noticeCopyOf("availability-denied")
+    : present("availability-unconfirmed")
+      ? read.checkingAccess === true
+        ? { tone: "neutral", title: "Checking dataset access…" }
+        : noticeCopyOf("availability-unconfirmed")
+      : null;
+  const showLocalCheck =
+    showRefresh &&
+    present("availability-unconfirmed") &&
+    read.checkingAccess !== true;
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
@@ -399,37 +524,111 @@ export function ProcessingView({
         {announced}
       </div>
 
-      <Banner copy={headline} active={headline.active} emphasis />
+      <Banner
+        copy={headline}
+        // A spinner must not suggest progress we cannot currently observe.
+        active={headline.active && !hasConnectionProblem}
+        emphasis
+      >
+        {!showStepsPanel && showRefresh ? (
+          <Button type="button" variant="outline" onClick={onCheckAgain}>
+            Refresh status
+          </Button>
+        ) : undefined}
+      </Banner>
 
-      {view.stages.length === 0 ? null : (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-          <h2
-            id={stagesHeadingId}
-            className="text-body-16-semibold text-gray-750"
-          >
-            Processing stages
-          </h2>
-          <p className="mt-1 text-body-14-regular text-gray-650">
-            In configured order. DataGEMS runs these stages; there is nothing to
-            start or repeat here.
-          </p>
-          <div className="mt-4">
-            <StageList stages={view.stages} labelledBy={stagesHeadingId} />
-          </div>
-        </section>
+      {readHealthNotices.length === 0 &&
+      (readNotice === null || promoted) ? null : (
+        <div className="flex flex-col gap-3">
+          {readHealthNotices.map((code) => {
+            const copy = noticeCopyOf(code);
+            return (
+              <Banner
+                key={code}
+                copy={
+                  code === "connection-stale"
+                    ? { ...copy, body: staleBodyOf(read.phase) }
+                    : copy
+                }
+              />
+            );
+          })}
+          {readNotice === null || promoted ? null : (
+            <Banner copy={readNoticeCopyOf(readNotice)} />
+          )}
+        </div>
       )}
 
+      {showStepsPanel ? (
+        <section
+          aria-labelledby={stagesHeadingId}
+          className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h2
+              id={stagesHeadingId}
+              className="text-body-16-semibold text-gray-750"
+            >
+              Processing steps
+            </h2>
+            {updateStatusText === "" && refreshButton === null ? null : (
+              <div className="flex min-w-0 items-center gap-2">
+                {updateStatusText === "" ? null : (
+                  <span
+                    id={updateStatusId}
+                    className={classes(
+                      "text-body-14-regular",
+                      updateStatus === "retrying" || updateStatus === "stopped"
+                        ? "text-amber-800"
+                        : "text-gray-650",
+                    )}
+                  >
+                    {updateStatusText}
+                  </span>
+                )}
+                {refreshButton}
+              </div>
+            )}
+          </div>
+          {stepNotices.length === 0 ? null : (
+            <div className="mt-3 flex flex-col gap-2">
+              {stepNotices.map((code) => (
+                <InlineNote key={code} copy={noticeCopyOf(code)}>
+                  {code === "configuration-unavailable" && showReloadSteps ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onRetryConfiguration}
+                    >
+                      Reload steps
+                    </Button>
+                  ) : undefined}
+                </InlineNote>
+              ))}
+            </div>
+          )}
+          {view.stages.length === 0 ? null : (
+            <div className="mt-4">
+              <StageList stages={view.stages} labelledBy={stagesHeadingId} />
+            </div>
+          )}
+        </section>
+      ) : null}
+
       {view.unmatchedSteps.length === 0 ? null : (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+        <section
+          aria-labelledby={unmatchedHeadingId}
+          className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5"
+        >
           <h2
             id={unmatchedHeadingId}
             className="text-body-16-semibold text-gray-750"
           >
-            Other reported steps
+            Additional processing steps
           </h2>
           <p className="mt-1 text-body-14-regular text-gray-650">
-            These steps are not described by the known configuration, so they
-            are listed without a position in the sequence.
+            {noticeCopyOf("unmatched-steps").title}
           </p>
           <div className="mt-4">
             <StageList
@@ -441,59 +640,36 @@ export function ProcessingView({
         </section>
       )}
 
-      {modelNotices.length === 0 &&
-      readNotice === null &&
-      !sharingNeedsReconciliation ? null : (
+      {availabilityCopy === null && !showViewDataset ? null : (
         <div className="flex flex-col gap-3">
-          {modelNotices.map((code) => {
-            const copy = noticeCopyOf(code);
-            const resolved =
-              code === "connection-stale"
-                ? { ...copy, body: staleBodyOf(read.phase) }
-                : copy;
-            return (
-              <Banner key={code} copy={resolved}>
-                {code === "configuration-unavailable" &&
-                showRetryConfiguration ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={onRetryConfiguration}
-                  >
-                    Retry loading stages
-                  </Button>
-                ) : undefined}
-              </Banner>
-            );
-          })}
-          {readNotice === null || promoted ? null : (
-            <Banner copy={readNoticeCopyOf(readNotice)} />
+          {availabilityCopy === null ? null : (
+            <InlineNote
+              copy={availabilityCopy}
+              busy={read.checkingAccess === true}
+            />
           )}
-          {sharingNeedsReconciliation ? (
-            <Banner copy={RECOVERY_NOTICE} />
+          {showLocalCheck || showViewDataset ? (
+            <div className="flex flex-wrap gap-3">
+              {showViewDataset ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => onViewDataset(viewDatasetId)}
+                >
+                  View dataset
+                </Button>
+              ) : null}
+              {showLocalCheck ? (
+                <Button type="button" variant="outline" onClick={onCheckAgain}>
+                  Check again
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       )}
 
-      {showCheckAgain || (onViewDataset !== undefined && viewDatasetId) ? (
-        <div className="flex flex-wrap gap-3">
-          {showCheckAgain ? (
-            <Button type="button" variant="outline" onClick={onCheckAgain}>
-              Check again
-            </Button>
-          ) : null}
-          {onViewDataset !== undefined && viewDatasetId !== undefined ? (
-            <Button
-              type="button"
-              variant="primary"
-              onClick={() => onViewDataset(viewDatasetId)}
-            >
-              View dataset
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+      {sharingCopy === null ? null : <Banner copy={sharingCopy} />}
     </section>
   );
 }

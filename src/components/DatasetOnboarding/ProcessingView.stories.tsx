@@ -19,15 +19,17 @@ import {
   dmmReadyWhileRunningView,
   duplicateConfigurationView,
   failedView,
+  historicalSharingFailedView,
+  historicalSharingUnconfirmedView,
   inconsistentView,
   LONG_DATASET_TITLE,
   loadingView,
   pendingRunningView,
   staleView,
   stepDetailsUnavailableView,
+  succeededAccessDeniedView,
   succeededAccessUnknownView,
   succeededReadableView,
-  succeededSharingFailedView,
   testAndUnknownKindView,
   unknownStatusView,
   unmatchedStepsView,
@@ -69,11 +71,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// --- current private upload -------------------------------------------------
+// `read` mirrors what the page composes from the hooks: `phase` is the
+// schedule, `reading` / `checkingAccess` are requests actually in flight.
+
 /** No snapshot yet and a healthy read. The model permits no action. */
 export const FirstRead: Story = {
-  args: { view: loadingView },
+  args: { view: loadingView, read: { phase: "polling", reading: true } },
 };
 
+/** Queued or running, between scheduled reads: "Updates automatically". */
 export const Running: Story = {
   args: {
     view: pendingRunningView,
@@ -82,7 +89,16 @@ export const Running: Story = {
   },
 };
 
-/** The state the GO asks to see: a failure with later stages that never ran. */
+/** The same run while a status read is actually in flight: "Updating…". */
+export const RunningWhileUpdating: Story = {
+  args: {
+    view: pendingRunningView,
+    datasetTitle: "Athens air quality 2024",
+    read: { phase: "polling", reading: true },
+  },
+};
+
+/** A failure with later stages that never ran. No restart is offered. */
 export const FailedWithNotRunStages: Story = {
   args: {
     view: failedView,
@@ -91,8 +107,8 @@ export const FailedWithNotRunStages: Story = {
   },
 };
 
-/** Completion alongside an explicitly unconfirmed access and sharing outcome. */
-export const CompleteAccessAndSharingUnknown: Story = {
+/** Complete, readability not yet confirmed: a local message and Check again. */
+export const CompleteAccessUnconfirmed: Story = {
   args: {
     view: succeededAccessUnknownView,
     datasetTitle: "Athens air quality 2024",
@@ -100,7 +116,16 @@ export const CompleteAccessAndSharingUnknown: Story = {
   },
 };
 
-/** Readability established elsewhere, so the navigation action is permitted. */
+/** Complete while the bounded dataset-access check is running. */
+export const CompleteCheckingAccess: Story = {
+  args: {
+    view: succeededAccessUnknownView,
+    datasetTitle: "Athens air quality 2024",
+    read: { phase: "stopped", checkingAccess: true },
+  },
+};
+
+/** Readable, so View dataset is the primary action. */
 export const CompleteAndReadable: Story = {
   args: {
     view: succeededReadableView,
@@ -109,11 +134,16 @@ export const CompleteAndReadable: Story = {
   },
 };
 
-export const CompleteButSharingFailed: Story = {
-  args: { view: succeededSharingFailedView, read: { phase: "stopped" } },
+/** Complete, but this session was refused the dataset read. */
+export const CompleteAccessDenied: Story = {
+  args: {
+    view: succeededAccessDeniedView,
+    datasetTitle: "Athens air quality 2024",
+    read: { phase: "stopped" },
+  },
 };
 
-/** Last-known state preserved while reads keep failing and have stopped. */
+/** Last-known state preserved after reads failed and monitoring stopped. */
 export const StaleLastKnownState: Story = {
   args: {
     view: staleView,
@@ -122,6 +152,7 @@ export const StaleLastKnownState: Story = {
   },
 };
 
+/** A read failed and the monitor will try again on its own. */
 export const StaleStillRetrying: Story = {
   args: { view: staleView, read: { phase: "polling" } },
 };
@@ -190,12 +221,20 @@ export const SessionUnavailable: Story = {
   args: { view: loadingView, read: { phase: "idle", session: "unavailable" } },
 };
 
-/** The same-tab marker: a reminder to check sharing, never a replayed grant. */
-export const SharingNeedsReconciliation: Story = {
+// --- historical: earlier attempts that recorded a sharing outcome ----------
+// Not reachable from today's private upload, which requests no sharing.
+
+/** An earlier attempt's saved record says sharing was never confirmed. */
+export const HistoricalSharingUnconfirmed: Story = {
   args: {
-    view: succeededReadableView,
+    view: historicalSharingUnconfirmedView,
     datasetTitle: "Athens air quality 2024",
     sharingNeedsReconciliation: true,
     read: { phase: "stopped" },
   },
+};
+
+/** An earlier attempt whose sharing explicitly failed. */
+export const HistoricalSharingFailed: Story = {
+  args: { view: historicalSharingFailedView, read: { phase: "stopped" } },
 };

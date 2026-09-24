@@ -168,9 +168,7 @@ describe("the processing page", () => {
     render(<Page />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Dataset processing is in progress"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Processing your dataset")).toBeInTheDocument();
     });
 
     const headings = screen.getAllByRole("heading", { level: 1 });
@@ -187,11 +185,11 @@ describe("the processing page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Dataset processing stopped before it finished"),
+        screen.getByText("Processing couldn't finish"),
       ).toBeInTheDocument();
     });
 
-    const list = screen.getByRole("list", { name: "Processing stages" });
+    const list = screen.getByRole("list", { name: "Processing steps" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(6);
     expect(within(list).getByText("Failed")).toBeInTheDocument();
     expect(within(list).getAllByText("Not run")).toHaveLength(2);
@@ -219,7 +217,7 @@ describe("the processing page", () => {
       expect(heading()).toHaveFocus();
     });
 
-    const check = await screen.findByRole("button", { name: "Check again" });
+    const check = await screen.findByRole("button", { name: "Refresh status" });
     await user.click(check);
     expect(check).toHaveFocus();
 
@@ -233,7 +231,9 @@ describe("the processing page", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
 
-    expect(screen.getByRole("button", { name: "Check again" })).toHaveFocus();
+    expect(
+      screen.getByRole("button", { name: "Refresh status" }),
+    ).toHaveFocus();
     expect(heading()).not.toHaveFocus();
     expect(ledger.processReads().length).toBeGreaterThan(0);
   });
@@ -246,7 +246,7 @@ describe("the processing page", () => {
     await waitFor(() => {
       expect(heading()).toHaveFocus();
     });
-    const check = await screen.findByRole("button", { name: "Check again" });
+    const check = await screen.findByRole("button", { name: "Refresh status" });
     await user.click(check);
     expect(check).toHaveFocus();
 
@@ -290,7 +290,7 @@ describe("the processing page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("This session cannot access the dataset"),
+        screen.getByText(/You can't open this dataset right now\./),
       ).toBeInTheDocument();
     });
     expect(screen.queryByRole("button", { name: "View dataset" })).toBeNull();
@@ -333,7 +333,7 @@ describe("the processing page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("We could not retrieve this process"),
+        screen.getByText("This progress link is invalid"),
       ).toBeInTheDocument();
     });
     await act(async () => {
@@ -348,12 +348,9 @@ describe("the processing page", () => {
       .getAllByRole("heading", { level: 1 })[0]
       ?.closest("section");
     const text = region?.textContent ?? "";
-    // The only mention of deletion is the disclaimer denying it.
-    const mentions = text.match(/deleted/gi) ?? [];
-    const disclaimers =
-      text.match(/does not mean the process was deleted/gi) ?? [];
-    expect(disclaimers).toHaveLength(1);
-    expect(mentions).toHaveLength(disclaimers.length);
+    // No deletion claim at all: the link is described, not the process.
+    expect(text).not.toMatch(/delet/i);
+    expect(text).toMatch(/Check that you copied the full link/);
   });
 
   it("reads nothing and reveals nothing without a usable session", async () => {
@@ -363,7 +360,7 @@ describe("the processing page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Processing status cannot be read for this session"),
+        screen.getByText("Please sign in again to view progress"),
       ).toBeInTheDocument();
     });
 
@@ -380,7 +377,7 @@ describe("the processing page", () => {
     render(<Page />);
 
     const view = await screen.findByRole("button", { name: "View dataset" });
-    await user.click(screen.getByRole("button", { name: "Check again" }));
+    await user.click(screen.getByRole("button", { name: "Refresh status" }));
     await user.click(view);
 
     // Every request this feature makes is a read.
@@ -409,8 +406,6 @@ describe("the processing page", () => {
     expect(
       ledger.urls.some((u) => u.includes("/workflow-process/onboard")),
     ).toBe(false);
-    expect(
-      screen.getByText("Dataset processing is in progress"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Processing your dataset")).toBeInTheDocument();
   });
 });
