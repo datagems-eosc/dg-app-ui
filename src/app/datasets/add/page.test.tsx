@@ -143,7 +143,7 @@ describe("/datasets/add", () => {
     // process stays explainable and the form states stay reachable.
     await waitFor(() => {
       expect(
-        screen.getByText("New dataset uploads are turned off"),
+        screen.getByText("Adding datasets is currently unavailable"),
       ).toBeInTheDocument();
     });
     expect(

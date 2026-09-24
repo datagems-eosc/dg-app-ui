@@ -400,12 +400,15 @@ describe("the processing page", () => {
     await waitFor(() => {
       expect(ledger.processReads().length).toBeGreaterThan(0);
     });
+    // Dispatch is not render: wait for the read's result to reach the page.
+    expect(
+      await screen.findByText("Processing your dataset"),
+    ).toBeInTheDocument();
     for (const call of ledger.featureCalls()) {
       expect(call.method, call.url).toBe("GET");
     }
     expect(
       ledger.urls.some((u) => u.includes("/workflow-process/onboard")),
     ).toBe(false);
-    expect(screen.getByText("Processing your dataset")).toBeInTheDocument();
   });
 });

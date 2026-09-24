@@ -394,13 +394,16 @@ That script runs this feature's Vitest suite through `vitest.unit.config.ts`.
 It selects by directory and prefix — `src/app/datasets/onboarding/`,
 `src/app/datasets/add/`, `src/lib/datasetOnboarding/`,
 `src/components/DatasetOnboarding/`, `src/components/AddDatasetForm/`,
-`src/components/ui/datasets/Classification`, `src/hooks/useDatasetOnboarding*`
+`src/components/ui/datasets/Classification`,
+`src/components/ui/datasets/DatasetUpload`,
+`src/components/ui/datasets/FileUploadCard`, `src/hooks/useDatasetOnboarding*`
 — plus `src/hooks/useApi.onboarding.test.tsx` and `src/lib/utils.auth.test.ts`,
 so a new test file under those paths is picked up without editing the script.
-It currently selects 22 files: the 17 of task 6.6 plus the five the form
+It currently selects 24 files: the 17 of task 6.6, the five the form
 integration added (`form.test.ts`,
 `DatasetOnboardingSessionBoundary.test.tsx`, `AddDatasetForm.test.tsx`,
-`app/datasets/add/page.test.tsx` and `Classification.test.tsx`). An empty
+`app/datasets/add/page.test.tsx` and `Classification.test.tsx`), and the two
+uploader regressions (`DatasetUpload.test.tsx` and `FileUploadCard.test.tsx`). An empty
 selection fails rather than passing: Vitest exits 1 when a filter matches no
 test files.
 
