@@ -257,6 +257,9 @@ pnpm run test:unit       # Run every Vitest unit test under src/
 pnpm run test:onboarding # Run the dataset onboarding Vitest selection
 pnpm run test:dataset-permissions # Run the dataset permissions Vitest selection
 
+# The permissions selection includes Browse.access.test.tsx (Access-filter regressions).
+# Unrelated Browse collection/chat tests remain in the full unit suite.
+
 # Local browser journey (not run in CI; see tests/browser/dataset-permissions/README.md)
 pnpm run test:browser:dataset-permissions
 

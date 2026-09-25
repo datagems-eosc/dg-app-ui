@@ -563,6 +563,93 @@ describe("DatasetPermissionsModal — datasetGroupAccess rollout", () => {
     expect(screen.queryByTestId("group-access")).toBeNull();
   });
 
+  it("keeps a pending legacy group grant in its opening mode when the flag turns on", async () => {
+    let completeGrant!: () => void;
+    const api = createApi({
+      assignGroupDatasetGrant: vi.fn().mockReturnValue(
+        new Promise<void>((resolve) => {
+          completeGrant = resolve;
+        }),
+      ),
+    });
+    mockUseApi.mockReturnValue(api);
+    const { rerender } = render(renderModal());
+
+    fireEvent.click(await screen.findByLabelText("Research Team Browse"));
+    expect(api.assignGroupDatasetGrant).toHaveBeenCalledExactlyOnceWith(
+      "group-1",
+      "dataset-1",
+      "dg_ds-browse",
+    );
+    mockUseFeatureFlag.mockReturnValue(true);
+    rerender(renderModal());
+    expect(screen.queryByTestId("group-access")).toBeNull();
+
+    await act(async () => completeGrant());
+    expect(screen.getByLabelText("Research Team Browse")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(api.assignGroupDatasetGrant).toHaveBeenCalledTimes(1);
+    expect(api.unassignGroupDatasetGrant).not.toHaveBeenCalled();
+
+    rerender(renderModal({ isOpen: false }));
+    rerender(renderModal());
+    expect(screen.getByTestId("group-access")).toBeInTheDocument();
+    expect(api.queryUserGroups).toHaveBeenCalledTimes(1);
+    expect(api.assignGroupDatasetGrant).toHaveBeenCalledTimes(1);
+  });
+
+  it("still grants and revokes one legacy user's role, with no extra write on Save", async () => {
+    const api = createApi({
+      queryUsers: vi.fn().mockResolvedValue({
+        items: [
+          { id: "user-1", name: "Ada Lovelace", email: "ada@example.com" },
+        ],
+      }),
+    });
+    mockUseApi.mockReturnValue(api);
+    const onClose = vi.fn();
+    render(
+      <DatasetPermissionsModal
+        isOpen
+        datasetId="dataset-1"
+        datasetName="Dataset One"
+        onClose={onClose}
+      />,
+    );
+    fireEvent.click(await screen.findByText("Invite by E-mail"));
+    fireEvent.change(screen.getByPlaceholderText("Email address"), {
+      target: { value: "ada@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    const toggle = await screen.findByLabelText("Ada Lovelace Download");
+    expect(api.assignUserDatasetGrant).not.toHaveBeenCalled();
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-pressed", "true"));
+    expect(api.assignUserDatasetGrant).toHaveBeenCalledExactlyOnceWith(
+      "user-1",
+      "dataset-1",
+      "dg_ds-download",
+    );
+    fireEvent.click(toggle);
+    await waitFor(() =>
+      expect(toggle).toHaveAttribute("aria-pressed", "false"),
+    );
+    expect(api.unassignUserDatasetGrant).toHaveBeenCalledExactlyOnceWith(
+      "user-1",
+      "dataset-1",
+      "dg_ds-download",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(api.assignUserDatasetGrant).toHaveBeenCalledTimes(1);
+    expect(api.unassignUserDatasetGrant).toHaveBeenCalledTimes(1);
+    expect(api.assignGroupDatasetGrant).not.toHaveBeenCalled();
+    expect(api.unassignGroupDatasetGrant).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("group-access")).toBeNull();
+  });
+
   it("does not swap in the legacy editor when the flag is lost mid-session", () => {
     const api = createApi();
     mockUseApi.mockReturnValue(api);
