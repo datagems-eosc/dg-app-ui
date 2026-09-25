@@ -268,8 +268,19 @@ const uploadFile = async (
   });
 };
 
-/** Fills every required field through the real controls. */
-const fillMetadata = async (user: ReturnType<typeof userEvent.setup>) => {
+const countryInput = () =>
+  screen.getByPlaceholderText(
+    "Enter country-code separate with commas e.g. US, DE, IT",
+  );
+
+/**
+ * Fills every required field through the real controls. `country` is typed
+ * into the Country control verbatim; pass `null` to leave it empty.
+ */
+const fillMetadata = async (
+  user: ReturnType<typeof userEvent.setup>,
+  { country = "US{Enter}" }: { country?: string | null } = {},
+) => {
   await user.type(
     screen.getByPlaceholderText("Enter dataset title"),
     "Sensor readings 2026",
@@ -308,6 +319,10 @@ const fillMetadata = async (user: ReturnType<typeof userEvent.setup>) => {
 
   await user.click(screen.getByText("Select a license"));
   await user.click(screen.getByText("CC BY 4.0"));
+
+  if (country !== null) {
+    await user.type(countryInput(), country);
+  }
 };
 
 beforeEach(() => {
@@ -367,6 +382,67 @@ describe("AddDatasetForm sections and validation", () => {
     });
     expect(screen.getByText("Title is required")).toBeInTheDocument();
     expect(ledger.starts()).toHaveLength(0);
+  });
+});
+
+describe("AddDatasetForm required country", () => {
+  it("blocks Start on an empty or blank Country, then starts once it is supplied", async () => {
+    const user = userEvent.setup();
+    const ledger = stubBoundaries();
+    const { container } = mount();
+
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    expect(screen.getByText("Country")).toHaveTextContent("Country*");
+    expect(countryInput()).toHaveAttribute("aria-required", "true");
+
+    await uploadFile(user, container);
+    await fillMetadata(user, { country: null });
+    await user.click(startButton());
+
+    await waitFor(() => {
+      expect(screen.getByText("Country is required")).toBeInTheDocument();
+    });
+    expect(ledger.starts()).toHaveLength(0);
+
+    // Whitespace alone is not a country.
+    await user.type(countryInput(), "   ");
+    await user.click(startButton());
+    expect(screen.getByText("Country is required")).toBeInTheDocument();
+    expect(ledger.starts()).toHaveLength(0);
+
+    await user.clear(countryInput());
+    await user.type(countryInput(), "PL{Enter}");
+    await user.click(startButton());
+
+    await waitFor(() => {
+      expect(ledger.starts()).toHaveLength(1);
+    });
+    expect(screen.queryByText("Country is required")).toBeNull();
+    const body = JSON.parse(ledger.starts()[0]?.body as string);
+    expect(body.country).toEqual(["PL"]);
+    // Languages stays optional: nothing was entered, so nothing is sent.
+    expect(body).not.toHaveProperty("language");
+  });
+
+  it("sends every supplied country without selecting one", async () => {
+    const user = userEvent.setup();
+    const ledger = stubBoundaries();
+    const { container } = mount();
+
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await uploadFile(user, container);
+    await fillMetadata(user, { country: "US, PL{Enter}" });
+    await user.click(startButton());
+
+    await waitFor(() => {
+      expect(ledger.starts()).toHaveLength(1);
+    });
+    const body = JSON.parse(ledger.starts()[0]?.body as string);
+    expect(body.country).toEqual(["US", "PL"]);
   });
 });
 
@@ -452,6 +528,7 @@ describe("AddDatasetForm managed submission", () => {
       license: "cc-by-4.0",
       keywords: ["sensors"],
       fieldOfScience: ["1.5"],
+      country: ["US"],
       dataLocations: [{ kind: 0, location: STAGED }],
     });
     expect(body.datePublished).toMatch(/^\d{4}-\d{2}-\d{2}$/);

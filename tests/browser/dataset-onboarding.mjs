@@ -93,7 +93,19 @@ async function uploadFile(page, file = FILE) {
   await page.getByText(file.name, { exact: true }).first().waitFor(SOON);
 }
 
-async function fillMetadata(page) {
+/**
+ * The Country control's own block: label, input, counter and error. Found by
+ * its label, because the placeholder disappears once a country is entered.
+ */
+const countryField = (page) =>
+  page
+    .locator("div.w-full")
+    .filter({ has: page.locator("label", { hasText: /^Country\*?$/ }) })
+    .last();
+const countryInput = (page) => countryField(page).locator("input[type=text]");
+
+/** Every value in `countries` is entered; an empty list leaves Country blank. */
+async function fillMetadata(page, { countries = ["US"] } = {}) {
   await titleInput(page).fill("Sensor readings 2026");
   await page
     .locator("input[placeholder='Enter short headline']")
@@ -108,6 +120,10 @@ async function fillMetadata(page) {
   await page.getByText("Earth and related environmental sciences").click();
   await page.getByText("Select a license").click();
   await page.getByRole("button", { name: "CC BY 4.0" }).click();
+  for (const country of countries) {
+    await countryInput(page).fill(country);
+    await countryInput(page).press("Enter");
+  }
 }
 
 const bodyText = (page) => page.evaluate(() => document.body.innerText);
@@ -767,6 +783,99 @@ async function longFilenames() {
   }
 }
 
+async function requiredCountry() {
+  for (const viewport of [NARROW, DESKTOP]) {
+    const at = `${viewport.width}px`;
+    const w = world();
+    const { context, page } = await openContext(browser, w, {
+      baseUrl,
+      viewport,
+    });
+    const startBodies = [];
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        request.url().includes("/workflow-process/onboard")
+      ) {
+        startBodies.push(request.postDataJSON());
+      }
+    });
+
+    step(`missing country at ${at}`);
+    await openForm(page);
+    await uploadFile(page);
+    await page.getByText("File uploaded").waitFor(SOON);
+    await fillMetadata(page, { countries: [] });
+    check(
+      `${at}: Country is marked required and Languages is not`,
+      (await countryField(page).locator("label").innerText()).trim() ===
+        "Country*" &&
+        (await countryInput(page).getAttribute("aria-required")) === "true" &&
+        (await page
+          .locator("input[placeholder^='Enter language codes']")
+          .getAttribute("aria-required")) === "false",
+    );
+    await startButton(page).click();
+    const error = countryField(page).getByText("Country is required", {
+      exact: true,
+    });
+    await error.waitFor(SOON);
+    await page.waitForTimeout(800);
+    check(
+      `${at}: an empty Country sends no start and is explained beside the field`,
+      w.count("start") === 0 && (await error.isVisible()),
+      `starts=${w.count("start")}`,
+    );
+    check(`${at}: the page still fits the viewport`, await noOverflow(page));
+    await countryField(page).scrollIntoViewIfNeeded();
+    await countryField(page).screenshot({
+      path: path.join(out, `07-country-required-${viewport.width}.png`),
+    });
+    await shot(page, `07-country-required-page-${viewport.width}`);
+
+    step(`blank country at ${at}`);
+    await countryInput(page).fill("   ");
+    await countryInput(page).press("Enter");
+    await startButton(page).click();
+    await page.waitForTimeout(800);
+    check(
+      `${at}: a whitespace-only Country still sends no start`,
+      w.count("start") === 0 && (await error.isVisible()),
+      `starts=${w.count("start")}`,
+    );
+
+    step(`recovery with two countries at ${at}`);
+    for (const country of ["US", "PL"]) {
+      await countryInput(page).fill(country);
+      await countryInput(page).press("Enter");
+    }
+    await startButton(page).click();
+    await page.waitForURL(
+      new RegExp(`/datasets/onboarding/${PROCESS_ID}$`),
+      SLOW,
+    );
+    await page.waitForTimeout(800);
+    check(
+      `${at}: supplying countries allows exactly one start carrying both`,
+      w.count("start") === 1 &&
+        startBodies.length === 1 &&
+        JSON.stringify(startBodies[0]?.country) ===
+          JSON.stringify(["US", "PL"]),
+      `starts=${w.count("start")} country=${JSON.stringify(startBodies[0]?.country)}`,
+    );
+    check(
+      `${at}: Languages stays optional and is not sent when empty`,
+      startBodies[0] !== undefined && !("language" in startBodies[0]),
+    );
+    check(
+      `${at}: no unexpected Gateway call`,
+      w.unexpected.length === 0,
+      w.unexpected.join(", "),
+    );
+    await context.close();
+  }
+}
+
 // ---------------------------------------------------------------------------
 
 async function main() {
@@ -800,6 +909,10 @@ async function main() {
   await report.scenario("refresh activity at 390px", refreshActivity);
   await report.scenario("session ownership", ownership);
   await report.scenario("long filenames at 390px and 1440px", longFilenames);
+  await report.scenario(
+    "required country at 390px and 1440px",
+    requiredCountry,
+  );
 
   await report.scenario("request boundaries", async () => {
     const escaped = worlds.flatMap((w) => w.escaped);

@@ -53,6 +53,12 @@ interface ClassificationProps {
    * exactly as the caller passed it and is never cleared here.
    */
   showCollection?: boolean;
+  /**
+   * Whether Country is marked as required. Defaults to `false`, so existing
+   * consumers keep an optional field. Presentation only: the caller owns the
+   * rule and reports a missing value through `errors.countries`.
+   */
+  requireCountry?: boolean;
 }
 
 // Mock collections data - fallback when API collections are not available
@@ -101,6 +107,7 @@ export function Classification({
   onChange,
   errors,
   showCollection = true,
+  requireCountry = false,
 }: ClassificationProps) {
   const api = useApi();
   const { apiCollections, isLoadingApiCollections } = useCollections();
@@ -362,7 +369,7 @@ export function Classification({
         onChange={(countries) => handleFieldChange("countries", countries)}
         placeholder="Enter country-code separate with commas e.g. US, DE, IT"
         error={errors.countries}
-        required={false}
+        required={requireCountry}
       />
     </div>
   );

@@ -57,6 +57,7 @@ import { APP_ROUTES } from "@/config/appUrls";
 import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
 import {
+  hasNonblankValue,
   publicationDateOf,
   toOnboardingMetadata,
 } from "@/lib/datasetOnboarding/form";
@@ -696,6 +697,11 @@ export default function AddDatasetForm() {
       newErrors.classification.license = "License is required";
     }
 
+    // Every supplied country is kept; only an absent or all-blank list blocks.
+    if (!hasNonblankValue(formData.classification.countries)) {
+      newErrors.classification.countries = "Country is required";
+    }
+
     if (formData.additionalInfo.referenceString.length > 3000) {
       newErrors.additionalInfo.referenceString =
         "Reference string must be 3000 characters or less";
@@ -1083,6 +1089,7 @@ export default function AddDatasetForm() {
                 errors={errors.classification}
                 // Collections are assigned later, from the dataset itself.
                 showCollection={false}
+                requireCountry
               />
             ),
           },
