@@ -99,12 +99,11 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
     // a dataset, with no legacy creation path behind it. Reading an already
     // started process is not gated by either flag.
     //
-    // Default false everywhere: enabling it is a deliberate per-environment
-    // decision that the target-environment creation/access checks (G2) still
-    // precede. A client flag is a rollout mechanism, not a security control.
+    // Enabled by default for branch deployment testing. Persisted overrides
+    // can still disable it; Gateway permissions remain authoritative.
     id: "datasetOnboardingMonitoring",
     label: "Dataset onboarding – managed process",
-    defaults: disabledEverywhere(),
+    defaults: enabledEverywhere(),
   },
   {
     id: "notification",

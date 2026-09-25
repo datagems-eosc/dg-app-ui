@@ -12,7 +12,6 @@ import { parseOverrides } from "../src/lib/featureFlags/storage";
 const DISABLED_EVERYWHERE = new Set([
   "customCollection",
   "generalChat",
-  "datasetOnboardingMonitoring",
   "notification",
   "pinnedDatasetWeather",
   "pinnedDatasetLanguage",
@@ -24,6 +23,7 @@ test("flags enabled everywhere default to true on every environment", () => {
   for (const env of ENVS) {
     assert.equal(resolveFlag("datasetPackage", env, {}), true);
     assert.equal(resolveFlag("useCaseWeather", env, {}), true);
+    assert.equal(resolveFlag("datasetOnboardingMonitoring", env, {}), true);
   }
 });
 
@@ -35,6 +35,14 @@ test("customCollection and generalChat default to false on every environment", (
 });
 
 test("resolveFlag lets an override win over the environment default", () => {
+  for (const env of ENVS) {
+    assert.equal(
+      resolveFlag("datasetOnboardingMonitoring", env, {
+        datasetOnboardingMonitoring: false,
+      }),
+      false,
+    );
+  }
   assert.equal(
     resolveFlag("datasetPackage", "playground", { datasetPackage: false }),
     false,

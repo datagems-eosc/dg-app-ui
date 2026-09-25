@@ -368,30 +368,53 @@ describe("the processing page", () => {
     expect(ledger.datasetReads()).toHaveLength(0);
   });
 
-  it("never issues a mutation from this page", async () => {
-    const ledger = stubGateway({
-      process: succeededProcess,
-      dataset: { id: DATASET_ID },
-    });
-    const user = userEvent.setup();
-    render(<Page />);
+  it.each([
+    ["running", runningProcess],
+    ["failed", failedThenPendingProcess],
+    ["completed", succeededProcess],
+  ])(
+    "never issues a mutation from a %s process page",
+    async (state, process) => {
+      const ledger = stubGateway({
+        process,
+        dataset: { id: DATASET_ID },
+      });
+      const user = userEvent.setup();
+      render(<Page />);
 
-    const view = await screen.findByRole("button", { name: "View dataset" });
-    await user.click(screen.getByRole("button", { name: "Refresh status" }));
-    await user.click(view);
+      if (state === "completed") {
+        const view = await screen.findByRole("button", {
+          name: "View dataset",
+        });
+        expect(
+          screen.queryByRole("button", { name: "Refresh status" }),
+        ).not.toBeInTheDocument();
+        await user.click(view);
+      } else {
+        const refresh = await screen.findByRole("button", {
+          name: "Refresh status",
+        });
+        await waitFor(() => expect(refresh).toBeEnabled());
+        const readsBefore = ledger.processReads().length;
+        await user.click(refresh);
+        await waitFor(() => {
+          expect(ledger.processReads().length).toBeGreaterThan(readsBefore);
+        });
+      }
 
-    // Every request this feature makes is a read.
-    expect(ledger.featureCalls().length).toBeGreaterThan(0);
-    for (const call of ledger.featureCalls()) {
-      expect(call.method, call.url).toBe("GET");
-    }
-    // And no start, grant or profiling endpoint is touched by anything.
-    for (const url of ledger.urls) {
-      expect(url).not.toContain("/workflow-process/onboard");
-      expect(url).not.toContain("/dataset/profile");
-      expect(url).not.toContain("/context-grant");
-    }
-  });
+      // Every request this feature makes is a read.
+      expect(ledger.featureCalls().length).toBeGreaterThan(0);
+      for (const call of ledger.featureCalls()) {
+        expect(call.method, call.url).toBe("GET");
+      }
+      // And no start, grant or profiling endpoint is touched by anything.
+      for (const url of ledger.urls) {
+        expect(url).not.toContain("/workflow-process/onboard");
+        expect(url).not.toContain("/dataset/profile");
+        expect(url).not.toContain("/context-grant");
+      }
+    },
+  );
 
   it("recovers a direct arrival by reading, without starting anything", async () => {
     const ledger = stubGateway({ process: runningProcess });
