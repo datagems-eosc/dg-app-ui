@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { MonitoringPhase } from "@/hooks/useDatasetOnboardingProcess";
@@ -14,15 +14,17 @@ import {
   dmmReadyWhileRunningView,
   failedView,
   forbiddenView,
+  historicalSharingFailedView,
+  historicalSharingUnconfirmedView,
   inconsistentView,
   LONG_DATASET_TITLE,
   loadingView,
   pendingRunningView,
   staleView,
   stepDetailsUnavailableView,
+  succeededAccessDeniedView,
   succeededAccessUnknownView,
   succeededReadableView,
-  succeededSharingFailedView,
   unknownStatusView,
   unmatchedStepsView,
 } from "./fixtures";
@@ -33,6 +35,12 @@ const stageTexts = () =>
   screen.getAllByRole("listitem").map((item) => item.textContent ?? "");
 
 const liveRegion = () => screen.getByRole("status").textContent ?? "";
+
+const stepsPanel = () =>
+  screen.getByRole("region", { name: "Processing steps" });
+
+const refreshButton = () =>
+  screen.getByRole("button", { name: "Refresh status" });
 
 describe("ProcessingView", () => {
   it("restates the accepted hook's read phase without drifting from it", () => {
@@ -55,7 +63,7 @@ describe("ProcessingView", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Dataset processing" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Checking processing status")).toBeInTheDocument();
+    expect(screen.getByText("Checking progress…")).toBeInTheDocument();
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
     // The model permits no action before a first snapshot, and a healthy read
     // is not a reason to manufacture one.
@@ -65,8 +73,9 @@ describe("ProcessingView", () => {
   it("shows the running aggregate with its stage states", () => {
     render(<ProcessingView view={pendingRunningView} />);
 
+    expect(screen.getByText("Processing your dataset")).toBeInTheDocument();
     expect(
-      screen.getByText("Dataset processing is in progress"),
+      screen.getByText("You can leave this page and return to check progress."),
     ).toBeInTheDocument();
     expect(stageTexts()[0]).toBe("Load datasetCompleted");
     expect(stageTexts()[1]).toBe("Profile dataIn progress");
@@ -75,16 +84,14 @@ describe("ProcessingView", () => {
   it("preserves earlier success and later not-run stages after a failure", () => {
     render(<ProcessingView view={failedView} onCheckAgain={vi.fn()} />);
 
-    expect(
-      screen.getByText("Dataset processing stopped before it finished"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Processing couldn't finish")).toBeInTheDocument();
     expect(stageTexts()).toEqual([
       "Load datasetCompleted",
       "Profile dataFailed",
       "Create linking reportNot run",
       "Package datasetNot run",
-      "Register for recommendationsNot reported",
-      "Prepare cross-dataset discoveryNot reported",
+      "Register for recommendationsNo update available",
+      "Prepare cross-dataset discoveryNo update available",
     ]);
   });
 
@@ -98,10 +105,10 @@ describe("ProcessingView", () => {
       />,
     );
 
-    const labels = screen
+    const names = screen
       .getAllByRole("button")
-      .map((button) => button.textContent ?? "");
-    expect(labels).toEqual(["Check again"]);
+      .map((button) => button.getAttribute("aria-label") ?? button.textContent);
+    expect(names).toEqual(["Refresh status"]);
     for (const forbidden of ["Retry", "Rerun", "Restart", "Cancel", "Resume"]) {
       expect(
         screen.queryByRole("button", { name: new RegExp(forbidden, "i") }),
@@ -113,7 +120,7 @@ describe("ProcessingView", () => {
     const { container } = render(<ProcessingView view={failedView} />);
 
     expect(
-      screen.getByText(/ask a DataGEMS administrator to look into it/i),
+      screen.getByText("Ask a DataGEMS administrator to check this dataset."),
     ).toBeInTheDocument();
     expect(container.querySelectorAll("a")).toHaveLength(0);
     expect(container.textContent).not.toMatch(/mailto:|@[\w.-]+\.\w+/);
@@ -124,24 +131,27 @@ describe("ProcessingView", () => {
       <ProcessingView view={succeededReadableView} />,
     );
 
-    expect(screen.getByText("Dataset processing complete")).toBeInTheDocument();
-    expect(container.textContent).toMatch(/configured processing only/i);
+    expect(screen.getByText("Processing complete")).toBeInTheDocument();
+    // The caveat that used to be repeated here is gone; the claims it guarded
+    // against must still be absent.
+    expect(container.textContent).not.toMatch(/configured processing only/i);
     for (const claim of [
       "public",
       "searchable",
       "downloadable",
       "published",
+      "ready to download",
       "available to everyone",
     ]) {
       expect(container.textContent?.toLowerCase()).not.toContain(claim);
     }
   });
 
-  it("does not claim a per-stage report when step details are absent", () => {
+  it("does not claim a per-stage report for an aggregate-only completion", () => {
     // A Succeeded aggregate with no `steps` key at all — the censored or
     // unprojected shape. Composed here rather than in `fixtures.ts` because the
     // accepted payloads only ever pair an absent step list with a *running*
-    // aggregate, and this correction may not add a fixture scenario.
+    // aggregate.
     const aggregateOnly = buildFixtureView({
       process: {
         id: PROCESS_INSTANCE_ID,
@@ -153,123 +163,83 @@ describe("ProcessingView", () => {
 
     const { container } = render(<ProcessingView view={aggregateOnly} />);
 
-    expect(screen.getByText("Dataset processing complete")).toBeInTheDocument();
+    expect(screen.getByText("Processing complete")).toBeInTheDocument();
     expect(
-      screen.getByText(/The process reports that processing is complete/i),
+      within(stepsPanel()).getByText(
+        "Individual step details aren't available.",
+      ),
     ).toBeInTheDocument();
     // Nothing reported per stage, so nothing may be claimed per stage.
+    expect(stageTexts().join(" ")).not.toContain("Completed");
     expect(container.textContent).not.toMatch(
-      /every configured stage reported success/i,
+      /every (configured )?(stage|step) (reported success|completed)/i,
     );
-    expect(
-      screen.getByText("Stage details are not available"),
-    ).toBeInTheDocument();
   });
 
-  it("words the availability notice independently of the process outcome", () => {
-    const expected = /Access to this dataset has not yet been confirmed/i;
-
-    const { container, unmount } = render(
-      <ProcessingView view={inconsistentView} />,
-    );
-    expect(
-      screen.getByText("Processing details are inconsistent"),
-    ).toBeInTheDocument();
-    expect(screen.getByText(expected)).toBeInTheDocument();
-    // An access notice must not quietly resolve a contradictory outcome.
-    expect(container.textContent).not.toMatch(/processing finished/i);
-    unmount();
-
-    // The same sentence, unchanged, alongside a clean completion.
-    render(<ProcessingView view={succeededAccessUnknownView} />);
-    expect(screen.getByText(expected)).toBeInTheDocument();
-  });
-
-  it("makes no claim about where the unmatched-step list sits", () => {
-    const { container } = render(<ProcessingView view={unmatchedStepsView} />);
-
-    expect(
-      screen.getByText(/their position in the run is not confirmed/i),
-    ).toBeInTheDocument();
-    // The list renders above the notices, so "below" would be wrong.
-    expect(container.textContent).not.toMatch(/separately below/i);
-  });
-
-  it("keeps completion and unconfirmed access as separate persistent messages", () => {
-    render(<ProcessingView view={succeededAccessUnknownView} />);
-
-    expect(screen.getByText("Dataset processing complete")).toBeInTheDocument();
-    expect(
-      screen.getByText("We have not confirmed access to the dataset"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Sharing has not been confirmed"),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps a failed sharing outcome separate from the processing outcome", () => {
-    render(<ProcessingView view={succeededSharingFailedView} />);
-
-    expect(screen.getByText("Dataset processing complete")).toBeInTheDocument();
-    expect(screen.getByText("Sharing did not complete")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Nothing here retries sharing/i),
-    ).toBeInTheDocument();
-  });
-
-  it("shows an inconsistency as a caution rather than a clean success", () => {
+  it("renders a contradictory outcome once, without resolving it", () => {
     const { container } = render(<ProcessingView view={inconsistentView} />);
 
     expect(
-      screen.getByText("Processing details are inconsistent"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Dataset processing complete")).toBeNull();
+      screen.getAllByText("We couldn't confirm that processing completed"),
+    ).toHaveLength(1);
+    expect(screen.queryByText("Processing complete")).toBeNull();
     expect(container.querySelector(".bg-emerald-50")).toBeNull();
+    // The access message accompanying it must not resolve the contradiction.
+    expect(
+      screen.getByText(/We couldn't confirm whether you can open this dataset/),
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/processing finished/i);
+  });
+
+  it("keeps an unrecognised aggregate status honest, and says it once", () => {
+    const { container } = render(<ProcessingView view={unknownStatusView} />);
+    expect(
+      screen.getAllByText("Processing status is unavailable"),
+    ).toHaveLength(1);
+    expect(container.textContent).not.toMatch(/raw outcome|outside the range/i);
   });
 
   it("does not promote a DMM-ready dataset over an unfinished process", () => {
     render(<ProcessingView view={dmmReadyWhileRunningView} />);
 
+    expect(screen.getByText("Processing your dataset")).toBeInTheDocument();
     expect(
-      screen.getByText("Dataset processing is in progress"),
+      screen.getByText(
+        "Dataset details are available. Processing is still underway.",
+      ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Dataset metadata is ready, processing is not finished"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Dataset processing complete")).toBeNull();
+    expect(screen.queryByText("Processing complete")).toBeNull();
   });
 
   it("does not read missing step details as every stage succeeding", () => {
     render(<ProcessingView view={stepDetailsUnavailableView} />);
 
     expect(
-      screen.getByText("Stage details are not available"),
+      screen.getByText("Individual step details aren't available."),
     ).toBeInTheDocument();
     for (const text of stageTexts()) {
-      expect(text).toContain("Not reported");
+      expect(text).toContain("No update available");
     }
     expect(stageTexts().join(" ")).not.toContain("Completed");
   });
 
   it("lists steps outside the configuration without inventing an order", () => {
-    render(<ProcessingView view={unmatchedStepsView} />);
+    const { container } = render(<ProcessingView view={unmatchedStepsView} />);
 
     expect(
-      screen.getByRole("heading", { level: 2, name: "Other reported steps" }),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Additional processing steps",
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/without a position in the sequence/i),
-    ).toBeInTheDocument();
+      screen.getByRole("list", { name: "Additional processing steps" }).tagName,
+    ).toBe("UL");
+    // Said once, as the section helper, not again as a banner.
     expect(
-      screen.getByRole("list", { name: "Other reported steps" }),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps an unrecognised aggregate status honest", () => {
-    render(<ProcessingView view={unknownStatusView} />);
-    expect(
-      screen.getByText("The processing status is not recognised"),
-    ).toBeInTheDocument();
+      screen.getAllByText("The order of these steps isn't available."),
+    ).toHaveLength(1);
+    expect(container.textContent).not.toMatch(/separately below/i);
   });
 
   it("never states a percentage or a time estimate", () => {
@@ -288,26 +258,269 @@ describe("ProcessingView", () => {
     }
   });
 
-  // --- read health -------------------------------------------------------
+  // --- access and sharing -----------------------------------------------
+
+  it("shows no sharing message for a current private upload", () => {
+    const { container, unmount } = render(
+      <ProcessingView view={succeededAccessUnknownView} />,
+    );
+    expect(container.textContent).not.toMatch(/shar/i);
+    unmount();
+
+    render(<ProcessingView view={succeededReadableView} />);
+    expect(screen.getByText("Processing complete")).toBeInTheDocument();
+    expect(screen.queryByText(/shar/i)).toBeNull();
+  });
+
+  it("places unconfirmed readability beside a local Check again", async () => {
+    const onCheckAgain = vi.fn();
+    const onViewDataset = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ProcessingView
+        view={succeededAccessUnknownView}
+        onCheckAgain={onCheckAgain}
+        onViewDataset={onViewDataset}
+      />,
+    );
+
+    expect(screen.getByText("Processing complete")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We couldn't confirm whether you can open this dataset yet.",
+      ),
+    ).toBeInTheDocument();
+    // The id is present in the snapshot; that establishes nothing.
+    expect(succeededAccessUnknownView.datasetId).toBeDefined();
+    expect(screen.queryByRole("button", { name: "View dataset" })).toBeNull();
+
+    // The local action is the same combined read as the header control.
+    await user.click(screen.getByRole("button", { name: "Check again" }));
+    expect(onCheckAgain).toHaveBeenCalledTimes(1);
+    expect(onViewDataset).not.toHaveBeenCalled();
+  });
+
+  it("says the access check is running only while it actually runs", () => {
+    const { rerender } = render(
+      <ProcessingView
+        view={succeededAccessUnknownView}
+        read={{ phase: "stopped", checkingAccess: true }}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Checking dataset access…")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Check again" })).toBeNull();
+
+    rerender(
+      <ProcessingView
+        view={succeededAccessUnknownView}
+        read={{ phase: "stopped", checkingAccess: false }}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("Checking dataset access…")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Check again" }),
+    ).toBeInTheDocument();
+  });
+
+  it("explains a refused dataset read without offering navigation", () => {
+    render(
+      <ProcessingView
+        view={succeededAccessDeniedView}
+        onViewDataset={vi.fn()}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Processing complete")).toBeInTheDocument();
+    expect(
+      screen.getByText(/You can't open this dataset right now\./),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View dataset" })).toBeNull();
+  });
+
+  it("shows one sharing message for an earlier attempt, never a retry", () => {
+    // The saved record and the model's notice describe the same fact.
+    render(
+      <ProcessingView
+        view={historicalSharingUnconfirmedView}
+        sharingNeedsReconciliation
+        onCheckAgain={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getAllByText("Earlier sharing changes couldn't be confirmed"),
+    ).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /shar/i })).toBeNull();
+  });
+
+  it("keeps the saved-record reminder for an earlier attempt on its own", () => {
+    render(
+      <ProcessingView
+        view={succeededReadableView}
+        sharingNeedsReconciliation
+      />,
+    );
+    expect(
+      screen.getByText("Earlier sharing changes couldn't be confirmed"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a failed earlier sharing outcome separate from processing", () => {
+    const { container } = render(
+      <ProcessingView view={historicalSharingFailedView} />,
+    );
+
+    expect(screen.getByText("Processing complete")).toBeInTheDocument();
+    expect(
+      screen.getByText("Sharing changes weren't completed"),
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/rolled back|retr(y|ies)/i);
+  });
+
+  // --- automatic updates ------------------------------------------------
+
+  it("says updates are automatic between scheduled reads, without spinning", () => {
+    render(
+      <ProcessingView
+        view={pendingRunningView}
+        read={{ phase: "polling" }}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+
+    expect(
+      within(stepsPanel()).getByText("Updates automatically"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Updating…")).toBeNull();
+    // Polling is a schedule, not a request: the refresh icon stays still.
+    expect(refreshButton().querySelector(".animate-spin")).toBeNull();
+  });
+
+  it("shows Updating only while a current read is in flight", () => {
+    const { rerender } = render(
+      <ProcessingView
+        view={pendingRunningView}
+        read={{ phase: "polling", reading: true }}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+    expect(within(stepsPanel()).getByText("Updating…")).toBeInTheDocument();
+    expect(refreshButton().querySelector(".animate-spin")).not.toBeNull();
+    expect(
+      refreshButton().querySelector(".motion-reduce\\:animate-none"),
+    ).not.toBeNull();
+
+    // An access read alone keeps it, so overlapping reads read as one update.
+    rerender(
+      <ProcessingView
+        view={pendingRunningView}
+        read={{ phase: "polling", reading: false, checkingAccess: true }}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Updating…")).toBeInTheDocument();
+
+    rerender(
+      <ProcessingView
+        view={pendingRunningView}
+        read={{ phase: "polling", reading: false, checkingAccess: false }}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("Updating…")).toBeNull();
+    expect(screen.getByText("Updates automatically")).toBeInTheDocument();
+  });
+
+  it("promises no automatic update while paused or after a normal finish", () => {
+    const { rerender } = render(
+      <ProcessingView
+        view={pendingRunningView}
+        read={{ phase: "paused" }}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Updates paused")).toBeInTheDocument();
+    expect(screen.queryByText(/automatically|Trying again/)).toBeNull();
+
+    // A terminal stop is the normal end, not an alarm.
+    rerender(
+      <ProcessingView
+        view={failedView}
+        read={{ phase: "stopped" }}
+        onCheckAgain={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText(/Updates automatically|Updates paused|stopped/i),
+    ).toBeNull();
+    expect(refreshButton()).toBeEnabled();
+  });
 
   it("distinguishes a retrying stale read from a stopped one", () => {
     const { rerender } = render(
       <ProcessingView view={staleView} read={{ phase: "polling" }} />,
     );
     expect(
-      screen.getByText("Updates are temporarily unavailable"),
+      screen.getByText("Progress updates are unavailable"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/still trying to reconnect/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("Couldn't update. Trying again…"),
+    ).toBeInTheDocument();
 
     rerender(<ProcessingView view={staleView} read={{ phase: "stopped" }} />);
-    // Promising automatic updates after monitoring stopped would be a lie.
-    expect(screen.queryByText(/still trying to reconnect/i)).toBeNull();
+    // Promising automatic updates after monitoring stopped would be untrue.
+    expect(screen.queryByText(/Trying again/)).toBeNull();
+    expect(screen.getByText("Automatic updates stopped")).toBeInTheDocument();
     expect(
-      screen.getByText(/Automatic updates have stopped/i),
+      screen.getByText(/Select Refresh status to try again/),
     ).toBeInTheDocument();
-    // The snapshot itself survives either way.
+    // The snapshot itself survives either way, and no spinner claims progress.
     expect(stageTexts()[0]).toBe("Load datasetCompleted");
   });
+
+  it("keeps the header refresh focusable and usable during a read", async () => {
+    const onCheckAgain = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ProcessingView
+        view={pendingRunningView}
+        read={{ phase: "polling" }}
+        onCheckAgain={onCheckAgain}
+      />,
+    );
+
+    await user.tab();
+    expect(refreshButton()).toHaveFocus();
+    expect(refreshButton()).toHaveAttribute("type", "button");
+    // The adjacent status is its description, so it is heard on focus rather
+    // than announced on every request.
+    const describedBy = refreshButton().getAttribute("aria-describedby");
+    expect(describedBy).not.toBeNull();
+    expect(document.getElementById(describedBy ?? "")?.textContent).toBe(
+      "Updates automatically",
+    );
+
+    rerender(
+      <ProcessingView
+        view={pendingRunningView}
+        read={{ phase: "polling", reading: true }}
+        onCheckAgain={onCheckAgain}
+      />,
+    );
+    // Focus does not move, and the control is still a real button: the hooks
+    // coalesce a click with the read in flight.
+    expect(refreshButton()).toHaveFocus();
+    expect(refreshButton()).toBeEnabled();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+    expect(onCheckAgain).toHaveBeenCalledTimes(2);
+    expect(liveRegion()).toBe("");
+  });
+
+  // --- read health -------------------------------------------------------
 
   it("replaces an indefinite spinner with the reason the read stopped", () => {
     const { container } = render(
@@ -323,14 +536,12 @@ describe("ProcessingView", () => {
     );
 
     expect(
-      screen.getByText("We could not retrieve this process"),
+      screen.getByText("We couldn't open this progress page"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Checking processing status")).toBeNull();
+    expect(screen.queryByText("Checking progress…")).toBeNull();
     expect(container.querySelector(".animate-spin")).toBeNull();
     // 404 is not deletion, and we must not say it is.
-    expect(container.textContent).toMatch(
-      /does not mean the process was deleted/i,
-    );
+    expect(container.textContent).not.toMatch(/delet/i);
   });
 
   it("keeps the read action for a valid but unresolvable reference", async () => {
@@ -347,7 +558,7 @@ describe("ProcessingView", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Check again" }));
+    await user.click(refreshButton());
     expect(onCheckAgain).toHaveBeenCalledTimes(1);
   });
 
@@ -362,7 +573,7 @@ describe("ProcessingView", () => {
     );
 
     expect(
-      screen.getByText("We could not retrieve this process"),
+      screen.getByText("This progress link is invalid"),
     ).toBeInTheDocument();
     expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
@@ -377,7 +588,7 @@ describe("ProcessingView", () => {
     );
 
     expect(
-      screen.getByText("Processing status cannot be read for this session"),
+      screen.getByText("Please sign in again to view progress"),
     ).toBeInTheDocument();
     expect(screen.queryAllByRole("button")).toHaveLength(0);
     expect(container.textContent).not.toMatch(/failed|deleted/i);
@@ -392,7 +603,7 @@ describe("ProcessingView", () => {
     );
 
     expect(
-      screen.getAllByText("This session cannot read the processing status"),
+      screen.getAllByText("You can't view this processing status right now"),
     ).toHaveLength(1);
   });
 
@@ -413,20 +624,6 @@ describe("ProcessingView", () => {
     expect(onViewDataset).toHaveBeenCalledWith(asDatasetId(DATASET_ID));
   });
 
-  it("offers no dataset action while readability is unconfirmed", () => {
-    render(
-      <ProcessingView
-        view={succeededAccessUnknownView}
-        onViewDataset={vi.fn()}
-        onCheckAgain={vi.fn()}
-      />,
-    );
-
-    // The id is present in the snapshot; that establishes nothing.
-    expect(succeededAccessUnknownView.datasetId).toBeDefined();
-    expect(screen.queryByRole("button", { name: "View dataset" })).toBeNull();
-  });
-
   it("renders no control when its callback is absent", () => {
     render(<ProcessingView view={succeededReadableView} />);
     expect(screen.queryAllByRole("button")).toHaveLength(0);
@@ -439,18 +636,20 @@ describe("ProcessingView", () => {
     render(
       <ProcessingView
         view={configurationUnavailableView}
+        read={{ phase: "polling" }}
         onCheckAgain={onCheckAgain}
         onRetryConfiguration={onRetryConfiguration}
       />,
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Retry loading stages" }),
-    );
+    expect(
+      within(stepsPanel()).getByText("We couldn't load the processing steps."),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Reload steps" }));
     expect(onRetryConfiguration).toHaveBeenCalledTimes(1);
     expect(onCheckAgain).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Check again" }));
+    await user.click(refreshButton());
     expect(onCheckAgain).toHaveBeenCalledTimes(1);
     expect(onRetryConfiguration).toHaveBeenCalledTimes(1);
   });
@@ -463,11 +662,9 @@ describe("ProcessingView", () => {
       />,
     );
     expect(
-      screen.getByText("The stage configuration could not be loaded"),
+      screen.getByText("We couldn't load the processing steps."),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Retry loading stages" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reload steps" })).toBeNull();
   });
 
   it("renders every control as an enabled, typed button", () => {
@@ -501,38 +698,18 @@ describe("ProcessingView", () => {
       />,
     );
 
-    const retry = screen.getByRole("button", { name: "Retry loading stages" });
-    const check = screen.getByRole("button", { name: "Check again" });
+    const refresh = refreshButton();
+    const reload = screen.getByRole("button", { name: "Reload steps" });
 
     await user.tab();
-    expect(retry).toHaveFocus();
+    expect(refresh).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(onRetryConfiguration).toHaveBeenCalledTimes(1);
+    expect(onCheckAgain).toHaveBeenCalledTimes(1);
 
     await user.tab();
-    expect(check).toHaveFocus();
+    expect(reload).toHaveFocus();
     await user.keyboard(" ");
-    expect(onCheckAgain).toHaveBeenCalledTimes(1);
-  });
-
-  // --- recovery marker ---------------------------------------------------
-
-  it("shows the recovery marker as a reminder, not a grant or a retry", () => {
-    render(
-      <ProcessingView
-        view={succeededReadableView}
-        sharingNeedsReconciliation
-        onCheckAgain={vi.fn()}
-      />,
-    );
-
-    expect(
-      screen.getByText("An earlier sharing result still needs checking"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/nothing is re-applied from here/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /shar/i })).toBeNull();
+    expect(onRetryConfiguration).toHaveBeenCalledTimes(1);
   });
 
   // --- announcements and focus ------------------------------------------
@@ -541,8 +718,14 @@ describe("ProcessingView", () => {
     const { rerender } = render(<ProcessingView view={pendingRunningView} />);
     expect(liveRegion()).toBe("");
 
-    // A new object with the same meaning is what every poll produces.
-    rerender(<ProcessingView view={{ ...pendingRunningView }} />);
+    // A new object with the same meaning is what every poll produces, and a
+    // background request is not a transition either.
+    rerender(
+      <ProcessingView
+        view={{ ...pendingRunningView }}
+        read={{ phase: "polling", reading: true }}
+      />,
+    );
     expect(liveRegion()).toBe("");
   });
 
@@ -550,11 +733,21 @@ describe("ProcessingView", () => {
     const { rerender } = render(<ProcessingView view={pendingRunningView} />);
 
     rerender(<ProcessingView view={succeededReadableView} />);
-    expect(liveRegion()).toBe("Dataset processing complete.");
+    expect(liveRegion()).toBe("Processing complete.");
     expect(liveRegion()).not.toContain("Load dataset");
 
     rerender(<ProcessingView view={{ ...succeededReadableView }} />);
-    expect(liveRegion()).toBe("Dataset processing complete.");
+    expect(liveRegion()).toBe("Processing complete.");
+  });
+
+  it("does not announce a first read as both checking and failed", () => {
+    const { rerender } = render(<ProcessingView view={loadingView} />);
+    rerender(
+      <ProcessingView
+        view={buildFixtureView({ process: null, connection: "unavailable" })}
+      />,
+    );
+    expect(liveRegion()).toBe("We couldn't check progress.");
   });
 
   it("announces a change in read health", () => {
@@ -563,24 +756,26 @@ describe("ProcessingView", () => {
     );
     rerender(<ProcessingView view={staleView} read={{ phase: "polling" }} />);
 
-    expect(liveRegion()).toMatch(/Dataset processing is in progress\./);
-    expect(liveRegion()).toMatch(/last known status is shown/i);
+    expect(liveRegion()).toMatch(/^Processing your dataset\./);
+    expect(liveRegion()).toMatch(/Showing the last available update/);
   });
 
-  it("does not move focus when a poll updates the view", async () => {
+  it("keeps refresh focused until processing completes, then hides it", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
       <ProcessingView view={pendingRunningView} onCheckAgain={vi.fn()} />,
     );
 
-    const check = screen.getByRole("button", { name: "Check again" });
-    await user.click(check);
-    expect(check).toHaveFocus();
+    await user.click(refreshButton());
+    expect(refreshButton()).toHaveFocus();
+
+    rerender(<ProcessingView view={staleView} onCheckAgain={vi.fn()} />);
+    expect(refreshButton()).toHaveFocus();
 
     rerender(
       <ProcessingView view={succeededReadableView} onCheckAgain={vi.fn()} />,
     );
-    expect(screen.getByRole("button", { name: "Check again" })).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Refresh status" })).toBeNull();
   });
 
   it("exposes the heading as a focus target without entering the tab order", () => {
@@ -620,7 +815,7 @@ describe("ProcessingView", () => {
     // its own breakpoint.
     expect(heading.className).not.toMatch(/\bsm:text-/);
 
-    const title = screen.getByText("Dataset processing complete");
+    const title = screen.getByText("Processing complete");
     expect(title.className).toContain("text-body-16-semibold");
     expect(title.className).toContain("text-emerald-800");
 

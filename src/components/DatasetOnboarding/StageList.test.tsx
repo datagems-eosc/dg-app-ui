@@ -53,8 +53,8 @@ describe("StageList", () => {
       "Profile dataFailed",
       "Create linking reportNot run",
       "Package datasetNot run",
-      "Register for recommendationsNot reported",
-      "Prepare cross-dataset discoveryNot reported",
+      "Register for recommendationsNo update available",
+      "Prepare cross-dataset discoveryNo update available",
     ]);
   });
 
@@ -63,7 +63,7 @@ describe("StageList", () => {
 
     expect(rowTexts()).toEqual([
       "Package dataset (test)Completed",
-      "Unrecognised stageIn progress",
+      "Additional processing stepIn progress",
     ]);
   });
 
@@ -86,8 +86,8 @@ describe("StageList", () => {
     expect(container.querySelector("ol")).toBeNull();
     // No configuration means no kind, so no stage may be given a name.
     expect(rowTexts()).toEqual([
-      "Unrecognised stageIn progress",
-      "Unrecognised stageCompleted",
+      "Additional processing stepIn progress",
+      "Additional processing stepCompleted",
     ]);
   });
 
@@ -106,13 +106,13 @@ describe("StageList", () => {
     );
 
     expect(rowTexts()).toEqual([
-      "Unrecognised stageWaiting to start",
-      "Unrecognised stageIn progress",
-      "Unrecognised stageCompleted",
-      "Unrecognised stageFailed",
-      "Unrecognised stageNot run",
-      "Unrecognised stageNot reported",
-      "Unrecognised stageStatus not recognised",
+      "Additional processing stepWaiting to start",
+      "Additional processing stepIn progress",
+      "Additional processing stepCompleted",
+      "Additional processing stepFailed",
+      "Additional processing stepNot run",
+      "Additional processing stepNo update available",
+      "Additional processing stepStatus unavailable",
     ]);
   });
 

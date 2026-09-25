@@ -43,6 +43,14 @@ const trimmed = (values: readonly string[]): readonly string[] =>
   values.map((value) => value.trim()).filter((value) => value !== "");
 
 /**
+ * Whether a list field carries at least one value that would survive the
+ * mapping below. The form's required-field checks use this, so a list that
+ * validates is never sent empty.
+ */
+export const hasNonblankValue = (values: readonly string[]): boolean =>
+  trimmed(values).length > 0;
+
+/**
  * Maps the form's fields onto the accepted start input.
  *
  * Field meanings are preserved from the existing start mapping: title → name,

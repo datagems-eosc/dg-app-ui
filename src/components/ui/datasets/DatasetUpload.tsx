@@ -278,25 +278,27 @@ export function DatasetUpload({
             aria-hidden
           />
           <div className="space-y-1 sm:space-y-2">
-            <p className="text-body-14-medium sm:text-body-16-medium text-gray-750">
+            <p className="text-body-16-medium text-gray-750">
               Drop files here or add from remote location
             </p>
-            <p className="text-body-12-regular sm:text-body-14-regular text-gray-650">
+            <p className="text-body-14-regular text-gray-650">
               Supported formats: CSV, PDF, XLSX (max 500MB per file)
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-2 pt-2 w-full sm:w-auto">
             <Button
+              type="button"
               variant="outline"
               onClick={handleBrowseFiles}
               className="w-full sm:w-auto"
             >
               Browse local files
             </Button>
-            <p className="text-body-12-regular sm:text-body-14-regular text-gray-650 hidden sm:block">
+            <p className="text-body-14-regular text-gray-650 hidden sm:block">
               OR
             </p>
             <Button
+              type="button"
               variant="outline"
               onClick={handleAddRemoteLocation}
               className="w-full sm:w-auto"
@@ -350,6 +352,7 @@ export function DatasetUpload({
               />
             </div>
             <Button
+              type="button"
               className="w-full sm:w-auto shrink-0 whitespace-nowrap"
               onClick={handleRemoteUpload}
               disabled={!remoteUrl.trim() || !selectedRemoteType}

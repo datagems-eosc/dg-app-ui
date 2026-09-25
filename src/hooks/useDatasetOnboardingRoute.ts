@@ -144,6 +144,8 @@ export interface DatasetOnboardingRouteController {
   readonly phase: MonitoringPhase;
   readonly stopReason?: MonitoringStopReason;
   readonly lastFailure: GatewayFailure | null;
+  /** The monitor's own current-scope read activity, passed through as-is. */
+  readonly reading: boolean;
   /**
    * A reference for *this* process, written by this principal in this
    * environment, recorded that its sharing intent was never reconciled. It is
@@ -293,6 +295,7 @@ export const useDatasetOnboardingRoute = ({
       ? {}
       : { stopReason: monitor.stopReason }),
     lastFailure: monitor.lastFailure,
+    reading: monitor.reading,
     // Compared rather than cleared: a marker read for an earlier scope is
     // simply not this scope's marker, so it can never be shown against another
     // principal's, environment's or process's monitoring.

@@ -57,6 +57,7 @@ import { APP_ROUTES } from "@/config/appUrls";
 import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
 import {
+  hasNonblankValue,
   publicationDateOf,
   toOnboardingMetadata,
 } from "@/lib/datasetOnboarding/form";
@@ -263,7 +264,8 @@ const Notice = ({
   tone: NoticeTone;
   title: string;
   busy?: boolean;
-  children: ReactNode;
+  /** Omitted when the title already says everything useful. */
+  children?: ReactNode;
   actions?: ReactNode;
 }) => (
   <div
@@ -276,24 +278,58 @@ const Notice = ({
         <p className={`break-words text-body-14-medium ${TONE_TITLE[tone]}`}>
           {title}
         </p>
-        <div
-          className={`mt-1 space-y-1 break-words text-body-14-regular ${TONE_BODY[tone]}`}
-        >
-          {children}
-        </div>
+        {children === undefined ? null : (
+          <div
+            className={`mt-1 space-y-1 wrap-anywhere text-body-14-regular ${TONE_BODY[tone]}`}
+          >
+            {children}
+          </div>
+        )}
         {actions === undefined ? null : <div className="mt-3">{actions}</div>}
       </div>
     </div>
   </div>
 );
 
+/**
+ * What the person can do about each file, in their terms. The file card above
+ * offers Retry upload for a failed local file and Remove for every file; these
+ * reasons point at those controls and nothing else. A retry here is only ever
+ * the file transfer, never a repeat of an accepted or uncertain submission.
+ * "Duplicate" says the uploads could not be told apart — not that their
+ * content is identical.
+ */
 const UNRESOLVED_FILE_REASON: Record<UnresolvedFileReason, string> = {
-  uploading: "still uploading",
-  failed: "the upload failed",
-  "missing-reference": "the upload returned no location",
-  "invalid-reference": "the upload location cannot be sent",
-  "duplicate-reference": "another file has the same upload location",
+  uploading: "Still uploading. Wait for it to finish.",
+  failed:
+    "Upload failed. Retry the upload, or remove this file if you don't need it.",
+  "missing-reference":
+    "We couldn't prepare this file. Remove it and upload it again.",
+  "invalid-reference":
+    "We couldn't prepare this file. Remove it and upload it again.",
+  "duplicate-reference":
+    "These uploads couldn't be distinguished. Remove the affected files and upload them again.",
 };
+
+/**
+ * Shared by the uncertain outcome and a later refused attempt, so the same
+ * situation reads the same way. It never invites a duplicate upload, and it
+ * does not imply that a dataset with a matching name is this one.
+ */
+const UNKNOWN_SUBMISSION_GUIDANCE =
+  "Your dataset may still be processing. Please don't upload it again yet. Ask a DataGEMS administrator to check, and include the dataset name and the time you submitted it.";
+
+/**
+ * A refusal whose message would only repeat the outcome already on screen.
+ * The refusal itself still happened (nothing is sent); only the duplicate
+ * notice is omitted.
+ */
+const BLOCK_REPEATS_OUTCOME: Partial<Record<SubmissionBlock["kind"], string>> =
+  {
+    "already-starting": "starting",
+    "attempt-accepted": "accepted",
+    "attempt-unknown": "unknown",
+  };
 
 /**
  * Why new submissions are not available, when they are not.
@@ -661,6 +697,16 @@ export default function AddDatasetForm() {
       newErrors.classification.license = "License is required";
     }
 
+    if (!hasNonblankValue(formData.classification.countries)) {
+      newErrors.classification.countries = "Country is required";
+    } else if (
+      formData.classification.countries.filter(
+        (country) => country.trim() !== "",
+      ).length > 1
+    ) {
+      newErrors.classification.countries = "Add only one country";
+    }
+
     if (formData.additionalInfo.referenceString.length > 3000) {
       newErrors.additionalInfo.referenceString =
         "Reference string must be 3000 characters or less";
@@ -695,7 +741,7 @@ export default function AddDatasetForm() {
     // to a start from an edit request.
     if (datasetIdForEdit) {
       showToast(
-        "Dataset update is not supported. Metadata changes cannot be saved.",
+        "This page can't edit an existing dataset. Your changes haven't been saved.",
         "error",
       );
       return;
@@ -793,12 +839,9 @@ export default function AddDatasetForm() {
   const renderAvailability = (): ReactNode => {
     if (isEditRequest) {
       return (
-        <Notice tone="caution" title="Editing a dataset is not supported here">
-          <p>
-            This page can only create a new dataset. Nothing you change here is
-            saved to the existing one, and submitting would not create a
-            replacement.
-          </p>
+        // Submission stays blocked, and no replacement dataset is created.
+        <Notice tone="caution" title="This page can't edit an existing dataset">
+          <p>Your changes haven't been saved.</p>
         </Notice>
       );
     }
@@ -806,34 +849,31 @@ export default function AddDatasetForm() {
       case "available":
         return null;
       case "checking":
-        return (
-          <Notice tone="neutral" title="Checking whether uploads are available">
-            <p>One moment.</p>
-          </Notice>
-        );
+        return <Notice tone="neutral" title="Preparing the upload form…" />;
       case "rollout-disabled":
         return (
-          <Notice tone="caution" title="New dataset uploads are turned off">
+          // No promise that every earlier dataset can be opened: that is a
+          // separate readability question.
+          <Notice
+            tone="caution"
+            title="Adding datasets is currently unavailable"
+          >
             <p>
-              Starting a dataset is currently disabled in this environment.
-              Datasets that have already started keep their processing page and
-              can still be opened.
+              You can still check the progress of datasets you already
+              submitted.
             </p>
           </Notice>
         );
       case "sign-in-required":
         return (
-          <Notice tone="caution" title="Your sign-in is not usable right now">
-            <p>Sign in again before starting a dataset.</p>
+          <Notice tone="caution" title="Please sign in again">
+            <p>You need to be signed in to add a dataset.</p>
           </Notice>
         );
       default:
         return (
-          <Notice
-            tone="caution"
-            title="This form is not connected to an onboarding session"
-          >
-            <p>Reload the page before starting a dataset.</p>
+          <Notice tone="caution" title="We couldn't prepare the upload form">
+            <p>Reload the page and try again.</p>
           </Notice>
         );
     }
@@ -842,31 +882,31 @@ export default function AddDatasetForm() {
   const renderBlock = (block: SubmissionBlock): ReactNode => {
     switch (block.kind) {
       case "no-files":
-        return (
-          <Notice tone="problem" title="Add a file before starting">
-            <p>At least one uploaded file is required.</p>
-          </Notice>
-        );
+        return <Notice tone="problem" title="Add at least one file" />;
       case "unresolved-files":
         return (
-          <Notice tone="problem" title="Some files are not ready to be sent">
-            <p>Resolve or remove these files, then start again:</p>
-            <ul className="list-disc space-y-0.5 pl-5">
+          // Every retained file is still named; none is silently left out.
+          <Notice tone="problem" title="Some files need attention">
+            <ul className="list-disc space-y-1 pl-5">
               {block.files.map((file) => (
                 <li key={file.fileId}>
-                  {file.name} — {UNRESOLVED_FILE_REASON[file.reason]}
+                  <span className="text-body-14-medium">{file.name}</span>
+                  {": "}
+                  {UNRESOLVED_FILE_REASON[file.reason]}
                 </li>
               ))}
             </ul>
-            <p>No file is left out of a submission.</p>
           </Notice>
         );
       case "references-unusable":
         return (
-          <Notice tone="problem" title="These uploads were already submitted">
+          // The controller refuses accepted, starting and uncertain attempts
+          // before it checks references, so this follows a definite refusal:
+          // re-uploading here cannot duplicate a dataset.
+          <Notice tone="problem" title="These files can't be submitted again">
             <p>
-              They were sent with an earlier attempt on this page, so they
-              cannot be sent again. Remove them and upload the files again:
+              They were used in an earlier attempt. Remove them and upload them
+              again:
             </p>
             <ul className="list-disc space-y-0.5 pl-5">
               {block.files.map((file) => (
@@ -876,33 +916,26 @@ export default function AddDatasetForm() {
           </Notice>
         );
       case "already-starting":
-        return (
-          <Notice tone="neutral" title="A start is already in progress" busy>
-            <p>Only one request is sent. Wait for the result.</p>
-          </Notice>
-        );
+        return <Notice tone="neutral" title="Submitting your dataset…" busy />;
       case "attempt-accepted":
         return (
-          <Notice tone="neutral" title="This dataset has already been started">
-            <p>Open its processing page to follow the run.</p>
+          <Notice tone="neutral" title="Your dataset has been submitted">
+            <p>View its processing progress.</p>
           </Notice>
         );
       case "attempt-unknown":
         return (
           <Notice
             tone="caution"
-            title="The previous attempt has not been resolved"
+            title="We couldn't confirm your earlier submission"
           >
-            <p>
-              Its outcome is still unknown, so nothing is submitted again from
-              here. Check Browse for the dataset first.
-            </p>
+            <p>{UNKNOWN_SUBMISSION_GUIDANCE}</p>
           </Notice>
         );
       case "identity-unavailable":
         return (
-          <Notice tone="caution" title="Your sign-in is not usable right now">
-            <p>Sign in again before starting a dataset.</p>
+          <Notice tone="caution" title="Please sign in again">
+            <p>You need to be signed in to add a dataset.</p>
           </Notice>
         );
       default:
@@ -916,56 +949,54 @@ export default function AddDatasetForm() {
     if (session === null) return null;
     switch (session.status) {
       case "starting":
-        return (
-          <Notice tone="neutral" title="Starting the onboarding process" busy>
-            <p>One request is sent. Repeating the action does not send more.</p>
-          </Notice>
-        );
+        return <Notice tone="neutral" title="Submitting your dataset…" busy />;
       case "accepted":
         return (
+          // Accepted may still mean queued, so nothing here says processing
+          // has begun. The action only navigates; it never submits again.
           <Notice
             tone="success"
-            title="Processing started"
+            title="Dataset submitted"
             actions={
               acceptedProcessInstanceId === null ? undefined : (
                 <Button
                   type="button"
                   onClick={() => openProcessingPage(acceptedProcessInstanceId)}
                 >
-                  Open processing page
+                  View progress
                 </Button>
               )
             }
           >
             <p>
               {navigationFailed
-                ? "The processing page did not open. The dataset was still started; open it again below."
-                : "Opening the processing page. The dataset is not started again."}
+                ? "We couldn't open its progress page. Select View progress to open it."
+                : "Opening processing progress…"}
             </p>
           </Notice>
         );
       case "rejected":
         return (
-          <Notice tone="problem" title="The dataset was not created">
-            <p>
-              The service refused this submission
-              {session.rejection === null
-                ? ""
-                : ` (HTTP ${session.rejection.httpStatus})`}
-              . Nothing was created.
-            </p>
-            <p>
-              The files that were sent have to be uploaded again before another
-              attempt: a refusal does not establish that they are still
-              available.
-            </p>
+          // A definite refusal. The status code stays in diagnostics; a refusal
+          // does not establish the staged files are still usable, hence the
+          // re-upload. No new start or retry affordance is offered.
+          <Notice tone="problem" title="Your dataset wasn't created">
+            <p>Upload the files again before trying again.</p>
           </Notice>
         );
-      case "unknown":
+      case "unknown": {
+        const forbidden = session.unknownFailure?.kind === "forbidden";
         return (
+          // A 403 establishes a permission refusal, but not whether a process
+          // was persisted before it. Explain the known cause while retaining
+          // the unknown-outcome guard. Browse is navigation only.
           <Notice
-            tone="caution"
-            title="We could not confirm what happened"
+            tone={forbidden ? "problem" : "caution"}
+            title={
+              forbidden
+                ? "You don't have permission to submit this dataset"
+                : "We couldn't confirm your submission"
+            }
             actions={
               <Button
                 type="button"
@@ -976,19 +1007,27 @@ export default function AddDatasetForm() {
               </Button>
             }
           >
-            <p>
-              The request was sent but its result could not be read, so the
-              dataset may or may not have been created. Nothing is sent again
-              automatically.
-            </p>
-            <p>
-              Look for the dataset in Browse. A dataset with a similar name is
-              not proof that this is the one, and not finding it is not proof
-              that nothing was created — ask support with the time of this
-              attempt if it stays unclear.
-            </p>
+            {forbidden ? (
+              <>
+                <p>
+                  Ask a DataGEMS administrator to check your onboarding
+                  permissions.
+                </p>
+                <p>
+                  We couldn't confirm whether processing started. Don't upload
+                  these files again until the administrator has checked this
+                  submission.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>{UNKNOWN_SUBMISSION_GUIDANCE}</p>
+                <p>It may not appear in Browse yet.</p>
+              </>
+            )}
           </Notice>
         );
+      }
       default:
         return null;
     }
@@ -996,8 +1035,13 @@ export default function AddDatasetForm() {
 
   const availabilityNotice = renderAvailability();
   const outcomeNotice = renderOutcome();
+  // A refusal that restates the current outcome is not shown a second time:
+  // the outcome notice already says it, and stacking both reads as two events.
   const blockNotice =
-    session?.blocked == null ? null : renderBlock(session.blocked);
+    session?.blocked == null ||
+    BLOCK_REPEATS_OUTCOME[session.blocked.kind] === session.status
+      ? null
+      : renderBlock(session.blocked);
 
   return (
     <form onSubmit={handleSubmit} noValidate>
@@ -1050,6 +1094,8 @@ export default function AddDatasetForm() {
                 errors={errors.classification}
                 // Collections are assigned later, from the dataset itself.
                 showCollection={false}
+                requireCountry
+                singleCountry
               />
             ),
           },
@@ -1093,10 +1139,7 @@ export default function AddDatasetForm() {
       </div>
 
       <div className="mt-6 sm:mt-8">
-        <p className="text-body-14-regular text-gray-650">
-          Sharing and collection assignment are separate from uploading.
-        </p>
-        <div className="mt-3 flex flex-col justify-end gap-3 sm:flex-row">
+        <div className="flex flex-col justify-end gap-3 sm:flex-row">
           <Button
             type="submit"
             disabled={!canSubmit}

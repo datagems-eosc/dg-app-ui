@@ -254,7 +254,8 @@ pnpm run type-check      # Run TypeScript type checking
 pnpm test                # Run the Node baseline tests in tests/*.test.{ts,mjs}
 pnpm run test:coverage   # Same as pnpm test (no coverage report)
 pnpm run test:unit       # Run every Vitest unit test under src/
-pnpm run test:onboarding # Run the dataset onboarding Vitest selection
+pnpm run test:onboarding # Run the dataset onboarding Vitest selection (also run in CI)
+pnpm run test:browser:onboarding # Run the local dataset onboarding browser journey (not run in CI)
 pnpm run test:dataset-permissions # Run the dataset permissions Vitest selection
 
 # The permissions selection includes Browse.access.test.tsx (Access-filter regressions).
@@ -267,6 +268,18 @@ pnpm run test:browser:dataset-permissions
 pnpm run storybook       # Start Storybook development server
 pnpm run build-storybook # Build Storybook for production
 ```
+
+### Browser journeys
+
+`pnpm run test:browser:onboarding` checks the dataset onboarding flow in the real application with a synthetic session and Gateway. No real account, upload, dataset or process is involved, and no `.env.local` or network access is needed.
+
+The command first runs the no-network request-boundary tests in `tests/browser/dataset-onboarding/boundaries.test.mjs` and stops if one fails. It then starts its own `next dev --turbopack` on `127.0.0.1:3118`, drives Google Chrome headless through the installed Playwright driver, and stops the server at the end. It prints one `PASS`/`FAIL` line per check and exits 0 only when every check passed. A run takes one to three minutes, mostly first compiles.
+
+- **Prerequisites:** installed dependencies and Google Chrome. `DG_BROWSER_CHANNEL=bundled` uses an already-installed Playwright Chromium instead; the command never installs a browser. Port 3118 must be free: if anything already answers there, the run stops without touching it.
+- **Options:** `DG_BROWSER_PORT` (another port), `DG_BROWSER_BASE_URL` (use a loopback server you started; only a bare `http://127.0.0.1:<port>`-style origin is accepted and nothing is started or stopped), `DG_BROWSER_OUT` (output folder, default a new temporary folder; holds screenshots, `results.json` and `next-dev.log`; do not commit it), `DG_BROWSER_HEADED=1`.
+- **Boundaries:** routing compares parsed exact origins. Loopback requests reach the app, except `/__env.js` and `/api/auth/*`, which are synthetic. Only the known Gateway routes of `https://gateway.synthetic.invalid/gw/api/` are answered. An unknown Gateway route, a grant or collection write, or a request to any other origin fails the run. Service workers are blocked, and feature flags are set only in each isolated browser context.
+- **Checks:** one deliberate start after one upload, navigation by the returned process id and reload recovery by reading; a failed file blocking the start with actionable feedback; Browse local files, Add remote location and remote Upload not submitting a ready form; a lost start response staying uncertain without replay, distinct from a refusal; either rollout flag off preventing creation while an existing process is still monitored; Updating shown only while process or access reads are in flight, focus kept on Refresh status, View dataset after confirmed readability and no sharing warning at 390px; a same-account session refresh keeping the draft, while an account change drops the draft and late uploads and cannot restart from consumed references. Start and upload counts are exact. Read counts are only checked as present or absent, because the development server may read twice.
+- **Not proven:** Gateway behaviour, deployed permissions, real processing or access, production-build behaviour, or readiness to enable the flags. This journey runs in no CI job.
 
 ## CI/CD
 

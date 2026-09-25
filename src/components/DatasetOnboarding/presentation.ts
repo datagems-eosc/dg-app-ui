@@ -10,9 +10,13 @@
  *  - nothing here invents a stage meaning, an order, a percentage or a time
  *    estimate. An unrecognised definition kind gets a neutral label, never a
  *    guess and never raw backend text;
- *  - processing completion is only ever about *configured processing*. No
- *    string in this file may say a dataset is public, searchable, downloadable
- *    or shared, because this feature has no evidence for any of that.
+ *  - no string in this file may say a dataset is public, searchable,
+ *    downloadable or shared, because this feature has no evidence for any of
+ *    that. Completion describes processing and nothing else.
+ *
+ * Wording follows the 24 September copy review: say what happened and what the
+ * person can do next, once. Uncertainty stays uncertain, but the reasons we
+ * cannot be sure (requests, configuration, raw outcomes) stay in code comments.
  */
 
 import type {
@@ -42,6 +46,14 @@ export interface ProcessingReadState {
   readonly reference?: "valid" | "invalid";
   /** Whether a usable session identity exists at all. */
   readonly session?: "available" | "unavailable";
+  /**
+   * A process status read for the current scope has been dispatched and has
+   * not settled. Only the monitoring hook's own dispatch/settlement sets this;
+   * `phase === "polling"` is a schedule, not a request, and never implies it.
+   */
+  readonly reading?: boolean;
+  /** Likewise for the availability hook's current-scope dataset read. */
+  readonly checkingAccess?: boolean;
 }
 
 /**
@@ -60,7 +72,8 @@ export type NoticeTone = "neutral" | "caution" | "problem" | "success";
 export interface NoticeCopy {
   readonly tone: NoticeTone;
   readonly title: string;
-  readonly body: string;
+  /** Absent when the title already says everything useful. */
+  readonly body?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,8 +100,11 @@ const STAGE_LABELS: Record<number, string> = {
   10: "Prepare cross-dataset discovery (test)",
 };
 
-/** Used for an unknown kind and for a step with no configuration at all. */
-export const UNRECOGNISED_STAGE_LABEL = "Unrecognised stage";
+/**
+ * Used for an unknown kind and for a step with no configuration at all. It
+ * names no purpose: guessing what an unrecognised step does would be invented.
+ */
+export const UNRECOGNISED_STAGE_LABEL = "Additional processing step";
 
 export const stageLabelOf = (kind: DefinitionKind | undefined): string => {
   if (kind === undefined || kind.kind === "unknown") {
@@ -120,8 +136,8 @@ const STAGE_STATE_COPY: Record<StageState, StageStateCopy> = {
   succeeded: { tone: "success", text: "Completed" },
   failed: { tone: "failure", text: "Failed" },
   "not-run": { tone: "muted", text: "Not run" },
-  "not-reported": { tone: "muted", text: "Not reported" },
-  unknown: { tone: "muted", text: "Status not recognised" },
+  "not-reported": { tone: "muted", text: "No update available" },
+  unknown: { tone: "muted", text: "Status unavailable" },
 };
 
 export const stageStateCopyOf = (state: StageState): StageStateCopy =>
@@ -134,7 +150,7 @@ export const stageStateCopyOf = (state: StageState): StageStateCopy =>
 export interface HeadlineCopy {
   readonly tone: NoticeTone;
   readonly title: string;
-  readonly body: string;
+  readonly body?: string;
   /** Whether to show an activity indicator. Reduced motion is respected. */
   readonly active: boolean;
 }
@@ -148,47 +164,50 @@ const HEADLINES: Record<ProcessingState, HeadlineCopy> = {
   loading: {
     tone: "neutral",
     active: true,
-    title: "Checking processing status",
-    body: "We are reading the current status of this dataset's processing.",
+    title: "Checking progress…",
   },
   pending: {
     tone: "neutral",
     active: true,
     title: "Waiting to start",
-    body: "Processing has been accepted and has not begun yet.",
+    // Accepted may still mean queued, so nothing here says execution began.
+    body: "Your dataset is queued for processing.",
   },
   running: {
     tone: "neutral",
     active: true,
-    title: "Dataset processing is in progress",
-    body: "Stages run one after another. You can leave this page and come back to it.",
+    title: "Processing your dataset",
+    body: "You can leave this page and return to check progress.",
   },
   failed: {
     tone: "problem",
     active: false,
-    title: "Dataset processing stopped before it finished",
-    body: "The stages that had already completed are kept below. A failed run is not resumed and cannot be restarted from here; ask a DataGEMS administrator to look into it.",
+    title: "Processing couldn't finish",
+    // Completed stages stay visible below; no restart is offered anywhere.
+    body: "Ask a DataGEMS administrator to check this dataset.",
   },
   succeeded: {
     tone: "success",
     active: false,
-    title: "Dataset processing complete",
-    // The aggregate is the only thing that actually reported this. Step details
-    // may be absent or censored, so claiming every stage reported success would
-    // assert something we may never have been told.
-    body: "The process reports that processing is complete. This describes the configured processing only.",
+    // Only the aggregate reported this. Step details may be absent or
+    // censored, so nothing here claims that every stage reported success, and
+    // nothing claims the dataset can be opened, searched or downloaded.
+    title: "Processing complete",
   },
   inconsistent: {
     tone: "caution",
     active: false,
-    title: "Processing details are inconsistent",
-    body: "The overall status reports success while at least one stage reports failure. We cannot treat this dataset as fully prepared.",
+    // Carries the `status-inconsistent` notice, which is therefore not
+    // rendered a second time below the headline.
+    title: "We couldn't confirm that processing completed",
+    body: "The progress details don't agree. Ask a DataGEMS administrator to check.",
   },
   unknown: {
     tone: "caution",
     active: false,
-    title: "The processing status is not recognised",
-    body: "The status we received is outside the range this application knows, so we cannot say whether processing is still running.",
+    // Carries the `status-unknown` notice in the same way.
+    title: "Processing status is unavailable",
+    body: "We couldn't confirm the current progress.",
   },
 };
 
@@ -206,114 +225,117 @@ export const headlineOf = (state: ProcessingState): HeadlineCopy =>
 const NOTICE_COPY: Record<NoticeCode, NoticeCopy> = {
   "connection-stale": {
     tone: "caution",
-    title: "Updates are temporarily unavailable",
-    body: "Showing the last known status.",
+    title: "Progress updates are unavailable",
+    // The tail depends on whether reads continue; see `staleBodyOf`.
+    body: "Showing the last available update.",
   },
   "connection-unavailable": {
     tone: "caution",
-    title: "We cannot read the processing status right now",
-    body: "This is a problem reading the status, not a report that processing failed.",
+    title: "We couldn't check progress",
+    // A read problem, not a report that processing failed.
+    body: "Processing may still be continuing.",
   },
   "connection-forbidden": {
     tone: "caution",
-    title: "This session cannot read the processing status",
-    body: "Access to this process was refused. That is not a statement that the workflow failed or that anything was deleted.",
+    // One refused response is neither a failed workflow nor a permanent
+    // account policy, so neither is implied.
+    title: "You can't view this processing status right now",
+    body: "Ask a DataGEMS administrator to check your access.",
   },
   "step-details-unavailable": {
     tone: "neutral",
-    title: "Stage details are not available",
-    body: "The overall status above is what we know. Individual stages were not supplied, so none of them can be treated as finished.",
+    // No assertion that steps failed or did not finish.
+    title: "Individual step details aren't available.",
   },
   "configuration-unavailable": {
     tone: "caution",
-    title: "The stage configuration could not be loaded",
-    body: "Stage names and their order cannot be confirmed without it.",
+    title: "We couldn't load the processing steps.",
   },
   "configuration-mismatch": {
     tone: "caution",
-    title: "This process does not match a known stage configuration",
-    body: "Reported steps are listed without an execution order, because we cannot confirm one.",
+    title: "The order of some processing steps is unavailable.",
   },
   "configuration-duplicate": {
     tone: "caution",
-    title: "The stage configuration contains repeated entries",
-    body: "Some stage details cannot be confirmed.",
+    title: "Some processing details are unavailable.",
   },
   "status-inconsistent": {
     tone: "caution",
-    title: "The reported status contradicts the reported stages",
-    body: "Overall success arrived together with a failed stage.",
+    title: HEADLINES.inconsistent.title,
+    body: HEADLINES.inconsistent.body,
   },
   "status-unknown": {
     tone: "caution",
-    title: "The reported status is not recognised",
-    body: "We keep the raw outcome rather than guessing what it means.",
+    title: HEADLINES.unknown.title,
+    body: HEADLINES.unknown.body,
   },
   "unmatched-steps": {
     tone: "neutral",
-    title: "Some reported steps are not in the known configuration",
-    // No positional claim: the composition puts that list above the notices.
-    body: "Reported steps are shown separately because their position in the run is not confirmed.",
+    // Rendered as the helper of the additional-steps section, not a banner.
+    title: "The order of these steps isn't available.",
   },
   "availability-unconfirmed": {
     tone: "caution",
-    title: "We have not confirmed access to the dataset",
-    // Deliberately state-independent: this notice also accompanies a
-    // contradictory outcome, and saying "processing finished" there would
-    // quietly resolve the very contradiction the status notice is reporting.
-    body: "Access to this dataset has not yet been confirmed. Processing status and dataset access are established separately.",
+    // Deliberately state-independent: this also accompanies a contradictory
+    // outcome, and saying "processing finished" there would quietly resolve
+    // the very contradiction the headline is reporting. No promise of access.
+    title: "We couldn't confirm whether you can open this dataset yet.",
   },
   "availability-denied": {
     tone: "caution",
-    title: "This session cannot access the dataset",
-    body: "Processing status and dataset access are separate.",
+    title: "You can't open this dataset right now.",
+    body: "Ask a DataGEMS administrator to check your access.",
   },
   "sharing-unconfirmed": {
     tone: "caution",
-    title: "Sharing has not been confirmed",
-    body: "Any sharing you selected has not been confirmed as applied.",
+    // Compatibility feedback for an earlier attempt. Today's private upload
+    // requests no sharing, so this never appears for a normal submission.
+    title: "Earlier sharing changes couldn't be confirmed",
+    body: "Ask a DataGEMS administrator to check who has access.",
   },
   "sharing-failed": {
     tone: "problem",
-    title: "Sharing did not complete",
-    body: "Processing and sharing are reported separately. Nothing here retries sharing.",
+    // No claim that earlier grants were rolled back, and no retry.
+    title: "Sharing changes weren't completed",
+    body: "Ask a DataGEMS administrator to check access.",
   },
   "dmm-ready-while-incomplete": {
     tone: "neutral",
-    title: "Dataset metadata is ready, processing is not finished",
-    body: "Metadata readiness does not mean the remaining stages have completed.",
+    // Never equated with file or search readiness.
+    title: "Dataset details are available. Processing is still underway.",
   },
 };
 
 const READ_NOTICE_COPY: Record<ReadNoticeCode, NoticeCopy> = {
   "read-session-unavailable": {
     tone: "caution",
-    title: "Processing status cannot be read for this session",
-    body: "Sign in again to read this process. Nothing about the process itself is implied.",
+    title: "Please sign in again to view progress",
   },
   "read-reference-invalid": {
     tone: "caution",
-    title: "We could not retrieve this process",
-    body: "The address does not carry a usable process reference. This does not mean the process was deleted.",
+    // No deletion claim.
+    title: "This progress link is invalid",
+    body: "Check that you copied the full link.",
   },
   "read-reference-unavailable": {
     tone: "caution",
-    title: "We could not retrieve this process",
-    body: "The reference could not be resolved. This does not mean the process was deleted.",
+    // A 404 is not deletion. Kept distinct from a malformed URL and a denial.
+    title: "We couldn't open this progress page",
+    body: "Check the link or ask a DataGEMS administrator for help.",
   },
   "read-access-unavailable": {
     tone: "caution",
-    title: "Processing status cannot be read for this session",
-    body: "The request was refused. That is not a statement about whether processing succeeded.",
+    title: "You can't view this processing status right now",
+    body: "Ask a DataGEMS administrator to check your access.",
   },
 };
 
-/** The same-tab recovery marker. A reminder, never evidence of a grant. */
-export const RECOVERY_NOTICE: NoticeCopy = {
-  tone: "caution",
-  title: "An earlier sharing result still needs checking",
-  body: "This process was started in this browser without its sharing outcome being confirmed. Check the dataset's sharing when it is available; nothing is re-applied from here.",
-};
+/**
+ * The same-tab recovery marker: a saved earlier attempt whose sharing was never
+ * confirmed. A reminder, never evidence of a grant, and nothing is re-applied.
+ * It says the same thing as `sharing-unconfirmed`, so the view renders one.
+ */
+export const RECOVERY_NOTICE: NoticeCopy = NOTICE_COPY["sharing-unconfirmed"];
 
 export const noticeCopyOf = (code: NoticeCode): NoticeCopy => NOTICE_COPY[code];
 
@@ -321,14 +343,72 @@ export const readNoticeCopyOf = (code: ReadNoticeCode): NoticeCopy =>
   READ_NOTICE_COPY[code];
 
 /**
- * The stale notice's tail depends on whether reads are still being retried.
- * Promising automatic updates after monitoring has stopped would be a lie, so
- * the phase decides the sentence.
+ * The stale notice's tail depends on whether reads continue. Promising an
+ * automatic retry after monitoring has stopped would be untrue, so the phase
+ * decides the sentence. The header status says "Trying again…" while reads
+ * continue, so the notice itself does not repeat it.
  */
 export const staleBodyOf = (phase: ProcessingReadPhase | undefined): string =>
   phase === "stopped"
-    ? "Showing the last known status. Automatic updates have stopped; use Check again to read it now."
-    : "Showing the last known status. We are still trying to reconnect.";
+    ? "Showing the last available update. Select Refresh status to try again."
+    : "Showing the last available update.";
+
+// ---------------------------------------------------------------------------
+// Automatic-update status
+// ---------------------------------------------------------------------------
+
+export type UpdateStatus =
+  /** Scheduled reads are running and healthy; no request is in flight. */
+  | "automatic"
+  /** A current-scope process or access read is actually in flight. */
+  | "updating"
+  /** The last read failed and the monitor will read again on its own. */
+  | "retrying"
+  /** The monitor stopped after a read problem; only a manual read remains. */
+  | "stopped"
+  /** The page is hidden; no read will happen until it is visible again. */
+  | "paused"
+  /** Nothing to say: idle, or stopped because processing finished. */
+  | "none";
+
+const UPDATE_STATUS_TEXT: Record<UpdateStatus, string> = {
+  automatic: "Updates automatically",
+  updating: "Updating…",
+  retrying: "Couldn't update. Trying again…",
+  stopped: "Automatic updates stopped",
+  paused: "Updates paused",
+  none: "",
+};
+
+/**
+ * What the steps header says about keeping the page current.
+ *
+ * Only actual dispatch/settlement makes it "updating": a process read and an
+ * access read may overlap, and either keeps it until both have settled.
+ * `phase` alone says what is scheduled, never that a request is running. A
+ * normal terminal stop says nothing at all rather than raising an alarm.
+ */
+export const updateStatusOf = (
+  read: ProcessingReadState,
+  hasConnectionProblem: boolean,
+): UpdateStatus => {
+  if (read.reading === true || read.checkingAccess === true) {
+    return "updating";
+  }
+  switch (read.phase) {
+    case "polling":
+      return hasConnectionProblem ? "retrying" : "automatic";
+    case "paused":
+      return "paused";
+    case "stopped":
+      return hasConnectionProblem ? "stopped" : "none";
+    default:
+      return "none";
+  }
+};
+
+export const updateStatusTextOf = (status: UpdateStatus): string =>
+  UPDATE_STATUS_TEXT[status];
 
 // ---------------------------------------------------------------------------
 // Read-health derivation
@@ -372,11 +452,11 @@ export interface Announcement {
 
 const READ_HEALTH_SUFFIX: Record<string, string> = {
   stale:
-    " Updates are temporarily unavailable; the last known status is shown.",
+    " Progress updates are unavailable. Showing the last available update.",
   "stale-stopped":
-    " Updates are temporarily unavailable and have stopped; the last known status is shown.",
-  unavailable: " The processing status cannot be read right now.",
-  forbidden: " The processing status cannot be read for this session.",
+    " Progress updates are unavailable and automatic updates stopped. Showing the last available update.",
+  unavailable: " We couldn't check progress.",
+  forbidden: " You can't view this processing status right now.",
 };
 
 /**
@@ -384,10 +464,22 @@ const READ_HEALTH_SUFFIX: Record<string, string> = {
  * does not mention individual stages: re-reading the list on every poll is what
  * makes a screen reader unusable during a long run.
  */
+/** Ends a headline as a sentence without doubling its punctuation. */
+const sentence = (text: string): string =>
+  /[.…]$/.test(text) ? text : `${text}.`;
+
 export const announcementOf = (
   processing: ProcessingState,
   readHealth: string,
-): Announcement => ({
-  key: `${processing}|${readHealth}`,
-  text: `${HEADLINES[processing].title}.${READ_HEALTH_SUFFIX[readHealth] ?? ""}`,
-});
+): Announcement => {
+  const suffix = READ_HEALTH_SUFFIX[readHealth] ?? "";
+  return {
+    key: `${processing}|${readHealth}`,
+    // Before a first snapshot the view shows the read problem instead of
+    // "Checking progress…", so announcing both would contradict itself.
+    text:
+      processing === "loading" && suffix !== ""
+        ? suffix.trim()
+        : `${sentence(HEADLINES[processing].title)}${suffix}`,
+  };
+};

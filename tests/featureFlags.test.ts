@@ -12,8 +12,6 @@ import { parseOverrides } from "../src/lib/featureFlags/storage";
 const DISABLED_EVERYWHERE = new Set([
   "customCollection",
   "generalChat",
-  // Rollout control for group access: off in every environment until the
-  // target-environment checks precede an explicit enablement decision.
   "notification",
   "pinnedDatasetWeather",
   "pinnedDatasetLanguage",

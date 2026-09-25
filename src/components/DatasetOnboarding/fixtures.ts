@@ -36,9 +36,15 @@ import type {
   WorkflowProcessDto,
 } from "@/lib/datasetOnboarding/types";
 
-const NO_ACCESS: AccessEvidence = {
+/**
+ * The current private upload: readability not yet established, and no sharing
+ * requested, because this flow requests none. This is the default so that no
+ * story or test shows an earlier attempt's sharing warning as if it were part
+ * of a normal submission.
+ */
+const CURRENT_UPLOAD: AccessEvidence = {
   availability: "unknown",
-  sharing: "not-confirmed",
+  sharing: "not-requested",
 };
 
 export interface FixtureViewInput {
@@ -51,7 +57,7 @@ export interface FixtureViewInput {
 export const buildFixtureView = ({
   process,
   config = onboardingConfigPayload,
-  access = NO_ACCESS,
+  access = CURRENT_UPLOAD,
   connection = "fresh",
 }: FixtureViewInput): OnboardingView => {
   let snapshot = null;
@@ -92,19 +98,36 @@ export const failedView = buildFixtureView({
   process: failedThenPendingProcess,
 });
 
-/** Complete, and access deliberately still unknown. */
+/** Complete, and access deliberately still unknown. No sharing requested. */
 export const succeededAccessUnknownView = buildFixtureView({
   process: succeededProcess,
 });
 
-/** Complete, readability established elsewhere, sharing confirmed. */
+/** Complete and readable. The normal end of a current private upload. */
 export const succeededReadableView = buildFixtureView({
   process: succeededProcess,
-  access: { availability: "readable", sharing: "confirmed" },
+  access: { availability: "readable", sharing: "not-requested" },
 });
 
-/** Complete, sharing explicitly failed. Processing stays complete. */
-export const succeededSharingFailedView = buildFixtureView({
+/** Complete, but the dataset read was refused for this session. */
+export const succeededAccessDeniedView = buildFixtureView({
+  process: succeededProcess,
+  access: { availability: "denied", sharing: "not-requested" },
+});
+
+// --- historical: earlier attempts that recorded a sharing outcome ----------
+// Today's form requests no sharing. These exist only for processes started by
+// an earlier version of the flow, whose saved record says sharing was asked
+// for and not confirmed, or explicitly failed. Never a default.
+
+/** Earlier attempt: complete, readable, sharing never confirmed. */
+export const historicalSharingUnconfirmedView = buildFixtureView({
+  process: succeededProcess,
+  access: { availability: "readable", sharing: "not-confirmed" },
+});
+
+/** Earlier attempt: complete, readable, sharing explicitly failed. */
+export const historicalSharingFailedView = buildFixtureView({
   process: succeededProcess,
   access: { availability: "readable", sharing: "failed" },
 });
@@ -156,7 +179,7 @@ export const testAndUnknownKindView = buildFixtureView({
 /** DMM metadata ready while the process is still running. */
 export const dmmReadyWhileRunningView = buildFixtureView({
   process: runningProcess,
-  access: { availability: "unknown", sharing: "not-confirmed", dmmReady: true },
+  access: { availability: "unknown", sharing: "not-requested", dmmReady: true },
 });
 
 /** Gateway refused the read for this session. */

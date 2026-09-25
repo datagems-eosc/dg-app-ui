@@ -32,12 +32,13 @@
     "test": "tsx --test tests/*.test.ts tests/*.test.mjs",
     "test:coverage": "npm test",
     "test:unit": "vitest run --config vitest.unit.config.ts",
-    "test:onboarding": "vitest run --config vitest.unit.config.ts src/app/datasets/onboarding/ src/app/datasets/add/ src/lib/datasetOnboarding/ src/components/DatasetOnboarding/ src/components/AddDatasetForm/ src/components/ui/datasets/Classification src/hooks/useDatasetOnboarding src/hooks/useApi.onboarding src/lib/utils.auth",
+    "test:onboarding": "vitest run --config vitest.unit.config.ts src/app/datasets/onboarding/ src/app/datasets/add/ src/lib/datasetOnboarding/ src/components/DatasetOnboarding/ src/components/AddDatasetForm/ src/components/ui/datasets/Classification src/components/ui/datasets/KeywordInput src/components/ui/datasets/DatasetUpload src/components/ui/datasets/FileUploadCard src/hooks/useDatasetOnboarding src/hooks/useApi.onboarding src/lib/utils.auth",
     "test:dataset-permissions": "vitest run --config vitest.unit.config.ts src/lib/datasetPermissions/ src/components/DatasetPermissions/ src/hooks/useDatasetPermissions src/hooks/useApi.datasetPermissions src/hooks/useModalFocus src/lib/datasetMapping src/components/ui/user/DatasetPermissionsModal src/components/ui/user/RolesPermissionsSection src/components/ui/ConfirmationModal src/components/DatasetDetailsPage/ 'src/app/datasets/[id]/' src/contexts/FeatureFlagsContext src/components/FilterModal/FilterModal src/components/Browse/Browse.access",
     "test:browser:dataset-permissions": "node --test tests/browser/dataset-permissions/boundaries.test.mjs && node tests/browser/dataset-permissions.mjs",
     "prepare": "husky",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test:browser:onboarding": "node --test tests/browser/dataset-onboarding/boundaries.test.mjs && node tests/browser/dataset-onboarding.mjs"
   },
   "dependencies": {
     "@next/font": "^14.2.15",

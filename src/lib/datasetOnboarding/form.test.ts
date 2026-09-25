@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type DatasetFormMetadata,
+  hasNonblankValue,
   publicationDateOf,
   toOnboardingMetadata,
 } from "./form";
@@ -75,6 +76,13 @@ describe("toOnboardingMetadata", () => {
     expect(mapped.language).toEqual(["en"]);
   });
 
+  it("keeps every supplied country rather than selecting one", () => {
+    expect(
+      toOnboardingMetadata(form({ countries: ["US", "PL"] }), "2026-09-25")
+        .country,
+    ).toEqual(["US", "PL"]);
+  });
+
   it("never carries a collection, sharing, code, size or MIME field", () => {
     const mapped = toOnboardingMetadata(form(), "2026-09-23") as Record<
       string,
@@ -96,6 +104,17 @@ describe("toOnboardingMetadata", () => {
     ]) {
       expect(mapped).not.toHaveProperty(absent);
     }
+  });
+});
+
+describe("hasNonblankValue", () => {
+  it("is false for an empty or all-blank list", () => {
+    expect(hasNonblankValue([])).toBe(false);
+    expect(hasNonblankValue(["", "  ", "\t"])).toBe(false);
+  });
+
+  it("is true once any value survives trimming", () => {
+    expect(hasNonblankValue(["  ", " PL "])).toBe(true);
   });
 });
 

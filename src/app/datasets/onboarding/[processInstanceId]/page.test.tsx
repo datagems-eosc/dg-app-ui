@@ -168,9 +168,7 @@ describe("the processing page", () => {
     render(<Page />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Dataset processing is in progress"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Processing your dataset")).toBeInTheDocument();
     });
 
     const headings = screen.getAllByRole("heading", { level: 1 });
@@ -187,11 +185,11 @@ describe("the processing page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Dataset processing stopped before it finished"),
+        screen.getByText("Processing couldn't finish"),
       ).toBeInTheDocument();
     });
 
-    const list = screen.getByRole("list", { name: "Processing stages" });
+    const list = screen.getByRole("list", { name: "Processing steps" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(6);
     expect(within(list).getByText("Failed")).toBeInTheDocument();
     expect(within(list).getAllByText("Not run")).toHaveLength(2);
@@ -219,7 +217,7 @@ describe("the processing page", () => {
       expect(heading()).toHaveFocus();
     });
 
-    const check = await screen.findByRole("button", { name: "Check again" });
+    const check = await screen.findByRole("button", { name: "Refresh status" });
     await user.click(check);
     expect(check).toHaveFocus();
 
@@ -233,7 +231,9 @@ describe("the processing page", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
 
-    expect(screen.getByRole("button", { name: "Check again" })).toHaveFocus();
+    expect(
+      screen.getByRole("button", { name: "Refresh status" }),
+    ).toHaveFocus();
     expect(heading()).not.toHaveFocus();
     expect(ledger.processReads().length).toBeGreaterThan(0);
   });
@@ -246,7 +246,7 @@ describe("the processing page", () => {
     await waitFor(() => {
       expect(heading()).toHaveFocus();
     });
-    const check = await screen.findByRole("button", { name: "Check again" });
+    const check = await screen.findByRole("button", { name: "Refresh status" });
     await user.click(check);
     expect(check).toHaveFocus();
 
@@ -290,7 +290,7 @@ describe("the processing page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("This session cannot access the dataset"),
+        screen.getByText(/You can't open this dataset right now\./),
       ).toBeInTheDocument();
     });
     expect(screen.queryByRole("button", { name: "View dataset" })).toBeNull();
@@ -333,7 +333,7 @@ describe("the processing page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("We could not retrieve this process"),
+        screen.getByText("This progress link is invalid"),
       ).toBeInTheDocument();
     });
     await act(async () => {
@@ -348,12 +348,9 @@ describe("the processing page", () => {
       .getAllByRole("heading", { level: 1 })[0]
       ?.closest("section");
     const text = region?.textContent ?? "";
-    // The only mention of deletion is the disclaimer denying it.
-    const mentions = text.match(/deleted/gi) ?? [];
-    const disclaimers =
-      text.match(/does not mean the process was deleted/gi) ?? [];
-    expect(disclaimers).toHaveLength(1);
-    expect(mentions).toHaveLength(disclaimers.length);
+    // No deletion claim at all: the link is described, not the process.
+    expect(text).not.toMatch(/delet/i);
+    expect(text).toMatch(/Check that you copied the full link/);
   });
 
   it("reads nothing and reveals nothing without a usable session", async () => {
@@ -363,7 +360,7 @@ describe("the processing page", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Processing status cannot be read for this session"),
+        screen.getByText("Please sign in again to view progress"),
       ).toBeInTheDocument();
     });
 
@@ -371,30 +368,53 @@ describe("the processing page", () => {
     expect(ledger.datasetReads()).toHaveLength(0);
   });
 
-  it("never issues a mutation from this page", async () => {
-    const ledger = stubGateway({
-      process: succeededProcess,
-      dataset: { id: DATASET_ID },
-    });
-    const user = userEvent.setup();
-    render(<Page />);
+  it.each([
+    ["running", runningProcess],
+    ["failed", failedThenPendingProcess],
+    ["completed", succeededProcess],
+  ])(
+    "never issues a mutation from a %s process page",
+    async (state, process) => {
+      const ledger = stubGateway({
+        process,
+        dataset: { id: DATASET_ID },
+      });
+      const user = userEvent.setup();
+      render(<Page />);
 
-    const view = await screen.findByRole("button", { name: "View dataset" });
-    await user.click(screen.getByRole("button", { name: "Check again" }));
-    await user.click(view);
+      if (state === "completed") {
+        const view = await screen.findByRole("button", {
+          name: "View dataset",
+        });
+        expect(
+          screen.queryByRole("button", { name: "Refresh status" }),
+        ).not.toBeInTheDocument();
+        await user.click(view);
+      } else {
+        const refresh = await screen.findByRole("button", {
+          name: "Refresh status",
+        });
+        await waitFor(() => expect(refresh).toBeEnabled());
+        const readsBefore = ledger.processReads().length;
+        await user.click(refresh);
+        await waitFor(() => {
+          expect(ledger.processReads().length).toBeGreaterThan(readsBefore);
+        });
+      }
 
-    // Every request this feature makes is a read.
-    expect(ledger.featureCalls().length).toBeGreaterThan(0);
-    for (const call of ledger.featureCalls()) {
-      expect(call.method, call.url).toBe("GET");
-    }
-    // And no start, grant or profiling endpoint is touched by anything.
-    for (const url of ledger.urls) {
-      expect(url).not.toContain("/workflow-process/onboard");
-      expect(url).not.toContain("/dataset/profile");
-      expect(url).not.toContain("/context-grant");
-    }
-  });
+      // Every request this feature makes is a read.
+      expect(ledger.featureCalls().length).toBeGreaterThan(0);
+      for (const call of ledger.featureCalls()) {
+        expect(call.method, call.url).toBe("GET");
+      }
+      // And no start, grant or profiling endpoint is touched by anything.
+      for (const url of ledger.urls) {
+        expect(url).not.toContain("/workflow-process/onboard");
+        expect(url).not.toContain("/dataset/profile");
+        expect(url).not.toContain("/context-grant");
+      }
+    },
+  );
 
   it("recovers a direct arrival by reading, without starting anything", async () => {
     const ledger = stubGateway({ process: runningProcess });
@@ -403,14 +423,15 @@ describe("the processing page", () => {
     await waitFor(() => {
       expect(ledger.processReads().length).toBeGreaterThan(0);
     });
+    // Dispatch is not render: wait for the read's result to reach the page.
+    expect(
+      await screen.findByText("Processing your dataset"),
+    ).toBeInTheDocument();
     for (const call of ledger.featureCalls()) {
       expect(call.method, call.url).toBe("GET");
     }
     expect(
       ledger.urls.some((u) => u.includes("/workflow-process/onboard")),
     ).toBe(false);
-    expect(
-      await screen.findByText("Dataset processing is in progress"),
-    ).toBeInTheDocument();
   });
 });

@@ -9,6 +9,7 @@ vi.mock("next-auth/react", () => ({
   getSession: () => mockGetSession(),
 }));
 
+import { updateStatusOf } from "@/components/DatasetOnboarding/presentation";
 import {
   DATASET_ID,
   failedThenPendingProcess,
@@ -476,5 +477,88 @@ describe("useDatasetOnboardingPage", () => {
     expect(result.current.checkAgain).not.toBe(
       result.current.controller.checkAgain,
     );
+  });
+
+  // --- read activity -------------------------------------------------------
+
+  it("keeps Updating until both overlapping reads settle", async () => {
+    // Every process and dataset response is held until the test releases it,
+    // so the flags can be observed between dispatch and settlement.
+    const held: { url: string; release: () => void }[] = [];
+    const answer = (url: string): Response => {
+      if (url.includes("/workflow-process/config")) {
+        return json(onboardingConfigPayload);
+      }
+      if (url.includes("/workflow-process/")) return json(succeededProcess);
+      return json({ id: DATASET_ID });
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/config")) return answer(url);
+        return new Promise<Response>((resolve) => {
+          held.push({ url, release: () => resolve(answer(url)) });
+        });
+      }),
+    );
+    const release = async (kind: "process" | "dataset") => {
+      const index = held.findIndex((entry) =>
+        kind === "process"
+          ? entry.url.includes("/workflow-process/")
+          : entry.url.includes("/gw/api/dataset/"),
+      );
+      expect(index).toBeGreaterThanOrEqual(0);
+      const [entry] = held.splice(index, 1);
+      await act(async () => {
+        entry?.release();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    };
+
+    const { result } = renderPage();
+    await waitFor(() => {
+      expect(result.current.read.reading).toBe(true);
+    });
+    await release("process");
+    await waitFor(() => {
+      expect(result.current.view.processing).toBe("succeeded");
+    });
+    // Completion starts the automatic access read; the monitor has stopped.
+    await waitFor(() => {
+      expect(result.current.read.checkingAccess).toBe(true);
+    });
+    expect(result.current.read.reading).toBe(false);
+    expect(result.current.read.phase).toBe("stopped");
+    await release("dataset");
+    await waitFor(() => {
+      expect(result.current.read.checkingAccess).toBe(false);
+    });
+
+    // One Refresh status: two separate reads, both in flight at once.
+    act(() => {
+      result.current.checkAgain();
+    });
+    await waitFor(() => {
+      expect(result.current.read.reading).toBe(true);
+      expect(result.current.read.checkingAccess).toBe(true);
+    });
+    expect(updateStatusOf(result.current.read, false)).toBe("updating");
+
+    await release("process");
+    await waitFor(() => {
+      expect(result.current.read.reading).toBe(false);
+    });
+    // The access read is still running, so the page is still updating.
+    expect(result.current.read.checkingAccess).toBe(true);
+    expect(updateStatusOf(result.current.read, false)).toBe("updating");
+
+    await release("dataset");
+    await waitFor(() => {
+      expect(result.current.read.checkingAccess).toBe(false);
+    });
+    // A normal completion says nothing further about updates.
+    expect(updateStatusOf(result.current.read, false)).toBe("none");
+    expect(held).toHaveLength(0);
   });
 });
