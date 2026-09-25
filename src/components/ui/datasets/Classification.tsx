@@ -379,11 +379,6 @@ export function Classification({
         required={requireCountry}
         maxItems={singleCountry ? 1 : undefined}
       />
-      {singleCountry && (
-        <p className="text-descriptions-12-regular text-gray-650">
-          One country only. Remove it to choose another.
-        </p>
-      )}
     </div>
   );
 }
