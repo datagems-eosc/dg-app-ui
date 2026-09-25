@@ -410,7 +410,7 @@ describe("the processing page", () => {
       ledger.urls.some((u) => u.includes("/workflow-process/onboard")),
     ).toBe(false);
     expect(
-      screen.getByText("Dataset processing is in progress"),
+      await screen.findByText("Dataset processing is in progress"),
     ).toBeInTheDocument();
   });
 });
