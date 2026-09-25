@@ -973,14 +973,19 @@ export default function AddDatasetForm() {
             <p>Upload the files again before trying again.</p>
           </Notice>
         );
-      case "unknown":
+      case "unknown": {
+        const forbidden = session.unknownFailure?.kind === "forbidden";
         return (
-          // The result could not be read: the dataset may or may not exist, and
-          // nothing is sent again automatically. Browse is navigation only; a
-          // similar name there would not establish which dataset this is.
+          // A 403 establishes a permission refusal, but not whether a process
+          // was persisted before it. Explain the known cause while retaining
+          // the unknown-outcome guard. Browse is navigation only.
           <Notice
-            tone="caution"
-            title="We couldn't confirm your submission"
+            tone={forbidden ? "problem" : "caution"}
+            title={
+              forbidden
+                ? "You don't have permission to submit this dataset"
+                : "We couldn't confirm your submission"
+            }
             actions={
               <Button
                 type="button"
@@ -991,10 +996,27 @@ export default function AddDatasetForm() {
               </Button>
             }
           >
-            <p>{UNKNOWN_SUBMISSION_GUIDANCE}</p>
-            <p>It may not appear in Browse yet.</p>
+            {forbidden ? (
+              <>
+                <p>
+                  Ask a DataGEMS administrator to check your onboarding
+                  permissions.
+                </p>
+                <p>
+                  We couldn't confirm whether processing started. Don't upload
+                  these files again until the administrator has checked this
+                  submission.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>{UNKNOWN_SUBMISSION_GUIDANCE}</p>
+                <p>It may not appear in Browse yet.</p>
+              </>
+            )}
           </Notice>
         );
+      }
       default:
         return null;
     }

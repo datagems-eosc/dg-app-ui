@@ -187,7 +187,8 @@ const json = (body, status = 200) => ({
  *
  * - `upload`: `ok` (staged path) or `fail` (500).
  * - `start`: `ok` (the process id), `lose` (the connection drops after
- *   dispatch, so the outcome is unknown) or `refuse` (400, a definite refusal).
+ *   dispatch, so the outcome is unknown), `refuse` (400, a definite refusal)
+ *   or `forbid` (403, insufficient rights with an uncertain creation outcome).
  * - `process`: the snapshot process reads return. `access`: the dataset read's
  *   status. `hold` names request kinds (`upload`, `process`, `access`) to
  *   keep open until {@link World.release}; the answer is decided on release.
@@ -287,6 +288,10 @@ async function answerGateway(route, world, pathname) {
         return route.abort("connectionreset");
       case "refuse":
         return route.fulfill(json({ error: "validation" }, 400));
+      case "forbid":
+        return route.fulfill(
+          json({ code: 101, error: "insufficient rights" }, 403),
+        );
       default:
         return route.fulfill(json({ id: PROCESS_ID }));
     }

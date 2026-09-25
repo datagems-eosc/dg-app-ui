@@ -529,6 +529,47 @@ describe("AddDatasetForm managed submission", () => {
     expect(screen.queryByText("Dataset submitted")).toBeNull();
   });
 
+  it("explains a forbidden start without claiming nothing was created or allowing replay", async () => {
+    const user = userEvent.setup();
+    const ledger = stubBoundaries({
+      start: { status: 403, body: { code: 101, error: "insufficient rights" } },
+    });
+    const { container } = mount();
+
+    await waitFor(() => expect(startButton()).toBeEnabled());
+    await uploadFile(user, container);
+    await fillMetadata(user);
+    await user.click(startButton());
+
+    expect(
+      await screen.findByText(
+        "You don't have permission to submit this dataset",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/check your onboarding permissions/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/We couldn't confirm whether processing started/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("We couldn't confirm your submission"),
+    ).toBeNull();
+    expect(
+      screen.queryByText(/Your dataset may still be processing/),
+    ).toBeNull();
+    expect(screen.queryByText("Your dataset wasn't created")).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
+
+    await user.click(startButton());
+    expect(ledger.starts()).toHaveLength(1);
+    expect(ledger.uploads).toHaveLength(1);
+    expect(screen.getAllByTestId("submission-notice")).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Go to Browse" }));
+    expect(mockPush).toHaveBeenCalledWith("/browse");
+    expect(ledger.starts()).toHaveLength(1);
+  });
+
   it("keeps an uncertain outcome uncertain and refuses to resubmit it", async () => {
     const user = userEvent.setup();
     const ledger = stubBoundaries({

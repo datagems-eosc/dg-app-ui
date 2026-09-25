@@ -335,6 +335,51 @@ async function lostAndRefusedStart() {
   await refused.context.close();
 }
 
+async function forbiddenStart() {
+  for (const viewport of [DESKTOP, NARROW]) {
+    const w = world({ start: "forbid" });
+    const { context, page } = await openContext(browser, w, {
+      baseUrl,
+      viewport,
+    });
+    step(`permission refusal at ${viewport.width}px`);
+    await openForm(page);
+    await uploadFile(page);
+    await page.getByText("File uploaded").waitFor(SOON);
+    await fillMetadata(page);
+    await startButton(page).click();
+    await page
+      .getByText("You don't have permission to submit this dataset")
+      .waitFor(SOON);
+    check(
+      "403 explains permissions without the generic processing claim",
+      (await page.getByText(/check your onboarding permissions/).isVisible()) &&
+        (await page
+          .getByText(/We couldn't confirm whether processing started/)
+          .isVisible()) &&
+        !(await page
+          .getByText(/Your dataset may still be processing/)
+          .isVisible()) &&
+        !(await page.getByText("Your dataset wasn't created").isVisible()),
+    );
+    await startButton(page).click();
+    check(
+      "403 cannot replay Start",
+      w.count("start") === 1 && w.count("upload") === 1,
+    );
+    await page.getByTestId("submission-notice").screenshot({
+      path: path.join(out, `08-forbidden-start-${viewport.width}.png`),
+    });
+    await page.getByRole("button", { name: "Go to Browse" }).click();
+    await page.waitForURL("**/browse", SOON);
+    check(
+      "Browse only navigates after a 403",
+      w.count("start") === 1 && w.count("upload") === 1,
+    );
+    await context.close();
+  }
+}
+
 async function flagsOff() {
   for (const [label, flags] of [
     [
@@ -750,6 +795,7 @@ async function main() {
     failedFileAndUploaderControls,
   );
   await report.scenario("lost and refused start", lostAndRefusedStart);
+  await report.scenario("forbidden start", forbiddenStart);
   await report.scenario("flags off", flagsOff);
   await report.scenario("refresh activity at 390px", refreshActivity);
   await report.scenario("session ownership", ownership);
