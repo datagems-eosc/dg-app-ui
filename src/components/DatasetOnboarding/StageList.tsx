@@ -18,7 +18,6 @@
 
 import {
   CircleCheck,
-  CircleHelp,
   CircleMinus,
   CircleX,
   Clock,
