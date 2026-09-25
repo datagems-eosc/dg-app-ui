@@ -230,8 +230,9 @@ describe("ConfirmationModal", () => {
     const cancelButton = screen.getByRole("button", { name: /cancel/i });
     const confirmButton = screen.getByRole("button", { name: /confirm/i });
 
-    closeButton.focus();
-    expect(closeButton).toHaveFocus();
+    // Wait for the modal's initial-focus timer before exercising Tab.
+    // Manually focusing early lets that timer interrupt the tab sequence.
+    await waitFor(() => expect(closeButton).toHaveFocus());
 
     await user.tab();
     expect(cancelButton).toHaveFocus();
