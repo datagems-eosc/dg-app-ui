@@ -9,6 +9,7 @@ import { getDisplayCategory } from "@/config/collectionConstants";
 import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { sharingStateFromLegacyAccess } from "@/lib/datasetPermissions/model";
 import {
   buildFilePreviews,
   buildFileTree,
@@ -164,14 +165,22 @@ export default function DatasetDetailsPageContent({
     dataset.category || "",
   );
 
-  const displayAccess =
-    dataset.access === "Open Access" ? "Open Access" : "Restricted";
+  // Anything that is not "Open Access" used to become "Restricted" here, which
+  // turned every dataset whose publication we cannot establish into a warning
+  // badge. A source that carries the legacy binary label still maps to it; a
+  // source that carries an explicit sharing state wins; everything else stays
+  // unknown.
+  const sharing =
+    dataset.sharing ?? sharingStateFromLegacyAccess(dataset.access);
 
-  const permissions = dataset.permissions || [];
-  const hasBrowsePermission = permissions.includes("Browse");
-  const hasEditPermission = permissions.includes("Edit");
-  const hasDownloadPermission = permissions.includes("Download");
-  const hasManagePermission = permissions.includes("Manage");
+  // `undefined` means the permission evidence was unreadable, `[]` that the
+  // read returned nothing to display. The distinction is passed on rather than
+  // collapsed, because the two states read differently to a user.
+  const permissions = dataset.permissions;
+  const hasBrowsePermission = permissions?.includes("Browse") ?? false;
+  const hasEditPermission = permissions?.includes("Edit") ?? false;
+  const hasDownloadPermission = permissions?.includes("Download") ?? false;
+  const hasManagePermission = permissions?.includes("Manage") ?? false;
 
   return (
     <div className={styles.datasetDetailsPageContent}>
@@ -243,7 +252,7 @@ export default function DatasetDetailsPageContent({
               <DatasetSidebar
                 dataset={dataset}
                 displayCategory={displayCategory}
-                displayAccess={displayAccess}
+                sharing={sharing}
                 permissions={permissions}
                 hasBrowsePermission={hasBrowsePermission}
                 hasEditPermission={hasEditPermission}

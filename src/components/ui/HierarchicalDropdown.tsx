@@ -11,7 +11,7 @@ import {
   Speech,
   Trees,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Checkbox } from "./Checkbox";
 import { Input } from "./Input";
 
@@ -48,7 +48,10 @@ export default function HierarchicalDropdown({
   const [searchTerm, setSearchTerm] = useState("");
 
   // Ensure categories is always an array
-  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeCategories = useMemo(
+    () => (Array.isArray(categories) ? categories : []),
+    [categories],
+  );
 
   const toggleCategory = (categoryCode: string) => {
     setExpandedCategories((prev) =>
@@ -66,27 +69,39 @@ export default function HierarchicalDropdown({
     }
   };
 
-  const filteredCategories = searchTerm
-    ? safeCategories
-        .map((category) => ({
-          ...category,
-          options: category.options.filter(
-            (option) =>
-              option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              option.code?.toLowerCase().includes(searchTerm.toLowerCase()),
-          ),
-        }))
-        .filter((category) => category.options.length > 0)
-    : safeCategories;
+  // Memoized so the identity only changes with the query or the categories,
+  // not on every render of this component.
+  const filteredCategories = useMemo(
+    () =>
+      searchTerm
+        ? safeCategories
+            .map((category) => ({
+              ...category,
+              options: category.options.filter(
+                (option) =>
+                  option.label
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase()) ||
+                  option.code?.toLowerCase().includes(searchTerm.toLowerCase()),
+              ),
+            }))
+            .filter((category) => category.options.length > 0)
+        : safeCategories,
+    [safeCategories, searchTerm],
+  );
 
-  // Auto-expand categories with search results
+  // Auto-expand categories with search results. Keep the previous array when
+  // the codes are unchanged so this effect cannot re-trigger its own render.
   useEffect(() => {
-    if (searchTerm) {
-      const categoriesWithResults = filteredCategories.map((cat) => cat.code);
-      setExpandedCategories(categoriesWithResults);
-    } else {
-      setExpandedCategories([]);
-    }
+    const categoriesWithResults = searchTerm
+      ? filteredCategories.map((cat) => cat.code)
+      : [];
+    setExpandedCategories((previous) =>
+      previous.length === categoriesWithResults.length &&
+      previous.every((code, index) => code === categoriesWithResults[index])
+        ? previous
+        : categoriesWithResults,
+    );
   }, [searchTerm, filteredCategories]);
 
   // Get selected count for a specific category

@@ -42,6 +42,25 @@ interface ClassificationProps {
     languages?: string;
     countries?: string;
   };
+  /**
+   * Whether the collection selector is offered. Defaults to `true`, so every
+   * existing consumer keeps the section it has today.
+   *
+   * Dataset onboarding opts out: under revision 5 a new dataset is created
+   * privately and collection assignment is a separate, later action, so
+   * offering the control during upload would promise something the flow does
+   * not do. Opting out hides the control only — `data.collection` is left
+   * exactly as the caller passed it and is never cleared here.
+   */
+  showCollection?: boolean;
+  /**
+   * Whether Country is marked as required. Defaults to `false`, so existing
+   * consumers keep an optional field. Presentation only: the caller owns the
+   * rule and reports a missing value through `errors.countries`.
+   */
+  requireCountry?: boolean;
+  /** Onboarding accepts a one-element array; other consumers keep multiple values. */
+  singleCountry?: boolean;
 }
 
 // Mock collections data - fallback when API collections are not available
@@ -89,6 +108,9 @@ export function Classification({
   data,
   onChange,
   errors,
+  showCollection = true,
+  requireCountry = false,
+  singleCountry = false,
 }: ClassificationProps) {
   const api = useApi();
   const { apiCollections, isLoadingApiCollections } = useCollections();
@@ -272,29 +294,31 @@ export function Classification({
       </div>
 
       {/* Collection */}
-      <div>
-        <h4 className="text-body-14-medium sm:text-sm font-medium text-gray-750 mb-1">
-          Collection
-        </h4>
-        {isLoadingApiCollections ? (
-          <div className="flex justify-center items-center h-8 sm:h-10">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-          </div>
-        ) : (
-          <Select
-            options={collectionOptions}
-            value={data.collection}
-            onChange={(value) => handleFieldChange("collection", value)}
-            placeholder="Select a collection"
-            error={errors.collection}
-          />
-        )}
-        {errors.collection && (
-          <p className="mt-1 text-descriptions-12-regular text-red-500">
-            {errors.collection}
-          </p>
-        )}
-      </div>
+      {showCollection ? (
+        <div>
+          <h4 className="text-body-14-medium sm:text-sm font-medium text-gray-750 mb-1">
+            Collection
+          </h4>
+          {isLoadingApiCollections ? (
+            <div className="flex justify-center items-center h-8 sm:h-10">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <Select
+              options={collectionOptions}
+              value={data.collection}
+              onChange={(value) => handleFieldChange("collection", value)}
+              placeholder="Select a collection"
+              error={errors.collection}
+            />
+          )}
+          {errors.collection && (
+            <p className="mt-1 text-descriptions-12-regular text-red-500">
+              {errors.collection}
+            </p>
+          )}
+        </div>
+      ) : null}
 
       <div>
         <Select
@@ -346,9 +370,14 @@ export function Classification({
         label="Country"
         value={data.countries}
         onChange={(countries) => handleFieldChange("countries", countries)}
-        placeholder="Enter country-code separate with commas e.g. US, DE, IT"
+        placeholder={
+          singleCountry
+            ? "Enter a country code, e.g. US"
+            : "Enter country-code separate with commas e.g. US, DE, IT"
+        }
         error={errors.countries}
-        required={false}
+        required={requireCountry}
+        maxItems={singleCountry ? 1 : undefined}
       />
     </div>
   );

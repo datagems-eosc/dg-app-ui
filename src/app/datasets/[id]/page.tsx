@@ -8,6 +8,11 @@ import { APP_ROUTES } from "@/config/appUrls";
 import { DATASET_ROLE_MAP } from "@/config/contextGrantRoles";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { decodeCallerPermissions } from "@/lib/datasetPermissions/decode";
+import {
+  permissionLabelsForDisplay,
+  SHARING_WITHOUT_EVIDENCE,
+} from "@/lib/datasetPermissions/model";
 import { logApiError, logWarn } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
@@ -68,7 +73,7 @@ export default function DatasetDetailsPage() {
           "collections.datasetCount",
           "permissions.browseDataset",
           "permissions.editDataset",
-          "permissions.downloadDataset",
+          "permissions.downloadDatasetFile",
           "permissions.manageDataset",
           "language",
           "country",
@@ -222,35 +227,24 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     }
   }
 
-  const permissions = obj.permissions;
-  let permissionArray: string[] = [];
-  if (typeof permissions === "object" && permissions !== null) {
-    const permObj = permissions as Record<string, unknown>;
-    const hasPermission = (camel: string, pascal: string) =>
-      Boolean(permObj[camel]) || Boolean(permObj[pascal]);
-    if (hasPermission("browseDataset", "BrowseDataset"))
-      permissionArray.push("Browse");
-    if (hasPermission("editDataset", "EditDataset"))
-      permissionArray.push("Edit");
-    if (hasPermission("downloadDataset", "DownloadDataset"))
-      permissionArray.push("Download");
-    if (hasPermission("manageDataset", "ManageDataset"))
-      permissionArray.push("Manage");
-  } else if (Array.isArray(permissions)) {
-    permissionArray = permissions.map(String);
-  }
+  // Arrays are objects, so the previous `typeof permissions === "object"`
+  // check made the array branch unreachable and a real Gateway response
+  // decoded to no permissions at all. The decoder handles the array shape
+  // first and keeps the legacy object shape as compatibility input. An
+  // undefined result means "no readable evidence" and stays undefined: it is
+  // not the same as an empty list, and neither becomes an invented role.
+  const permissionLabels = permissionLabelsForDisplay(
+    decodeCallerPermissions(obj.permissions),
+  );
 
   return {
     id: String(obj.id ?? ""),
     title: String(obj.name ?? obj.code ?? "Untitled"),
     category: collections.length > 0 ? "Weather" : "Math",
-    access:
-      Array.isArray(obj.permissions) &&
-      obj.permissions.includes("browsedataset")
-        ? "Open Access"
-        : permissionArray.includes("Browse")
-          ? "Open Access"
-          : "Restricted",
+    // Publication is deliberately absent rather than guessed. This page reads
+    // no group semantics and no dataset grants, and the caller's own Browse
+    // permission says nothing about whether the Everyone audience has any.
+    sharing: SHARING_WITHOUT_EVIDENCE.state,
     description: String(obj.description ?? ""),
     size: obj.size ? String(obj.size) : "N/A",
     lastUpdated: obj.lastUpdated
@@ -267,7 +261,7 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     keywords,
     url: obj.url ? String(obj.url) : undefined,
     version: obj.version ? String(obj.version) : undefined,
-    permissions: permissionArray,
+    permissions: permissionLabels,
     language: obj.language ? String(obj.language) : undefined,
     country: obj.country ? String(obj.country) : undefined,
     citation: obj.citation ? String(obj.citation) : undefined,
