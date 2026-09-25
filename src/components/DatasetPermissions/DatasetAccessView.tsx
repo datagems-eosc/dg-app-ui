@@ -30,7 +30,7 @@
 import { Button } from "@ui/Button";
 import { ConfirmationModal } from "@ui/ConfirmationModal";
 import { Input } from "@ui/Input";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import type { DatasetRoleOperationState } from "@/hooks/useDatasetPermissions";
 import type { DatasetRoleAction } from "@/lib/datasetPermissions/types";
@@ -41,7 +41,6 @@ import {
   accessUnavailableMessage,
   capabilityMessage,
   confirmationCopy,
-  DATASET_BUSY_MESSAGE,
   DISCOVERY_CAVEAT,
   DONE_LABEL,
   EMPTY_DISCOVERY_MESSAGE,
@@ -142,11 +141,18 @@ const shownActivity = (operation: DatasetRoleOperationState): ShownActivity => {
  * focusable. Natively disabling it would drop the keyboard focus of whoever
  * just used it to the page, and its status stays one Tab stop away through
  * `aria-describedby`. Every other blocked switch is natively disabled.
+ *
+ * `pending` is the held case whose request has not answered yet. The switch
+ * itself shows it — a spinner in the thumb, at full strength rather than
+ * faded, and `aria-busy` — so the row does not grow a line that flashes away
+ * on a fast reply. Its named status is still the described-by text. Busy is
+ * not unconfirmed: an uncertain switch is faded and ringed instead.
  */
 function RoleSwitch({
   checked,
   disabled,
   held,
+  pending,
   label,
   describedBy,
   attention,
@@ -155,6 +161,7 @@ function RoleSwitch({
   checked: boolean;
   disabled: boolean;
   held: boolean;
+  pending: boolean;
   label: string;
   describedBy: string | undefined;
   /** A compact marker for a change we couldn't confirm; the text explains it. */
@@ -169,17 +176,30 @@ function RoleSwitch({
       aria-label={label}
       aria-describedby={describedBy}
       aria-disabled={held || undefined}
+      aria-busy={pending || undefined}
       disabled={disabled}
       onClick={held ? undefined : onToggle}
       className={cn(
         "flex h-4 w-7 shrink-0 items-center rounded-full p-[2px] transition-colors duration-200 motion-reduce:transition-none",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1",
         checked ? "justify-end bg-sky-950" : "justify-start bg-slate-200",
-        disabled || held ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+        pending
+          ? "cursor-progress"
+          : disabled || held
+            ? "cursor-not-allowed opacity-50"
+            : "cursor-pointer",
         attention && "ring-2 ring-amber-500 ring-offset-1",
       )}
     >
-      <span className="h-3 w-3 rounded-full bg-white shadow-[0px_0.6px_0.6px_0px_rgba(213,218,227,0.3)]" />
+      <span className="flex h-3 w-3 items-center justify-center rounded-full bg-white shadow-[0px_0.6px_0.6px_0px_rgba(213,218,227,0.3)]">
+        {pending && (
+          <Loader2
+            aria-hidden="true"
+            strokeWidth={3}
+            className="h-2.5 w-2.5 animate-spin text-sky-950 motion-reduce:animate-none"
+          />
+        )}
+      </span>
     </button>
   );
 }
@@ -269,8 +289,8 @@ export function DatasetAccessView({
    * Each fact appears once, where it affects the task: a capability banner
    * only in the full editor, where both actions exist; the Everyone
    * explanation beside the grant chooser rather than above it; a busy dataset
-   * through the pending change's own feedback in the grant form. Loading and
-   * unavailable states explain themselves in their body.
+   * through the pending change's own control or result, never a banner. Loading
+   * and unavailable states explain themselves in their body.
    */
   const notices: Notice[] = [];
   const addNotice = (
@@ -345,9 +365,6 @@ export function DatasetAccessView({
               )}`,
           ),
       });
-    }
-    if (busy) {
-      addNotice({ id: "busy", tone: "info", text: DATASET_BUSY_MESSAGE });
     }
   }
   if (mode.kind === "grant-only" && uncertain.length > 0) {
@@ -711,25 +728,30 @@ export function DatasetAccessView({
                 </div>
 
                 <div className="mt-6">
-                  <div className="flex items-end gap-2 pb-1">
-                    <h3 className="flex-1 text-body-16-semibold text-gray-750">
-                      Group permissions
-                    </h3>
-                    <div className="hidden gap-1 sm:flex" aria-hidden="true">
-                      {(rows[0]?.cells ?? []).map((cell) => (
-                        <span
-                          key={cell.key}
-                          className="w-20 text-center text-descriptions-12-medium text-gray-750"
-                        >
-                          {cell.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="pb-2 text-descriptions-12-regular text-gray-650">
+                  {/*
+                    The caption belongs to the heading, above the permission
+                    columns rather than running underneath them.
+                  */}
+                  <h3 className="text-body-16-semibold text-gray-750">
+                    Group permissions
+                  </h3>
+                  <p className="mt-1 pb-2 text-descriptions-12-regular text-gray-650 sm:pb-0">
                     {DISCOVERY_CAVEAT}
                     {audienceNote !== null && ` ${audienceNote}`}
                   </p>
+                  <div
+                    className="hidden justify-end gap-1 pt-3 pb-1 sm:flex"
+                    aria-hidden="true"
+                  >
+                    {(rows[0]?.cells ?? []).map((cell) => (
+                      <span
+                        key={cell.key}
+                        className="w-20 text-center text-descriptions-12-medium text-gray-750"
+                      >
+                        {cell.label}
+                      </span>
+                    ))}
+                  </div>
 
                   {rows.length === 0 && (
                     <p
@@ -774,17 +796,22 @@ export function DatasetAccessView({
                           Feedback goes below it, never under a switch.
                         */}
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">
-                              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                <span className="text-body-14-medium break-words text-slate-850">
+                              {/*
+                                Name and audience badge share a line when they
+                                fit; otherwise the whole badge wraps below the
+                                name, never splitting its words.
+                              */}
+                              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                                <span className="min-w-0 max-w-full text-body-14-medium break-words text-slate-850">
                                   {row.name}
                                 </span>
                                 {row.publicAudience && (
-                                  <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-descriptions-12-medium text-amber-800">
+                                  <span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-descriptions-12-medium text-amber-800">
                                     {PUBLIC_AUDIENCE_BADGE}
                                   </span>
                                 )}
                                 {row.ambiguousAudience && (
-                                  <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-descriptions-12-medium text-amber-800">
+                                  <span className="whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-descriptions-12-medium text-amber-800">
                                     {AMBIGUOUS_AUDIENCE_BADGE}
                                   </span>
                                 )}
@@ -814,6 +841,9 @@ export function DatasetAccessView({
                                         checked={cell.granted}
                                         disabled={block !== null && !held}
                                         held={held}
+                                        pending={
+                                          cell.activity.kind === "pending"
+                                        }
                                         label={`${row.name} — ${cell.label}`}
                                         describedBy={statusId}
                                         attention={
@@ -829,18 +859,39 @@ export function DatasetAccessView({
                               </div>
                             </div>
 
-                            {feedback.length > 0 && (
-                              <ul className="mt-2 flex flex-col gap-1">
-                                {feedback.map(({ cell, activity, id }) => (
-                                  <OperationFeedback
-                                    key={cell.key}
-                                    id={id}
-                                    tone={activity.kind}
-                                    text={rowFeedbackText(activity, cell.label)}
-                                  />
-                                ))}
-                              </ul>
-                            )}
+                            {/*
+                              Always mounted, so a change's status and outcome
+                              are announced. A pending change is shown by its
+                              switch; its line here is read, not displayed, so
+                              the row keeps its height until there is an
+                              outcome to show.
+                            */}
+                            <div role="status" aria-live="polite">
+                              {feedback.length > 0 && (
+                                <ul
+                                  className={cn(
+                                    "flex flex-col gap-1",
+                                    feedback.some(
+                                      ({ activity }) =>
+                                        activity.kind !== "pending",
+                                    ) && "mt-2",
+                                  )}
+                                >
+                                  {feedback.map(({ cell, activity, id }) => (
+                                    <OperationFeedback
+                                      key={cell.key}
+                                      id={id}
+                                      tone={activity.kind}
+                                      text={rowFeedbackText(
+                                        activity,
+                                        cell.label,
+                                      )}
+                                      statusOnly={activity.kind === "pending"}
+                                    />
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
                           </li>
                         );
                       })}

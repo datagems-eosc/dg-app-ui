@@ -30,11 +30,11 @@ import type { ControlBlock, RoleActivity } from "./types";
 export const VIEW_INTRO = "Changes apply immediately.";
 
 /**
- * Group discovery returns what *this caller* may see. Saying so once is the
- * difference between a list and a claim about the world.
+ * Group discovery returns what *this caller* may see. Saying so once, under
+ * the list's heading, is the difference between a list and a claim about the
+ * world.
  */
-export const DISCOVERY_CAVEAT =
-  "Only groups you can view are shown. Other users or groups may also have access.";
+export const DISCOVERY_CAVEAT = "Showing groups you can view.";
 
 export const LOADING_MESSAGE = "Loading group permissions…";
 
@@ -93,9 +93,6 @@ export const STORAGE_UNAVAILABLE_TITLE =
  */
 export const STORAGE_UNAVAILABLE_MESSAGE =
   "We couldn't safely save your progress, so no new change was sent. If this continues, ask a DataGEMS administrator for help.";
-
-export const DATASET_BUSY_MESSAGE =
-  "Applying change… Wait for it to finish before making another.";
 
 /** The dataset-wide summary. Detail sits with the affected group. */
 export const uncertainNoticeMessage = (count: number): string =>

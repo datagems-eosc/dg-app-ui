@@ -352,3 +352,122 @@ describe("DatasetAccessView over useDatasetPermissions — keyboard focus", () =
     expect(results).toHaveFocus();
   });
 });
+
+describe("DatasetAccessView over useDatasetPermissions — pending and outcome feedback", () => {
+  /** The row's live region, which carries its change's status and outcome. */
+  const rowStatusFor = (control: HTMLElement) => {
+    const row = control.closest("li");
+    if (row === null) throw new Error("switch outside a group row");
+    return within(row).getByRole("status");
+  };
+
+  it("keeps a held reply busy at its switch, named, and acknowledged only once answered", async () => {
+    const user = userEvent.setup();
+    const transport = deferredOperations();
+    render(
+      <Harness operations={transport.operations} storage={memoryStorage()} />,
+    );
+    const control = switchFor(RESEARCH, "Edit");
+    control.focus();
+    await user.keyboard(" ");
+
+    // Busy at the control, and named, without a dataset-wide banner.
+    expect(control).toHaveAttribute("aria-busy", "true");
+    expect(control).toHaveFocus();
+    expect(control).toHaveAccessibleDescription("Granting Edit…");
+    expect(rowStatusFor(control)).toHaveTextContent("Granting Edit…");
+    expect(screen.queryByText(/applying change/i)).toBeNull();
+    // Nothing claims success while the reply is outstanding, however long.
+    expect(screen.queryByText("Edit permission granted.")).toBeNull();
+    expect(control).toHaveAttribute("aria-checked", "false");
+
+    await user.keyboard(" ");
+    await user.keyboard("{Enter}");
+    await user.click(control);
+    expect(transport.sent).toHaveLength(1);
+    expect(control).toHaveAttribute("aria-busy", "true");
+
+    await transport.reply({ kind: "acknowledged", httpStatus: 204 });
+    expect(control).not.toHaveAttribute("aria-busy");
+    expect(control).toHaveFocus();
+    // The described-by target is the same element, now the acknowledgement.
+    expect(control).toHaveAccessibleDescription("Edit permission granted.");
+    expect(rowStatusFor(control)).toHaveTextContent("Edit permission granted.");
+    expect(screen.queryByText("Granting Edit…")).toBeNull();
+    expect(transport.sent).toHaveLength(1);
+  });
+
+  it("goes straight to the acknowledgement on a fast reply", async () => {
+    const transport = deferredOperations();
+    render(
+      <Harness operations={transport.operations} storage={memoryStorage()} />,
+    );
+    await act(async () => {
+      fireEvent.click(switchFor(RESEARCH, "Edit"));
+    });
+    await transport.reply({ kind: "acknowledged", httpStatus: 204 });
+
+    expect(transport.sent).toHaveLength(1);
+    expect(screen.getByText("Edit permission granted.")).toBeInTheDocument();
+    expect(screen.queryByText("Granting Edit…")).toBeNull();
+    expect(screen.queryByText(/applying change/i)).toBeNull();
+    expect(switchFor(RESEARCH, "Edit")).not.toHaveAttribute("aria-busy");
+  });
+
+  it("keeps a refusal and an unknown outcome distinct from busy and from success", async () => {
+    const transport = deferredOperations();
+    render(
+      <Harness operations={transport.operations} storage={memoryStorage()} />,
+    );
+    fireEvent.click(switchFor(RESEARCH, "Edit"));
+    await transport.reply({ kind: "refused", httpStatus: 403 });
+    const refused = switchFor(RESEARCH, "Edit");
+    expect(refused).toHaveAccessibleDescription(
+      "Edit permission wasn't granted.",
+    );
+    expect(refused).not.toHaveAttribute("aria-busy");
+
+    fireEvent.click(switchFor(RESEARCH, "Search"));
+    await transport.reply({ kind: "uncertain", reason: "no-response" });
+    const unknown = switchFor(RESEARCH, "Search");
+    expect(unknown).not.toHaveAttribute("aria-busy");
+    expect(unknown).toHaveAttribute("aria-disabled", "true");
+    expect(unknown).toHaveAccessibleDescription(
+      /^Search: we couldn't confirm whether it was granted/,
+    );
+    expect(screen.queryByText(/permission granted\./)).toBeNull();
+    expect(transport.sent).toHaveLength(2);
+  });
+
+  it("reports a held and then acknowledged grant in the grant-only results", async () => {
+    const user = userEvent.setup();
+    const transport = deferredOperations();
+    render(
+      <Harness
+        operations={transport.operations}
+        storage={memoryStorage()}
+        grantOnly
+      />,
+    );
+    await user.selectOptions(screen.getByLabelText("Group"), RESEARCH_GROUP_ID);
+    await user.click(screen.getByRole("radio", { name: "Browse" }));
+    const grant = screen.getByRole("button", { name: "Grant access" });
+    await user.click(grant);
+    await user.click(grant);
+    expect(transport.sent).toHaveLength(1);
+
+    const results = screen.getByText("Your changes").parentElement;
+    if (results === null) throw new Error("results region missing");
+    expect(results).toHaveAttribute("role", "status");
+    expect(results).toHaveTextContent(`Granting Browse to ${RESEARCH}…`);
+    expect(results).not.toHaveTextContent("permission granted");
+    expect(screen.queryByText(/applying change/i)).toBeNull();
+
+    await transport.reply({ kind: "acknowledged", httpStatus: 204 });
+    expect(results).toHaveTextContent(
+      `Browse permission granted to ${RESEARCH}.`,
+    );
+    expect(results).not.toHaveTextContent("Granting");
+    expect(transport.sent).toHaveLength(1);
+  });
+});

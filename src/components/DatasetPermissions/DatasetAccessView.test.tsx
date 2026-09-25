@@ -121,16 +121,26 @@ describe("DatasetAccessView — displayed states", () => {
     ).toBeInTheDocument();
     // The empty discovery is still framed as the caller's view, not the world.
     expect(
-      screen.getByText(/other users or groups may also have access/i),
+      screen.getByText("Showing groups you can view."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/nobody|no one/i)).toBeNull();
   });
 
   it("does not claim the group list enumerates everyone with access", () => {
     renderView();
+    // Under its heading, before the first group, rather than after the list.
+    const caption = screen.getByText("Showing groups you can view.");
+    const heading = screen.getByRole("heading", { name: "Group permissions" });
+    const firstSwitch = screen.getAllByRole("switch")[0];
     expect(
-      screen.getByText(/other users or groups may also have access/i),
-    ).toBeInTheDocument();
+      heading.compareDocumentPosition(caption) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      firstSwitch !== undefined &&
+        caption.compareDocumentPosition(firstSwitch) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("words an unavailable capability differently from an unknown one", () => {
@@ -273,7 +283,31 @@ describe("DatasetAccessView — sending one change", () => {
     expect(other).toBeDisabled();
     fireEvent.click(other);
     expect(onRoleChange).not.toHaveBeenCalled();
-    expect(screen.getByText(/wait for it to finish/i)).toBeInTheDocument();
+    // Busy is shown at the pending switch and named for assistive technology,
+    // not in a dataset-wide banner.
+    expect(screen.queryByText(/applying change/i)).toBeNull();
+    const pending = switchFor(RESEARCH, "Edit");
+    expect(pending).toHaveAttribute("aria-busy", "true");
+    expect(pending).toHaveAccessibleDescription("Granting Edit…");
+    expect(other).not.toHaveAttribute("aria-busy");
+  });
+
+  it("does not present an unconfirmed change as busy", () => {
+    renderView({
+      operations: [
+        operation({
+          role: DATASET_ROLE_MAP.edit,
+          status: "uncertain",
+          uncertainReason: "no-response",
+        }),
+      ],
+    });
+    const control = switchFor(RESEARCH, "Edit");
+    expect(control).not.toHaveAttribute("aria-busy");
+    expect(control).toHaveAttribute("aria-disabled", "true");
+    expect(control).toHaveAccessibleDescription(
+      /Edit: we couldn't confirm whether it was granted/,
+    );
   });
 
   it("sends nothing when the evidence does not positively authorize it", () => {

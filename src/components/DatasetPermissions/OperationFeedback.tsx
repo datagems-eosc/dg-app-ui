@@ -4,6 +4,10 @@
  * Shared by the full editor's rows and the grant-only results, so a change
  * reads the same wherever it is reported. The text carries the meaning; the
  * icon and colour only reinforce it.
+ *
+ * An acknowledged change is quiet: secondary-text grey beside a check, not a
+ * coloured banner. Refused and uncertain outcomes keep their own colours so
+ * they are never mistaken for it.
  */
 
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
@@ -14,7 +18,7 @@ export type FeedbackTone = Exclude<RoleActivity["kind"], "idle">;
 
 const TONE_STYLE: Record<FeedbackTone, string> = {
   pending: "text-gray-650",
-  acknowledged: "text-emerald-700",
+  acknowledged: "text-gray-650",
   refused: "text-red-700",
   uncertain: "text-amber-800",
 };
@@ -30,11 +34,25 @@ export function OperationFeedback({
   id,
   tone,
   text,
+  statusOnly = false,
 }: {
   id?: string;
   tone: FeedbackTone;
   text: string;
+  /**
+   * Read to assistive technology only. For a pending change whose control
+   * already shows it is busy: the line would otherwise appear and vanish on
+   * every fast reply. The element stays, so `aria-describedby` still resolves.
+   */
+  statusOnly?: boolean;
 }) {
+  if (statusOnly) {
+    return (
+      <li id={id} className="sr-only">
+        {text}
+      </li>
+    );
+  }
   const Icon = TONE_ICON[tone];
   return (
     // The type scale stays out of `cn`: tailwind-merge reads
