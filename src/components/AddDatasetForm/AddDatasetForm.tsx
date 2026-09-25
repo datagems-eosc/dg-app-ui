@@ -697,9 +697,14 @@ export default function AddDatasetForm() {
       newErrors.classification.license = "License is required";
     }
 
-    // Every supplied country is kept; only an absent or all-blank list blocks.
     if (!hasNonblankValue(formData.classification.countries)) {
       newErrors.classification.countries = "Country is required";
+    } else if (
+      formData.classification.countries.filter(
+        (country) => country.trim() !== "",
+      ).length > 1
+    ) {
+      newErrors.classification.countries = "Add only one country";
     }
 
     if (formData.additionalInfo.referenceString.length > 3000) {
@@ -1090,6 +1095,7 @@ export default function AddDatasetForm() {
                 // Collections are assigned later, from the dataset itself.
                 showCollection={false}
                 requireCountry
+                singleCountry
               />
             ),
           },

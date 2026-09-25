@@ -530,7 +530,12 @@ async function refreshActivity() {
     "no sharing warning for a private creation",
     !SHARING.test(await bodyText(page)),
   );
-  check("focus did not move during refresh", await focusKept());
+  check(
+    "successful processing hides the status refresh control",
+    (await page
+      .getByRole("button", { name: "Refresh status", exact: true })
+      .count()) === 0,
+  );
   check("no horizontal overflow at 390px", await noOverflow(page));
   check(
     "reads only: no start, upload or unknown call",
@@ -844,11 +849,36 @@ async function requiredCountry() {
       `starts=${w.count("start")}`,
     );
 
-    step(`recovery with two countries at ${at}`);
-    for (const country of ["US", "PL"]) {
-      await countryInput(page).fill(country);
-      await countryInput(page).press("Enter");
-    }
+    step(`single country and replacement at ${at}`);
+    await countryInput(page).fill("US, PL");
+    await countryInput(page).press("Enter");
+    await startButton(page).click();
+    check(
+      `${at}: multiple countries are rejected without a start or silent selection`,
+      w.count("start") === 0 &&
+        (await countryField(page)
+          .getByText("Add only one value.")
+          .isVisible()) &&
+        (await countryField(page)
+          .getByRole("button", { name: /^Remove/ })
+          .count()) === 0,
+    );
+    await countryInput(page).fill("US");
+    await countryInput(page).press("Enter");
+    check(
+      `${at}: one country blocks further entry`,
+      await countryInput(page).isDisabled(),
+    );
+    await countryField(page).getByRole("button", { name: "Remove US" }).click();
+    check(
+      `${at}: removing country enables a replacement`,
+      await countryInput(page).isEnabled(),
+    );
+    await countryInput(page).fill("PL");
+    await countryInput(page).press("Enter");
+    check(`${at}: replacement fits the viewport`, await noOverflow(page));
+    await countryField(page).scrollIntoViewIfNeeded();
+    await shot(page, `08-single-country-${viewport.width}`);
     await startButton(page).click();
     await page.waitForURL(
       new RegExp(`/datasets/onboarding/${PROCESS_ID}$`),
@@ -856,11 +886,10 @@ async function requiredCountry() {
     );
     await page.waitForTimeout(800);
     check(
-      `${at}: supplying countries allows exactly one start carrying both`,
+      `${at}: supplying one country allows exactly one start carrying a one-item array`,
       w.count("start") === 1 &&
         startBodies.length === 1 &&
-        JSON.stringify(startBodies[0]?.country) ===
-          JSON.stringify(["US", "PL"]),
+        JSON.stringify(startBodies[0]?.country) === JSON.stringify(["PL"]),
       `starts=${w.count("start")} country=${JSON.stringify(startBodies[0]?.country)}`,
     );
     check(

@@ -1,4 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseApi = vi.fn();
@@ -96,6 +98,39 @@ describe("Classification collection visibility", () => {
 });
 
 describe("Classification country requiredness", () => {
+  it("limits only Country when opted in and keeps Languages optional and multiple", async () => {
+    function Form() {
+      const [value, setValue] =
+        useState<Parameters<typeof Classification>[0]["data"]>(data);
+      return (
+        <Classification
+          data={value}
+          onChange={setValue}
+          errors={{}}
+          requireCountry
+          singleCountry
+        />
+      );
+    }
+    const user = userEvent.setup();
+    render(<Form />);
+    await user.type(
+      screen.getByRole("textbox", { name: "Country" }),
+      "US{Enter}",
+    );
+    expect(screen.getByRole("textbox", { name: "Country" })).toBeDisabled();
+    const languages = screen.getByRole("textbox", { name: "Languages" });
+    await user.type(languages, "en,pl{Enter}");
+    expect(
+      screen.getByRole("button", { name: "Remove en" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove pl" }),
+    ).toBeInTheDocument();
+    expect(languages).toBeEnabled();
+    expect(languages).toHaveAttribute("aria-required", "false");
+  });
+
   it("keeps Country and Languages optional by default, for existing consumers", async () => {
     renderClassification();
 

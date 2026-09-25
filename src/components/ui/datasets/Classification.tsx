@@ -59,6 +59,8 @@ interface ClassificationProps {
    * rule and reports a missing value through `errors.countries`.
    */
   requireCountry?: boolean;
+  /** Onboarding accepts a one-element array; other consumers keep multiple values. */
+  singleCountry?: boolean;
 }
 
 // Mock collections data - fallback when API collections are not available
@@ -108,6 +110,7 @@ export function Classification({
   errors,
   showCollection = true,
   requireCountry = false,
+  singleCountry = false,
 }: ClassificationProps) {
   const api = useApi();
   const { apiCollections, isLoadingApiCollections } = useCollections();
@@ -367,10 +370,20 @@ export function Classification({
         label="Country"
         value={data.countries}
         onChange={(countries) => handleFieldChange("countries", countries)}
-        placeholder="Enter country-code separate with commas e.g. US, DE, IT"
+        placeholder={
+          singleCountry
+            ? "Enter a country code, e.g. US"
+            : "Enter country-code separate with commas e.g. US, DE, IT"
+        }
         error={errors.countries}
         required={requireCountry}
+        maxItems={singleCountry ? 1 : undefined}
       />
+      {singleCountry && (
+        <p className="text-descriptions-12-regular text-gray-650">
+          One country only. Remove it to choose another.
+        </p>
+      )}
     </div>
   );
 }

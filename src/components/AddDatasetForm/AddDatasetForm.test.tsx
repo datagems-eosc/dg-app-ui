@@ -268,10 +268,7 @@ const uploadFile = async (
   });
 };
 
-const countryInput = () =>
-  screen.getByPlaceholderText(
-    "Enter country-code separate with commas e.g. US, DE, IT",
-  );
+const countryInput = () => screen.getByRole("textbox", { name: "Country" });
 
 /**
  * Fills every required field through the real controls. `country` is typed
@@ -426,7 +423,7 @@ describe("AddDatasetForm required country", () => {
     expect(body).not.toHaveProperty("language");
   });
 
-  it("sends every supplied country without selecting one", async () => {
+  it("rejects multiple pasted countries and submits a single replacement country", async () => {
     const user = userEvent.setup();
     const ledger = stubBoundaries();
     const { container } = mount();
@@ -435,14 +432,26 @@ describe("AddDatasetForm required country", () => {
       expect(startButton()).toBeEnabled();
     });
     await uploadFile(user, container);
-    await fillMetadata(user, { country: "US, PL{Enter}" });
+    await fillMetadata(user, { country: null });
+    await user.click(countryInput());
+    await user.paste("US, PL");
+    await user.click(startButton());
+    expect(screen.getByText("Add only one value.")).toBeInTheDocument();
+    expect(ledger.starts()).toHaveLength(0);
+
+    await user.clear(countryInput());
+    await user.type(countryInput(), "US{Enter}");
+    expect(countryInput()).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Remove US" }));
+    expect(countryInput()).toBeEnabled();
+    await user.type(countryInput(), "PL{Enter}");
     await user.click(startButton());
 
     await waitFor(() => {
       expect(ledger.starts()).toHaveLength(1);
     });
     const body = JSON.parse(ledger.starts()[0]?.body as string);
-    expect(body.country).toEqual(["US", "PL"]);
+    expect(body.country).toEqual(["PL"]);
   });
 });
 
