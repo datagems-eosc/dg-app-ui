@@ -448,30 +448,35 @@ export function ProcessingView({
     setAnnounced(announcement.text);
   }, [announcement]);
 
-  const refreshButton = showRefresh ? (
-    <Tooltip content="Refresh status" position="top" className="flex shrink-0">
-      {/* Stays enabled while a read runs: the hooks already coalesce a
+  const refreshButton =
+    showRefresh && view.processing !== "succeeded" ? (
+      <Tooltip
+        content="Refresh status"
+        position="top"
+        className="flex shrink-0"
+      >
+        {/* Stays enabled while a read runs: the hooks already coalesce a
           request with the one in flight, so guarding here would only change
           which reads a click is allowed to ask for. Focus never moves. */}
-      <button
-        type="button"
-        onClick={onCheckAgain}
-        aria-label="Refresh status"
-        {...(updateStatusText === ""
-          ? {}
-          : { "aria-describedby": updateStatusId })}
-        className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm bg-white transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-      >
-        <RefreshCw
-          className={classes(
-            "h-5 w-5 text-icon",
-            updating && "animate-spin motion-reduce:animate-none",
-          )}
-          aria-hidden="true"
-        />
-      </button>
-    </Tooltip>
-  ) : null;
+        <button
+          type="button"
+          onClick={onCheckAgain}
+          aria-label="Refresh status"
+          {...(updateStatusText === ""
+            ? {}
+            : { "aria-describedby": updateStatusId })}
+          className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm bg-white transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <RefreshCw
+            className={classes(
+              "h-5 w-5 text-icon",
+              updating && "animate-spin motion-reduce:animate-none",
+            )}
+            aria-hidden="true"
+          />
+        </button>
+      </Tooltip>
+    ) : null;
 
   const availabilityCopy: NoticeCopy | null = present("availability-denied")
     ? noticeCopyOf("availability-denied")

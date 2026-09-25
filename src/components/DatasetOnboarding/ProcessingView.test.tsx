@@ -760,7 +760,7 @@ describe("ProcessingView", () => {
     expect(liveRegion()).toMatch(/Showing the last available update/);
   });
 
-  it("does not move focus when a poll updates the view", async () => {
+  it("keeps refresh focused until processing completes, then hides it", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
       <ProcessingView view={pendingRunningView} onCheckAgain={vi.fn()} />,
@@ -769,10 +769,13 @@ describe("ProcessingView", () => {
     await user.click(refreshButton());
     expect(refreshButton()).toHaveFocus();
 
+    rerender(<ProcessingView view={staleView} onCheckAgain={vi.fn()} />);
+    expect(refreshButton()).toHaveFocus();
+
     rerender(
       <ProcessingView view={succeededReadableView} onCheckAgain={vi.fn()} />,
     );
-    expect(refreshButton()).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Refresh status" })).toBeNull();
   });
 
   it("exposes the heading as a focus target without entering the tab order", () => {
