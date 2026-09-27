@@ -11,12 +11,14 @@ import {
   ChevronDown,
   Pencil,
   Search,
+  Settings2,
   Trash2,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DatasetPermissionsModal } from "@/components/ui/user/DatasetPermissionsModal";
 import { APP_ROUTES } from "@/config/appUrls";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { logError, logWarn } from "@/lib/logger";
@@ -491,6 +493,10 @@ export default function RolesPermissionsSection() {
     id: string;
     name: string;
   } | null>(null);
+  // With the new group-access surface each dataset row gets a real launcher
+  // button, so the dialog can be opened by keyboard and has somewhere to
+  // return focus to. Flag off, the row keeps its original pointer-only entry.
+  const groupAccessEnabled = useFeatureFlag("datasetGroupAccess");
   const [deleteConfirmDataset, setDeleteConfirmDataset] = useState<{
     id: string;
     name: string;
@@ -1159,8 +1165,18 @@ export default function RolesPermissionsSection() {
                             ? "cursor-pointer hover:bg-slate-50"
                             : ""
                         }`}
-                        onClick={() => {
+                        onClick={(event) => {
                           if (!isInteractiveDataset) return;
+                          // A pointer opening returns focus to the row's own
+                          // launcher, so it must hold focus before the dialog
+                          // opens and records it.
+                          if (groupAccessEnabled) {
+                            event.currentTarget
+                              .querySelector<HTMLButtonElement>(
+                                "[data-dataset-access-launcher]",
+                              )
+                              ?.focus();
+                          }
                           setSelectedDataset({
                             id: row.targetId,
                             name: row.targetName,
@@ -1261,9 +1277,32 @@ export default function RolesPermissionsSection() {
                           ) : null}
                         </div>
                         <div
-                          className="px-4 flex items-center justify-end gap-2"
+                          className={`px-4 flex items-center justify-end ${
+                            groupAccessEnabled ? "gap-1" : "gap-2"
+                          }`}
                           onClick={(e) => e.stopPropagation()}
                         >
+                          {groupAccessEnabled && isInteractiveDataset && (
+                            <button
+                              type="button"
+                              data-dataset-access-launcher
+                              aria-label={`Manage access to ${row.targetName}`}
+                              onClick={(event) => {
+                                // Safari does not focus a clicked button.
+                                event.currentTarget.focus();
+                                setSelectedDataset({
+                                  id: row.targetId,
+                                  name: row.targetName,
+                                });
+                              }}
+                              className="w-8 h-8 flex items-center justify-center rounded text-gray-650 hover:bg-slate-50"
+                            >
+                              <Settings2
+                                className="w-4 h-4"
+                                strokeWidth={1.25}
+                              />
+                            </button>
+                          )}
                           <button
                             type="button"
                             aria-label="Edit dataset"

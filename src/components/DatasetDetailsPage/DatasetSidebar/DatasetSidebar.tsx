@@ -3,6 +3,7 @@
 import { useState } from "react";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import type { Dataset, DatasetPlus } from "@/data/dataset";
+import type { DatasetSharingState } from "@/lib/datasetPermissions/types";
 import DatasetCitationSection from "./DatasetCitationSection";
 import DatasetCollectionSection from "./DatasetCollectionSection";
 import DatasetCountrySection from "./DatasetCountrySection";
@@ -16,8 +17,9 @@ import DatasetVisibilitySection from "./DatasetVisibilitySection";
 interface DatasetSidebarProps {
   dataset: DatasetPlus;
   displayCategory: string;
-  displayAccess: string;
-  permissions: string[];
+  sharing: DatasetSharingState;
+  /** `undefined` means the permission evidence could not be read. */
+  permissions: string[] | undefined;
   hasBrowsePermission: boolean;
   hasEditPermission: boolean;
   hasDownloadPermission: boolean;
@@ -27,7 +29,7 @@ interface DatasetSidebarProps {
 export default function DatasetSidebar({
   dataset,
   displayCategory,
-  displayAccess,
+  sharing,
   permissions,
   hasBrowsePermission,
   hasEditPermission,
@@ -54,7 +56,7 @@ export default function DatasetSidebar({
         permissions={permissions}
       />
 
-      <DatasetVisibilitySection displayAccess={displayAccess} />
+      <DatasetVisibilitySection sharing={sharing} />
 
       <DatasetLicenseSection license={dataset.license} />
 

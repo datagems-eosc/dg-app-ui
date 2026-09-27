@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { useModalFocus } from "@/hooks/useModalFocus";
 import { Button } from "./Button";
 
 interface ConfirmationModalProps {
@@ -17,6 +18,20 @@ interface ConfirmationModalProps {
   confirmVariant?: "primary" | "danger";
   icon?: React.ReactNode;
   isLoading?: boolean;
+  /**
+   * `"inline"` (default) keeps the existing centred pair with a Cancel icon.
+   * `"responsive"` stacks full-width actions below `sm`, keeps each label on
+   * one line and drops the Cancel icon, which repeats the header's close.
+   */
+  actionLayout?: "inline" | "responsive";
+  /**
+   * `"default"` keeps this dialog's own Escape, Tab and focus-restore
+   * listeners. `"layered"` hands them to `useModalFocus`, for a confirmation
+   * opened over another `useModalFocus` dialog: only the top dialog answers
+   * the keyboard, one Escape closes only it, and the page stays scroll-locked
+   * until the last one closes.
+   */
+  focusScope?: "default" | "layered";
 }
 
 export function ConfirmationModal({
@@ -31,12 +46,24 @@ export function ConfirmationModal({
   confirmVariant = "primary",
   icon,
   isLoading = false,
+  actionLayout = "inline",
+  focusScope = "default",
 }: ConfirmationModalProps) {
+  const responsive = actionLayout === "responsive";
+  const layered = focusScope === "layered";
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
+  useModalFocus({
+    active: layered && isVisible,
+    containerRef: modalRef,
+    onEscape: () => {
+      if (!isLoading) onClose();
+    },
+  });
+
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || layered) return;
 
     previousFocusRef.current = document.activeElement as HTMLElement;
 
@@ -80,7 +107,7 @@ export function ConfirmationModal({
       clearTimeout(timer);
       previousFocusRef.current?.focus();
     };
-  }, [isVisible, onClose, isLoading]);
+  }, [isVisible, onClose, isLoading, layered]);
 
   if (!isVisible) return null;
 
@@ -115,7 +142,10 @@ export function ConfirmationModal({
     >
       <div
         ref={modalRef}
-        className="bg-white rounded-lg shadow-md max-w-[95%] sm:max-w-[468px] w-full"
+        tabIndex={layered ? -1 : undefined}
+        className={`bg-white rounded-lg shadow-md max-w-[95%] sm:max-w-[468px] w-full${
+          layered ? " focus:outline-none" : ""
+        }`}
         onClick={handleModalClick}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4.5">
@@ -154,15 +184,27 @@ export function ConfirmationModal({
             </p>
           </div>
         </div>
-        <div className="flex justify-center gap-2 border-t border-slate-200 p-4">
+        <div
+          className={
+            responsive
+              ? "flex flex-col gap-2 border-t border-slate-200 p-4 sm:flex-row sm:justify-center"
+              : "flex justify-center gap-2 border-t border-slate-200 p-4"
+          }
+        >
           <Button
             variant="outline"
             onClick={onClose}
             disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-11"
+            className={
+              responsive
+                ? "w-full whitespace-nowrap px-11 sm:w-auto"
+                : "flex items-center justify-center gap-2 px-11"
+            }
             aria-label={cancelText}
           >
-            <X className="w-4 h-4 text-icon" strokeWidth={1.25} />
+            {!responsive && (
+              <X className="w-4 h-4 text-icon" strokeWidth={1.25} />
+            )}
             {cancelText}
           </Button>
           <Button
@@ -173,7 +215,7 @@ export function ConfirmationModal({
               confirmVariant === "danger"
                 ? "bg-red-550 border border-red-550 hover:bg-red-600 hover:border-red-600 px-11"
                 : "px-11"
-            }`}
+            }${responsive ? " w-full whitespace-nowrap sm:w-auto" : ""}`}
             aria-label={isLoading ? "Loading..." : confirmText}
           >
             {isLoading ? "Loading..." : confirmText}

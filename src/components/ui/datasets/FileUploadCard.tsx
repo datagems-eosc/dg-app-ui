@@ -1,7 +1,6 @@
 "use client";
 
 import { HardDrive, RefreshCw, Upload, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface FileUploadCardProps {
   file: {
@@ -10,6 +9,12 @@ interface FileUploadCardProps {
     type: string;
     status: "uploading" | "success" | "error";
     progress: number;
+    /**
+     * Diagnostic text from the transfer. Deliberately never rendered, not even
+     * as a tooltip: it can be arbitrary server text or an internal message,
+     * which is not a user-safe display contract. The card shows generic,
+     * actionable guidance instead.
+     */
     error?: string;
   };
   onRemove: () => void;
@@ -53,23 +58,42 @@ export function FileUploadCard({
       case "success":
         return "File uploaded";
       case "error":
-        return `Upload Failed${file.error ? `. ${file.error}` : "."}`;
+        return "Upload failed";
       case "uploading":
-        return "Uploading...";
+        return "Uploading…";
       default:
         return "";
     }
   };
 
+  // Points at the controls this card actually shows. Retry upload repeats only
+  // this file's transfer; it is never offered for a submitted dataset.
+  const failureGuidance =
+    file.status !== "error"
+      ? null
+      : onRetry
+        ? "Retry the upload, or remove this file if you don't need it."
+        : "Remove this file, then add it again.";
+
+  // Joined rather than merged through `cn`: tailwind-merge drops this
+  // project's custom typography classes when a text colour is merged in the
+  // same call. emerald-700 and red-600 keep these messages readable on the
+  // slate-75 row.
+  const statusClass = [
+    "text-body-14-regular",
+    file.status === "success"
+      ? "text-emerald-700"
+      : file.status === "error"
+        ? "text-red-600"
+        : "text-gray-650",
+  ].join(" ");
+
   return (
     <div className="rounded-lg p-4 bg-slate-75">
       <div className="flex items-center justify-between gap-4">
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="w-0 flex-1 min-w-0 flex flex-col gap-1">
           <p
-            className={cn(
-              "text-body-16-medium truncate",
-              file.status === "error" ? "text-slate-450" : "text-gray-750",
-            )}
+            className={`text-body-16-medium truncate ${file.status === "error" ? "text-gray-650" : "text-gray-750"}`}
             title={file.name}
           >
             {file.name}
@@ -79,33 +103,25 @@ export function FileUploadCard({
             <HardDrive
               className={`w-4 h-4 ${file.status === "error" ? "text-slate-450" : "text-icon"}`}
             />
-            <span
-              className={cn(
-                "text-body-14-regular",
-                file.status === "error" ? "text-slate-450" : "text-gray-650",
-              )}
-            >
+            <span className="text-body-14-regular text-gray-650">
               {formatFileSize(file.size)}
             </span>
             <span className="w-1 h-1 rounded-full bg-slate-450" />
             <div className="flex items-center gap-1.5 min-w-0">
               {getStatusIcon()}
-              <span
-                className={cn(
-                  "truncate",
-                  "text-body-14-regular",
-                  file.status === "success"
-                    ? "text-emerald-600"
-                    : file.status === "error"
-                      ? "text-red-550"
-                      : "text-gray-650",
-                )}
-                title={getStatusText()}
-              >
+              <span className={`truncate ${statusClass}`}>
                 {getStatusText()}
               </span>
             </div>
           </div>
+
+          {failureGuidance === null ? null : (
+            // Wraps below the summary, so it is neither truncated nor pushes
+            // the Retry/Remove controls out of the row.
+            <p className="mt-1 break-words text-body-14-regular text-red-600">
+              {failureGuidance}
+            </p>
+          )}
 
           <div className="mt-2">
             <div className="w-full bg-slate-200 rounded-full h-2">
@@ -118,8 +134,11 @@ export function FileUploadCard({
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0">
+          {/* `type="button"`: these sit inside the add-dataset form, where an
+              untyped button would also submit it. */}
           {file.status === "error" && onRetry && (
             <button
+              type="button"
               onClick={onRetry}
               className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors"
               aria-label="Retry upload"
@@ -128,6 +147,7 @@ export function FileUploadCard({
             </button>
           )}
           <button
+            type="button"
             onClick={onRemove}
             className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors"
             aria-label="Remove file"

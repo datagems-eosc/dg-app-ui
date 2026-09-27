@@ -79,6 +79,51 @@ export function getApiBaseUrl(): string {
 }
 
 /**
+ * Optional, purely local policy for one authenticated request.
+ *
+ * It is a separate argument rather than part of `RequestInit` on purpose: it
+ * says what this client may do about a 401, which is not a wire concern. No
+ * field here is ever sent — not as a fetch option, not as a header, not in a
+ * body. Callers that pass nothing keep the behaviour documented on
+ * `fetchWithAuth` below, unchanged.
+ */
+export interface AuthRetryPolicy {
+  /**
+   * `false` returns the original 401 immediately: no `getSession()`, no second
+   * request, no logout redirect. Used by mutations, so that resubmitting stays
+   * a decision the caller makes with the outcome in hand. This transport
+   * cannot tell which mutation outcomes are safe to repeat, and for the
+   * genuinely uncertain ones a silent second attempt could duplicate work the
+   * first attempt had already started.
+   */
+  readonly retryOn401?: boolean;
+  /**
+   * Refresh and retry only when the refreshed session still belongs to this
+   * principal. A new token on its own does not establish that — signing in as
+   * somebody else also produces one. When the refreshed `user.id` is absent or
+   * different, the original 401 is returned: the request is not retried with
+   * another account's credentials, and that account is not logged out either.
+   */
+  readonly expectedPrincipalId?: string;
+}
+
+const abortError = (): DOMException =>
+  new DOMException("The operation was aborted.", "AbortError");
+
+/**
+ * Only opted-in callers are checked. `fetch` rejects on an already-aborted
+ * signal by itself, but everything between the two requests below is awaited
+ * application code, and cancellation can land in any of those gaps: while
+ * `getSession()` is pending, while the retry is in flight, or after the retry
+ * settles but before this function resumes. Each gap ends in an effect a
+ * superseded request must not have — a second request, a logout navigation, or
+ * a stale response handed back — so each is checked.
+ */
+const throwIfAborted = (signal: AbortSignal | null | undefined): void => {
+  if (signal?.aborted) throw abortError();
+};
+
+/**
  * Wrapper for fetch that handles auth on 401 responses:
  *   1. Forces a session refresh via getSession() — NextAuth's JWT callback
  *      runs and exchanges the refresh_token for a new access_token if the
@@ -88,14 +133,30 @@ export function getApiBaseUrl(): string {
  *      the user get redirected to /logout.
  *
  * Use this for all authenticated API calls in the browser.
+ *
+ * `policy` is optional and additive: omitting it selects exactly the behaviour
+ * above, which is what every existing caller does. Supplying it opts into the
+ * narrow guards described on `AuthRetryPolicy` — and only then is the abort
+ * signal honoured at each await boundary, so no existing caller's timing
+ * changes.
  */
 export async function fetchWithAuth(
   input: RequestInfo,
   init?: RequestInit,
+  policy?: AuthRetryPolicy,
 ): Promise<Response> {
+  const optedIn = policy !== undefined;
+  if (optedIn) throwIfAborted(init?.signal);
+
   let response = await fetch(input, init);
 
   if (response.status !== 401 || typeof window === "undefined") {
+    return response;
+  }
+
+  // No-replay callers stop here: the 401 is handed back exactly as received,
+  // for the caller to classify. Nothing is refreshed, resent or navigated.
+  if (policy?.retryOn401 === false) {
     return response;
   }
 
@@ -104,6 +165,24 @@ export async function fetchWithAuth(
     freshSession = await getSession();
   } catch (error) {
     logError("Session refresh failed during 401 retry", error);
+  }
+
+  // Cancelled while the refresh was in flight: no retry, and no redirect.
+  if (optedIn) throwIfAborted(init?.signal);
+
+  if (policy?.expectedPrincipalId !== undefined) {
+    const refreshedPrincipalId = freshSession?.user?.id;
+    if (
+      typeof refreshedPrincipalId !== "string" ||
+      refreshedPrincipalId.trim() === "" ||
+      refreshedPrincipalId !== policy.expectedPrincipalId
+    ) {
+      // Missing or different principal. The original 401 goes back to the
+      // caller: retrying would read one account's data with another's
+      // credentials, and forcing a logout would sign out whoever has just
+      // signed in. Re-authentication is the caller's decision, not ours.
+      return response;
+    }
   }
 
   const newToken: string | undefined = freshSession?.accessToken;
@@ -128,6 +207,15 @@ export async function fetchWithAuth(
   }
 
   response = await fetch(input, { ...init, headers: retryHeaders });
+
+  // Cancelled while the retry was in flight, or between its settlement and
+  // this continuation. The retry has already been sent and is not undone —
+  // that is not something a client can promise. What is guaranteed is that a
+  // superseded operation has no further effect here: it does not navigate the
+  // tab away, and it does not hand a late response back to a caller that has
+  // moved on. Both remaining outcomes below are such effects, so the check
+  // precedes them.
+  if (optedIn) throwIfAborted(init?.signal);
 
   if (response.status === 401) {
     return forceLogoutResponse();

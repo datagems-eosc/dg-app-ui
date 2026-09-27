@@ -25,11 +25,17 @@ export default function FilterModal({
   onClose,
   onApplyFilters,
   currentFilters,
+  accessUnavailableReason,
 }: {
   isVisible: boolean;
   onClose: () => void;
   onApplyFilters: (filters: FilterState) => void;
   currentFilters: FilterState;
+  /**
+   * When set, the caller's data cannot support Access filtering: the section
+   * shows this explanation instead of options, and no Access value is applied.
+   */
+  accessUnavailableReason?: string;
 }) {
   const api = useApi();
   const [filters, setFilters] = useState<FilterState>(currentFilters);
@@ -234,7 +240,11 @@ export default function FilterModal({
 
     if (hasErrors) return;
 
-    onApplyFilters(filters);
+    onApplyFilters(
+      accessUnavailableReason === undefined
+        ? filters
+        : { ...filters, access: "" },
+    );
     onClose();
   };
 
@@ -280,14 +290,20 @@ export default function FilterModal({
                 <h4 className="text-body-16-medium mb-4 text-slate-850">
                   Access
                 </h4>
-                <Radio
-                  name="access"
-                  options={ACCESS_OPTIONS}
-                  value={filters.access}
-                  onChange={(value) =>
-                    setFilters({ ...filters, access: value })
-                  }
-                />
+                {accessUnavailableReason === undefined ? (
+                  <Radio
+                    name="access"
+                    options={ACCESS_OPTIONS}
+                    value={filters.access}
+                    onChange={(value) =>
+                      setFilters({ ...filters, access: value })
+                    }
+                  />
+                ) : (
+                  <p role="note" className="text-body-14-regular text-gray-650">
+                    {accessUnavailableReason}
+                  </p>
+                )}
               </div>
 
               <div className="pb-6 px-6 border-b border-slate-200">

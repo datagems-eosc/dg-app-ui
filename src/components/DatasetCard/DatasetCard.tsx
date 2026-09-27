@@ -2,7 +2,7 @@
 
 import { Button } from "@ui/Button";
 import { Chip } from "@ui/Chip";
-import FormattedText from "@ui/FormattedText";
+import Markdown from "@ui/Markdown";
 import { SmartSearchMatchItem } from "@ui/SmartSearchMatchItem";
 import { Tooltip } from "@ui/Tooltip";
 import {
@@ -292,10 +292,10 @@ export default function DatasetCard({
       </div>
 
       {/* Description */}
-      <FormattedText
-        as="p"
+      <Markdown
+        variant="compact"
         className="text-body-14-regular text-gray-650 mb-4 line-clamp-2 break-words"
-        text={dataset.description}
+        content={dataset.description}
       />
 
       {/* Smart search expanded content */}
