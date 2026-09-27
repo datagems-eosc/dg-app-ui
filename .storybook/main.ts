@@ -1,10 +1,36 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StorybookConfig } from "@storybook/nextjs-vite";
 import { mergeConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+
+// globals.css does `@import "flowbite-react/plugin/tailwindcss"`. Under Next,
+// @tailwindcss/postcss resolves that import itself and honours the package's
+// `style` export condition, so the stylesheet is loaded. Vite inlines CSS
+// `@import` with postcss-import first, and its resolver also matches the
+// `import` condition, which flowbite-react lists before `style` -- so the
+// JavaScript plugin entry is loaded and postcss fails on `import plugin from`.
+// Alias the CSS-only specifier to exactly the file the `style` condition
+// declares, read from the installed package rather than hardcoded.
+//
+// The package JSON is read with readFileSync and its export map reached
+// through a named binding on purpose. Storybook's Vite builder decides whether
+// this file is CommonJS by matching a regex against its raw source, comments
+// included, so a literal call to the CJS loader or a bracket access on an
+// `exports` identifier would print a false deprecation warning on every start
+// even though the file is ESM.
+const flowbitePackageJsonPath = require.resolve("flowbite-react/package.json");
+const { exports: flowbiteExportMap } = JSON.parse(
+  readFileSync(flowbitePackageJsonPath, "utf8"),
+);
+const flowbiteTailwindCssPath = path.resolve(
+  path.dirname(flowbitePackageJsonPath),
+  flowbiteExportMap["./plugin/tailwindcss"].style,
+);
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
@@ -23,9 +49,13 @@ const config: StorybookConfig = {
   async viteFinal(config) {
     return mergeConfig(config, {
       resolve: {
-        alias: {
-          "@": path.resolve(__dirname, "../src"),
-        },
+        alias: [
+          {
+            find: /^flowbite-react\/plugin\/tailwindcss$/,
+            replacement: flowbiteTailwindCssPath,
+          },
+          { find: "@", replacement: path.resolve(__dirname, "../src") },
+        ],
       },
       server: {
         fs: {

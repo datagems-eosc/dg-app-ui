@@ -154,14 +154,14 @@ interface BrowseProps {
 
 const defaultFilters: FilterState = getDefaultFilters();
 
-// Type guard for API dataset shape
-function isApiDataset(obj: unknown): obj is {
-  name?: string;
-  collections?: { name?: string }[];
-  permissions?: string[];
-} {
-  return typeof obj === "object" && obj !== null;
-}
+/**
+ * Browse's datasets carry no supported publication state: the shared mapper
+ * leaves it unknown rather than inferring it from the caller's own Browse
+ * permission. Access filtering is therefore unavailable, and a stale Access
+ * selection is neither applied nor shown as active.
+ */
+export const ACCESS_FILTER_UNAVAILABLE_MESSAGE =
+  "Filtering by public or restricted access isn't available yet.";
 
 // Helper to safely get a string field from an object
 function _getApiField(obj: unknown, key: string): string {
@@ -618,31 +618,14 @@ export default function Browse({
     }, 500);
   }
 
-  // Only apply access filter on frontend, all other filtering is done on backend
-  const filteredDatasets = useMemo(() => {
-    return datasets.filter((dataset) => {
-      // Only apply access filter on frontend
-      if (filters.access && filters.access !== "") {
-        const access =
-          typeof dataset.access === "string"
-            ? dataset.access
-            : isApiDataset(dataset) &&
-                Array.isArray(
-                  (dataset as unknown as Record<string, unknown>).permissions,
-                ) &&
-                (
-                  (dataset as unknown as Record<string, unknown>)
-                    .permissions as string[]
-                ).includes("browsedataset")
-              ? "Open Access"
-              : "Restricted";
-        const isOpen = access === "Open Access";
-        if (filters.access === "open" && !isOpen) return false;
-        if (filters.access === "restricted" && isOpen) return false;
-      }
-      return true;
-    });
-  }, [datasets, filters.access]);
+  // All other filtering is done on the backend. The frontend Access filter is
+  // not applied: see ACCESS_FILTER_UNAVAILABLE_MESSAGE.
+  const filteredDatasets = datasets;
+  const hasStaleAccessFilter = Boolean(filters.access);
+  const displayedFilters = useMemo(
+    () => (filters.access ? { ...filters, access: "" } : filters),
+    [filters],
+  );
 
   const selectAll = () => {
     const allIds = filteredDatasets.map((d) => d.id);
@@ -1173,12 +1156,20 @@ export default function Browse({
           )}
           {/* Active Filters */}
           <ActiveFilters
-            filters={filters}
+            filters={displayedFilters}
             fieldsOfScienceCategories={fieldsOfScienceCategories}
             licenses={licenses}
             onRemoveFilter={removeFilter}
             showSearchAndFilters={showSearchAndFilters}
           />
+          {showSearchAndFilters !== false && hasStaleAccessFilter && (
+            <p
+              role="status"
+              className="mb-4 px-4 text-body-14-regular text-gray-650 sm:px-6"
+            >
+              {ACCESS_FILTER_UNAVAILABLE_MESSAGE}
+            </p>
+          )}
           {/* Results count and sorting */}
           {showSearchAndFilters !== false && !shouldShowSmartExamples && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
@@ -1273,6 +1264,7 @@ export default function Browse({
         onClose={() => setShowFilterModal(false)}
         onApplyFilters={handleApplyFilters}
         currentFilters={filters}
+        accessUnavailableReason={ACCESS_FILTER_UNAVAILABLE_MESSAGE}
       />
 
       {/* Create Collection Modal */}

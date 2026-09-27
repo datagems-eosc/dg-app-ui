@@ -76,3 +76,54 @@ describe("DatasetRecommendationsSection", () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 });
+
+/**
+ * PM-01 finding F1.
+ *
+ * `Dataset.access` is optional, and this card rendered it unguarded: with no
+ * value it produced an empty chip coloured as a warning, which reads as
+ * "Restricted" without saying so. Recommendations now carry no publication
+ * evidence at all — the mapper no longer infers it from the caller's Browse —
+ * so the honest rendering is no badge.
+ */
+describe("DatasetRecommendationsSection — publication badge", () => {
+  beforeEach(() => {
+    getDatasetRecommendations.mockReset();
+    mockPush.mockReset();
+  });
+
+  it("renders no publication chip when there is no evidence", async () => {
+    getDatasetRecommendations.mockResolvedValue([
+      {
+        id: "r1",
+        name: "Alpha Dataset",
+        description: "desc",
+        // The caller can browse it. That says nothing about anyone else.
+        permissions: ["browsedataset"],
+      },
+    ]);
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+    await waitFor(() =>
+      expect(screen.getByText("Alpha Dataset")).toBeInTheDocument(),
+    );
+
+    expect(screen.queryByText("Open Access")).toBeNull();
+    expect(screen.queryByText("Restricted")).toBeNull();
+    // No empty chip left behind either.
+    const card = screen.getByText("Alpha Dataset").closest("div");
+    expect(card?.textContent).not.toMatch(/^\s*$/);
+  });
+
+  it("still shows the category chip, so the card is not left blank", async () => {
+    getDatasetRecommendations.mockResolvedValue([
+      { id: "r1", name: "Alpha Dataset", description: "desc" },
+    ]);
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+    await waitFor(() =>
+      expect(screen.getByText("Alpha Dataset")).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Math")).toBeInTheDocument();
+  });
+});

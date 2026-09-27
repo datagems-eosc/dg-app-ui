@@ -68,6 +68,7 @@ export function MarkdownEditor({
         onChange={setMode}
         leftLabel="Edit"
         rightLabel="Preview"
+        className="gap-2"
       />
     ),
   };

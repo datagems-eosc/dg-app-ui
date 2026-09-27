@@ -12,6 +12,16 @@ export type MappedDataset = Dataset & {
 /**
  * Maps a raw dataset object from the gateway API into the local `Dataset`
  * shape used by the UI. Defensive against missing/oddly-typed fields.
+ *
+ * **`access` is never inferred from the caller's own permissions.** It used to
+ * be: a payload whose `permissions` array contained `browsedataset` became
+ * "Open Access". That reads one principal's ability to browse a dataset as a
+ * statement about who *else* can reach it, which it is not — publication is
+ * decided from the Everyone audience's grants (see
+ * `lib/datasetPermissions/model.decideSharing`), and this mapper reads none.
+ * The badge is therefore omitted rather than guessed; `Dataset.access` is
+ * optional precisely so that "no evidence" is expressible. This is PM-01
+ * finding F2.
  */
 export function mapApiDatasetToDataset(api: unknown): MappedDataset {
   if (typeof api !== "object" || api === null) {
@@ -19,7 +29,8 @@ export function mapApiDatasetToDataset(api: unknown): MappedDataset {
       id: "",
       title: "Untitled",
       category: "Math",
-      access: "Restricted",
+      // Unreadable input is the one case with *least* evidence of all, so it
+      // cannot be the one case that makes a publication claim.
       description: "",
       size: "N/A",
       lastUpdated: "2024-01-01",
@@ -72,11 +83,8 @@ export function mapApiDatasetToDataset(api: unknown): MappedDataset {
     id: String(obj.id ?? ""),
     title: String(obj.name ?? obj.code ?? "Untitled"),
     category: "Math", // fallback only
-    access:
-      Array.isArray(obj.permissions) &&
-      obj.permissions.includes("browsedataset")
-        ? "Open Access"
-        : "Restricted",
+    // No `access`: see the note above. A caller's Browse permission is not
+    // publication evidence, and no other field in this payload is either.
     description: String(obj.description ?? ""),
     size: obj.size ? String(obj.size) : "N/A",
     lastUpdated: obj.datePublished ? String(obj.datePublished) : "2024-01-01",
