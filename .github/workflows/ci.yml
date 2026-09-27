@@ -17,6 +17,32 @@ env:
   CI: true
 
 jobs:
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Match the major version used by Dockerfile.
+          node-version: 22.x
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build production application
+        env:
+          NODE_ENV: production
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm run build
+
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
