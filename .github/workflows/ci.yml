@@ -17,6 +17,32 @@ env:
   CI: true
 
 jobs:
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Match the major version used by Dockerfile.
+          node-version: 22.x
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build production application
+        env:
+          NODE_ENV: production
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm run build
+
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
@@ -63,6 +89,18 @@ jobs:
           echo "🧪 Running tests..."
           pnpm run test:coverage
           echo "✅ Tests passed"
+
+      - name: Run dataset onboarding tests (Vitest)
+        run: |
+          echo "🧪 Running dataset onboarding Vitest suite..."
+          pnpm run test:onboarding
+          echo "✅ Dataset onboarding tests passed"
+
+      - name: Run dataset permissions tests (Vitest)
+        run: |
+          echo "🧪 Running dataset permissions Vitest suite..."
+          pnpm run test:dataset-permissions
+          echo "✅ Dataset permissions tests passed"
 
       - name: Security audit
         run: |

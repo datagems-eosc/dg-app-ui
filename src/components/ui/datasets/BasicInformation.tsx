@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "../Input";
-import { Textarea } from "../Textarea";
+import { MarkdownEditor } from "../MarkdownEditor";
 import { KeywordInput } from "./KeywordInput";
 
 interface BasicInformationData {
@@ -60,21 +60,15 @@ export function BasicInformation({
         </div>
       </div>
 
-      <div>
-        <Textarea
-          label="Description"
-          required
-          value={data.description}
-          onChange={(e) => handleFieldChange("description", e.target.value)}
-          placeholder="Provide a detailed description of the dataset contents"
-          rows={4}
-          error={errors.description}
-          maxLength={3000}
-        />
-        <div className="mt-1 text-xs text-gray-650 text-right">
-          {data.description.length}/3000
-        </div>
-      </div>
+      <MarkdownEditor
+        label="Description"
+        required
+        value={data.description}
+        onChange={(value) => handleFieldChange("description", value)}
+        placeholder="Provide a detailed description of the dataset contents"
+        error={errors.description}
+        maxLength={3000}
+      />
 
       <KeywordInput
         label="Keywords"

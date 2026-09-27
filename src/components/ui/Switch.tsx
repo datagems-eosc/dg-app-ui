@@ -24,6 +24,7 @@ export default function Switch({
       className={`flex items-center border border-slate-350 rounded-4xl shadow-s1 overflow-hidden ${className}`}
     >
       <button
+        type="button"
         onClick={() => onChange("left")}
         className="flex items-center justify-center pl-1 py-0.75 pr-0 transition-colors"
         title={leftLabel}
@@ -42,6 +43,7 @@ export default function Switch({
         {leftLabel && <span className="text-body-14-medium">{leftLabel}</span>}
       </button>
       <button
+        type="button"
         onClick={() => onChange("right")}
         className="flex items-center justify-center pr-1 py-0.75 pl-0 transition-colors"
         title={rightLabel}

@@ -1,5 +1,8 @@
+"use client";
+
 import { Bell, LogOut, Settings } from "lucide-react";
 import { APP_ROUTES } from "@/config/appUrls";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import { createUrl } from "@/lib/utils";
 import { Avatar } from "./Avatar";
 import { Dropdown, DropdownItem } from "./Dropdown";
@@ -15,9 +18,13 @@ export function UserProfileDropdown({
   isMobile = false,
   onLogout,
 }: UserProfileDropdownProps) {
+  const notificationEnabled = useFeatureFlag("notification");
+
   return (
     <div className="flex items-center gap-3">
-      <Bell className="w-5 h-5 text-icon" />
+      <Bell
+        className={`w-5 h-5 text-icon ${notificationEnabled ? "" : "hidden"}`}
+      />
 
       {/* Profile Dropdown */}
       <Dropdown

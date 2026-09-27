@@ -17,7 +17,7 @@ const initialData: BasicInformationData = {
 };
 
 describe("BasicInformation", () => {
-  it("renders all basic info fields", () => {
+  it("renders all basic info fields", async () => {
     render(
       <BasicInformation data={initialData} onChange={() => {}} errors={{}} />,
     );
@@ -29,8 +29,10 @@ describe("BasicInformation", () => {
       screen.getAllByPlaceholderText("Enter short headline").length,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getAllByPlaceholderText(
-        "Provide a detailed description of the dataset contents",
+      (
+        await screen.findAllByPlaceholderText(
+          "Provide a detailed description of the dataset contents",
+        )
       ).length,
     ).toBeGreaterThanOrEqual(1);
   });

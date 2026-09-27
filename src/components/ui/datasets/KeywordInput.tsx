@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import type React from "react";
-import { type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, useId, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface KeywordInputProps {
@@ -14,6 +14,7 @@ interface KeywordInputProps {
   disabled?: boolean;
   required?: boolean;
   maxLength?: number;
+  maxItems?: number;
 }
 
 export function KeywordInput({
@@ -25,8 +26,32 @@ export function KeywordInput({
   disabled = false,
   required = true,
   maxLength = 250,
+  maxItems,
 }: KeywordInputProps) {
   const [inputValue, setInputValue] = useState("");
+  const [limitError, setLimitError] = useState("");
+  const errorId = useId();
+  const atLimit = maxItems !== undefined && value.length >= maxItems;
+  const displayedError = limitError || error;
+
+  const exceedsLimit = (input: string) => {
+    if (maxItems === undefined) return false;
+    const candidates = input
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (
+      candidates.length <= maxItems &&
+      new Set([...value, ...candidates]).size <= maxItems
+    )
+      return false;
+    setLimitError(
+      maxItems === 1
+        ? "Add only one value."
+        : `Add no more than ${maxItems} values.`,
+    );
+    return true;
+  };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" || e.key === ",") {
@@ -41,20 +66,39 @@ export function KeywordInput({
   };
 
   const addKeyword = () => {
+    if (exceedsLimit(inputValue)) return;
+    if (maxItems !== undefined) {
+      const candidates = inputValue
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      if (candidates.length > 0)
+        onChange([...new Set([...value, ...candidates])]);
+      setInputValue("");
+      setLimitError("");
+      return;
+    }
     const keyword = inputValue.trim().replace(/,$/, ""); // Remove trailing comma
     if (keyword && !value.includes(keyword)) {
       onChange([...value, keyword]);
     }
     setInputValue("");
+    setLimitError("");
   };
 
   const removeKeyword = (indexToRemove: number) => {
     const newKeywords = value.filter((_, index) => index !== indexToRemove);
     onChange(newKeywords);
+    setLimitError("");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    setLimitError("");
+    if (exceedsLimit(newValue)) {
+      setInputValue(newValue);
+      return;
+    }
 
     // Check if user typed a comma
     if (newValue.includes(",")) {
@@ -92,7 +136,7 @@ export function KeywordInput({
             "block text-sm font-medium mb-1",
             disabled
               ? "text-gray-650"
-              : error
+              : displayedError
                 ? "text-red-550"
                 : "text-gray-750",
           )}
@@ -109,7 +153,7 @@ export function KeywordInput({
           value.length > 0 && "p-0.75",
           "border-slate-350 hover:border-slate-450",
           "focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-850 focus-within:ring-offset-1 focus-within:ring-offset-white",
-          error && "border-red-550 focus-within:ring-red-550",
+          displayedError && "border-red-550 focus-within:ring-red-550",
           disabled &&
             "border-slate-200 bg-slate-75 cursor-not-allowed hover:border-slate-200",
         )}
@@ -140,8 +184,11 @@ export function KeywordInput({
             onKeyDown={handleKeyDown}
             onBlur={addKeyword}
             placeholder={value.length === 0 ? placeholder : ""}
-            disabled={disabled}
+            disabled={disabled || atLimit}
             aria-required={required}
+            aria-label={label}
+            aria-invalid={displayedError ? true : undefined}
+            aria-describedby={displayedError ? errorId : undefined}
             className="flex-1 min-w-[120px] outline-none bg-transparent text-sm font-normal text-gray-750 placeholder-slate-400 disabled:cursor-not-allowed"
             style={{ alignSelf: "center" }}
           />
@@ -151,9 +198,12 @@ export function KeywordInput({
         {getCurrentLength()}/{maxLength}
       </div>
 
-      {error && (
-        <p className="mt-1 text-descriptions-12-regular text-red-500">
-          {error}
+      {displayedError && (
+        <p
+          id={errorId}
+          className="mt-1 text-descriptions-12-regular text-red-500"
+        >
+          {displayedError}
         </p>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { render as rtlRender, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ErrorProvider } from "@/contexts/ErrorContext";
@@ -6,9 +7,28 @@ import RolesPermissionsSection from "./RolesPermissionsSection";
 
 const mockUseApi = vi.fn();
 const mockPush = vi.fn();
+const mockUseFeatureFlag = vi.fn((_id: string) => false);
 
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => mockUseApi(),
+}));
+
+// The embedded modal reads the `datasetGroupAccess` rollout flag. This file is
+// about the settings table and the entry it opens, both of which are unchanged
+// while the flag is off — which is the state asserted throughout.
+vi.mock("@/contexts/FeatureFlagsContext", () => ({
+  useFeatureFlag: (id: string) => mockUseFeatureFlag(id),
+}));
+
+// With the flag on, the modal's inner group-access surface is replaced by a
+// stand-in with a Done: this file is about the settings launcher and the real
+// modal shell around it, not the surface's own reads.
+vi.mock("@/components/DatasetPermissions/DatasetGroupAccess", () => ({
+  DatasetGroupAccess: ({ onDone }: { onDone: () => void }) => (
+    <button type="button" onClick={onDone}>
+      Done
+    </button>
+  ),
 }));
 
 // The embedded DatasetPermissionsModal reports failures via ErrorContext.
@@ -283,5 +303,84 @@ describe("RolesPermissionsSection", () => {
     expect((await screen.findAllByText("dataset-1")).length).toBeGreaterThan(1);
     expect(screen.queryByText("Unknown dataset")).toBeNull();
     expect(screen.queryByText(/no longer exist/)).toBeNull();
+  });
+});
+
+describe("RolesPermissionsSection — dataset access launcher", () => {
+  const oneDatasetApi = () => ({
+    hasToken: true,
+    getCurrentUserContextGrants: vi.fn().mockResolvedValue([
+      {
+        principalId: "group-1",
+        principalType: 1,
+        targetType: 0,
+        targetId: "dataset-1",
+        role: "edit",
+      },
+    ]),
+    queryUserGroups: vi.fn().mockResolvedValue({ items: [] }),
+    queryDatasets: vi.fn().mockResolvedValue({
+      items: [{ id: "dataset-1", name: "Dataset One" }],
+    }),
+    queryCollections: vi.fn().mockResolvedValue({ items: [] }),
+    getGroupDatasetGrants: vi.fn().mockResolvedValue({}),
+  });
+
+  it("opens by keyboard and returns focus to the launcher on close", async () => {
+    const user = userEvent.setup();
+    mockUseFeatureFlag.mockImplementation(
+      (id: string) => id === "datasetGroupAccess",
+    );
+    mockUseApi.mockReturnValue(oneDatasetApi());
+    try {
+      render(<RolesPermissionsSection />);
+      const launcher = await screen.findByRole("button", {
+        name: "Manage access to Dataset One",
+      });
+      launcher.focus();
+      await user.keyboard("{Enter}");
+      expect(screen.getByRole("dialog", { name: "Dataset One" })).toHaveFocus();
+
+      await user.keyboard("{Escape}");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(launcher).toHaveFocus();
+    } finally {
+      mockUseFeatureFlag.mockImplementation(() => false);
+    }
+  });
+
+  it("gives a pointer opening from the row the same launcher to return to", async () => {
+    const user = userEvent.setup();
+    mockUseFeatureFlag.mockImplementation(
+      (id: string) => id === "datasetGroupAccess",
+    );
+    mockUseApi.mockReturnValue(oneDatasetApi());
+    try {
+      render(<RolesPermissionsSection />);
+      await user.click(await screen.findByText("Edit"));
+      expect(screen.getByRole("dialog", { name: "Dataset One" })).toHaveFocus();
+
+      await user.click(screen.getByRole("button", { name: "Done" }));
+      expect(
+        screen.getByRole("button", { name: "Manage access to Dataset One" }),
+      ).toHaveFocus();
+      // The dataset name still navigates rather than opening the dialog.
+      await user.click(screen.getByRole("button", { name: "Dataset One" }));
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining("/datasets/dataset-1"),
+      );
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    } finally {
+      mockUseFeatureFlag.mockImplementation(() => false);
+    }
+  });
+
+  it("adds no launcher while the flag is off", async () => {
+    mockUseApi.mockReturnValue(oneDatasetApi());
+    render(<RolesPermissionsSection />);
+    expect(await screen.findByText("Dataset One")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /manage access/i }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, FolderLock, type LucideIcon, UserRoundPen } from "lucide-react";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 
 type ActiveTab = "personal" | "notifications" | "roles";
 
@@ -34,16 +35,21 @@ const TABS: TabItem[] = [
 ];
 
 export default function TabsHeader({ activeTab, setActiveTab }: Props) {
+  const notificationEnabled = useFeatureFlag("notification");
+
   return (
     <div className="w-full border-b border-slate-200">
       <nav className="flex gap-4 overflow-x-auto">
         {TABS.map(({ key, icon: Icon, title }) => {
           const isActive = activeTab === key;
+          const isHidden = key === "notifications" && !notificationEnabled;
           return (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className="relative flex items-center gap-2 h-[55px] px-2 pb-[14px] whitespace-nowrap"
+              className={`relative flex items-center gap-2 h-[55px] px-2 pb-[14px] whitespace-nowrap ${
+                isHidden ? "hidden" : ""
+              }`}
             >
               <Icon
                 className={`w-[25px] h-[25px] ${

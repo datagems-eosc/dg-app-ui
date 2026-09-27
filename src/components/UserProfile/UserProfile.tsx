@@ -7,6 +7,7 @@ import RolesPermissionsSection from "@ui/user/RolesPermissionsSection";
 import TabsHeader from "@ui/user/TabsHeader";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import { useUser } from "@/contexts/UserContext";
 import { useApi } from "@/hooks/useApi";
 import { logError } from "@/lib/logger";
@@ -40,14 +41,25 @@ export default function UserProfile() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { userData } = useUser();
+  const notificationEnabled = useFeatureFlag("notification");
   const [activeTab, setActiveTab] = useState<ActiveTabType>("personal");
 
   useEffect(() => {
     const tab = searchParams.get(TAB_QUERY);
-    if (tab === "roles" || tab === "notifications" || tab === "personal") {
+    if (
+      tab === "roles" ||
+      tab === "personal" ||
+      (tab === "notifications" && notificationEnabled)
+    ) {
       setActiveTab(tab);
     }
-  }, [searchParams]);
+  }, [searchParams, notificationEnabled]);
+
+  useEffect(() => {
+    if (!notificationEnabled && activeTab === "notifications") {
+      setActiveTab("personal");
+    }
+  }, [notificationEnabled, activeTab]);
 
   const setActiveTabWithUrl = (tab: ActiveTabType) => {
     setActiveTab(tab);
@@ -252,7 +264,7 @@ export default function UserProfile() {
             />
           )}
 
-          {activeTab === "notifications" && (
+          {activeTab === "notifications" && notificationEnabled && (
             <PreferencesSection
               isLoading={isLoading}
               notifications={notifications}
