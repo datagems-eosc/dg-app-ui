@@ -841,7 +841,7 @@ export default function AddDatasetForm() {
       return (
         // Submission stays blocked, and no replacement dataset is created.
         <Notice tone="caution" title="This page can't edit an existing dataset">
-          <p>Your changes haven't been saved.</p>
+          <p>Your changes haven&apos;t been saved.</p>
         </Notice>
       );
     }
@@ -1014,9 +1014,9 @@ export default function AddDatasetForm() {
                   permissions.
                 </p>
                 <p>
-                  We couldn't confirm whether processing started. Don't upload
-                  these files again until the administrator has checked this
-                  submission.
+                  We couldn&apos;t confirm whether processing started.
+                  Don&apos;t upload these files again until the administrator
+                  has checked this submission.
                 </p>
               </>
             ) : (
