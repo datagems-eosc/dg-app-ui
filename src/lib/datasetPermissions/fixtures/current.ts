@@ -10,6 +10,9 @@
  * route. Keeping them apart in the fixture names is the point — an
  * administrator's success is not evidence about a manager, and PM-C1 and 4.3
  * both turn on not confusing the two.
+ *
+ * The recipient read moved to the dataset-scoped route in Gateway #98; its
+ * fixtures are at the end of this file and pinned to a later revision.
  */
 
 export const DATASET_ID = "3e0a9d64-2c51-4b8f-9a7d-6f1b0c2e4d75";
@@ -35,13 +38,15 @@ export const currentAdminAccountPayload = {
     "AddUserToContextGrantGroup",
     "RemoveUserFromContextGrantGroup",
     "LookupContextGrantOther",
+    "LookupDatasetContextGrants",
   ],
   deferredPermissions: ["DeleteDataset"],
 };
 
 /**
  * `GET /principal/me?f=permissions` for an ordinary manager: the dataset
- * capabilities they hold globally, and none of the three access actions.
+ * capabilities they hold globally, and none of the access actions. What they
+ * may do on one dataset comes from that dataset's projection.
  */
 export const currentManagerAccountPayload = {
   permissions: ["BrowseDataset", "EditDataset", "DownloadDatasetFile"],
@@ -58,8 +63,9 @@ export const detailsPageDatasetPayload = {
 };
 
 /**
- * `GET /dataset/{id}?f=permissions.addUserToContextGrantGroup&f=permissions.removeUserFromContextGrantGroup`
- * for a caller whose affiliated context role carries both actions.
+ * `GET /dataset/{id}?f=…` with the three action names projected, for a caller
+ * whose affiliated context role carries grant and revoke but not the recipient
+ * lookup. Because the lookup was requested, its absence is a real negative.
  */
 export const datasetActionsGrantedPayload = {
   id: DATASET_ID,
@@ -118,30 +124,136 @@ export const ambiguousEveryoneGroupQueryPayload = {
   ],
 };
 
-/**
- * `GET /principal/group/{groupId}/context-grants/dataset?id=…` as an
- * administrator sees it. Keyed by dataset; the roles are Gateway role
- * identifiers, not display labels.
- */
-export const currentAdminGroupGrantsPayload = {
-  [DATASET_ID]: ["dg_ds-browse", "dg_ds-download"],
-  [OTHER_DATASET_ID]: ["dg_ds-browse"],
-};
+// ---------------------------------------------------------------------------
+// Dataset-scoped recipient read (Gateway #98)
+// ---------------------------------------------------------------------------
+//
+// `GET /principal/context-grants/dataset?id=<DATASET_ID>`, shaped from
+// `PrincipalController.ContextGrantsDataset` and `DatasetContextGrants` at
+// dg-app-api `71fb7dfa474041cede287a9733d3d14a3b5fabc0`: a direct list of
+// `{ datasetId, users, userGroups }`, principals `{ id, roles }`, camelCase,
+// nulls omitted. The group `id` is the Keycloak group id that
+// `AAIKeycloakService.LookupDatasetContextGrants` takes from the principal
+// group, the same id the write route resolves with `FindUserGroupPrincipalGroup`.
+// That discovery returns the same id is a live check (task 6.1), not shown here.
+//
+// Synthetic, every one. An administrator and a dataset manager receive the
+// same shape from the same route; which of them is *allowed* is a separate
+// fact, carried by the capability fixtures, never by these payloads.
+
+/** A user id, for the individual grants this group-only feature ignores. */
+export const INDIVIDUAL_USER_ID = "e4d3c2b1-a098-4f76-8e54-3d2c1b0a9f8e";
 
 /**
- * The same read for a group with no roles on the requested dataset. The
- * resolver omits ids with no match, so the key is simply absent — over the
- * requested ids this is still a complete answer.
+ * A group holding a role that group discovery does not return: the holder the
+ * per-group read could never find, which the view must keep, read-only.
  */
-export const currentAdminGroupGrantsEmptyPayload = {
-  [OTHER_DATASET_ID]: ["dg_ds-browse"],
-};
+export const UNDISCOVERED_GROUP_ID = "7a6b5c4d-3e2f-4a1b-9c0d-e1f2a3b4c5d6";
 
 /**
- * What an **ordinary manager** gets from that same route: 403, because
- * `ContextGrantsDatasetGroupOther` calls `AuthorizeForce(LookupContextGrantOther)`
- * — a global permission, with no affiliated-context alternative. This is the
- * gate that keeps the full editor unavailable for ordinary managers, and it
- * must surface as "not supported", never as an empty recipient list.
+ * A successful read: two discoverable groups, one with an Everyone Browse
+ * grant, plus an individual user's grant that the feature does not turn into a
+ * group row.
  */
-export const deniedManagerRecipientReadStatus = 403;
+export const datasetGrantsPayload = [
+  {
+    datasetId: DATASET_ID,
+    users: [{ id: INDIVIDUAL_USER_ID, roles: ["dg_ds-edit"] }],
+    userGroups: [
+      { id: RESEARCH_GROUP_ID, roles: ["dg_ds-browse", "dg_ds-download"] },
+      { id: EVERYONE_GROUP_ID, roles: ["dg_ds-browse"] },
+    ],
+  },
+];
+
+/**
+ * An explicit group-empty result. `LookupDatasetContextGrants` initializes both
+ * lists empty for every requested dataset, so this is a real answer: no direct
+ * group roles on this dataset — not "nobody has access".
+ */
+export const datasetGrantsEmptyPayload = [
+  { datasetId: DATASET_ID, users: [], userGroups: [] },
+];
+
+/** A role this UI does not know, carried by a discoverable group. */
+export const datasetGrantsUnknownRolePayload = [
+  {
+    datasetId: DATASET_ID,
+    users: [],
+    userGroups: [
+      { id: RESEARCH_GROUP_ID, roles: ["dg_ds-browse", "dg_ds-curate"] },
+    ],
+  },
+];
+
+/** A holder group discovery does not know, beside a discoverable one. */
+export const datasetGrantsUndiscoveredHolderPayload = [
+  {
+    datasetId: DATASET_ID,
+    users: [],
+    userGroups: [
+      { id: RESEARCH_GROUP_ID, roles: ["dg_ds-browse"] },
+      { id: UNDISCOVERED_GROUP_ID, roles: ["dg_ds-edit", "dg_ds-curate"] },
+    ],
+  },
+];
+
+/**
+ * Responses that are not this dataset's inventory. Each must decode as a
+ * failure, never as an empty list. The keys name the defect.
+ */
+export const datasetGrantsUnusablePayloads = {
+  /** Empty at the dataset-list level: also what an empty-GUID request gets. */
+  emptyList: [],
+  otherDataset: [{ datasetId: OTHER_DATASET_ID, users: [], userGroups: [] }],
+  duplicateDataset: [
+    { datasetId: DATASET_ID, users: [], userGroups: [] },
+    { datasetId: DATASET_ID, users: [], userGroups: [] },
+  ],
+  extraDataset: [
+    { datasetId: DATASET_ID, users: [], userGroups: [] },
+    { datasetId: OTHER_DATASET_ID, users: [], userGroups: [] },
+  ],
+  /** Newtonsoft omits a `null` list, so this is what a null arrives as. */
+  groupsOmitted: [{ datasetId: DATASET_ID, users: [] }],
+  groupsNull: [{ datasetId: DATASET_ID, users: [], userGroups: null }],
+  datasetIdMissing: [{ users: [], userGroups: [] }],
+  groupWithoutId: [
+    { datasetId: DATASET_ID, userGroups: [{ roles: ["dg_ds-browse"] }] },
+  ],
+  rolesNotAList: [
+    {
+      datasetId: DATASET_ID,
+      userGroups: [{ id: RESEARCH_GROUP_ID, roles: "dg_ds-browse" }],
+    },
+  ],
+  rolesWithNonString: [
+    {
+      datasetId: DATASET_ID,
+      userGroups: [{ id: RESEARCH_GROUP_ID, roles: ["dg_ds-browse", 17] }],
+    },
+  ],
+  notAList: { datasetId: DATASET_ID, userGroups: [] },
+} as const;
+
+/**
+ * What the route returns when no requested dataset is eligible for the caller:
+ * `ContextGrantsDataset` throws `DGForbiddenException` after the effective
+ * lookup comes back empty. Whether a 403 is the confirmed restriction is
+ * decided from capability evidence, never from the status alone.
+ */
+export const deniedRecipientReadStatus = 403;
+
+/**
+ * `GET /dataset/{id}?f=…` with the three action names projected, for a
+ * dataset manager: `dg_ds-manage` carries grant, revoke and the dataset
+ * recipient lookup through this dataset's context.
+ */
+export const datasetManagerActionsPayload = {
+  id: DATASET_ID,
+  permissions: [
+    "addusertocontextgrantgroup",
+    "removeuserfromcontextgrantgroup",
+    "lookupdatasetcontextgrants",
+  ],
+};

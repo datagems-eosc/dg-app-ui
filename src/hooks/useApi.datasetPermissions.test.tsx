@@ -284,6 +284,51 @@ describe("401 handling", () => {
     expect(read.failure).toEqual({ kind: "unauthorized", httpStatus: 401 });
   });
 
+  it("refreshes the dataset inventory read once, for the same principal only", async () => {
+    const { fetchMock, calls } = createFetch((call) =>
+      call === 1
+        ? unauthorized()
+        : json([{ datasetId: DATASET_ID, users: [], userGroups: [] }]),
+    );
+    mockGetSession.mockResolvedValue({
+      accessToken: "token-2",
+      user: { id: PRINCIPAL },
+    });
+    const { result } = renderApi();
+
+    const read =
+      await result.current.datasetPermissions.gateway.readDatasetGroupGrants(
+        DATASET_ID,
+      );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const call of calls) {
+      expect(call.url).toBe(
+        `${API_BASE}/gw/api/principal/context-grants/dataset?id=${DATASET_ID}`,
+      );
+      expect(call.init?.method).toBe("GET");
+    }
+    expect(read.state).toEqual({ kind: "known", grants: [] });
+  });
+
+  it("reports an inventory read that stays unauthorized as failed, never empty", async () => {
+    const { fetchMock } = createFetch(() => unauthorized());
+    mockGetSession.mockResolvedValue({
+      accessToken: "token-2",
+      user: { id: OTHER_PRINCIPAL },
+    });
+    const { result } = renderApi();
+
+    const read =
+      await result.current.datasetPermissions.gateway.readDatasetGroupGrants(
+        DATASET_ID,
+      );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(read.state).toEqual({ kind: "failed" });
+    expect(read.failure).toEqual({ kind: "unauthorized", httpStatus: 401 });
+  });
+
   it("treats the group query as the read it is, although it is a POST", async () => {
     const { fetchMock } = createFetch((call) =>
       call === 1 ? unauthorized() : json({ items: [] }),

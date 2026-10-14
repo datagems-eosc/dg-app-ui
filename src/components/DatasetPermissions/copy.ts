@@ -30,13 +30,53 @@ import type { ControlBlock, RoleActivity } from "./types";
 export const VIEW_INTRO = "Changes apply immediately.";
 
 /**
- * Group discovery returns what *this caller* may see. Saying so once, under
- * the list's heading, is the difference between a list and a claim about the
- * world.
+ * Under the "Group permissions" heading. The rows are this dataset's direct
+ * group grants plus the groups this account can choose — not everyone who can
+ * reach the dataset — so the caption says what the list is about and no more.
  */
-export const DISCOVERY_CAVEAT = "Showing groups you can view.";
+export const INVENTORY_CAPTION = "Group permissions for this dataset.";
 
 export const LOADING_MESSAGE = "Loading group permissions…";
+
+/**
+ * An explicit empty inventory: no group holds a direct role on this dataset.
+ * Never "nobody has access" — individual users and other paths are outside
+ * this read.
+ */
+export const NO_GROUP_PERMISSIONS_MESSAGE = "No group permissions assigned.";
+
+/** The inventory read on open did not produce an answer. */
+export const INVENTORY_LOAD_FAILED_TITLE = "Couldn't load group permissions";
+
+/** Reads the inventory again. A read only: it never repeats a change. */
+export const REFRESH_ACCESS_LABEL = "Refresh access";
+
+export const REFRESHING_MESSAGE = "Refreshing group permissions…";
+
+/**
+ * After an acknowledged change, when the following read failed or disagreed
+ * with it. The change stays saved; what is unknown is the current state.
+ */
+export const CHANGE_NOT_REFRESHED_MESSAGE =
+  "Change saved. Current access couldn't be refreshed.";
+
+/** A Refresh access that did not complete, with no unconfirmed change. */
+export const REFRESH_FAILED_MESSAGE = "Couldn't refresh group permissions.";
+
+/** Beside a holder discovery could not identify. Its own row, said once. */
+export const HOLDER_DETAILS_UNAVAILABLE =
+  "Group details unavailable. Permissions are read-only.";
+
+/**
+ * Roles the inventory returned that this UI has no control for, as returned.
+ * They are facts about the group, not choices.
+ */
+export const otherRolesText = (roles: readonly string[]): string =>
+  `Other permissions: ${roles.join(", ")}. These can't be changed here.`;
+
+/** A read-only holder's roles, as labels where known and as returned if not. */
+export const heldRolesText = (labels: readonly string[]): string =>
+  `Permissions: ${labels.join(", ")}`;
 
 export const DONE_LABEL = "Done";
 
@@ -48,10 +88,6 @@ export const groupsUnavailableMessage = (
     ? "We couldn't load the groups. Close and reopen this window to try again."
     : "Group information is unavailable.";
 };
-
-/** Shown with {@link DISCOVERY_CAVEAT}, which keeps it from reading as "nobody". */
-export const EMPTY_DISCOVERY_MESSAGE =
-  "No groups are available to your account.";
 
 export const SEARCH_PLACEHOLDER = "Search groups";
 
@@ -280,13 +316,14 @@ export const selectedGrantBlockMessage = (
  */
 export const accessUnavailableMessage = (
   reason: AccessUnavailableReason,
-): string => {
+): string | null => {
   switch (reason) {
     case "identity-unresolved":
       return "We couldn't load access settings for this dataset.";
     case "recipient-read-failed":
     case "recipient-read-refused":
-      return "We couldn't load existing permissions. Close and reopen this window to try again.";
+      // The heading says it, and Refresh access is the next step.
+      return null;
     case "lookup-unconfirmed":
       return "We couldn't load your access settings. Close and reopen this window to try again.";
     case "no-grant-capability":
@@ -296,11 +333,19 @@ export const accessUnavailableMessage = (
   }
 };
 
-/** After an acknowledged change: the change stays applied. */
-export const RECONCILIATION_FAILED_MESSAGE =
-  "Your change was applied, but we couldn't refresh the permissions list.";
-
 export const ACCESS_UNAVAILABLE_TITLE = "Access settings unavailable";
+
+/** The unavailable heading. A failed inventory read names what failed. */
+export const accessUnavailableTitle = (
+  reason: AccessUnavailableReason,
+): string =>
+  reason === "recipient-read-failed" || reason === "recipient-read-refused"
+    ? INVENTORY_LOAD_FAILED_TITLE
+    : ACCESS_UNAVAILABLE_TITLE;
+
+/** Whether Refresh access can help: only when the inventory read failed. */
+export const offersRefreshAccess = (reason: AccessUnavailableReason): boolean =>
+  reason === "recipient-read-failed" || reason === "recipient-read-refused";
 
 export const blockMessage = (block: ControlBlock): string => {
   switch (block) {
@@ -318,6 +363,10 @@ export const blockMessage = (block: ControlBlock): string => {
       return "This change is being applied.";
     case "ambiguous-audience":
       return "This group needs checking before it can be given access.";
+    case "inventory-refreshing":
+      return "Wait for group permissions to refresh.";
+    case "inventory-stale":
+      return "Refresh access before making another change.";
     default:
       return `We couldn't confirm an earlier change to this permission. ${CHECK_WITH_ADMIN}`;
   }

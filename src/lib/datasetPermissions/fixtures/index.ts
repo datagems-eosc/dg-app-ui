@@ -3,9 +3,8 @@
  *
  * Development and test use only. Nothing here was captured from a live
  * environment — read `./provenance.ts` before treating any of it as evidence of
- * deployed behaviour, and keep the three claims apart: `current` shapes exist,
- * `candidate` shapes encode an unconfirmed inference, `proposed` shapes have no
- * endpoint at all.
+ * deployed behaviour, and keep the two claims apart: `current` shapes exist in
+ * source, `candidate` shapes encode an unconfirmed inference.
  */
 
 export {
@@ -17,24 +16,26 @@ export {
 export {
   ambiguousEveryoneGroupQueryPayload,
   currentAdminAccountPayload,
-  currentAdminGroupGrantsEmptyPayload,
-  currentAdminGroupGrantsPayload,
   currentGroupQueryPayload,
   currentManagerAccountPayload,
   DATASET_ID,
   datasetActionsAbsentPayload,
   datasetActionsDeniedPayload,
   datasetActionsGrantedPayload,
-  deniedManagerRecipientReadStatus,
+  datasetGrantsEmptyPayload,
+  datasetGrantsPayload,
+  datasetGrantsUndiscoveredHolderPayload,
+  datasetGrantsUnknownRolePayload,
+  datasetGrantsUnusablePayloads,
+  datasetManagerActionsPayload,
+  deniedRecipientReadStatus,
   detailsPageDatasetPayload,
   EVERYONE_GROUP_ID,
   groupQueryWithoutSemanticsPayload,
+  INDIVIDUAL_USER_ID,
   OTHER_DATASET_ID,
   RESEARCH_GROUP_ID,
   SECOND_GROUP_ID,
+  UNDISCOVERED_GROUP_ID,
 } from "./current";
-export {
-  proposedManagerRecipientGrants,
-  proposedManagerRecipientGrantsWithoutEveryone,
-} from "./proposed";
 export { FIXTURE_PROVENANCE } from "./provenance";

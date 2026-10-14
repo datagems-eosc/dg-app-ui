@@ -128,11 +128,12 @@ export interface ActionEvidence {
  * context role for that dataset — so both sources are relevant and both must
  * have covered the name before absence means anything.
  *
- * The recipient read is different: `ContextGrantsDatasetGroupOther` calls plain
- * `AuthorizeForce(LookupContextGrantOther)`, with no affiliated-context
- * alternative. A dataset projection cannot answer it, so requiring one would
- * leave the decision permanently `unknown` and the full editor unable to say
- * why it is unavailable. An exhaustive global read settles it on its own.
+ * The recipient read follows the same rule since Gateway #98:
+ * `ContextGrantsDataset` (dg-app-api `71fb7dfa`) accepts
+ * `LookupDatasetContextGrants` globally or through this dataset's context, so
+ * a positive from either source supports it and only a complete negative from
+ * both confirms the restriction. Neither decides whether the read is issued —
+ * it always is, and the endpoint enforces access — only how a refusal is read.
  */
 const ACTION_EVIDENCE_SOURCES: Record<
   AccessAction,
@@ -140,7 +141,7 @@ const ACTION_EVIDENCE_SOURCES: Record<
 > = {
   grant: ["global", "datasetContext"],
   revoke: ["global", "datasetContext"],
-  lookupRecipients: ["global"],
+  lookupRecipients: ["global", "datasetContext"],
 };
 
 /**
