@@ -26,11 +26,12 @@
  * mount an inert component rather than a live reader.
  */
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
 import { useDatasetPermissions } from "@/hooks/useDatasetPermissions";
 import {
+  type AcknowledgedChange,
   type DatasetAccessScope,
   useDatasetPermissionsAccess,
 } from "@/hooks/useDatasetPermissionsAccess";
@@ -118,30 +119,38 @@ export function DatasetGroupAccess({
   }, [enabled, onUnavailable]);
 
   /**
-   * Re-read a group's grants once a change to it is acknowledged.
+   * Read the dataset's inventory once more after changes are acknowledged.
    *
    * Only acknowledged operations trigger it: a pending one has not happened, a
    * refused one did not, and re-reading after an *uncertain* one would invite
    * treating whatever comes back as the answer — which it is not, because the
-   * read and the write may have crossed. Each operation triggers at most one
-   * re-read, tracked by operation id, so a rerender does not loop.
+   * read and the write may have crossed. Each operation is handed over at most
+   * once, tracked by operation id, so a rerender does not loop; operations
+   * acknowledged together share one read.
    *
-   * Nothing here can roll a change back. `rows.ts` keeps an acknowledged
-   * operation winning over the read baseline precisely so that a lagging or
-   * failed re-read cannot un-apply something the Gateway confirmed.
+   * Nothing here can roll a change back. The read owner checks each
+   * acknowledgement against the newer read, and `rows.ts` keeps an
+   * unconfirmed acknowledged operation winning over the read, so a lagging or
+   * failed read cannot un-apply something the Gateway confirmed.
    */
-  const reconciledRef = useRef<Set<string>>(new Set());
-  const { reconcileGroup } = access;
-  const reconcile = useCallback(reconcileGroup, [reconcileGroup]);
+  const handedOverRef = useRef<Set<string>>(new Set());
+  const { refreshAfterAcknowledgement } = access;
 
   useEffect(() => {
+    const changes: AcknowledgedChange[] = [];
     for (const operation of controller.operations) {
       if (operation.status !== "acknowledged") continue;
-      if (reconciledRef.current.has(operation.operationId)) continue;
-      reconciledRef.current.add(operation.operationId);
-      reconcile(operation.groupId);
+      if (handedOverRef.current.has(operation.operationId)) continue;
+      handedOverRef.current.add(operation.operationId);
+      changes.push({
+        operationId: operation.operationId,
+        groupId: operation.groupId,
+        role: operation.role,
+        action: operation.action,
+      });
     }
-  }, [controller.operations, reconcile]);
+    refreshAfterAcknowledgement(changes);
+  }, [controller.operations, refreshAfterAcknowledgement]);
 
   if (!enabled) return null;
 
@@ -168,7 +177,13 @@ export function DatasetGroupAccess({
       everyone={access.everyone}
       operations={controller.operations}
       storageAvailable={controller.storageAvailable}
-      reconciliationFailed={access.reconciliationFailed}
+      inventory={{
+        freshness: access.freshness,
+        staleReason: access.staleReason,
+        revision: access.inventoryRevision,
+        confirmedOperationIds: access.confirmedOperationIds,
+      }}
+      onRefreshAccess={access.refreshAccess}
       canAttempt={controller.canAttempt}
       onRoleChange={(groupId, role, action) => {
         controller.requestRoleChange(groupId, role, action);

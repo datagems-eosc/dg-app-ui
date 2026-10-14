@@ -15,6 +15,7 @@ import {
   EVERYONE_GROUP_ID,
   RESEARCH_GROUP_ID,
   SECOND_GROUP_ID,
+  UNDISCOVERED_GROUP_ID,
 } from "@/lib/datasetPermissions/fixtures";
 import { selectAccessMode } from "@/lib/datasetPermissions/mode";
 import type {
@@ -115,6 +116,17 @@ export const KNOWN_GRANTS = [
   { groupId: RESEARCH_GROUP_ID, role: DATASET_ROLE_MAP.browse },
   { groupId: RESEARCH_GROUP_ID, role: DATASET_ROLE_MAP.download },
   { groupId: SECOND_GROUP_ID, role: DATASET_ROLE_MAP.browse },
+] as const;
+
+/**
+ * An inventory naming a group discovery does not return, with a role this UI
+ * has no control for. Both stay visible and read-only.
+ */
+export const GRANTS_WITH_UNDISCOVERED_HOLDER = [
+  { groupId: RESEARCH_GROUP_ID, role: DATASET_ROLE_MAP.browse },
+  { groupId: RESEARCH_GROUP_ID, role: "dg_ds-curate" },
+  { groupId: UNDISCOVERED_GROUP_ID, role: DATASET_ROLE_MAP.edit },
+  { groupId: UNDISCOVERED_GROUP_ID, role: "dg_ds-curate" },
 ] as const;
 
 export const operation = (

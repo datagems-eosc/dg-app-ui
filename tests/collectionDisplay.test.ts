@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  getDisplayCategory,
+  getDisplayCollectionLabel,
   getDisplayCollectionName,
   getDisplayCollections,
 } from "../src/config/collectionConstants";
@@ -61,24 +61,41 @@ test("getDisplayCollectionName - preserves name without suffix", () => {
   assert.equal(getDisplayCollectionName({ name: "Weather" }), "Weather");
 });
 
-test("getDisplayCategory - returns first non-custom collection", () => {
+test("getDisplayCollections - drops blank names before limiting", () => {
   const collections = [
-    { id: "1", name: "Custom" },
-    { id: "2", name: "Language" },
-    { id: "3", name: "Weather" },
+    { id: "1", name: "" },
+    { id: "2", name: "   " },
+    { id: "3", name: " Collection" },
+    { id: "4", name: "Meteo" },
+    { id: "5", name: "Math" },
   ];
-  assert.equal(getDisplayCategory(collections, "Math"), "Language");
+  const result = getDisplayCollections(collections, 1);
+  assert.deepEqual(
+    result.map((c) => c.name),
+    ["Meteo"],
+  );
 });
 
-test("getDisplayCategory - returns fallback when all custom", () => {
-  const collections = [
-    { id: "1", name: "Custom" },
-    { id: "2", name: "Custom Collection" },
-  ];
-  assert.equal(getDisplayCategory(collections, "Math"), "Math");
-});
+const labelCases: Array<[string, { name: string }[] | undefined, string]> = [
+  [
+    "first non-custom collection",
+    [{ name: "Custom" }, { name: "Language" }, { name: "Weather" }],
+    "Language",
+  ],
+  ["genuine Math is kept", [{ name: "Math" }], "Math"],
+  ["suffix is removed", [{ name: "Meteo Collection" }], "Meteo"],
+  ["missing collections", undefined, ""],
+  ["empty collections", [], ""],
+  ["only blank names", [{ name: "" }, { name: "  " }], ""],
+  [
+    "all filtered as custom",
+    [{ name: "Custom" }, { name: "Custom Collection" }],
+    "",
+  ],
+];
 
-test("getDisplayCategory - returns fallback when empty", () => {
-  assert.equal(getDisplayCategory([], "Weather"), "Weather");
-  assert.equal(getDisplayCategory(undefined, "Math"), "Math");
-});
+for (const [label, collections, expected] of labelCases) {
+  test(`getDisplayCollectionLabel - ${label}`, () => {
+    assert.equal(getDisplayCollectionLabel(collections), expected);
+  });
+}

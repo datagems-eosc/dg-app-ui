@@ -19,6 +19,7 @@ import {
   DATASET_ID,
   EVERYONE_GROUP_ID,
   RESEARCH_GROUP_ID,
+  UNDISCOVERED_GROUP_ID,
 } from "@/lib/datasetPermissions/fixtures";
 import {
   OPERATION_JOURNAL_KEY,
@@ -63,9 +64,19 @@ interface Replies {
   readonly me?: Reply;
   readonly dataset?: Reply;
   readonly groups?: Reply;
-  readonly grants?: Reply | ((groupId: string) => Reply);
+  /** The dataset inventory; a function is asked per read, numbered from 0. */
+  readonly inventory?: Reply | ((read: number) => Reply);
   readonly mutation?: Reply;
 }
+
+/** `GET /principal/context-grants/dataset` for this dataset, synthetic. */
+const inventoryBody = (
+  userGroups: readonly { id: string; roles: readonly string[] }[],
+) => [{ datasetId: DATASET_ID, users: [], userGroups }];
+
+const RESEARCH_BROWSE = inventoryBody([
+  { id: RESEARCH_GROUP_ID, roles: [DATASET_ROLE_MAP.browse] },
+]);
 
 const ALL_PERMISSIONS = [
   ACCESS_ACTION_NAMES.grant,
@@ -97,6 +108,8 @@ const intercept = (replies: Replies = {}) => {
       : new Response(JSON.stringify(body), { status });
   };
 
+  let inventoryReads = 0;
+
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -106,15 +119,21 @@ const intercept = (replies: Replies = {}) => {
       if (url.includes("/principal/me")) {
         return respond(replies.me, { permissions: ALL_PERMISSIONS });
       }
-      if (url.includes("/principal/group/")) {
-        const groupId = url.split("/principal/group/")[1].split("/")[0];
+      // The dataset inventory. The per-group route is deliberately *not*
+      // routed: a request to it falls through to the unexpected-request throw.
+      if (
+        method === "GET" &&
+        url.includes("/principal/context-grants/dataset?")
+      ) {
+        const read = inventoryReads;
+        inventoryReads += 1;
         const reply =
-          typeof replies.grants === "function"
-            ? replies.grants(groupId)
-            : replies.grants;
-        return respond(reply, { [DATASET_ID]: [] });
+          typeof replies.inventory === "function"
+            ? replies.inventory(read)
+            : replies.inventory;
+        return respond(reply, inventoryBody([]));
       }
-      if (url.includes("/principal/context-grants/")) {
+      if (url.includes("/principal/context-grants/group/")) {
         return respond(replies.mutation, null);
       }
       if (url.includes("/user/group/query")) {
@@ -177,7 +196,16 @@ const switchFor = (group: string, role: string) =>
 const RESEARCH = "Baltic Modelling Team";
 
 const mutationCalls = (calls: readonly Recorded[]) =>
-  calls.filter((call) => call.url.includes("/principal/context-grants/"));
+  calls.filter((call) => call.url.includes("/principal/context-grants/group/"));
+
+const inventoryCalls = (calls: readonly Recorded[]) =>
+  calls.filter((call) =>
+    call.url.includes("/principal/context-grants/dataset?"),
+  );
+
+/** Requests to the retired per-group route. Always expected to be none. */
+const perGroupCalls = (calls: readonly Recorded[]) =>
+  calls.filter((call) => call.url.includes("/principal/group/"));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -194,13 +222,8 @@ afterEach(() => {
 });
 
 describe("the full editor, through the real binding", () => {
-  it("reads capabilities, groups and recipients, then shows known assignments", async () => {
-    const { calls } = intercept({
-      grants: (groupId) =>
-        groupId === RESEARCH_GROUP_ID
-          ? { body: { [DATASET_ID]: [BROWSE] } }
-          : { body: { [DATASET_ID]: [] } },
-    });
+  it("reads capabilities, groups and the inventory, then shows known assignments", async () => {
+    const { calls } = intercept({ inventory: { body: RESEARCH_BROWSE } });
 
     mount();
 
@@ -219,16 +242,95 @@ describe("the full editor, through the real binding", () => {
       "false",
     );
 
-    // Two capability reads, one discovery, one grant read per discovered group.
+    // Two capability reads, one discovery, one inventory read — and no
+    // per-group read at all.
     expect(calls.filter((c) => c.url.includes("/principal/me"))).toHaveLength(
       1,
     );
     expect(
       calls.filter((c) => c.url.includes("/user/group/query")),
     ).toHaveLength(1);
+    expect(inventoryCalls(calls)).toEqual([
+      {
+        url: `${API_BASE}/gw/api/principal/context-grants/dataset?id=${DATASET_ID}`,
+        method: "GET",
+      },
+    ]);
+    expect(perGroupCalls(calls)).toHaveLength(0);
+    expect(mutationCalls(calls)).toHaveLength(0);
+  });
+
+  it("gives a dataset manager the editor without the old global lookup", async () => {
+    const { calls } = intercept({
+      me: { body: { permissions: ["BrowseDataset"] } },
+      dataset: {
+        body: {
+          id: DATASET_ID,
+          permissions: [
+            "addusertocontextgrantgroup",
+            "removeuserfromcontextgrantgroup",
+            "lookupdatasetcontextgrants",
+          ],
+        },
+      },
+      inventory: { body: RESEARCH_BROWSE },
+    });
+
+    mount();
+
+    await waitFor(() =>
+      expect(switchFor(RESEARCH, "Browse")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
+    );
+    expect(switchFor(RESEARCH, "Edit")).toBeEnabled();
+    expect(perGroupCalls(calls)).toHaveLength(0);
+  });
+
+  it("shows a holder discovery cannot identify, read-only", async () => {
+    intercept({
+      inventory: {
+        body: inventoryBody([
+          { id: UNDISCOVERED_GROUP_ID, roles: [DATASET_ROLE_MAP.edit] },
+        ]),
+      },
+    });
+
+    mount();
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(`Group ${UNDISCOVERED_GROUP_ID}`),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Permissions: Edit")).toBeInTheDocument();
     expect(
-      calls.filter((c) => c.url.includes("/principal/group/")),
-    ).toHaveLength(2);
+      screen.getByText("Group details unavailable. Permissions are read-only."),
+    ).toBeInTheDocument();
+    // No control for it: there is no verified target to change.
+    expect(
+      screen.queryByRole("switch", {
+        name: new RegExp(UNDISCOVERED_GROUP_ID),
+      }),
+    ).toBeNull();
+  });
+
+  it("says an explicit empty inventory assigns no group permissions", async () => {
+    intercept();
+    mount();
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("No group permissions assigned."),
+      ).toBeInTheDocument(),
+    );
+    // Discoverable groups remain as unassigned targets.
+    expect(switchFor(RESEARCH, "Browse")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.queryByText(/nobody|no one/i)).toBeNull();
   });
 
   it("sends exactly one request for one deliberate change, and records it first", async () => {
@@ -264,34 +366,73 @@ describe("the full editor, through the real binding", () => {
     expect(mutationCalls(calls)).toHaveLength(1);
   });
 
-  it("re-reads the changed group once the Gateway acknowledges", async () => {
+  it("reads the dataset inventory once more after the Gateway acknowledges", async () => {
+    const { calls } = intercept({
+      mutation: { status: 200 },
+      inventory: (read) => ({
+        body:
+          read === 0
+            ? inventoryBody([])
+            : inventoryBody([
+                { id: RESEARCH_GROUP_ID, roles: [DATASET_ROLE_MAP.edit] },
+              ]),
+      }),
+    });
+
+    mount();
+    await waitFor(() => switchFor(RESEARCH, "Edit"));
+    expect(inventoryCalls(calls)).toHaveLength(1);
+
+    fireEvent.click(switchFor(RESEARCH, "Edit"));
+
+    await waitFor(() => expect(inventoryCalls(calls)).toHaveLength(2));
+    await waitFor(() =>
+      expect(switchFor(RESEARCH, "Search")).not.toHaveAttribute(
+        "aria-disabled",
+      ),
+    );
+    expect(switchFor(RESEARCH, "Edit")).toHaveAttribute("aria-checked", "true");
+    // The matching read leaves nothing to refresh.
+    expect(screen.queryByRole("button", { name: "Refresh access" })).toBeNull();
+    expect(perGroupCalls(calls)).toHaveLength(0);
+    expect(mutationCalls(calls)).toHaveLength(1);
+  });
+
+  it("does not roll a change back when the following read disagrees", async () => {
+    // The read reports the role as absent — the read and the write may
+    // simply have crossed. An acknowledgement is not undone by a later read.
     const { calls } = intercept({ mutation: { status: 200 } });
 
     mount();
     await waitFor(() => switchFor(RESEARCH, "Edit"));
-    const before = calls.filter((c) =>
-      c.url.includes(`/principal/group/${RESEARCH_GROUP_ID}/`),
-    ).length;
-
     fireEvent.click(switchFor(RESEARCH, "Edit"));
 
     await waitFor(() =>
       expect(
-        calls.filter((c) =>
-          c.url.includes(`/principal/group/${RESEARCH_GROUP_ID}/`),
-        ).length,
-      ).toBe(before + 1),
+        screen.getByText("Change saved. Current access couldn't be refreshed."),
+      ).toBeInTheDocument(),
     );
-    // The acknowledged change stays applied whatever the re-read says.
+    expect(screen.getByText("Edit permission granted.")).toBeInTheDocument();
     expect(switchFor(RESEARCH, "Edit")).toHaveAttribute("aria-checked", "true");
+
+    // A stale list authorizes nothing: every switch waits for a good read.
+    // Held rather than natively disabled, so focus is never dropped.
+    expect(switchFor(RESEARCH, "Search")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    fireEvent.click(switchFor(RESEARCH, "Search"));
+    expect(mutationCalls(calls)).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "Refresh access" }),
+    ).toBeVisible();
   });
 
-  it("does not roll a change back when the re-read disagrees", async () => {
-    // The re-read reports the role as absent — the reads and the write may
-    // simply have crossed. An acknowledgement is not undone by a later read.
+  it("keeps an acknowledged change and offers Refresh access when the read fails", async () => {
     const { calls } = intercept({
       mutation: { status: 200 },
-      grants: { body: { [DATASET_ID]: [] } },
+      inventory: (read) =>
+        read === 0 ? { body: inventoryBody([]) } : { status: 503, body: null },
     });
 
     mount();
@@ -299,10 +440,161 @@ describe("the full editor, through the real binding", () => {
     fireEvent.click(switchFor(RESEARCH, "Edit"));
 
     await waitFor(() =>
-      expect(screen.getByText("Edit permission granted.")).toBeInTheDocument(),
+      expect(
+        screen.getByText("Change saved. Current access couldn't be refreshed."),
+      ).toBeInTheDocument(),
     );
     expect(switchFor(RESEARCH, "Edit")).toHaveAttribute("aria-checked", "true");
     expect(mutationCalls(calls)).toHaveLength(1);
+  });
+
+  describe("an acknowledged first grant on an empty inventory", () => {
+    const EMPTY_MESSAGE = "No group permissions assigned.";
+    const RESEARCH_EDIT = inventoryBody([
+      { id: RESEARCH_GROUP_ID, roles: [DATASET_ROLE_MAP.edit] },
+    ]);
+
+    const grantFirst = async () => {
+      await waitFor(() => screen.getByText(EMPTY_MESSAGE));
+      fireEvent.click(switchFor(RESEARCH, "Edit"));
+      await waitFor(() =>
+        expect(
+          screen.getByText("Edit permission granted."),
+        ).toBeInTheDocument(),
+      );
+    };
+
+    it("drops the empty message while the following read runs", async () => {
+      let readsSeen = 0;
+      intercept({
+        mutation: { status: 200 },
+        inventory: () => {
+          readsSeen += 1;
+          return readsSeen === 1
+            ? { body: inventoryBody([]) }
+            : { pending: true };
+        },
+      });
+      mount();
+      await grantFirst();
+
+      expect(switchFor(RESEARCH, "Edit")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+    });
+
+    it("does not deny the grant when the following read fails", async () => {
+      intercept({
+        mutation: { status: 200 },
+        inventory: (read) =>
+          read === 0
+            ? { body: inventoryBody([]) }
+            : { status: 503, body: null },
+      });
+      mount();
+      await grantFirst();
+
+      await waitFor(() =>
+        screen.getByText("Change saved. Current access couldn't be refreshed."),
+      );
+      expect(switchFor(RESEARCH, "Edit")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+    });
+
+    it("does not deny the grant when the following read comes back empty", async () => {
+      intercept({ mutation: { status: 200 } });
+      mount();
+      await grantFirst();
+
+      await waitFor(() =>
+        screen.getByText("Change saved. Current access couldn't be refreshed."),
+      );
+      expect(switchFor(RESEARCH, "Edit")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+    });
+
+    it("recovers through Refresh access without the empty message", async () => {
+      const { calls } = intercept({
+        mutation: { status: 200 },
+        inventory: (read) =>
+          read === 0
+            ? { body: inventoryBody([]) }
+            : read === 1
+              ? { status: 503, body: null }
+              : { body: RESEARCH_EDIT },
+      });
+      mount();
+      await grantFirst();
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Refresh access" }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("button", { name: "Refresh access" }),
+        ).toBeNull(),
+      );
+      expect(switchFor(RESEARCH, "Edit")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+      expect(mutationCalls(calls)).toHaveLength(1);
+    });
+  });
+
+  it("recovers through Refresh access with one GET and no write", async () => {
+    const { calls } = intercept({
+      mutation: { status: 200 },
+      inventory: (read) =>
+        read === 0
+          ? { body: inventoryBody([]) }
+          : read === 1
+            ? { status: 503, body: null }
+            : {
+                body: inventoryBody([
+                  { id: RESEARCH_GROUP_ID, roles: [DATASET_ROLE_MAP.edit] },
+                ]),
+              },
+    });
+
+    mount();
+    await waitFor(() => switchFor(RESEARCH, "Edit"));
+    fireEvent.click(switchFor(RESEARCH, "Edit"));
+    const refresh = await screen.findByRole("button", {
+      name: "Refresh access",
+    });
+
+    refresh.focus();
+    fireEvent.click(refresh);
+
+    // While its read runs the button stays, so the focus on it is kept.
+    expect(refresh).toHaveFocus();
+    expect(refresh).toHaveAttribute("aria-busy", "true");
+
+    await waitFor(() =>
+      expect(switchFor(RESEARCH, "Search")).not.toHaveAttribute(
+        "aria-disabled",
+      ),
+    );
+    expect(
+      screen.queryByText("Change saved. Current access couldn't be refreshed."),
+    ).toBeNull();
+    expect(inventoryCalls(calls)).toHaveLength(3);
+    expect(mutationCalls(calls)).toHaveLength(1);
+    // The button has gone; focus is kept inside the surface, on Done.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Done" })).toHaveFocus(),
+    );
+    expect(screen.queryByRole("button", { name: "Refresh access" })).toBeNull();
   });
 
   it("keeps an uncertain outcome blocked and never replays it", async () => {
@@ -385,12 +677,16 @@ describe("the full editor, through the real binding", () => {
 });
 
 describe("the grant-only presentation", () => {
-  /** A complete global read without the lookup permission confirms the policy. */
+  /**
+   * Complete global and dataset reads without the lookup permission confirm
+   * the policy, and the dataset read is refused accordingly.
+   */
   const managerReplies: Replies = {
     me: { body: { permissions: [ACCESS_ACTION_NAMES.grant] } },
+    inventory: { status: 403, body: null },
   };
 
-  it("is selected by a confirmed lookup restriction, and asks for no recipients", async () => {
+  it("is selected by a confirmed lookup restriction and a refused inventory", async () => {
     const { calls } = intercept(managerReplies);
 
     mount();
@@ -400,10 +696,34 @@ describe("the grant-only presentation", () => {
         screen.getByText(/can't view existing permissions/i),
       ).toBeInTheDocument(),
     );
-    expect(
-      calls.filter((c) => c.url.includes("/principal/group/")),
-    ).toHaveLength(0);
+    // Asked once — the endpoint decides — and never per group.
+    expect(inventoryCalls(calls)).toHaveLength(1);
+    expect(perGroupCalls(calls)).toHaveLength(0);
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
+  });
+
+  it("does not read the inventory again after a grant-only change", async () => {
+    const { calls } = intercept({
+      ...managerReplies,
+      mutation: { status: 200 },
+    });
+    mount();
+
+    await waitFor(() => screen.getByLabelText("Group"));
+    fireEvent.change(screen.getByLabelText("Group"), {
+      target: { value: RESEARCH_GROUP_ID },
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "Download" }));
+    fireEvent.click(screen.getByRole("button", { name: /grant access/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Download permission granted to Baltic Modelling Team.",
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(inventoryCalls(calls)).toHaveLength(1);
   });
 
   it("offers no revocation and no sharing summary", async () => {
@@ -542,42 +862,109 @@ describe("read failure is never worked around", () => {
   it("explains an unexpected recipient refusal instead of offering the grant form", async () => {
     // The caller's lookup capability is positively established, and the read
     // is refused anyway. One refusal is not a policy.
-    intercept({ grants: { status: 403, body: null } });
+    intercept({ inventory: { status: 403, body: null } });
 
     mount();
 
     await waitFor(() =>
       expect(
-        screen.getByText(/couldn't load existing permissions/i),
+        screen.getByRole("heading", {
+          name: "Couldn't load group permissions",
+        }),
       ).toBeInTheDocument(),
     );
     expect(screen.queryByLabelText("Group")).toBeNull();
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
   });
 
-  it("explains a failed recipient read without downgrading to the grant form", async () => {
-    intercept({ grants: { status: 500, body: null } });
+  it.each([
+    ["a server error", { status: 500, body: null }],
+    ["a missing route", { status: 404, body: null }],
+    ["an unsupported method", { status: 405, body: null }],
+    ["a session that stays unauthorized", { status: 401, body: null }],
+    ["a malformed body", { body: [] }],
+  ])(
+    "explains %s without downgrading or trying another route",
+    async (_label, reply) => {
+      const { calls } = intercept({ inventory: reply });
+
+      mount();
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole("heading", {
+            name: "Couldn't load group permissions",
+          }),
+        ).toBeInTheDocument(),
+      );
+      expect(screen.queryByLabelText("Group")).toBeNull();
+      expect(screen.queryAllByRole("switch")).toHaveLength(0);
+      expect(perGroupCalls(calls)).toHaveLength(0);
+      expect(
+        screen.getByRole("button", { name: "Refresh access" }),
+      ).toBeVisible();
+    },
+  );
+
+  it("recovers from a failed read on open through Refresh access", async () => {
+    const { calls } = intercept({
+      inventory: (read) =>
+        read === 0 ? { status: 503, body: null } : { body: RESEARCH_BROWSE },
+    });
 
     mount();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Refresh access" }),
+    );
 
     await waitFor(() =>
-      expect(
-        screen.getByText(/couldn't load existing permissions/i),
-      ).toBeInTheDocument(),
+      expect(switchFor(RESEARCH, "Browse")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
     );
-    expect(screen.queryByLabelText("Group")).toBeNull();
+    expect(inventoryCalls(calls)).toHaveLength(2);
+    // Discovery and capabilities are not re-read; nothing is written.
+    expect(calls.filter((c) => c.url.includes("/principal/me"))).toHaveLength(
+      1,
+    );
+    expect(
+      calls.filter((c) => c.url.includes("/user/group/query")),
+    ).toHaveLength(1);
+    expect(mutationCalls(calls)).toHaveLength(0);
   });
 
-  it("offers no editor when nothing about the caller could be established", async () => {
+  it("keeps the inventory visible, read-only, when group discovery fails", async () => {
     intercept({
-      me: { status: 500, body: null },
-      grants: { status: 403, body: null },
+      groups: { status: 500, body: null },
+      inventory: { body: RESEARCH_BROWSE },
     });
 
     mount();
 
     await waitFor(() =>
-      expect(screen.getByText(/access settings unavailable/i)).toBeVisible(),
+      expect(
+        screen.getByText(`Group ${RESEARCH_GROUP_ID}`),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Permissions: Browse")).toBeInTheDocument();
+    expect(screen.queryAllByRole("switch")).toHaveLength(0);
+  });
+
+  it("offers no editor when nothing about the caller could be established", async () => {
+    intercept({
+      me: { status: 500, body: null },
+      inventory: { status: 403, body: null },
+    });
+
+    mount();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", {
+          name: "Couldn't load group permissions",
+        }),
+      ).toBeVisible(),
     );
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
     expect(screen.queryByLabelText("Group")).toBeNull();
@@ -677,12 +1064,7 @@ describe("identity", () => {
   });
 
   it("starts a fresh read for a replacement account and shows nothing of the previous one", async () => {
-    const { calls } = intercept({
-      grants: (groupId) =>
-        groupId === RESEARCH_GROUP_ID
-          ? { body: { [DATASET_ID]: [BROWSE] } }
-          : { body: { [DATASET_ID]: [] } },
-    });
+    const { calls } = intercept({ inventory: { body: RESEARCH_BROWSE } });
 
     const { rerender } = mount();
     await waitFor(() =>

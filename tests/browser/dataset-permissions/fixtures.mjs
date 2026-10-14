@@ -27,7 +27,10 @@ export const ACCOUNT_B = {
 
 export const GRANT = "AddUserToContextGrantGroup";
 export const REVOKE = "RemoveUserFromContextGrantGroup";
-export const LOOKUP = "LookupContextGrantOther";
+/** The dataset recipient lookup (Gateway #98). */
+export const LOOKUP = "LookupDatasetContextGrants";
+/** The retired global-only per-group lookup. Holding it decides nothing now. */
+export const OBSOLETE_LOOKUP = "LookupContextGrantOther";
 
 /** Full editor: recipient lookup plus both write capabilities. */
 export const FULL_EDITOR = [GRANT, REVOKE, LOOKUP];
@@ -61,6 +64,21 @@ export const PUBLIC_B = {
   name: "Public B",
   semantics: ["everyone"],
 };
+
+/**
+ * A group holding a role on the dataset that group discovery never returns.
+ * The inventory names it; the view must keep it, read-only, by its id.
+ */
+export const HOLDER = {
+  id: "6d5c4b3a-2918-4f7e-8d6c-5b4a39281706",
+};
+
+/** Dataset-context action names, as the dataset projection returns them. */
+export const DATASET_MANAGER_ACTIONS = [
+  "addusertocontextgrantgroup",
+  "removeuserfromcontextgrantgroup",
+  "lookupdatasetcontextgrants",
+];
 
 export const STANDARD_GROUPS = [EVERYONE, RESEARCH, MARINE];
 export const AMBIGUOUS_GROUPS = [PUBLIC_A, PUBLIC_B, RESEARCH];

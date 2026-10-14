@@ -19,11 +19,13 @@ import {
   ACCOUNT_B,
   AMBIGUOUS_GROUPS,
   DATASET,
+  DATASET_MANAGER_ACTIONS,
   DETAILS_PERMISSIONS,
   EVERYONE,
   FULL_EDITOR,
   GRANT,
   GRANT_ONLY,
+  HOLDER,
   MARINE,
   PUBLIC_A,
   PUBLIC_B,
@@ -116,6 +118,15 @@ async function openAccessByKeyboard(page) {
 }
 
 const noNewMutations = (w, mark) => w.since(mark, "mutation").length === 0;
+
+/**
+ * Inventory reads since `mark`: present, and every one for this dataset only.
+ * Counts are not exact because the development server's Strict Mode may
+ * issue a read twice; a per-group read would be unexpected and fail the run.
+ */
+const inventoryReads = (w, mark = 0) => w.since(mark, "recipient-read");
+const onlyThisDataset = (entries) =>
+  entries.length > 0 && entries.every((entry) => entry.dataset === DATASET.id);
 const describeMutations = (entries) =>
   entries.map((entry) => `${entry.method} ${entry.path}`).join(", ") || "none";
 
@@ -192,13 +203,10 @@ async function fullEditorJourney() {
       "aria-checked",
     )) === "true",
   );
-  const reads = w.since(beforeOpen, "recipient-read");
+  const reads = inventoryReads(w, beforeOpen);
   check(
-    "recipient reads only for discovered groups",
-    reads.length >= 3 &&
-      reads.every((entry) =>
-        STANDARD_GROUPS.some((group) => group.id === entry.group),
-      ),
+    "one dataset inventory read, for this dataset only, no per-group read",
+    onlyThisDataset(reads) && w.unexpected.length === 0,
     `${reads.length} reads`,
   );
   check(
@@ -254,10 +262,8 @@ async function fullEditorJourney() {
     await describeFocus(page),
   );
   check(
-    "reconciliation reads Research Team only after the write",
-    w
-      .since(afterWrite, "recipient-read")
-      .some((entry) => entry.group === RESEARCH.id),
+    "the inventory is read again after the write",
+    onlyThisDataset(inventoryReads(w, afterWrite)),
   );
   w.mutation = "ok";
 
@@ -464,7 +470,13 @@ async function lostResponseAndAccounts() {
  * control.
  */
 async function datasetContextManager() {
-  const w = world({ globalPermissions: [], datasetActionPermissions: [GRANT] });
+  // Grant through this dataset's context, but no recipient lookup in either
+  // read: the confirmed restriction, so the inventory read is refused.
+  const w = world({
+    globalPermissions: [],
+    datasetActionPermissions: [GRANT.toLowerCase()],
+    recipientReadStatus: 403,
+  });
   const { context, page } = await openContext(browser, w, {
     baseUrl,
     viewport: DESKTOP,
@@ -494,9 +506,13 @@ async function datasetContextManager() {
         .isVisible()),
   );
   check("no switches", (await dialog.getByRole("switch").count()) === 0);
-  check("no recipient-grant lookup", w.since(0, "recipient-read").length === 0);
+  check(
+    "inventory asked for this dataset and refused; no per-group lookup",
+    onlyThisDataset(inventoryReads(w)) && w.unexpected.length === 0,
+  );
 
   step("one deliberate grant");
+  const beforeGrant = w.mark();
   await group.selectOption(RESEARCH.id);
   await dialog.getByRole("radio", { name: "Download" }).check();
   check(
@@ -518,15 +534,310 @@ async function datasetContextManager() {
     describeMutations(all),
   );
   check(
-    "still no recipient-grant lookup",
-    w.since(0, "recipient-read").length === 0,
+    "no inventory re-read after a grant-only change",
+    inventoryReads(w, beforeGrant).length === 0 && w.unexpected.length === 0,
   );
   await shot(page, "dataset-context-manager-1440");
   await context.close();
 }
 
+/**
+ * Gateway #98: a dataset manager whose global permission read is complete and
+ * empty — neither `LookupDatasetContextGrants` nor the retired
+ * `LookupContextGrantOther` — while the dataset projection carries grant,
+ * revoke and the new lookup. They read the dataset's inventory and get the
+ * full editor. Covers a holder discovery does not return, an unknown role, one
+ * grant and one revoke, a failed read after an acknowledged change, Refresh
+ * access, the explicit empty inventory, a first grant on it whose following
+ * read fails, and a failed first read, at the given width.
+ */
+async function datasetManagerEditor(viewport) {
+  const tag = viewport.width;
+  const managerWorld = (options = {}) =>
+    world({
+      globalPermissions: [],
+      datasetActionPermissions: DATASET_MANAGER_ACTIONS,
+      grants: {
+        [RESEARCH.id]: ["dg_ds-browse"],
+        [HOLDER.id]: ["dg_ds-edit", "dg_ds-curate"],
+      },
+      ...options,
+    });
+
+  step(`manager reads current grants at ${tag}`);
+  let w = managerWorld();
+  let { context, page } = await openContext(browser, w, { baseUrl, viewport });
+  await openDetails(page);
+  const beforeOpen = w.mark();
+  await openAccessByKeyboard(page);
+  let dialog = mainDialog(page);
+  await roleSwitch(page, RESEARCH, "Browse").waitFor(SLOW);
+  check(
+    `${tag}: manager with an empty global permission set sees current grants`,
+    (await roleSwitch(page, RESEARCH, "Browse").getAttribute(
+      "aria-checked",
+    )) === "true" && (await dialog.getByRole("switch").count()) === 18,
+  );
+  check(
+    `${tag}: one inventory read for this dataset, no per-group read`,
+    onlyThisDataset(inventoryReads(w, beforeOpen)) && w.unexpected.length === 0,
+  );
+  const holderRow = dialog.locator("li", {
+    has: page.getByText(`Group ${HOLDER.id}`, { exact: true }),
+  });
+  check(
+    `${tag}: undiscovered holder shown by id with its roles, read-only`,
+    (await holderRow
+      .getByText("Permissions: Edit, dg_ds-curate", { exact: true })
+      .isVisible()) &&
+      (await holderRow
+        .getByText("Group details unavailable. Permissions are read-only.", {
+          exact: true,
+        })
+        .isVisible()) &&
+      (await holderRow.getByRole("switch").count()) === 0,
+  );
+  check(
+    `${tag}: caption names the dataset's group permissions`,
+    await dialog
+      .getByText("Group permissions for this dataset.", { exact: false })
+      .isVisible(),
+  );
+  const fits = await withinViewportWidth(page, dialog);
+  check(`${tag}: dialog within viewport width`, fits.ok, fits.detail);
+  check(
+    `${tag}: no horizontal overflow in the dialog`,
+    await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+  );
+  await holderRow.scrollIntoViewIfNeeded();
+  await shot(page, `manager-holder-${tag}`, dialog);
+
+  step(`one grant and one revoke at ${tag}`);
+  const beforeGrant = w.mark();
+  const search = roleSwitch(page, MARINE, "Search");
+  await search.focus();
+  await page.keyboard.press("Space");
+  await dialog.getByText("Search permission granted.").waitFor(SLOW);
+  await page.waitForTimeout(600);
+  const grants = w.since(beforeGrant, "mutation");
+  check(
+    `${tag}: exactly one POST for Marine Survey Group Search`,
+    grants.length === 1 &&
+      grants[0].method === "POST" &&
+      grants[0].path ===
+        `/principal/context-grants/group/${MARINE.id}/dataset/${DATASET.id}/role/dg_ds-search`,
+    describeMutations(grants),
+  );
+  check(
+    `${tag}: inventory read again after the grant`,
+    onlyThisDataset(inventoryReads(w, beforeGrant)),
+  );
+  check(
+    `${tag}: switch on, usable and still focused after the read`,
+    (await search.getAttribute("aria-checked")) === "true" &&
+      (await search.getAttribute("aria-disabled")) === null &&
+      (await search.evaluate((el) => el === document.activeElement)),
+    await describeFocus(page),
+  );
+  const beforeRevoke = w.mark();
+  const browse = roleSwitch(page, RESEARCH, "Browse");
+  await browse.focus();
+  await page.keyboard.press("Enter");
+  const confirm = page.getByRole("dialog", {
+    name: "Remove Browse permission?",
+  });
+  await confirm.waitFor(SLOW);
+  check(
+    `${tag}: nothing removed before confirming`,
+    noNewMutations(w, beforeRevoke),
+  );
+  await confirm.getByRole("button", { name: "Remove Browse" }).click();
+  await dialog.getByText("Browse permission removed.").waitFor(SLOW);
+  await page.waitForTimeout(600);
+  const revokes = w.since(beforeRevoke, "mutation");
+  check(
+    `${tag}: exactly one DELETE for Research Team Browse`,
+    revokes.length === 1 &&
+      revokes[0].method === "DELETE" &&
+      revokes[0].path ===
+        `/principal/context-grants/group/${RESEARCH.id}/dataset/${DATASET.id}/role/dg_ds-browse`,
+    describeMutations(revokes),
+  );
+
+  step(`failed read after a change, then Refresh access at ${tag}`);
+  w.recipientReadStatus = 503;
+  const beforeStale = w.mark();
+  const download = roleSwitch(page, MARINE, "Download");
+  await download.focus();
+  await page.keyboard.press("Space");
+  await dialog
+    .getByText("Change saved. Current access couldn't be refreshed.")
+    .waitFor(SLOW);
+  const refresh = dialog.getByRole("button", { name: "Refresh access" });
+  check(
+    `${tag}: change kept, every switch held, Refresh access offered`,
+    (await download.getAttribute("aria-checked")) === "true" &&
+      (await roleSwitch(page, MARINE, "Edit").getAttribute("aria-disabled")) ===
+        "true" &&
+      (await refresh.isVisible()),
+  );
+  check(
+    `${tag}: the held switch keeps focus`,
+    await download.evaluate((el) => el === document.activeElement),
+    await describeFocus(page),
+  );
+  check(
+    `${tag}: one POST for the stale-case change`,
+    w.since(beforeStale, "mutation").length === 1,
+  );
+  const refreshFits = await withinViewportWidth(page, refresh);
+  check(
+    `${tag}: Refresh access within width`,
+    refreshFits.ok,
+    refreshFits.detail,
+  );
+  check(
+    `${tag}: Refresh access label on one line`,
+    await refresh.evaluate((el) => el.scrollHeight <= el.clientHeight + 1),
+  );
+  await shot(page, `manager-stale-${tag}`, dialog);
+
+  w.recipientReadStatus = 200;
+  w.holdReads = true;
+  const beforeRefresh = w.mark();
+  await refresh.focus();
+  await page.keyboard.press("Enter");
+  await dialog.getByText("Refreshing group permissions…").waitFor(SLOW);
+  check(
+    `${tag}: while refreshing, Refresh access keeps focus and is held`,
+    (await refresh.evaluate((el) => el === document.activeElement)) &&
+      (await refresh.getAttribute("aria-disabled")) === "true",
+    await describeFocus(page),
+  );
+  await shot(page, `manager-refreshing-${tag}`, dialog);
+  w.holdReads = false;
+  w.releaseReads();
+  await refresh.waitFor({ state: "detached", timeout: 30_000 });
+  await page.waitForTimeout(400);
+  const sinceRefresh = w.since(beforeRefresh);
+  check(
+    `${tag}: Refresh access sent only inventory GETs`,
+    onlyThisDataset(inventoryReads(w, beforeRefresh)) &&
+      sinceRefresh.every(
+        (entry) =>
+          entry.kind === "recipient-read" || entry.kind === "background",
+      ) &&
+      sinceRefresh.every(
+        (entry) => entry.kind !== "recipient-read" || entry.method === "GET",
+      ) &&
+      noNewMutations(w, beforeRefresh),
+    sinceRefresh.map((entry) => `${entry.method} ${entry.path}`).join(", "),
+  );
+  check(
+    `${tag}: after a good read, changes are usable and focus is on Done`,
+    (await roleSwitch(page, MARINE, "Edit").getAttribute("aria-disabled")) ===
+      null &&
+      (await dialog
+        .getByRole("button", { name: "Done" })
+        .evaluate((el) => el === document.activeElement)),
+    await describeFocus(page),
+  );
+  const all = w.since(0, "mutation");
+  check(
+    `${tag}: journey total is exactly POST, DELETE, POST`,
+    all.map((entry) => entry.method).join(",") === "POST,DELETE,POST",
+    describeMutations(all),
+  );
+  await context.close();
+
+  step(`explicit empty inventory at ${tag}`);
+  w = managerWorld({ grants: {} });
+  ({ context, page } = await openContext(browser, w, { baseUrl, viewport }));
+  await openDetails(page);
+  await openAccessByKeyboard(page);
+  dialog = mainDialog(page);
+  await dialog.getByText("No group permissions assigned.").waitFor(SLOW);
+  check(
+    `${tag}: empty inventory still offers discovered groups, all off`,
+    (await dialog.getByRole("switch").count()) === 18 &&
+      (await dialog.locator('[role="switch"][aria-checked="true"]').count()) ===
+        0,
+  );
+  check(
+    `${tag}: no claim that nobody has access`,
+    (await dialog.getByText(/nobody|no one/i).count()) === 0,
+  );
+  await shot(page, `manager-empty-${tag}`, dialog);
+  check(`${tag}: empty case sends nothing`, noNewMutations(w, 0));
+
+  step(`first grant on the empty inventory, read fails, at ${tag}`);
+  w.recipientReadStatus = 503;
+  const firstEdit = roleSwitch(page, RESEARCH, "Edit");
+  await firstEdit.focus();
+  await page.keyboard.press("Space");
+  await dialog
+    .getByText("Change saved. Current access couldn't be refreshed.")
+    .waitFor(SLOW);
+  check(
+    `${tag}: granted switch shown, and no claim that nothing is assigned`,
+    (await firstEdit.getAttribute("aria-checked")) === "true" &&
+      (await dialog.getByText("No group permissions assigned.").count()) === 0,
+  );
+  const firstWrites = w.since(0, "mutation");
+  check(
+    `${tag}: exactly one POST for Research Team Edit`,
+    firstWrites.length === 1 &&
+      firstWrites[0].method === "POST" &&
+      firstWrites[0].path ===
+        `/principal/context-grants/group/${RESEARCH.id}/dataset/${DATASET.id}/role/dg_ds-edit`,
+    describeMutations(firstWrites),
+  );
+  await dialog.evaluate((el) => {
+    el.querySelector(".overflow-y-auto")?.scrollTo(0, 0);
+  });
+  await shot(page, `manager-empty-first-grant-stale-${tag}`, dialog);
+  await context.close();
+
+  step(`failed first read and recovery at ${tag}`);
+  w = managerWorld({ recipientReadStatus: 500 });
+  ({ context, page } = await openContext(browser, w, { baseUrl, viewport }));
+  await openDetails(page);
+  await openAccessByKeyboard(page);
+  dialog = mainDialog(page);
+  await dialog
+    .getByRole("heading", { name: "Couldn't load group permissions" })
+    .waitFor(SLOW);
+  check(
+    `${tag}: failed read shows no switches and no grant form`,
+    (await dialog.getByRole("switch").count()) === 0 &&
+      (await dialog.getByLabel("Group", { exact: true }).count()) === 0,
+  );
+  const retry = dialog.getByRole("button", { name: "Refresh access" });
+  const retryFits = await withinViewportWidth(page, retry);
+  check(`${tag}: Refresh access within width`, retryFits.ok, retryFits.detail);
+  await shot(page, `manager-error-${tag}`, dialog);
+  w.recipientReadStatus = 200;
+  const beforeRetry = w.mark();
+  await retry.focus();
+  await page.keyboard.press("Enter");
+  await roleSwitch(page, RESEARCH, "Browse").waitFor(SLOW);
+  check(
+    `${tag}: Refresh access recovers with inventory reads only`,
+    onlyThisDataset(inventoryReads(w, beforeRetry)) &&
+      w.since(beforeRetry, "capability-read").length === 0 &&
+      w.since(beforeRetry, "groups").length === 0 &&
+      noNewMutations(w, beforeRetry),
+  );
+  check(
+    `${tag}: focus stays in the dialog after recovery`,
+    await focusInside(dialog),
+    await describeFocus(page),
+  );
+  await context.close();
+}
+
 async function grantOnlyEveryone() {
-  const w = world({ globalPermissions: GRANT_ONLY });
+  const w = world({ globalPermissions: GRANT_ONLY, recipientReadStatus: 403 });
   const { context, page } = await openContext(browser, w, {
     baseUrl,
     viewport: DESKTOP,
@@ -551,8 +862,8 @@ async function grantOnlyEveryone() {
     (await dialog.getByRole("switch").count()) === 0,
   );
   check(
-    "no recipient reads in grant-only",
-    w.since(0, "recipient-read").length === 0,
+    "grant-only: the inventory read was refused, never per group",
+    onlyThisDataset(inventoryReads(w)) && w.unexpected.length === 0,
   );
 
   step("Everyone confirmation");
@@ -638,7 +949,11 @@ async function ambiguousEveryone() {
   await context.close();
 
   step("grant-only");
-  w = world({ groups: AMBIGUOUS_GROUPS, globalPermissions: GRANT_ONLY });
+  w = world({
+    groups: AMBIGUOUS_GROUPS,
+    globalPermissions: GRANT_ONLY,
+    recipientReadStatus: 403,
+  });
   ({ context, page } = await openContext(browser, w, {
     baseUrl,
     viewport: DESKTOP,
@@ -680,13 +995,13 @@ async function readOnlyAndUnavailable() {
       name: "recipient read fails",
       options: { recipientReadStatus: 500 },
       ready: (page) =>
-        mainDialog(page).getByText("We couldn't load existing permissions.", {
-          exact: false,
+        mainDialog(page).getByRole("heading", {
+          name: "Couldn't load group permissions",
         }),
     },
     {
       name: "no grant capability",
-      options: { globalPermissions: [] },
+      options: { globalPermissions: [], recipientReadStatus: 403 },
       ready: (page) =>
         mainDialog(page).getByText(
           "Access settings aren't available for your account.",
@@ -729,10 +1044,10 @@ async function readOnlyAndUnavailable() {
         (await switches.count()) === 0 && !hasGrantForm,
       );
     }
-    if (name === "no grant capability") {
+    if (name !== "read-only") {
       check(
-        `${name}: no recipient reads`,
-        w.since(0, "recipient-read").length === 0,
+        `${name}: one inventory read for this dataset, no other route`,
+        onlyThisDataset(inventoryReads(w)) && w.unexpected.length === 0,
       );
     }
     check(`${name}: nothing sent`, w.since(0, "mutation").length === 0);
@@ -865,7 +1180,7 @@ async function narrowLayout() {
   await context.close();
 
   step("grant-only at 390");
-  w = world({ globalPermissions: GRANT_ONLY });
+  w = world({ globalPermissions: GRANT_ONLY, recipientReadStatus: 403 });
   ({ context, page } = await openContext(browser, w, {
     baseUrl,
     viewport: NARROW,
@@ -958,7 +1273,7 @@ const presentationGeometry = (page) =>
         return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
       };
       const caption = [...dialog.querySelectorAll("p")].find((p) =>
-        p.textContent?.startsWith("Showing groups you can view."),
+        p.textContent?.startsWith("Group permissions for this dataset."),
       );
       const columns = caption?.nextElementSibling;
       const nameSpan = (name) =>
@@ -1009,8 +1324,9 @@ async function presentationChecks(viewport) {
   step(`caption, Everyone badge and long name at ${tag}`);
   const g = await presentationGeometry(page);
   check(
-    `${tag}: “Showing groups you can view.” is shown once`,
-    (await dialog.getByText("Showing groups you can view.").count()) === 1 &&
+    `${tag}: “Group permissions for this dataset.” is shown once`,
+    (await dialog.getByText("Group permissions for this dataset.").count()) ===
+      1 &&
       (await dialog
         .getByText("Other users or groups", { exact: false })
         .count()) === 0,
@@ -1277,7 +1593,11 @@ async function presentationChecks(viewport) {
 
 async function grantOnlyFeedback() {
   step("grant-only held and acknowledged result at 390");
-  const w = world({ globalPermissions: GRANT_ONLY, mutation: "hold" });
+  const w = world({
+    globalPermissions: GRANT_ONLY,
+    mutation: "hold",
+    recipientReadStatus: 403,
+  });
   const { context, page } = await openContext(browser, w, {
     baseUrl,
     viewport: NARROW,
@@ -1364,6 +1684,8 @@ async function main() {
     ["details full editor", fullEditorJourney],
     ["lost response and account switch", lostResponseAndAccounts],
     ["dataset-context manager grant-only", datasetContextManager],
+    ["dataset manager editor at 1440", () => datasetManagerEditor(DESKTOP)],
+    ["dataset manager editor at 390", () => datasetManagerEditor(NARROW)],
     ["grant-only and Everyone confirmation", grantOnlyEveryone],
     ["ambiguous Everyone", ambiguousEveryone],
     ["read-only and unavailable", readOnlyAndUnavailable],

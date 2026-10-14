@@ -10,7 +10,7 @@ import {
   RefreshCcw,
   Share,
 } from "lucide-react";
-import { getDisplayCategory } from "@/config/collectionConstants";
+import { getDisplayCollectionLabel } from "@/config/collectionConstants";
 import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
 import type { DatasetUnion } from "@/types/datasets";
 import { Button } from "../Button";
@@ -67,12 +67,9 @@ export default function SelectedDatasetItem({
   const _displayTags =
     "tags" in dataset && Array.isArray(dataset.tags) ? dataset.tags : [];
 
-  const hasDatasetCollections = hasCollections(dataset);
-  const categoryFallback =
-    "category" in dataset && dataset.category ? String(dataset.category) : "";
-  const displayCategory = hasDatasetCollections
-    ? getDisplayCategory(dataset.collections, categoryFallback)
-    : categoryFallback;
+  const displayCollection = hasCollections(dataset)
+    ? getDisplayCollectionLabel(dataset.collections)
+    : "";
 
   const permissions =
     "permissions" in dataset ? dataset.permissions : undefined;
@@ -155,11 +152,11 @@ export default function SelectedDatasetItem({
           </Tooltip>
         </div>
 
-        {(displayCategory || displayAccess) && (
+        {(displayCollection || displayAccess) && (
           <div className="flex items-center gap-1 mb-2">
-            {displayCategory && (
+            {displayCollection && (
               <Chip color="info" variant="outline" size="sm">
-                {displayCategory}
+                {displayCollection}
               </Chip>
             )}
             {displayAccess && (
