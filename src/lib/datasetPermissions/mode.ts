@@ -17,12 +17,17 @@
  *    grant-only form is a deliberate presentation for a *confirmed* policy, and
  *    a broken read is not a policy;
  *  - **it never treats the adapter's `not-supported` as policy on its own.**
- *    `gateway.readGroupDatasetGrants` maps HTTP 403 to
+ *    `gateway.readDatasetGroupGrants` maps HTTP 403 to
  *    `{ kind: "unknown", reason: "not-supported" }`, which is the right thing
- *    for that layer to say about one response. Only a *complete* global
- *    permission read deciding `lookupRecipients` to `not-permitted` confirms
- *    the restriction here. See `model.decideAction` and the
- *    `ContextGrantsDatasetGroupOther` trace in `gateway.ts`.
+ *    for that layer to say about one response. Only complete global *and*
+ *    dataset-context evidence deciding `lookupRecipients` to `not-permitted`
+ *    confirms the restriction here; a positive or unknown capability with a
+ *    403 is an unresolved mismatch. See `model.decideAction` and the
+ *    `ContextGrantsDataset` trace in `gateway.ts`.
+ *
+ * A successful recipient read is direct evidence on its own: it selects the
+ * full editor even when the capability reads failed, and it never grants a
+ * write — grant and revoke stay gated by their own decisions.
  */
 
 import type {
@@ -137,8 +142,8 @@ export function selectAccessMode(
     );
   }
 
-  // From here the restriction is confirmed by a complete global read: this
-  // caller may not look up who already has access. That is the one state the
+  // From here the restriction is confirmed by complete global and dataset
+  // evidence: this caller may not look up who already has access. That is the one state the
   // grant-only presentation exists for.
   if (capabilities.grant !== "allowed") {
     return unavailable("no-grant-capability");

@@ -6,6 +6,7 @@ import {
   EVERYONE_GROUP_ID,
   RESEARCH_GROUP_ID,
   SECOND_GROUP_ID,
+  UNDISCOVERED_GROUP_ID,
 } from "@/lib/datasetPermissions/fixtures";
 import { DatasetAccessView } from "./DatasetAccessView";
 import {
@@ -15,6 +16,7 @@ import {
   DISCOVERED_GROUPS,
   DUPLICATE_EVERYONE_GROUP,
   EVERYONE_AMBIGUOUS,
+  GRANTS_WITH_UNDISCOVERED_HOLDER,
   KNOWN_GRANTS,
   LONG_GROUP_NAME,
   operation,
@@ -22,7 +24,17 @@ import {
   RECIPIENTS_UNSUPPORTED,
   UNKNOWN_CAPABILITIES,
 } from "./fixtures";
-import type { DatasetAccessViewProps } from "./types";
+import type { DatasetAccessViewProps, DatasetInventoryStatus } from "./types";
+
+const inventoryStatus = (
+  overrides: Partial<DatasetInventoryStatus> = {},
+): DatasetInventoryStatus => ({
+  freshness: "current",
+  staleReason: null,
+  revision: 1,
+  confirmedOperationIds: new Set(),
+  ...overrides,
+});
 
 const renderView = (overrides: Partial<DatasetAccessViewProps> = {}) => {
   const props = baseProps(overrides);
@@ -89,7 +101,7 @@ describe("DatasetAccessView — displayed states", () => {
       },
     });
     expect(
-      screen.getByText(/couldn't load existing permissions/i),
+      screen.getByRole("heading", { name: "Couldn't load group permissions" }),
     ).toBeVisible();
     // Missing information is not an empty result.
     expect(screen.queryByText(/nobody|no one|no permissions/i)).toBeNull();
@@ -108,28 +120,34 @@ describe("DatasetAccessView — displayed states", () => {
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
   });
 
-  it("distinguishes an empty discovery from an absence of access", () => {
+  it("says an explicit empty inventory assigns no group permissions, and no more", () => {
     renderView({
       reads: {
         status: "settled",
-        groups: { kind: "read", groups: [] },
+        groups: { kind: "read", groups: DISCOVERED_GROUPS },
         recipients: { kind: "known", grants: [] },
       },
     });
     expect(
-      screen.getByText("No groups are available to your account."),
+      screen.getByText("No group permissions assigned."),
     ).toBeInTheDocument();
-    // The empty discovery is still framed as the caller's view, not the world.
-    expect(
-      screen.getByText("Showing groups you can view."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/nobody|no one/i)).toBeNull();
+    // Discoverable groups stay as unassigned targets.
+    expect(screen.getAllByRole("switch")).toHaveLength(
+      DISCOVERED_GROUPS.length * 6,
+    );
+    // Not a claim that nobody has access or that the dataset is private.
+    expect(screen.queryByText(/nobody|no one|private/i)).toBeNull();
   });
 
-  it("does not claim the group list enumerates everyone with access", () => {
+  it("does not show the empty-inventory message when groups hold roles", () => {
+    renderView();
+    expect(screen.queryByText("No group permissions assigned.")).toBeNull();
+  });
+
+  it("captions the list as this dataset's group permissions", () => {
     renderView();
     // Under its heading, before the first group, rather than after the list.
-    const caption = screen.getByText("Showing groups you can view.");
+    const caption = screen.getByText("Group permissions for this dataset.");
     const heading = screen.getByRole("heading", { name: "Group permissions" });
     const firstSwitch = screen.getAllByRole("switch")[0];
     expect(
@@ -907,7 +925,9 @@ describe("DatasetAccessView — when neither presentation is offered", () => {
       },
     });
 
-    expect(screen.getByText(/access settings unavailable/i)).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Couldn't load group permissions" }),
+    ).toBeVisible();
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
     expect(screen.queryByLabelText("Group")).toBeNull();
   });
@@ -928,7 +948,7 @@ describe("DatasetAccessView — when neither presentation is offered", () => {
     });
 
     expect(
-      screen.getByText(/couldn't load existing permissions/i),
+      screen.getByRole("heading", { name: "Couldn't load group permissions" }),
     ).toBeVisible();
     // An unexpected refusal is not worded as the account's policy.
     expect(screen.queryByText(/don't have permission/i)).toBeNull();
@@ -949,17 +969,358 @@ describe("DatasetAccessView — when neither presentation is offered", () => {
   });
 });
 
-describe("DatasetAccessView — reconciliation", () => {
-  it("says a re-check failed without moving anything", () => {
+describe("DatasetAccessView — inventory freshness", () => {
+  it("says a change is saved but unconfirmed, without moving anything", () => {
+    const onRoleChange = vi.fn();
     renderView({
-      reconciliationFailed: true,
+      inventory: inventoryStatus({
+        freshness: "stale",
+        staleReason: "change-unconfirmed",
+      }),
+      onRefreshAccess: vi.fn(),
+      onRoleChange,
       operations: [operation({ status: "acknowledged" })],
     });
 
     expect(
-      screen.getByText(/couldn't refresh the permissions list/i),
-    ).toHaveTextContent(/your change was applied/i);
+      screen.getByText("Change saved. Current access couldn't be refreshed."),
+    ).toBeVisible();
     expect(switchFor(RESEARCH, "Edit")).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("holds every change while the inventory is stale", () => {
+    const onRoleChange = vi.fn();
+    renderView({
+      inventory: inventoryStatus({
+        freshness: "stale",
+        staleReason: "refresh-failed",
+      }),
+      onRefreshAccess: vi.fn(),
+      onRoleChange,
+    });
+
+    expect(
+      screen.getByText("Couldn't refresh group permissions."),
+    ).toBeVisible();
+    for (const control of screen.getAllByRole("switch")) {
+      expect(control).toHaveAttribute("aria-disabled", "true");
+    }
+    fireEvent.click(switchFor(RESEARCH, "Edit"));
+    expect(onRoleChange).not.toHaveBeenCalled();
+  });
+
+  it("holds every change while the inventory is being read again", () => {
+    const onRoleChange = vi.fn();
+    renderView({
+      inventory: inventoryStatus({ freshness: "refreshing" }),
+      onRoleChange,
+    });
+
+    expect(screen.getByText("Refreshing group permissions…")).toBeVisible();
+    // Last-known roles stay on screen as they were.
+    expect(switchFor(RESEARCH, "Browse")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    for (const control of screen.getAllByRole("switch")) {
+      expect(control).toHaveAttribute("aria-disabled", "true");
+    }
+    fireEvent.click(switchFor(RESEARCH, "Edit"));
+    expect(onRoleChange).not.toHaveBeenCalled();
+  });
+
+  it("offers Refresh access only where reading again can help", () => {
+    const onRefreshAccess = vi.fn();
+    const { rerenderWith } = renderView({ onRefreshAccess });
+    // Current inventory: nothing to refresh.
+    expect(screen.queryByRole("button", { name: "Refresh access" })).toBeNull();
+
+    rerenderWith({
+      inventory: inventoryStatus({
+        freshness: "stale",
+        staleReason: "refresh-failed",
+      }),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Refresh access" }));
+    expect(onRefreshAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps Refresh access focusable but inert while its own read runs", async () => {
+    const user = userEvent.setup();
+    const onRefreshAccess = vi.fn();
+    const { rerenderWith } = renderView({
+      reads: {
+        status: "settled",
+        groups: { kind: "read", groups: DISCOVERED_GROUPS },
+        recipients: { kind: "failed" },
+      },
+      onRefreshAccess,
+    });
+
+    const refresh = screen.getByRole("button", { name: "Refresh access" });
+    await user.click(refresh);
+    expect(onRefreshAccess).toHaveBeenCalledTimes(1);
+
+    rerenderWith({ inventory: inventoryStatus({ freshness: "refreshing" }) });
+    const held = screen.getByRole("button", { name: "Refresh access" });
+    expect(held).toHaveFocus();
+    expect(held).toHaveAttribute("aria-disabled", "true");
+    await user.keyboard("{Enter}");
+    expect(onRefreshAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no Refresh access action without a refresh handler", () => {
+    renderView({
+      reads: {
+        status: "settled",
+        groups: { kind: "read", groups: DISCOVERED_GROUPS },
+        recipients: { kind: "failed" },
+      },
+    });
+    expect(screen.queryByRole("button", { name: "Refresh access" })).toBeNull();
+  });
+
+  it("drops an open confirmation when a newer inventory replaces the one it was raised on", () => {
+    const onRoleChange = vi.fn();
+    const { rerenderWith } = renderView({
+      inventory: inventoryStatus({ revision: 1 }),
+      onRoleChange,
+    });
+    fireEvent.click(switchFor(RESEARCH, "Manage"));
+    expect(screen.getByRole("button", { name: /grant manage/i })).toBeVisible();
+
+    rerenderWith({ inventory: inventoryStatus({ revision: 2 }), onRoleChange });
+
+    expect(screen.queryByRole("button", { name: /grant manage/i })).toBeNull();
+    expect(onRoleChange).not.toHaveBeenCalled();
+  });
+
+  it("drops an open confirmation when group details are lost", () => {
+    const onRoleChange = vi.fn();
+    const { rerenderWith } = renderView({ onRoleChange });
+    fireEvent.click(switchFor(RESEARCH, "Browse"));
+    expect(
+      screen.getByRole("button", { name: /remove browse/i }),
+    ).toBeVisible();
+
+    rerenderWith({
+      reads: {
+        status: "settled",
+        groups: { kind: "failed" },
+        recipients: { kind: "known", grants: [...KNOWN_GRANTS] },
+      },
+      onRoleChange,
+    });
+
+    expect(screen.queryByRole("button", { name: /remove browse/i })).toBeNull();
+    expect(onRoleChange).not.toHaveBeenCalled();
+  });
+
+  it("draws a confirmed change from the read, not from its acknowledgement", () => {
+    renderView({
+      operations: [operation({ operationId: "ack", status: "acknowledged" })],
+      inventory: inventoryStatus({ confirmedOperationIds: new Set(["ack"]) }),
+    });
+    // The newer read no longer shows Edit; once confirmed, the read wins.
+    expect(switchFor(RESEARCH, "Edit")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  });
+});
+
+describe("DatasetAccessView — the empty message agrees with what is shown", () => {
+  const EMPTY_MESSAGE = "No group permissions assigned.";
+  const emptySnapshot = {
+    status: "settled",
+    groups: { kind: "read", groups: DISCOVERED_GROUPS },
+    recipients: { kind: "known", grants: [] },
+  } as const;
+  const firstGrant = operation({
+    operationId: "first",
+    status: "acknowledged",
+  });
+
+  it.each([
+    [
+      "the read after it is still running",
+      inventoryStatus({ freshness: "refreshing" }),
+    ],
+    [
+      "the read after it failed",
+      inventoryStatus({
+        freshness: "stale",
+        staleReason: "change-unconfirmed",
+      }),
+    ],
+    [
+      "the read after it came back empty",
+      // A contradicting read replaces the snapshot with an empty one and
+      // leaves the acknowledgement unconfirmed.
+      inventoryStatus({
+        freshness: "stale",
+        staleReason: "change-unconfirmed",
+        revision: 2,
+      }),
+    ],
+  ])("is not shown beside an acknowledged first grant while %s", (_l, inv) => {
+    renderView({
+      reads: emptySnapshot,
+      operations: [firstGrant],
+      inventory: inv,
+    });
+    expect(switchFor(RESEARCH, "Edit")).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+  });
+
+  it("is not shown for an empty snapshot that is being re-read", () => {
+    renderView({
+      reads: emptySnapshot,
+      inventory: inventoryStatus({ freshness: "refreshing" }),
+    });
+    expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+  });
+
+  it("is not shown for an empty snapshot that could not be refreshed", () => {
+    renderView({
+      reads: emptySnapshot,
+      inventory: inventoryStatus({
+        freshness: "stale",
+        staleReason: "refresh-failed",
+      }),
+    });
+    expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+  });
+
+  it("is shown for a current, genuinely empty inventory", () => {
+    renderView({ reads: emptySnapshot });
+    expect(screen.getByText(EMPTY_MESSAGE)).toBeVisible();
+  });
+
+  it("is not shown once the first grant is confirmed by a current read", () => {
+    renderView({
+      reads: {
+        ...emptySnapshot,
+        recipients: {
+          kind: "known",
+          grants: [{ groupId: RESEARCH_GROUP_ID, role: DATASET_ROLE_MAP.edit }],
+        },
+      },
+      operations: [firstGrant],
+      inventory: inventoryStatus({ confirmedOperationIds: new Set(["first"]) }),
+    });
+    expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+  });
+
+  it("returns when a current read confirms the last role was removed", () => {
+    renderView({
+      reads: emptySnapshot,
+      operations: [
+        operation({
+          operationId: "removed",
+          role: DATASET_ROLE_MAP.browse,
+          action: "remove",
+          status: "acknowledged",
+        }),
+      ],
+      inventory: inventoryStatus({
+        confirmedOperationIds: new Set(["removed"]),
+      }),
+    });
+    expect(screen.getByText(EMPTY_MESSAGE)).toBeVisible();
+  });
+
+  it("is not shown when the only holder is one discovery cannot identify", () => {
+    renderView({
+      reads: {
+        ...emptySnapshot,
+        recipients: {
+          kind: "known",
+          grants: [{ groupId: UNDISCOVERED_GROUP_ID, role: "dg_ds-curate" }],
+        },
+      },
+    });
+    expect(screen.queryByText(EMPTY_MESSAGE)).toBeNull();
+  });
+});
+
+describe("DatasetAccessView — holders and roles without a control", () => {
+  const withHolder = (overrides: Partial<DatasetAccessViewProps> = {}) =>
+    renderView({
+      reads: {
+        status: "settled",
+        groups: { kind: "read", groups: DISCOVERED_GROUPS },
+        recipients: {
+          kind: "known",
+          grants: [...GRANTS_WITH_UNDISCOVERED_HOLDER],
+        },
+      },
+      ...overrides,
+    });
+
+  it("keeps a holder discovery cannot identify, by id, with its roles, read-only", () => {
+    withHolder();
+    const item = screen
+      .getByText(`Group ${UNDISCOVERED_GROUP_ID}`)
+      .closest("li") as HTMLElement;
+
+    expect(
+      within(item).getByText("Permissions: Edit, dg_ds-curate"),
+    ).toBeVisible();
+    expect(
+      within(item).getByText(
+        "Group details unavailable. Permissions are read-only.",
+      ),
+    ).toBeVisible();
+    expect(within(item).queryAllByRole("switch")).toHaveLength(0);
+    expect(within(item).queryAllByRole("button")).toHaveLength(0);
+    // No audience is guessed for it.
+    expect(within(item).queryByText("All DataGEMS users")).toBeNull();
+  });
+
+  it("finds a holder by its id in search", async () => {
+    const user = userEvent.setup();
+    withHolder();
+    await user.type(
+      screen.getByRole("textbox", { name: "Search groups" }),
+      UNDISCOVERED_GROUP_ID.slice(0, 8),
+    );
+    expect(screen.getByText(`Group ${UNDISCOVERED_GROUP_ID}`)).toBeVisible();
+    expect(screen.queryByText(RESEARCH)).toBeNull();
+  });
+
+  it("names a role with no control as text on an editable row", () => {
+    withHolder();
+    const item = screen.getByText(RESEARCH).closest("li") as HTMLElement;
+    expect(
+      within(item).getByText(
+        "Other permissions: dg_ds-curate. These can't be changed here.",
+      ),
+    ).toBeVisible();
+    // The known roles keep their switches.
+    expect(within(item).getAllByRole("switch")).toHaveLength(6);
+  });
+
+  it("leaves no keyboard stop on a read-only holder", async () => {
+    const user = userEvent.setup();
+    withHolder({
+      reads: {
+        status: "settled",
+        groups: { kind: "failed" },
+        recipients: {
+          kind: "known",
+          grants: [...GRANTS_WITH_UNDISCOVERED_HOLDER],
+        },
+      },
+    });
+
+    // Search, then Done: nothing in between, because nothing there can act.
+    await user.tab();
+    expect(
+      screen.getByRole("textbox", { name: "Search groups" }),
+    ).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
   });
 });
 

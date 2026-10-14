@@ -50,4 +50,29 @@ describe("DatasetCard", () => {
 
     expect(toggleFavorite).toHaveBeenCalledWith("1");
   });
+
+  it("shows no collection chip from the internal category when there is no collection", () => {
+    render(<DatasetCard {...defaultProps} />);
+    expect(screen.queryByText("Math")).toBeNull();
+  });
+
+  it("shows genuine collection names, including Math", () => {
+    render(
+      <DatasetCard
+        {...defaultProps}
+        dataset={{
+          ...mockDataset,
+          category: "Weather",
+          collections: [
+            { id: "c1", name: "Meteo Collection", code: "meteo" },
+            { id: "c2", name: "Math", code: "math" },
+            { id: "c3", name: "", code: "blank" },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("Meteo")).toBeInTheDocument();
+    expect(screen.getByText("Math")).toBeInTheDocument();
+    expect(screen.queryByText("Weather")).toBeNull();
+  });
 });

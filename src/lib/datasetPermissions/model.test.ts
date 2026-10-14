@@ -32,12 +32,13 @@ import type {
 
 const GRANT = "AddUserToContextGrantGroup";
 const REVOKE = "RemoveUserFromContextGrantGroup";
-const LOOKUP = "LookupContextGrantOther";
+/** Gateway #98's lookup, at dg-app-api `71fb7dfa`. Not `LookupContextGrantOther`. */
+const LOOKUP = "LookupDatasetContextGrants";
 
 /** What the adapter's dataset projection asks for. See `gateway.ts`. */
-const ACTION_PROJECTION = [GRANT, REVOKE];
+const ACTION_PROJECTION = [GRANT, REVOKE, LOOKUP];
 
-/** A completed dataset-scoped read of the two action names. */
+/** A completed dataset-scoped read of the three action names. */
 const datasetActions = (names: readonly string[]) =>
   projectedPermissionsRead(names, ACTION_PROJECTION);
 
@@ -117,9 +118,7 @@ describe("decideAction", () => {
 
     expect(decideAction("grant", evidence)).toBe("allowed");
     expect(decideAction("revoke", evidence)).toBe("not-permitted");
-    // The dataset projection never asks about the lookup permission — it is
-    // checked globally with no affiliated-context alternative — so an
-    // exhaustive global read is on its own enough to settle it.
+    // Both reads covered the lookup name and neither holds it.
     expect(decideAction("lookupRecipients", evidence)).toBe("not-permitted");
 
     const withAll = {
@@ -128,6 +127,42 @@ describe("decideAction", () => {
     };
     expect(decideAction("revoke", withAll)).toBe("allowed");
     expect(decideAction("lookupRecipients", withAll)).toBe("allowed");
+  });
+
+  it("decides the dataset recipient lookup from either source, like a write", () => {
+    // A dataset manager: no global lookup, `dg_ds-manage` carries it here.
+    expect(
+      decideAction("lookupRecipients", {
+        global: exhaustivePermissionsRead([]),
+        datasetContext: datasetActions(["lookupdatasetcontextgrants"]),
+      }),
+    ).toBe("allowed");
+
+    // A complete global negative is not enough on its own any more: the
+    // dataset context could still carry it.
+    expect(
+      decideAction("lookupRecipients", {
+        global: exhaustivePermissionsRead([GRANT]),
+        datasetContext: PERMISSIONS_NOT_READ,
+      }),
+    ).toBe("unknown");
+
+    // A projection that never asked about the lookup is silent about it.
+    expect(
+      decideAction("lookupRecipients", {
+        global: exhaustivePermissionsRead([]),
+        datasetContext: projectedPermissionsRead([], [GRANT, REVOKE]),
+      }),
+    ).toBe("unknown");
+  });
+
+  it("does not treat the obsolete global-only lookup as the dataset lookup", () => {
+    expect(
+      decideAction("lookupRecipients", {
+        global: exhaustivePermissionsRead(["LookupContextGrantOther"]),
+        datasetContext: datasetActions([]),
+      }),
+    ).toBe("not-permitted");
   });
 
   it("only allows a mutation attempt on an explicit allowed decision", () => {

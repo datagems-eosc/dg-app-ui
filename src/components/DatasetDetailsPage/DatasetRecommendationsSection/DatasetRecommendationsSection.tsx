@@ -4,7 +4,7 @@ import { Chip } from "@ui/Chip";
 import FormattedText from "@ui/FormattedText";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getDisplayCategory } from "@/config/collectionConstants";
+import { getDisplayCollectionLabel } from "@/config/collectionConstants";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { mapApiDatasetToDataset } from "@/lib/datasetMapping";
@@ -60,64 +60,83 @@ export default function DatasetRecommendationsSection({
         Recommended datasets
       </h3>
       <div className={styles.datasetRecommendationsSection__grid}>
-        {recommendations.map((dataset) => (
-          <div
-            key={dataset.id}
-            className={styles.datasetRecommendationsSection__card}
-            onClick={() => handleCardClick(dataset)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleCardClick(dataset);
-              }
-            }}
-            aria-label={`View details for ${dataset.title}`}
-          >
-            <div className={styles.datasetRecommendationsSection__cardContent}>
-              <div className={styles.datasetRecommendationsSection__cardHeader}>
-                <h4 className={styles.datasetRecommendationsSection__cardTitle}>
-                  {dataset.title}
-                </h4>
+        {recommendations.map((dataset) => {
+          const collectionLabel = getDisplayCollectionLabel(
+            dataset.collections,
+          );
+          return (
+            <div
+              key={dataset.id}
+              className={styles.datasetRecommendationsSection__card}
+              onClick={() => handleCardClick(dataset)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleCardClick(dataset);
+                }
+              }}
+              aria-label={`View details for ${dataset.title}`}
+            >
+              <div
+                className={styles.datasetRecommendationsSection__cardContent}
+              >
                 <div
-                  className={styles.datasetRecommendationsSection__cardChips}
+                  className={styles.datasetRecommendationsSection__cardHeader}
                 >
-                  <Chip color="info" variant="outline" size="sm">
-                    {getDisplayCategory(dataset.collections, dataset.category)}
-                  </Chip>
-                  {/*
-                    PM-01 finding F1. `Dataset.access` is optional, and this
-                    chip used to render it unguarded: a dataset with no
-                    publication evidence produced an empty chip coloured as a
-                    warning, which reads as "Restricted" without ever saying
-                    so. Recommendations carry no publication evidence at all
-                    now that the mapper no longer infers it from the caller's
-                    Browse permission, so the honest rendering is no badge —
-                    the card still shows what it does know.
-                  */}
-                  {dataset.access !== undefined && (
-                    <Chip
-                      color={
-                        dataset.access === "Open Access" ? "success" : "warning"
+                  <h4
+                    className={styles.datasetRecommendationsSection__cardTitle}
+                  >
+                    {dataset.title}
+                  </h4>
+                  {(collectionLabel || dataset.access !== undefined) && (
+                    <div
+                      className={
+                        styles.datasetRecommendationsSection__cardChips
                       }
-                      size="sm"
                     >
-                      {dataset.access}
-                    </Chip>
+                      {collectionLabel && (
+                        <Chip color="info" variant="outline" size="sm">
+                          {collectionLabel}
+                        </Chip>
+                      )}
+                      {/*
+                        PM-01 finding F1. `Dataset.access` is optional, and this
+                        chip used to render it unguarded: a dataset with no
+                        publication evidence produced an empty chip coloured as a
+                        warning, which reads as "Restricted" without ever saying
+                        so. Recommendations carry no publication evidence at all
+                        now that the mapper no longer infers it from the caller's
+                        Browse permission, so the honest rendering is no badge —
+                        the card still shows what it does know.
+                      */}
+                      {dataset.access !== undefined && (
+                        <Chip
+                          color={
+                            dataset.access === "Open Access"
+                              ? "success"
+                              : "warning"
+                          }
+                          size="sm"
+                        >
+                          {dataset.access}
+                        </Chip>
+                      )}
+                    </div>
                   )}
                 </div>
+                <FormattedText
+                  as="p"
+                  className={
+                    styles.datasetRecommendationsSection__cardDescription
+                  }
+                  text={dataset.description || ""}
+                />
               </div>
-              <FormattedText
-                as="p"
-                className={
-                  styles.datasetRecommendationsSection__cardDescription
-                }
-                text={dataset.description || ""}
-              />
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

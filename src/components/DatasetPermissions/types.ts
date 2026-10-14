@@ -20,6 +20,10 @@ import type {
   DatasetRoleOperationState,
 } from "@/hooks/useDatasetPermissions";
 import type {
+  InventoryFreshness,
+  InventoryStaleReason,
+} from "@/hooks/useDatasetPermissionsAccess";
+import type {
   AccessCapabilities,
   DatasetAccessMode,
 } from "@/lib/datasetPermissions/mode";
@@ -70,6 +74,27 @@ export type DatasetAccessReads =
       readonly groups: GroupDiscoveryState;
       readonly recipients: RecipientGrantsState;
     };
+
+/**
+ * How far the inventory on screen can be relied on, from the read owner. See
+ * `useDatasetPermissionsAccess` for the rules; the view only words them.
+ */
+export interface DatasetInventoryStatus {
+  readonly freshness: InventoryFreshness;
+  readonly staleReason: InventoryStaleReason | null;
+  /** Changes when a newer read replaces the snapshot. */
+  readonly revision: number;
+  /** Acknowledged changes a later read has matched. */
+  readonly confirmedOperationIds: ReadonlySet<string>;
+}
+
+/** The inventory status of a view with nothing refreshed or awaited. */
+export const CURRENT_INVENTORY: DatasetInventoryStatus = {
+  freshness: "current",
+  staleReason: null,
+  revision: 0,
+  confirmedOperationIds: new Set(),
+};
 
 /**
  * What the caller may do, per action, as `model.decideAction` decided it.
@@ -127,7 +152,19 @@ export interface GroupAccessRow {
    * New assignments to it are unavailable; it is never an ordinary target.
    */
   readonly ambiguousAudience: boolean;
+  /**
+   * `true` for a group the inventory names but group discovery could not
+   * identify. Its returned roles are shown and nothing about it can be
+   * changed: without its details there is no name, no Everyone check and no
+   * verified mutation target.
+   */
+  readonly readOnly: boolean;
   readonly cells: readonly RoleCell[];
+  /**
+   * Roles the inventory returned that this UI has no control for, exactly as
+   * returned. Shown as text, never mapped to a switch.
+   */
+  readonly otherRoles: readonly string[];
 }
 
 /**
@@ -146,7 +183,11 @@ export type ControlBlock =
   | "capability-unknown"
   | "in-flight"
   | "uncertain-outcome"
-  | "ambiguous-audience";
+  | "ambiguous-audience"
+  /** The inventory is being read again; changes wait for the newer answer. */
+  | "inventory-refreshing"
+  /** The inventory could not be confirmed; changes wait for a successful read. */
+  | "inventory-stale";
 
 /** One change awaiting the user's explicit confirmation. Never auto-confirmed. */
 export interface PendingConfirmation {
@@ -205,10 +246,16 @@ export interface DatasetAccessViewProps {
   /** `false` when the operation journal cannot be written. Nothing may be sent. */
   readonly storageAvailable: boolean;
   /**
-   * `true` when a read-after-write re-check did not complete. It is a notice,
-   * never a state change: no row moves and no acknowledged outcome is undone.
+   * Freshness of the inventory, and which acknowledged changes a later read
+   * has confirmed. Omitted, the inventory is treated as current with nothing
+   * confirmed — every acknowledged change is then drawn from its outcome.
    */
-  readonly reconciliationFailed?: boolean;
+  readonly inventory?: DatasetInventoryStatus;
+  /**
+   * Read the inventory again (one GET). Offered after a failed or stale read;
+   * omitted, no Refresh access action is shown.
+   */
+  readonly onRefreshAccess?: () => void;
   readonly canAttempt: (
     groupId: string,
     role: string,

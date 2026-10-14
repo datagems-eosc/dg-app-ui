@@ -23,23 +23,29 @@
  *    `Extensions.ReduceToAssignedPermissions`: the requested names reduced
  *    against the caller's effective context roles for that exact dataset.
  *  - `POST /user/group/query` — `UserController.Query`, `UserGroupBuilder`.
- *  - `GET /principal/group/{groupId}/context-grants/dataset?id=…` —
- *    `PrincipalController.ContextGrantsDatasetGroupOther`, gated on the global
- *    `LookupContextGrantOther` permission.
  *  - `POST`/`DELETE /principal/context-grants/group/{groupId}/dataset/{datasetId}/role/{role}`
  *    — `PrincipalController.AddUserGroupToDatasetContextGrant` and
  *    `RemoveUserGroupFromDatasetContextGrant`.
  *
- * No endpoint is invented here. In particular there is no call that reads
- * "every group holding a role on this dataset": the Gateway has no such route,
- * and recipient knowledge is available only one group at a time and only to a
- * caller holding the global lookup permission.
+ * The recipient read was added with Gateway #98 and is pinned separately, at
+ * dg-app-api `71fb7dfa474041cede287a9733d3d14a3b5fabc0`, also from source:
+ *
+ *  - `GET /principal/context-grants/dataset?id=<datasetId>` —
+ *    `PrincipalController.ContextGrantsDataset`, authorized by
+ *    `LookupDatasetContextGrants` globally or through this dataset's context.
+ *    It returns every group's direct roles on the dataset in one response.
+ *
+ * The older per-group route (`/principal/group/{groupId}/context-grants/…`,
+ * global `LookupContextGrantOther` only) is deliberately not called: it is an
+ * administrator-only route, one request per group, and it cannot see a holder
+ * that group discovery does not return. Falling back to it on an error would
+ * hide exactly the deployment or authorization fault that error reports.
  */
 
 import type { AuthRetryPolicy } from "@/lib/utils";
 import { decodeCallerPermissions } from "./decode";
 import {
-  decodeGroupDatasetGrants,
+  decodeDatasetGroupGrants,
   decodeUserGroups,
   GROUP_PROJECTION,
 } from "./groups";
@@ -105,9 +111,11 @@ export interface DatasetPermissionsGateway {
   ): Promise<PermissionsReadResult>;
   /** Groups visible to this caller, projected with their semantics. */
   queryGroups(signal?: AbortSignal): Promise<GroupsReadResult>;
-  /** One group's roles on one dataset. Gated; a refusal stays unavailable. */
-  readGroupDatasetGrants(
-    groupId: string,
+  /**
+   * Every group's direct roles on one dataset, in one request. A refusal stays
+   * unavailable; whether it is policy is decided from capability evidence.
+   */
+  readDatasetGroupGrants(
     datasetId: string,
     signal?: AbortSignal,
   ): Promise<RecipientReadResult>;
@@ -131,13 +139,15 @@ export interface DatasetPermissionsGateway {
  * *spelling* is not, as PM-01 found with `downloadDataset`. These come from
  * `ACCESS_ACTION_NAMES`, which comes from `Authorization/Permission.cs`.
  *
- * `lookupRecipients` is deliberately absent: it is a global permission checked
- * by `AuthorizeForce`, not by affiliated context, so projecting it per dataset
- * would ask a question the endpoint cannot answer.
+ * `lookupRecipients` is projected too. `LookupDatasetContextGrants` is granted
+ * by the dataset context role `dg_ds-manage` as well as globally, so this
+ * projection is half of the evidence for it — and, because it is requested,
+ * its absence here is a real negative for this dataset's context.
  */
 export const DATASET_ACTION_PERMISSION_NAMES: readonly string[] = [
   ACCESS_ACTION_NAMES.grant,
   ACCESS_ACTION_NAMES.revoke,
+  ACCESS_ACTION_NAMES.lookupRecipients,
 ];
 
 /**
@@ -455,18 +465,22 @@ export const createDatasetPermissionsGateway = (
       };
     },
 
-    async readGroupDatasetGrants(groupId, datasetId, signal) {
+    async readDatasetGroupGrants(datasetId, signal) {
+      // Exactly one id. The route accepts several, but a multi-id answer may
+      // silently leave out a dataset the caller cannot manage.
       const result = await readJson(
-        `/principal/group/${encodeURIComponent(groupId)}/context-grants/dataset` +
-          `?id=${encodeURIComponent(datasetId)}`,
+        `/principal/context-grants/dataset?id=${encodeURIComponent(datasetId)}`,
         signal,
       );
 
       if (!result.ok) {
-        // A 403 here is the *ordinary manager* case, not a broken read: the
-        // endpoint requires the global `LookupContextGrantOther` permission.
-        // It must stay "unknown, not supported", so no view can draw it as an
-        // empty recipient list.
+        // 403 is what the route returns when no requested dataset is eligible
+        // for this caller. It stays "unknown, not supported", so no view can
+        // draw it as an empty list; `mode.selectAccessMode` decides from the
+        // capability evidence whether it is the confirmed restriction or an
+        // unexpected refusal. 401 after the read's own refresh, 404, 405,
+        // timeouts and 5xx are all simply failed: never empty, and never a
+        // reason to try another route.
         if (result.failure.kind === "forbidden") {
           return {
             state: { kind: "unknown", reason: "not-supported" },
@@ -476,10 +490,7 @@ export const createDatasetPermissionsGateway = (
         return { state: { kind: "failed" }, failure: result.failure };
       }
 
-      const decoded = decodeGroupDatasetGrants(result.body, {
-        groupId,
-        datasetId,
-      });
+      const decoded = decodeDatasetGroupGrants(result.body, datasetId);
       if (!decoded.ok) {
         return {
           state: { kind: "failed" },

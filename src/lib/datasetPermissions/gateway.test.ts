@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   currentAdminAccountPayload,
-  currentAdminGroupGrantsPayload,
   currentGroupQueryPayload,
   currentManagerAccountPayload,
   DATASET_ID,
   datasetActionsAbsentPayload,
   datasetActionsDeniedPayload,
   datasetActionsGrantedPayload,
-  deniedManagerRecipientReadStatus,
+  datasetGrantsEmptyPayload,
+  datasetGrantsPayload,
+  datasetGrantsUnusablePayloads,
+  datasetManagerActionsPayload,
+  deniedRecipientReadStatus,
+  EVERYONE_GROUP_ID,
   RESEARCH_GROUP_ID,
 } from "./fixtures";
 import { createDatasetPermissionsGateway } from "./gateway";
@@ -98,7 +102,8 @@ describe("read contracts", () => {
 
     expect(calls[0].path).toBe(
       `/dataset/${DATASET_ID}?f=id&f=permissions.addUserToContextGrantGroup` +
-        "&f=permissions.removeUserFromContextGrantGroup",
+        "&f=permissions.removeUserFromContextGrantGroup" +
+        "&f=permissions.lookupDatasetContextGrants",
     );
     // The requested set travels with the evidence: that is the F3 fix.
     expect(result.evidence).toEqual({
@@ -109,9 +114,44 @@ describe("read contracts", () => {
         requested: [
           "AddUserToContextGrantGroup",
           "RemoveUserFromContextGrantGroup",
+          "LookupDatasetContextGrants",
         ],
       },
     });
+  });
+
+  it("lets a dataset manager's projection support the recipient lookup", async () => {
+    const dataset = await createDatasetPermissionsGateway(
+      recorder(() => jsonResponse(datasetManagerActionsPayload)).request,
+    ).readDatasetActionPermissions(DATASET_ID);
+    const global = await createDatasetPermissionsGateway(
+      recorder(() => jsonResponse(currentManagerAccountPayload)).request,
+    ).readGlobalPermissions();
+
+    // No global lookup permission at all, and the manager may still read.
+    expect(
+      decideAction("lookupRecipients", {
+        global: global.evidence,
+        datasetContext: dataset.evidence,
+      }),
+    ).toBe("allowed");
+  });
+
+  it("does not count the obsolete global-only lookup as the new one", async () => {
+    const global = await createDatasetPermissionsGateway(
+      recorder(() => jsonResponse({ permissions: ["LookupContextGrantOther"] }))
+        .request,
+    ).readGlobalPermissions();
+    const dataset = await createDatasetPermissionsGateway(
+      recorder(() => jsonResponse(datasetActionsDeniedPayload)).request,
+    ).readDatasetActionPermissions(DATASET_ID);
+
+    expect(
+      decideAction("lookupRecipients", {
+        global: global.evidence,
+        datasetContext: dataset.evidence,
+      }),
+    ).toBe("not-permitted");
   });
 
   it("supports a negative only for the names it asked about", async () => {
@@ -182,62 +222,126 @@ describe("read contracts", () => {
     expect(result.state.kind).toBe("read");
   });
 
-  it("reports a malformed recipient role array as failed, never as known", async () => {
-    // PM-C1 R3 at the adapter boundary: a present array carrying an unusable
-    // member must not reach the view as complete recipient knowledge, which it
-    // would draw as "this group holds none of these roles".
-    for (const roles of [[null], ["dg_ds-browse", 17], [""]]) {
-      const { request } = recorder(() => jsonResponse({ [DATASET_ID]: roles }));
-      const result = await createDatasetPermissionsGateway(
-        request,
-      ).readGroupDatasetGrants(RESEARCH_GROUP_ID, DATASET_ID);
-
-      expect(result.state).toEqual({ kind: "failed" });
-      expect(result.failure).toMatchObject({ kind: "malformed" });
-    }
-  });
-
-  it("keeps a valid empty recipient array as known, not failed", async () => {
-    const { request } = recorder(() => jsonResponse({ [DATASET_ID]: [] }));
-    const result = await createDatasetPermissionsGateway(
-      request,
-    ).readGroupDatasetGrants(RESEARCH_GROUP_ID, DATASET_ID);
-
-    expect(result.state).toEqual({ kind: "known", grants: [] });
-  });
-
-  it("keeps a refused recipient read unsupported rather than empty", async () => {
-    const { request } = recorder(() =>
-      statusResponse(deniedManagerRecipientReadStatus),
-    );
-    const result = await createDatasetPermissionsGateway(
-      request,
-    ).readGroupDatasetGrants(RESEARCH_GROUP_ID, DATASET_ID);
-
-    // This is the ordinary-manager case. "Not supported" is the whole point:
-    // an empty grant list here would read as "nobody has access".
-    expect(result.state).toEqual({ kind: "unknown", reason: "not-supported" });
-    expect(result.failure).toEqual({ kind: "forbidden", httpStatus: 403 });
-  });
-
-  it("reads one group's roles on one dataset when it is permitted", async () => {
+  it("reads one dataset's inventory with one encoded GET", async () => {
     const { calls, request } = recorder(() =>
-      jsonResponse(currentAdminGroupGrantsPayload),
+      jsonResponse(datasetGrantsPayload),
     );
-    const result = await createDatasetPermissionsGateway(
-      request,
-    ).readGroupDatasetGrants(RESEARCH_GROUP_ID, DATASET_ID);
+    const result =
+      await createDatasetPermissionsGateway(request).readDatasetGroupGrants(
+        DATASET_ID,
+      );
 
+    expect(calls).toHaveLength(1);
     expect(calls[0].path).toBe(
-      `/principal/group/${RESEARCH_GROUP_ID}/context-grants/dataset?id=${DATASET_ID}`,
+      `/principal/context-grants/dataset?id=${DATASET_ID}`,
     );
+    expect(calls[0].init.method).toBe("GET");
     expect(result.state).toEqual({
       kind: "known",
       grants: [
         { groupId: RESEARCH_GROUP_ID, role: "dg_ds-browse" },
         { groupId: RESEARCH_GROUP_ID, role: "dg_ds-download" },
+        { groupId: EVERYONE_GROUP_ID, role: "dg_ds-browse" },
       ],
     });
+  });
+
+  it("encodes the dataset id as one query value", async () => {
+    const { calls, request } = recorder(() => jsonResponse([]));
+    await createDatasetPermissionsGateway(request).readDatasetGroupGrants(
+      "a b&id=other",
+    );
+    expect(calls[0].path).toBe(
+      "/principal/context-grants/dataset?id=a%20b%26id%3Dother",
+    );
+  });
+
+  it("keeps an explicit empty group list as known, not failed", async () => {
+    const { request } = recorder(() => jsonResponse(datasetGrantsEmptyPayload));
+    const result =
+      await createDatasetPermissionsGateway(request).readDatasetGroupGrants(
+        DATASET_ID,
+      );
+    expect(result.state).toEqual({ kind: "known", grants: [] });
+  });
+
+  it("reports every unusable inventory as failed, never as empty", async () => {
+    for (const payload of Object.values(datasetGrantsUnusablePayloads)) {
+      const { request } = recorder(() => jsonResponse(payload));
+      const result =
+        await createDatasetPermissionsGateway(request).readDatasetGroupGrants(
+          DATASET_ID,
+        );
+      expect(result.state).toEqual({ kind: "failed" });
+      expect(result.failure).toMatchObject({ kind: "malformed" });
+    }
+  });
+
+  it("keeps a refused inventory read unsupported rather than empty", async () => {
+    const { request } = recorder(() =>
+      statusResponse(deniedRecipientReadStatus),
+    );
+    const result =
+      await createDatasetPermissionsGateway(request).readDatasetGroupGrants(
+        DATASET_ID,
+      );
+
+    // Whether this is the confirmed restriction is the mode selector's call,
+    // from capability evidence. Here it is only "not supported", never empty.
+    expect(result.state).toEqual({ kind: "unknown", reason: "not-supported" });
+    expect(result.failure).toEqual({ kind: "forbidden", httpStatus: 403 });
+  });
+
+  it.each([401, 404, 405, 500, 503])(
+    "reads a %i as failed, with no second request of any kind",
+    async (status) => {
+      const { calls, request } = recorder(() => statusResponse(status));
+      const result =
+        await createDatasetPermissionsGateway(request).readDatasetGroupGrants(
+          DATASET_ID,
+        );
+      expect(result.state).toEqual({ kind: "failed" });
+      // No per-group fallback, no retry: the one call is the whole read.
+      expect(calls).toHaveLength(1);
+    },
+  );
+
+  it("reads a lost response as failed and a cancelled one as cancelled", async () => {
+    const lost = await createDatasetPermissionsGateway(async () => {
+      throw new TypeError("Failed to fetch");
+    }).readDatasetGroupGrants(DATASET_ID);
+    expect(lost).toEqual({
+      state: { kind: "failed" },
+      failure: { kind: "transient" },
+    });
+
+    const cancelled = await createDatasetPermissionsGateway(async () => {
+      throw new DOMException("aborted", "AbortError");
+    }).readDatasetGroupGrants(DATASET_ID);
+    expect(cancelled.state).toEqual({ kind: "failed" });
+    expect(cancelled.failure).toEqual({ kind: "cancelled" });
+  });
+
+  it("passes the principal-checked refresh policy and the signal to the inventory read", async () => {
+    const { calls, request } = recorder(() =>
+      jsonResponse(datasetGrantsPayload),
+    );
+    const controller = new AbortController();
+    await createDatasetPermissionsGateway(request, {
+      expectedPrincipalId: "principal-1",
+    }).readDatasetGroupGrants(DATASET_ID, controller.signal);
+    expect(calls[0].policy).toEqual({
+      retryOn401: true,
+      expectedPrincipalId: "principal-1",
+    });
+    expect(calls[0].init.signal).toBe(controller.signal);
+  });
+
+  it("exposes no per-group recipient read at all", () => {
+    const gateway = createDatasetPermissionsGateway(
+      recorder(() => statusResponse(500)).request,
+    );
+    expect("readGroupDatasetGrants" in gateway).toBe(false);
   });
 
   it("forwards the principal-checked refresh policy to reads only when given", async () => {

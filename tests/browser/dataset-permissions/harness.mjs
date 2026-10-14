@@ -147,6 +147,11 @@ const json = (body, status = 200) => ({
  * (204, and later recipient reads reflect it), `refuse` (403), `lose` (the
  * connection is dropped after dispatch, so the outcome is unknown) or `hold`
  * (kept open until {@link World.release}).
+ *
+ * The dataset inventory (`GET /principal/context-grants/dataset?id=…`) is
+ * answered from `grants`, every group id with at least one role, whether or
+ * not discovery returns it. `recipientReadStatus` other than 200 refuses or
+ * fails it; `holdReads` keeps each read open until {@link World.releaseReads}.
  */
 export function createWorld(options) {
   const world = {
@@ -157,6 +162,7 @@ export function createWorld(options) {
     groups: [],
     grants: {},
     recipientReadStatus: 200,
+    holdReads: false,
     datasetActionPermissions: [],
     selfGrants: [],
     mutation: "ok",
@@ -165,9 +171,16 @@ export function createWorld(options) {
     unexpected: [],
     escaped: [],
     held: [],
+    heldReads: [],
     release(status = 204) {
       const pending = world.held.splice(0);
       for (const entry of pending) entry.resolve(status);
+      return pending.length;
+    },
+    /** Answer every held inventory read from the world as it is now. */
+    releaseReads() {
+      const pending = world.heldReads.splice(0);
+      for (const answer of pending) answer();
       return pending.length;
     },
     mark() {
@@ -194,8 +207,12 @@ const ENV_BODY = (baseUrl) =>
 
 const MUTATION =
   /^\/principal\/context-grants\/group\/([^/]+)\/dataset\/([^/]+)\/role\/([^/?]+)$/;
-const RECIPIENT_READ =
-  /^\/principal\/group\/([^/]+)\/context-grants\/dataset\?id=(.+)$/;
+/**
+ * The dataset-scoped inventory. The retired per-group route
+ * (`/principal/group/{id}/context-grants/dataset`) is deliberately not
+ * answered: a request to it is unexpected and fails the run.
+ */
+const INVENTORY_READ = /^\/principal\/context-grants\/dataset\?id=([^&]+)$/;
 
 async function answerGateway(route, world, datasetId, pathname) {
   const request = route.request();
@@ -236,16 +253,27 @@ async function answerGateway(route, world, datasetId, pathname) {
     }
   }
 
-  const recipient = pathname.match(RECIPIENT_READ);
-  if (recipient && method === "GET") {
+  const inventory = pathname.match(INVENTORY_READ);
+  if (inventory && method === "GET") {
     entry.kind = "recipient-read";
-    entry.group = decodeURIComponent(recipient[1]);
-    if (world.recipientReadStatus !== 200) {
-      return route.fulfill({ status: world.recipientReadStatus, body: "" });
+    entry.dataset = decodeURIComponent(inventory[1]);
+    const answer = () => {
+      if (world.recipientReadStatus !== 200) {
+        return route.fulfill({ status: world.recipientReadStatus, body: "" });
+      }
+      const userGroups = Object.entries(world.grants)
+        .filter(([, roles]) => roles.length > 0)
+        .map(([id, roles]) => ({ id, roles }));
+      return route.fulfill(
+        json([{ datasetId: entry.dataset, users: [], userGroups }]),
+      );
+    };
+    if (world.holdReads) {
+      return new Promise((resolve) => {
+        world.heldReads.push(() => resolve(answer()));
+      });
     }
-    return route.fulfill(
-      json({ [datasetId]: world.grants[entry.group] ?? [] }),
-    );
+    return answer();
   }
 
   if (method === "GET" && pathname === "/principal/me?f=permissions") {
