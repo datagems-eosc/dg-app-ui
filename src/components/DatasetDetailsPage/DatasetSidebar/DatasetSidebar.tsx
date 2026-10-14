@@ -16,7 +16,7 @@ import DatasetVisibilitySection from "./DatasetVisibilitySection";
 
 interface DatasetSidebarProps {
   dataset: DatasetPlus;
-  displayCategory: string;
+  displayCollection: string;
   sharing: DatasetSharingState;
   /** `undefined` means the permission evidence could not be read. */
   permissions: string[] | undefined;
@@ -28,7 +28,7 @@ interface DatasetSidebarProps {
 
 export default function DatasetSidebar({
   dataset,
-  displayCategory,
+  displayCollection,
   sharing,
   permissions,
   hasBrowsePermission,
@@ -42,7 +42,7 @@ export default function DatasetSidebar({
   return (
     <div className={styles.datasetSidebar}>
       <DatasetCollectionSection
-        displayCategory={displayCategory}
+        displayCollection={displayCollection}
         onAddClick={() => setShowCreateCollectionModal(true)}
       />
 

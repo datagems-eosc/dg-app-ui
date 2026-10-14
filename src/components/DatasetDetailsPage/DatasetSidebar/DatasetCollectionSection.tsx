@@ -7,15 +7,19 @@ import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import styles from "./DatasetSidebarSection.module.scss";
 
 interface DatasetCollectionSectionProps {
-  displayCategory: string;
+  displayCollection: string;
   onAddClick: () => void;
 }
 
 export default function DatasetCollectionSection({
-  displayCategory,
+  displayCollection,
   onAddClick,
 }: DatasetCollectionSectionProps) {
   const hideGeneralChat = useFeatureFlag("generalChat");
+  const showAddButton = !hideGeneralChat;
+
+  // Nothing to show and nothing to do: omit the section and its spacing.
+  if (!displayCollection && !showAddButton) return null;
 
   return (
     <div className={styles.datasetSidebarSection}>
@@ -24,7 +28,7 @@ export default function DatasetCollectionSection({
           <Box className={styles.datasetSidebarSection__icon} />
           <h3 className={styles.datasetSidebarSection__title}>Collection</h3>
         </div>
-        {!hideGeneralChat && (
+        {showAddButton && (
           <Button
             variant="outline"
             size="sm"
@@ -36,9 +40,9 @@ export default function DatasetCollectionSection({
           </Button>
         )}
       </div>
-      {displayCategory && (
+      {displayCollection && (
         <Chip color="grey" variant="regular" size="sm">
-          {displayCategory}
+          {displayCollection}
         </Chip>
       )}
     </div>

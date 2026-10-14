@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
-import { getDisplayCategory } from "@/config/collectionConstants";
+import { getDisplayCollectionLabel } from "@/config/collectionConstants";
 import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
@@ -160,10 +160,7 @@ export default function DatasetDetailsPageContent({
     setSelectedFileId(fileId);
   };
 
-  const displayCategory = getDisplayCategory(
-    dataset.collections,
-    dataset.category || "",
-  );
+  const displayCollection = getDisplayCollectionLabel(dataset.collections);
 
   // Anything that is not "Open Access" used to become "Restricted" here, which
   // turned every dataset whose publication we cannot establish into a warning
@@ -251,7 +248,7 @@ export default function DatasetDetailsPageContent({
             <div className={styles.datasetDetailsPageContent__rowRight}>
               <DatasetSidebar
                 dataset={dataset}
-                displayCategory={displayCategory}
+                displayCollection={displayCollection}
                 sharing={sharing}
                 permissions={permissions}
                 hasBrowsePermission={hasBrowsePermission}
