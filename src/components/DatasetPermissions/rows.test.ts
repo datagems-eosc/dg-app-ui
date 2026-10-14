@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { DATASET_ROLE_MAP } from "@/config/contextGrantRoles";
-import { RESEARCH_GROUP_ID } from "@/lib/datasetPermissions/fixtures";
+import {
+  EVERYONE_GROUP_ID,
+  RESEARCH_GROUP_ID,
+  UNDISCOVERED_GROUP_ID,
+} from "@/lib/datasetPermissions/fixtures";
 import {
   AMBIGUOUS_GROUPS,
   DISCOVERED_GROUPS,
@@ -15,6 +19,8 @@ import {
   buildGrantTargets,
   groupLabel,
   hasPendingWrite,
+  holderLabel,
+  isKnownRole,
   uncertainOperations,
 } from "./rows";
 
@@ -184,6 +190,150 @@ describe("buildAccessRows", () => {
       kind: "uncertain",
       reason: "no-response",
     });
+  });
+});
+
+describe("the union of discovery and the inventory", () => {
+  const holderGrants = {
+    kind: "known",
+    grants: [
+      { groupId: RESEARCH_GROUP_ID, role: DATASET_ROLE_MAP.browse },
+      { groupId: RESEARCH_GROUP_ID, role: "dg_ds-curate" },
+      { groupId: UNDISCOVERED_GROUP_ID, role: DATASET_ROLE_MAP.edit },
+      { groupId: UNDISCOVERED_GROUP_ID, role: "dg_ds-curate" },
+    ],
+  } as const;
+
+  it("keeps a holder discovery cannot identify, read-only and after the others", () => {
+    const rows = build({ recipients: holderGrants }) ?? [];
+    const holder = rows.at(-1);
+
+    expect(rows.map((row) => row.groupId)).toEqual([
+      ...DISCOVERED_GROUPS.map((group) => group.id),
+      UNDISCOVERED_GROUP_ID,
+    ]);
+    expect(holder).toMatchObject({
+      groupId: UNDISCOVERED_GROUP_ID,
+      name: holderLabel(UNDISCOVERED_GROUP_ID),
+      readOnly: true,
+      // Nothing is known about its audience, so nothing is claimed.
+      publicAudience: false,
+      ambiguousAudience: false,
+      otherRoles: ["dg_ds-curate"],
+    });
+    expect(cellFor(rows, UNDISCOVERED_GROUP_ID, "edit")?.granted).toBe(true);
+  });
+
+  it("names a holder by its id, never by a guessed name", () => {
+    expect(holderLabel(UNDISCOVERED_GROUP_ID)).toBe(
+      `Group ${UNDISCOVERED_GROUP_ID}`,
+    );
+  });
+
+  it("keeps a role with no control as text on an editable row", () => {
+    const rows = build({ recipients: holderGrants });
+    const research = rows?.find((row) => row.groupId === RESEARCH_GROUP_ID);
+    expect(research?.readOnly).toBe(false);
+    expect(research?.otherRoles).toEqual(["dg_ds-curate"]);
+    expect(research?.cells.map((cell) => cell.role)).not.toContain(
+      "dg_ds-curate",
+    );
+  });
+
+  it("keeps every holder when discovery failed, all of them read-only", () => {
+    const rows = build({ groups: null }) ?? [];
+    expect(rows.map((row) => row.groupId)).toEqual([
+      RESEARCH_GROUP_ID,
+      KNOWN_GRANTS[2].groupId,
+    ]);
+    expect(rows.every((row) => row.readOnly)).toBe(true);
+  });
+
+  it("keeps every holder when discovery returned no group", () => {
+    const rows = build({ groups: [] }) ?? [];
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.readOnly)).toBe(true);
+  });
+
+  it("offers discovered groups as unassigned targets under an empty inventory", () => {
+    const rows = build({ recipients: { kind: "known", grants: [] } }) ?? [];
+    expect(rows.map((row) => row.groupId)).toEqual(
+      DISCOVERED_GROUPS.map((group) => group.id),
+    );
+    expect(rows.every((row) => !row.readOnly)).toBe(true);
+    expect(rows.every((row) => row.cells.every((cell) => !cell.granted))).toBe(
+      true,
+    );
+  });
+
+  it("joins by exact id, never by display name", () => {
+    // A holder whose id differs only in case is a different group here, and
+    // a discovered group's name is never used to claim a holder.
+    const rows =
+      build({
+        recipients: {
+          kind: "known",
+          grants: [
+            {
+              groupId: RESEARCH_GROUP_ID.toUpperCase(),
+              role: DATASET_ROLE_MAP.browse,
+            },
+          ],
+        },
+      }) ?? [];
+    expect(cellFor(rows, RESEARCH_GROUP_ID, "browse")?.granted).toBe(false);
+    expect(rows.at(-1)).toMatchObject({
+      groupId: RESEARCH_GROUP_ID.toUpperCase(),
+      readOnly: true,
+    });
+  });
+
+  it("lets a confirmed acknowledgement give way to the read", () => {
+    const assigned = operation({
+      operationId: "ack",
+      role: DATASET_ROLE_MAP.edit,
+      status: "acknowledged",
+    });
+    // Unconfirmed: the acknowledgement is drawn, whatever the read says.
+    expect(
+      cellFor(build({ operations: [assigned] }), RESEARCH_GROUP_ID, "edit")
+        ?.granted,
+    ).toBe(true);
+    // Confirmed by an earlier read, then removed elsewhere: the newer read
+    // is drawn, so the later change can show.
+    expect(
+      cellFor(
+        build({
+          operations: [assigned],
+          confirmedOperationIds: new Set(["ack"]),
+        }),
+        RESEARCH_GROUP_ID,
+        "edit",
+      )?.granted,
+    ).toBe(false);
+  });
+
+  it("never marks a holder as the public audience", () => {
+    const rows =
+      build({
+        groups: [RESEARCH_GROUP],
+        everyoneGroupId: EVERYONE_GROUP_ID,
+        recipients: {
+          kind: "known",
+          grants: [
+            { groupId: EVERYONE_GROUP_ID, role: DATASET_ROLE_MAP.browse },
+          ],
+        },
+      }) ?? [];
+    expect(rows.find((row) => row.groupId === EVERYONE_GROUP_ID)).toMatchObject(
+      { readOnly: true, publicAudience: false },
+    );
+  });
+
+  it("recognises only the dataset roles it has controls for", () => {
+    expect(isKnownRole(DATASET_ROLE_MAP.browse)).toBe(true);
+    expect(isKnownRole(" DG_DS-BROWSE ")).toBe(true);
+    expect(isKnownRole("dg_ds-curate")).toBe(false);
   });
 });
 

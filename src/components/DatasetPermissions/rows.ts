@@ -10,7 +10,15 @@
  * **acknowledged** operation moves it. A pending operation has not happened
  * yet, a refused one did not happen, and an uncertain one is unknown — drawing
  * any of the three as a changed switch would be the UI asserting something the
- * server never told it.
+ * server never told it. An acknowledged operation keeps moving the switch
+ * until a later read confirms it; from then on the read alone is drawn, so a
+ * change somebody else makes afterwards can show.
+ *
+ * The rows are the **union** of two independent reads, joined by exact group
+ * id and never by name: the groups discovery returns, which can be edited, and
+ * the groups the dataset inventory names, which may include holders discovery
+ * cannot see. Those are kept, read-only, rather than dropped — losing them
+ * would hide an existing grant.
  */
 
 import {
@@ -61,6 +69,19 @@ export const audienceOf = (
     ? "public"
     : "ambiguous-public";
 };
+
+/**
+ * A grant holder discovery could not identify. Only its id is known; the
+ * label must not suggest a name, an audience or anything editable.
+ */
+export const holderLabel = (groupId: string): string => `Group ${groupId}`;
+
+/** Whether this UI draws a control for a Gateway role identifier. */
+const KNOWN_ROLES: ReadonlySet<string> = new Set(
+  ACCESS_ROLE_ORDER.map((key) => canonical(DATASET_ROLE_MAP[key])),
+);
+export const isKnownRole = (role: string): boolean =>
+  KNOWN_ROLES.has(canonical(role));
 
 /** A group with no usable `name` still needs something to point at. */
 export const groupLabel = (group: UserGroupRef): string => {
@@ -120,11 +141,13 @@ interface OperationIndex {
   /** Newest operation per assignment, whatever its status. Drives the label. */
   readonly latest: ReadonlyMap<string, DatasetRoleOperationState>;
   /**
-   * Newest *acknowledged* operation per assignment. The only one that moves a
+   * Newest *acknowledged* operation per assignment. The only kind that moves a
    * switch, because it is the only one the server confirmed.
    */
   readonly settled: ReadonlyMap<string, DatasetRoleOperationState>;
 }
+
+const NOTHING_CONFIRMED: ReadonlySet<string> = new Set();
 
 export const indexOperations = (
   operations: readonly DatasetRoleOperationState[],
@@ -155,12 +178,21 @@ export const uncertainOperations = (
   operations.filter((operation) => operation.status === "uncertain");
 
 export interface BuildRowsInput {
-  readonly groups: readonly UserGroupRef[];
+  /**
+   * The groups discovery returned, or `null` when discovery did not complete.
+   * Either way every inventory holder still gets a row.
+   */
+  readonly groups: readonly UserGroupRef[] | null;
   /** Only a `known` recipient read produces rows; see {@link buildAccessRows}. */
   readonly recipients: RecipientGrantsState;
   readonly operations: readonly DatasetRoleOperationState[];
   /** From `model.describeEveryoneDiscovery`; `null` when it is not identified. */
   readonly everyoneGroupId: string | null;
+  /**
+   * Acknowledged operations a later read has matched. They stop overriding the
+   * read, which already shows them. Omitted, none has been confirmed.
+   */
+  readonly confirmedOperationIds?: ReadonlySet<string>;
 }
 
 /**
@@ -170,48 +202,86 @@ export interface BuildRowsInput {
  * denied, failed or unattempted read rendered as a grid of off switches would
  * tell the user that nobody has access, which is a claim the UI has no basis
  * for. The caller renders an explanation instead.
+ *
+ * Discovered groups come first, in discovery order, then holders discovery did
+ * not return, in inventory order. A discovered group absent from a complete
+ * inventory holds no direct role on this dataset — which is all an off switch
+ * says; it is not a claim about any other path to the dataset.
  */
 export function buildAccessRows({
   groups,
   recipients,
   operations,
   everyoneGroupId,
+  confirmedOperationIds = NOTHING_CONFIRMED,
 }: BuildRowsInput): readonly GroupAccessRow[] | null {
   if (recipients.kind !== "known") return null;
 
   const { latest, settled } = indexOperations(operations);
+  const grants = recipients.grants;
 
-  return groups.map((group) => {
-    const cells: readonly RoleCell[] = ACCESS_ROLE_ORDER.map(
-      (key: PermissionKey): RoleCell => {
-        const role = DATASET_ROLE_MAP[key];
-        const mapKey = operationKey(group.id, role);
-        const acknowledged = settled.get(mapKey);
-        const granted =
-          acknowledged === undefined
-            ? holdsRole(recipients.grants, group.id, role)
-            : acknowledged.action === "assign";
+  const cellsFor = (groupId: string): readonly RoleCell[] =>
+    ACCESS_ROLE_ORDER.map((key: PermissionKey): RoleCell => {
+      const role = DATASET_ROLE_MAP[key];
+      const mapKey = operationKey(groupId, role);
+      const acknowledged = settled.get(mapKey);
+      const overrides =
+        acknowledged !== undefined &&
+        !confirmedOperationIds.has(acknowledged.operationId);
+      const granted = overrides
+        ? acknowledged.action === "assign"
+        : holdsRole(grants, groupId, role);
 
-        return {
-          key,
-          role,
-          label: DATASET_CAPABILITY_LABELS[key],
-          elevated: ELEVATED_ROLES.includes(key),
-          granted,
-          activity: activityOf(latest.get(mapKey)),
-        };
-      },
-    );
+      return {
+        key,
+        role,
+        label: DATASET_CAPABILITY_LABELS[key],
+        elevated: ELEVATED_ROLES.includes(key),
+        granted,
+        activity: activityOf(latest.get(mapKey)),
+      };
+    });
 
+  const otherRolesFor = (groupId: string): readonly string[] =>
+    grants
+      .filter((grant) => grant.groupId === groupId && !isKnownRole(grant.role))
+      .map((grant) => grant.role);
+
+  const discovered = groups ?? [];
+  const discoveredIds = new Set(discovered.map((group) => group.id));
+
+  const editable = discovered.map((group): GroupAccessRow => {
     const audience = audienceOf(group, everyoneGroupId);
     return {
       groupId: group.id,
       name: groupLabel(group),
       publicAudience: audience === "public",
       ambiguousAudience: audience === "ambiguous-public",
-      cells,
+      readOnly: false,
+      cells: cellsFor(group.id),
+      otherRoles: otherRolesFor(group.id),
     };
   });
+
+  const holders: GroupAccessRow[] = [];
+  const seen = new Set<string>();
+  for (const grant of grants) {
+    if (discoveredIds.has(grant.groupId) || seen.has(grant.groupId)) continue;
+    seen.add(grant.groupId);
+    holders.push({
+      groupId: grant.groupId,
+      name: holderLabel(grant.groupId),
+      // Nothing is known about its audience. It is neither marked public nor
+      // treated as ordinary; it simply cannot be changed.
+      publicAudience: false,
+      ambiguousAudience: false,
+      readOnly: true,
+      cells: cellsFor(grant.groupId),
+      otherRoles: otherRolesFor(grant.groupId),
+    });
+  }
+
+  return [...editable, ...holders];
 }
 
 /**

@@ -7,7 +7,7 @@
  * inspected source at the revisions below, which is a contract *proposal*, not
  * deployment evidence. Identifiers are fabricated UUIDs.
  *
- * The fixtures are split into three files whose names are the claim each one
+ * The fixtures are split into two files whose names are the claim each one
  * makes, because conflating them is how a synthetic fixture becomes an argument
  * that something works:
  *
@@ -18,16 +18,23 @@
  *    global permission read OR a dataset-scoped projection authorizing grant
  *    and revoke. Source-supported inference from `AuthorizationService`, not a
  *    partner answer and not a deployed observation. PM-05 owns confirming it.
- *  - `proposed.ts` — shapes for a manager-readable recipient contract that
- *    **does not exist**. No endpoint serves these. They exist so the model and
- *    view can be exercised against a hypothetical without anybody inventing a
- *    URL for it, and nothing may be built against them.
+ *
+ * The former `proposed.ts` held a hypothetical manager-readable recipient
+ * contract. Gateway #98 supplied a real one, so — as that file required — its
+ * shapes were replaced by the dataset-scoped fixtures in `current.ts` rather
+ * than kept beside them.
  */
 
 export const FIXTURE_PROVENANCE = {
   kind: "synthetic",
   /** dg-app-api, branch `main`. */
   gatewaySourceRevision: "8988a7e879a2239b85dcb4a7f4ce932e368674fd",
+  /**
+   * dg-app-api `origin/main` fetched 14 October 2026, for the dataset-scoped
+   * recipient read added by Gateway #98 and its `LookupDatasetContextGrants`
+   * policy. Source only; the deployed revision is unverified.
+   */
+  recipientReadSourceRevision: "71fb7dfa474041cede287a9733d3d14a3b5fabc0",
   /** dg-app-ui, the accepted PM-01 base on `feat/321-dataset-group-access`. */
   uiBaseRevision: "34ba8eeaeb61872b7c046b7b700a40da9b77b28d",
   /** Where each permission and role spelling comes from. */
@@ -42,6 +49,14 @@ export const FIXTURE_PROVENANCE = {
       "src/DataGEMS.Gateway.Api/Controllers/PrincipalController.cs",
     authorizationRule:
       "src/DataGEMS.Gateway.Api/Authorization/AuthorizationService.cs",
+    recipientRead:
+      "src/DataGEMS.Gateway.Api/Controllers/PrincipalController.cs (ContextGrantsDataset)",
+    recipientReadPolicy:
+      "src/DataGEMS.Gateway.Api/Configuration/permissions.json",
+    recipientReadDto:
+      "src/DataGEMS.Gateway.App/Common/Auth/DatasetContextGrants.cs",
+    recipientGroupIds:
+      "src/DataGEMS.Gateway.App/Service/AAI/AAIKeycloakService.cs (LookupDatasetContextGrants)",
   },
   /**
    * The Gateway lower-cases both the requested field names and the principal's
@@ -52,6 +67,7 @@ export const FIXTURE_PROVENANCE = {
   wire: {
     datasetPermissionCasing: "lower-case, per ReduceToAssignedPermissions",
     groupProjection: "project.fields: id, name, semantics",
-    recipientRead: "Dictionary<datasetId, roleNames>; ids absent when empty",
+    recipientRead:
+      "List<{ datasetId, users, userGroups: { id, roles }[] }>; camelCase, nulls omitted",
   },
 } as const;

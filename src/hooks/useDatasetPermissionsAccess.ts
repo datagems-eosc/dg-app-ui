@@ -4,14 +4,14 @@
  * Dataset permissions — the read side, for one dataset, for one owner.
  *
  * `useDatasetPermissions` owns what may be *written*. This hook owns what is
- * *known*, which is the half PM-02A deliberately left out: capability
- * evidence, group discovery, recipient grants, and the presentation those
- * jointly support. It is the feature's single composition owner — there is no
- * second state machine here, and every decision is delegated:
- * `model.decideAction` decides capabilities, `model.describeEveryoneDiscovery`
- * decides the public audience, and `mode.selectAccessMode` decides the
- * presentation. What this hook adds is the part none of them can own: *when* a
- * read may start, and whose answer it is when it lands.
+ * *known*: capability evidence, group discovery, the dataset's group
+ * inventory, and the presentation those jointly support. It is the feature's
+ * single read owner — there is no second state machine here, and every
+ * decision is delegated: `model.decideAction` decides capabilities,
+ * `model.describeEveryoneDiscovery` decides the public audience, and
+ * `mode.selectAccessMode` decides the presentation. What this hook adds is the
+ * part none of them can own: *when* a read may start, and whose answer it is
+ * when it lands.
  *
  * The gateway is injected, so nothing here depends on `useApi`, auth or the
  * network; `useApi().datasetPermissions.gateway` supplies the real one.
@@ -22,23 +22,40 @@
  *    teardown, and its result is dropped unless the generation still matches.
  *    A textually identical A → unavailable → A is a new generation, so the
  *    first A's answers can never land in the second A's view;
- *  - reads are **cancelled** on scope change and unmount through one
- *    `AbortController` per generation. Unlike a mutation, abandoning a read is
- *    free: it tells us nothing and changes nothing on the server;
+ *  - the returned refresh actions belong to the **owner lifetime** that
+ *    rendered them. One kept across a change of principal, Gateway, dataset or
+ *    mount does nothing, so an old handle cannot start a read for its owner and
+ *    land it in a successor's view;
+ *  - reads are **cancelled** on scope change and unmount. Unlike a mutation,
+ *    abandoning a read is free: it tells us nothing and changes nothing on the
+ *    server;
  *  - the **gateway is held in a ref**. A same-principal token refresh hands
  *    over a new gateway object for the same account, and that must not restart
- *    reads or discard what they found. Only `(principalId, gatewayOrigin,
- *    datasetId)` restarts anything.
+ *    reads or discard what they found.
  *
- * Two rules about what is *not* read:
+ * The inventory is one dataset-scoped read (Gateway #98), issued on open
+ * whatever the capability evidence says — the endpoint enforces access, and
+ * the capability only decides what a refusal means. It is never assembled per
+ * group, and nothing here falls back to the per-group route.
  *
- *  - recipient grants are not fetched at all when the caller's complete global
- *    evidence says lookup is not permitted. Asking anyway would spend a refusal
- *    per group to learn something already known;
- *  - a recipient read is fetched per group, because the Gateway has no route
- *    that returns every group holding a role on a dataset. Partial success is
- *    not knowledge: if any group's read does not complete, the recipient state
- *    is `failed`, never a shorter list presented as the whole answer.
+ * **Ordering.** Every inventory read takes the next number in one sequence:
+ * the read on open, an explicit Refresh access, and the read after an
+ * acknowledged change. Only the newest number may replace the snapshot, so a
+ * read launched before a later acknowledgement can never overwrite what that
+ * acknowledgement's own read finds, whichever reply arrives first. A newer
+ * demand cancels the older read rather than queueing behind it, so at most one
+ * inventory read is current at a time.
+ *
+ * **Acknowledged changes.** Each one becomes an expectation checked against
+ * the next snapshot. A matching read confirms it; a read that disagrees, or a
+ * read that fails, leaves it unconfirmed and the inventory stale. Neither ever
+ * undoes it — `rows.ts` keeps an unconfirmed acknowledged change on screen —
+ * and a stale inventory authorizes no further change until a read succeeds.
+ *
+ * Deliberately absent: timers, polling, automatic retry, and any reading of an
+ * *uncertain* write's outcome. A read can show current roles, but it cannot
+ * prove whether a lost request is still in flight or whose change it shows, so
+ * uncertain operations are never registered here and never cleared by a read.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -53,13 +70,13 @@ import {
   type ActionEvidence,
   decideAction,
   describeEveryoneDiscovery,
-  PERMISSIONS_NOT_READ,
 } from "@/lib/datasetPermissions/model";
 import type {
+  DatasetRoleAction,
   EveryoneDiscovery,
   GroupDiscoveryState,
+  GroupRoleGrant,
   RecipientGrantsState,
-  UserGroupRef,
 } from "@/lib/datasetPermissions/types";
 
 export interface DatasetAccessScope {
@@ -81,40 +98,72 @@ export interface UseDatasetPermissionsAccessInput {
   readonly enabled?: boolean;
 }
 
+/** One change the Gateway acknowledged, as the next read should find it. */
+export interface AcknowledgedChange {
+  readonly operationId: string;
+  readonly groupId: string;
+  readonly role: string;
+  readonly action: DatasetRoleAction;
+}
+
+/**
+ * How far the displayed inventory can be relied on.
+ *
+ * - `current`: the newest read succeeded and agrees with every acknowledged
+ *   change it was checked against;
+ * - `refreshing`: a newer read is in flight. What is shown is the last-known
+ *   snapshot, and changes wait for the newer one;
+ * - `stale`: the newest read failed, or contradicted an acknowledged change.
+ *   The last-known snapshot stays visible, and no change may be made from it.
+ */
+export type InventoryFreshness = "current" | "refreshing" | "stale";
+
+/**
+ * Why the inventory is stale. `change-unconfirmed` means an acknowledged
+ * change has not been seen by a later read; `refresh-failed` means only that
+ * the last attempt to look again did not complete.
+ */
+export type InventoryStaleReason = "change-unconfirmed" | "refresh-failed";
+
 export interface DatasetAccessReadState {
-  /** `true` until every read this owner needs has settled. */
+  /** `true` until every read this owner needs on open has settled. */
   readonly loading: boolean;
   readonly groups: GroupDiscoveryState;
+  /** The last-known inventory; `freshness` says how far it can be relied on. */
   readonly recipients: RecipientGrantsState;
   readonly everyone: EveryoneDiscovery;
   readonly capabilities: AccessCapabilities;
   readonly mode: DatasetAccessMode;
+  readonly freshness: InventoryFreshness;
+  /** Set only while `freshness` is `stale`. */
+  readonly staleReason: InventoryStaleReason | null;
   /**
-   * `true` when a reconciliation read after an acknowledged write did not
-   * complete. It never downgrades what is already known — the previous
-   * recipient state is kept — so the view can say "we could not re-check"
-   * without any row moving.
+   * Increases whenever a newer read replaces the snapshot, so a confirmation
+   * raised against one inventory can be recognised as obsolete under the next.
    */
-  readonly reconciliationFailed: boolean;
+  readonly inventoryRevision: number;
   /**
-   * Re-read one group's grants after an acknowledged change to it. Supported
-   * only where recipient lookup is; a no-op otherwise. It refreshes the
-   * baseline and never rolls an acknowledged operation back: `rows.ts` keeps
-   * acknowledged operations winning over the baseline precisely so a lagging
-   * read cannot un-apply something the Gateway confirmed.
+   * Acknowledged changes a later read has matched. Until then the change is
+   * drawn from the acknowledgement; from then on, from the read.
    */
-  readonly reconcileGroup: (groupId: string) => void;
+  readonly confirmedOperationIds: ReadonlySet<string>;
+  /**
+   * Read the inventory again: one GET of this dataset's group grants. No
+   * write, no group discovery and no capability read is repeated.
+   */
+  readonly refreshAccess: () => void;
+  /** Register acknowledged changes and read the inventory once to check them. */
+  readonly refreshAfterAcknowledgement: (
+    changes: readonly AcknowledgedChange[],
+  ) => void;
 }
 
 const NOT_READ_RECIPIENTS: RecipientGrantsState = {
   kind: "unknown",
   reason: "not-read",
 };
-const RESTRICTED_RECIPIENTS: RecipientGrantsState = {
-  kind: "unknown",
-  reason: "not-supported",
-};
 const UNKNOWN_GROUPS: GroupDiscoveryState = { kind: "unknown" };
+const NO_CONFIRMATIONS: ReadonlySet<string> = new Set();
 
 const INACTIVE_SCOPE = "\u0000inactive";
 
@@ -138,7 +187,10 @@ interface ReadState {
   readonly groups: GroupDiscoveryState;
   readonly recipients: RecipientGrantsState;
   readonly capabilities: AccessCapabilities;
-  readonly reconciliationFailed: boolean;
+  readonly refreshing: boolean;
+  readonly staleReason: InventoryStaleReason | null;
+  readonly inventoryRevision: number;
+  readonly confirmed: ReadonlySet<string>;
 }
 
 const idleState = (scopeKey: string): ReadState => ({
@@ -150,13 +202,87 @@ const idleState = (scopeKey: string): ReadState => ({
   groups: UNKNOWN_GROUPS,
   recipients: NOT_READ_RECIPIENTS,
   capabilities: UNKNOWN_CAPABILITIES,
-  reconciliationFailed: false,
+  refreshing: false,
+  staleReason: null,
+  inventoryRevision: 0,
+  confirmed: NO_CONFIRMATIONS,
 });
 
 const loadingState = (scopeKey: string): ReadState => ({
   ...idleState(scopeKey),
   loading: true,
 });
+
+const canonical = (value: string): string => value.trim().toLowerCase();
+
+const holds = (
+  grants: readonly GroupRoleGrant[],
+  groupId: string,
+  role: string,
+): boolean =>
+  grants.some(
+    (grant) =>
+      grant.groupId === groupId && canonical(grant.role) === canonical(role),
+  );
+
+/**
+ * What one completed inventory read means for the snapshot on screen.
+ *
+ * Pure, and computed before `setState`: the expectations are matched against
+ * the new grants only, so the updater that applies the result needs nothing
+ * but plain values and stays safe to run twice.
+ */
+interface InventoryOutcome {
+  readonly state: RecipientGrantsState;
+  /** Expectations this read matched. */
+  readonly confirmed: readonly string[];
+  /** `true` when a successful read disagreed with an acknowledged change. */
+  readonly contradicted: boolean;
+  /** `true` when some acknowledged change is still awaiting a matching read. */
+  readonly awaiting: boolean;
+}
+
+const applyInventory = (
+  previous: ReadState,
+  outcome: InventoryOutcome,
+  revision: number,
+): ReadState => {
+  if (outcome.state.kind === "known") {
+    return {
+      ...previous,
+      recipients: outcome.state,
+      refreshing: false,
+      inventoryRevision: revision,
+      staleReason: outcome.contradicted ? "change-unconfirmed" : null,
+      confirmed:
+        outcome.confirmed.length === 0
+          ? previous.confirmed
+          : new Set([...previous.confirmed, ...outcome.confirmed]),
+    };
+  }
+
+  // A read that did not complete never replaces a known snapshot: dropping it
+  // would turn a transient failure into "nobody has access", and an empty one
+  // would look like a rollback of acknowledged changes. The snapshot is kept,
+  // marked stale, and changes stop until a read succeeds.
+  if (previous.recipients.kind === "known") {
+    return {
+      ...previous,
+      refreshing: false,
+      staleReason: outcome.awaiting ? "change-unconfirmed" : "refresh-failed",
+    };
+  }
+
+  // Nothing known yet: the newer failure is the current answer, so a refused
+  // read can still be recognised as the confirmed restriction.
+  return {
+    ...previous,
+    recipients: outcome.state,
+    refreshing: false,
+    inventoryRevision: revision,
+    staleReason: null,
+  };
+};
 
 export const useDatasetPermissionsAccess = ({
   scope,
@@ -165,6 +291,7 @@ export const useDatasetPermissionsAccess = ({
 }: UseDatasetPermissionsAccessInput): DatasetAccessReadState => {
   const scopeKey = scopeKeyOf(scope);
   const active = enabled && scopeKey !== INACTIVE_SCOPE;
+  const ownerKey = active ? scopeKey : INACTIVE_SCOPE;
 
   const principalId = scope?.principalId ?? null;
   const gatewayOrigin = scope?.gatewayOrigin ?? null;
@@ -192,11 +319,89 @@ export const useDatasetPermissionsAccess = ({
   });
 
   const generationRef = useRef(0);
-  const abortRef = useRef<AbortController | null>(null);
+
+  // The owner lifetime this render belongs to, counted during render so a
+  // callback knows it before any effect runs, and the lifetime currently
+  // mounted, set by the effect and cleared by its teardown. The same pair the
+  // write side uses: one knows about a replacement as soon as it renders, the
+  // other about an unmount, after which no render follows.
+  const lifetimeRef = useRef(0);
+  const renderedOwnerKeyRef = useRef<string | null>(null);
+  if (renderedOwnerKeyRef.current !== ownerKey) {
+    renderedOwnerKeyRef.current = ownerKey;
+    lifetimeRef.current += 1;
+  }
+  const lifetime = lifetimeRef.current;
+  const activeLifetimeRef = useRef<number | null>(null);
+
+  /** The newest inventory read number issued; only it may land. */
+  const inventorySequenceRef = useRef(0);
+  const inventoryAbortRef = useRef<AbortController | null>(null);
+  /** Acknowledged changes not yet matched by a read, by operation id. */
+  const expectationsRef = useRef<Map<string, AcknowledgedChange>>(new Map());
+
+  /**
+   * Read this dataset's inventory under the next sequence number.
+   *
+   * Returns nothing and needs no caller cleanup: the generation and sequence
+   * checks drop a reply nobody may use, and teardown cancels the request.
+   */
+  const readInventory = useCallback(
+    (generation: number, readDatasetId: string, readScopeKey: string) => {
+      inventoryAbortRef.current?.abort();
+      const controller = new AbortController();
+      inventoryAbortRef.current = controller;
+      inventorySequenceRef.current += 1;
+      const sequence = inventorySequenceRef.current;
+      const isCurrent = () =>
+        generationRef.current === generation &&
+        inventorySequenceRef.current === sequence;
+
+      return (async () => {
+        const result = await gatewayRef.current.readDatasetGroupGrants(
+          readDatasetId,
+          controller.signal,
+        );
+        if (!isCurrent()) return null;
+        if (inventoryAbortRef.current === controller) {
+          inventoryAbortRef.current = null;
+        }
+
+        const confirmed: string[] = [];
+        let contradicted = false;
+        if (result.state.kind === "known") {
+          for (const [operationId, change] of expectationsRef.current) {
+            const found = holds(
+              result.state.grants,
+              change.groupId,
+              change.role,
+            );
+            if (found === (change.action === "assign")) {
+              confirmed.push(operationId);
+              expectationsRef.current.delete(operationId);
+            } else {
+              contradicted = true;
+            }
+          }
+        }
+
+        const outcome: InventoryOutcome = {
+          state: result.state,
+          confirmed,
+          contradicted,
+          awaiting: expectationsRef.current.size > 0,
+        };
+        return { outcome, sequence, readScopeKey };
+      })();
+    },
+    [],
+  );
 
   useEffect(() => {
     generationRef.current += 1;
     const generation = generationRef.current;
+    expectationsRef.current = new Map();
+    activeLifetimeRef.current = null;
 
     if (
       !enabled ||
@@ -207,26 +412,29 @@ export const useDatasetPermissionsAccess = ({
       gatewayOrigin.trim() === "" ||
       datasetId.trim() === ""
     ) {
-      abortRef.current = null;
       return () => {
         generationRef.current += 1;
       };
     }
 
+    activeLifetimeRef.current = lifetimeRef.current;
     const controller = new AbortController();
-    abortRef.current = controller;
     const { signal } = controller;
     const mine = () => generationRef.current === generation;
 
     void (async () => {
       const api = gatewayRef.current;
 
-      // Capabilities first. They decide whether the recipient read is worth
-      // issuing at all, and a complete negative answers it without a request.
-      const [global, datasetContext] = await Promise.all([
-        api.readGlobalPermissions(signal),
-        api.readDatasetActionPermissions(datasetId, signal),
-      ]);
+      // Independent reads, side by side. A failed group discovery must not
+      // hide a successful inventory, and the inventory is read whatever the
+      // capability evidence says: the endpoint decides who may see it.
+      const [global, datasetContext, groupsResult, inventory] =
+        await Promise.all([
+          api.readGlobalPermissions(signal),
+          api.readDatasetActionPermissions(datasetId, signal),
+          api.queryGroups(signal),
+          readInventory(generation, datasetId, scopeKey),
+        ]);
       if (!mine()) return;
 
       const evidence: ActionEvidence = {
@@ -236,133 +444,88 @@ export const useDatasetPermissionsAccess = ({
       const capabilities: AccessCapabilities = {
         grant: decideAction("grant", evidence),
         revoke: decideAction("revoke", evidence),
-        // Recipient lookup is a global-only permission at the pinned Gateway:
-        // `ContextGrantsDatasetGroupOther` calls plain `AuthorizeForce`, with
-        // no affiliated-context alternative. A dataset projection cannot
-        // answer it, so the dataset evidence is deliberately withheld here.
-        lookupRecipients: decideAction("lookupRecipients", {
-          global: global.evidence,
-          datasetContext: PERMISSIONS_NOT_READ,
-        }),
+        lookupRecipients: decideAction("lookupRecipients", evidence),
       };
 
-      const groupsResult = await api.queryGroups(signal);
-      if (!mine()) return;
-      const groups = groupsResult.state;
-
-      // The one case where *not* asking is the correct behaviour: a complete
-      // global read has already established that this caller may not look up
-      // another principal's grants. A refusal per group would add nothing.
-      if (capabilities.lookupRecipients === "not-permitted") {
-        setState((previous) =>
-          previous.scopeKey === scopeKey
-            ? {
-                ...previous,
-                loading: false,
-                groups,
-                recipients: RESTRICTED_RECIPIENTS,
-                capabilities,
-              }
-            : previous,
-        );
-        return;
-      }
-
-      if (groups.kind !== "read" || groups.groups.length === 0) {
-        // Nothing to read grants for. The recipient state stays unattempted
-        // rather than becoming an empty list of holders.
-        setState((previous) =>
-          previous.scopeKey === scopeKey
-            ? {
-                ...previous,
-                loading: false,
-                groups,
-                recipients: NOT_READ_RECIPIENTS,
-                capabilities,
-              }
-            : previous,
-        );
-        return;
-      }
-
-      const recipients = await readAllGroupGrants(
-        api,
-        groups.groups,
-        datasetId,
-        signal,
-      );
-      if (!mine()) return;
-
-      setState((previous) =>
-        previous.scopeKey === scopeKey
-          ? {
-              ...previous,
-              loading: false,
-              groups,
-              recipients,
-              capabilities,
-            }
-          : previous,
-      );
+      setState((previous) => {
+        if (previous.scopeKey !== scopeKey) return previous;
+        const settled: ReadState = {
+          ...previous,
+          loading: false,
+          groups: groupsResult.state,
+          capabilities,
+        };
+        // `null` when a newer inventory read has already superseded this one;
+        // that read applies its own answer when it lands.
+        return inventory === null
+          ? settled
+          : applyInventory(settled, inventory.outcome, inventory.sequence);
+      });
     })();
 
     return () => {
       generationRef.current += 1;
-      abortRef.current = null;
+      activeLifetimeRef.current = null;
       // Abandoning a read costs nothing and tells us nothing, unlike a write.
       controller.abort();
+      inventoryAbortRef.current?.abort();
+      inventoryAbortRef.current = null;
     };
     // `gateway` is read through its ref on purpose: see the comment above it.
-  }, [enabled, scopeKey, principalId, gatewayOrigin, datasetId]);
+  }, [enabled, scopeKey, principalId, gatewayOrigin, datasetId, readInventory]);
 
-  const reconcileGroup = useCallback(
-    (groupId: string) => {
-      if (!active || datasetId === null) return;
-      // Only where the lookup is actually supported. Where it is not, there is
-      // no authoritative read to reconcile against, and the acknowledged
-      // outcome stands on its own.
-      if (current.recipients.kind !== "known") return;
+  const loading = current.loading;
+
+  const refresh = useCallback(
+    (changes: readonly AcknowledgedChange[]) => {
+      // This handle's owner must still be the mounted one; see the lifetime
+      // refs above. An obsolete handle reads nothing.
+      if (
+        lifetimeRef.current !== lifetime ||
+        activeLifetimeRef.current !== lifetime ||
+        !active ||
+        datasetId === null
+      ) {
+        return;
+      }
+      // The read on open is still settling; it is the first answer, and a
+      // refresh issued now would only cancel it.
+      if (loading) return;
+
+      for (const change of changes) {
+        expectationsRef.current.set(change.operationId, change);
+      }
 
       const generation = generationRef.current;
-      const api = gatewayRef.current;
-      const signal = abortRef.current?.signal;
+      setState((previous) =>
+        previous.scopeKey === scopeKey
+          ? { ...previous, refreshing: true }
+          : previous,
+      );
 
-      void (async () => {
-        const result = await api.readGroupDatasetGrants(
-          groupId,
-          datasetId,
-          signal,
+      void readInventory(generation, datasetId, scopeKey).then((read) => {
+        if (read === null) return;
+        setState((previous) =>
+          previous.scopeKey === read.readScopeKey
+            ? applyInventory(previous, read.outcome, read.sequence)
+            : previous,
         );
-        if (generationRef.current !== generation) return;
-
-        setState((previous) => {
-          if (previous.scopeKey !== scopeKey) return previous;
-          if (previous.recipients.kind !== "known") return previous;
-
-          if (result.state.kind !== "known") {
-            // A re-read that did not complete is recorded, never applied. The
-            // previous knowledge is kept exactly as it was: dropping it would
-            // turn a transient failure into "nobody has access", and replacing
-            // it with an empty list would look like a rollback of a change the
-            // Gateway acknowledged.
-            return { ...previous, reconciliationFailed: true };
-          }
-
-          const others = previous.recipients.grants.filter(
-            (grant) => grant.groupId !== groupId,
-          );
-          return {
-            ...previous,
-            reconciliationFailed: false,
-            recipients: {
-              kind: "known",
-              grants: [...others, ...result.state.grants],
-            },
-          };
-        });
-      })();
+      });
     },
-    [active, current.recipients.kind, datasetId, scopeKey],
+    [active, datasetId, lifetime, loading, readInventory, scopeKey],
+  );
+
+  const refreshAccess = useCallback(() => refresh([]), [refresh]);
+
+  // Only where an inventory is known. In the grant-only presentation the read
+  // is the confirmed restriction, so asking again would spend a refusal to
+  // learn nothing; the acknowledged outcome stands on its own there.
+  const inventoryKnown = current.recipients.kind === "known";
+  const refreshAfterAcknowledgement = useCallback(
+    (changes: readonly AcknowledgedChange[]) => {
+      if (changes.length > 0 && inventoryKnown) refresh(changes);
+    },
+    [inventoryKnown, refresh],
   );
 
   const everyone = useMemo(
@@ -388,6 +551,12 @@ export const useDatasetPermissionsAccess = ({
     ],
   );
 
+  const freshness: InventoryFreshness = current.refreshing
+    ? "refreshing"
+    : current.staleReason !== null
+      ? "stale"
+      : "current";
+
   return {
     loading: current.loading,
     groups: current.groups,
@@ -395,46 +564,11 @@ export const useDatasetPermissionsAccess = ({
     everyone,
     capabilities: current.capabilities,
     mode,
-    reconciliationFailed: current.reconciliationFailed,
-    reconcileGroup,
-  };
-};
-
-/**
- * Read every discovered group's grants on this dataset, and treat the result as
- * knowledge only if all of them completed.
- *
- * The Gateway exposes no "who holds a role on this dataset" route, so the
- * answer is assembled one group at a time. A partial assembly is not a shorter
- * true answer — it is a list missing whichever groups happened to fail, which
- * on screen is indistinguishable from those groups holding nothing.
- */
-const readAllGroupGrants = async (
-  api: DatasetPermissionsGateway,
-  groups: readonly UserGroupRef[],
-  datasetId: string,
-  signal: AbortSignal,
-): Promise<RecipientGrantsState> => {
-  const results = await Promise.all(
-    groups.map((group) =>
-      api.readGroupDatasetGrants(group.id, datasetId, signal),
-    ),
-  );
-
-  // A refusal is reported as it arrived. The selector, not this function,
-  // decides whether a refusal is confirmed policy — it holds the caller's
-  // capability evidence, and one 403 does not.
-  if (results.some((result) => result.state.kind === "unknown")) {
-    return RESTRICTED_RECIPIENTS;
-  }
-  if (results.some((result) => result.state.kind !== "known")) {
-    return { kind: "failed" };
-  }
-
-  return {
-    kind: "known",
-    grants: results.flatMap((result) =>
-      result.state.kind === "known" ? result.state.grants : [],
-    ),
+    freshness,
+    staleReason: freshness === "stale" ? current.staleReason : null,
+    inventoryRevision: current.inventoryRevision,
+    confirmedOperationIds: current.confirmed,
+    refreshAccess,
+    refreshAfterAcknowledgement,
   };
 };

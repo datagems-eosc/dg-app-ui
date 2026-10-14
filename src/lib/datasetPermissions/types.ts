@@ -8,8 +8,8 @@
  * 1. **Caller capabilities** — what the signed-in principal may do with *this*
  *    dataset. Source: the dataset payload's `permissions` projection.
  * 2. **Recipient grants** — which group holds which role on this dataset.
- *    Source: a privileged lookup that an ordinary manager may not be allowed
- *    to perform at all. Not read anywhere in this batch.
+ *    Source: the dataset-scoped recipient read, which the Gateway authorizes
+ *    for administrators and for this dataset's managers only.
  * 3. **Publication** — whether the Everyone audience can browse the dataset.
  *    Source: group semantics plus that same grant read.
  *
@@ -56,11 +56,18 @@ export type DatasetCapability =
  * to a dataset. These are global permission names in the Gateway's vocabulary;
  * the same names can also be assigned through an affiliated context, which is
  * why {@link model.decideAction} takes both evidence sources.
+ *
+ * `lookupRecipients` is `LookupDatasetContextGrants`, which guards
+ * `GET /principal/context-grants/dataset` (dg-app-api
+ * `71fb7dfa474041cede287a9733d3d14a3b5fabc0`, `Configuration/permissions.json`:
+ * global `GLOBAL_dg_admin` or dataset context `dg_ds-manage`). The older
+ * global-only `LookupContextGrantOther` guards the per-group route, which this
+ * feature no longer reads; holding it says nothing about this lookup.
  */
 export const ACCESS_ACTION_NAMES = {
   grant: "AddUserToContextGrantGroup",
   revoke: "RemoveUserFromContextGrantGroup",
-  lookupRecipients: "LookupContextGrantOther",
+  lookupRecipients: "LookupDatasetContextGrants",
 } as const;
 
 export type AccessAction = keyof typeof ACCESS_ACTION_NAMES;
@@ -173,6 +180,11 @@ export interface UserGroupRef {
  *
  * `failed` and `unknown` are separate from `known` with an empty list so that
  * a refused or broken read can never be rendered as "nobody has access".
+ *
+ * `known` is one complete dataset-scoped read: every group id carrying a direct
+ * role on this dataset, each role as returned. An empty list means this read
+ * reports no direct group roles — not that nobody can reach the dataset, since
+ * individual users and other paths are outside it.
  */
 export type RecipientGrantsState =
   | { readonly kind: "known"; readonly grants: readonly GroupRoleGrant[] }

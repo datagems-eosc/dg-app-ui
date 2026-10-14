@@ -7,17 +7,16 @@
  *    is *the groups this caller may see*, which is not the deployment's group
  *    list and not an access inventory. A group appearing here says nothing
  *    about whether the caller may grant anything to it.
- *  - {@link decodeGroupDatasetGrants} decodes
- *    `GET /principal/group/{groupId}/context-grants/dataset?id=…`, which is
- *    keyed by dataset and returns role identifiers. It reports one group's
- *    roles on one dataset — never "who has access", because it is asked one
- *    group at a time and other paths to a dataset exist.
+ *  - {@link decodeDatasetGroupGrants} decodes
+ *    `GET /principal/context-grants/dataset?id=…` for one dataset. It reports
+ *    which groups hold which direct roles on that dataset — never "who has
+ *    access", because individual users and other paths are outside it.
  *
- * Contract provenance, dg-app-api `8988a7e879a2239b85dcb4a7f4ce932e368674fd`:
- * `UserController.Query` with `UserGroupBuilder` for the first, and
- * `PrincipalController.ContextGrantsDatasetGroupOther` — declared as
- * `Dictionary<String, HashSet<String>>` — for the second. Read from the local
- * source clone; no live response has been observed.
+ * Contract provenance: `UserController.Query` with `UserGroupBuilder` at
+ * dg-app-api `8988a7e879a2239b85dcb4a7f4ce932e368674fd` for the first, and
+ * `PrincipalController.ContextGrantsDataset` at
+ * `71fb7dfa474041cede287a9733d3d14a3b5fabc0` for the second. Read from source;
+ * no live response has been observed.
  */
 
 import type { GroupRoleGrant, UserGroupRef } from "./types";
@@ -27,11 +26,21 @@ export type GroupsDecodeFailure =
   | "not-an-object"
   /** `items` was present but not an array. */
   | "items-not-an-array"
+  /** The dataset inventory was not a JSON array. */
+  | "not-a-list"
   /**
-   * The dataset's entry was present but is not a usable list of roles: either
-   * not an array at all, or an array carrying a member that is not a role
-   * identifier. Both make the *whole* entry unusable — see
-   * {@link decodeGroupDatasetGrants}.
+   * The inventory did not hold exactly one entry for the requested dataset:
+   * none, several, a duplicate, or another dataset's.
+   */
+  | "dataset-not-matched"
+  /** The dataset's `userGroups` was absent, `null` or not an array. */
+  | "groups-missing"
+  /** A group entry was not an object or carried no usable `id`. */
+  | "malformed-group"
+  /**
+   * A group's `roles` was not an array, or carried a member that is not a
+   * role identifier. Either makes the *whole* read unusable — see
+   * {@link decodeDatasetGroupGrants}.
    */
   | "malformed-roles";
 
@@ -61,6 +70,8 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 const nonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim() !== "";
+
+const canonicalId = (value: string): string => value.trim().toLowerCase();
 
 /**
  * `semantics` is deliberately left `undefined` when the field is absent and
@@ -106,57 +117,87 @@ export function decodeUserGroups(
 }
 
 /**
- * Decode one group's roles on one dataset.
+ * Decode `GET /principal/context-grants/dataset?id=<datasetId>` for the one
+ * dataset that was asked about.
  *
- * The response is keyed by dataset id, so the caller must say which dataset it
- * asked about: picking "the only key" would silently accept an answer about a
- * different dataset.
+ * Contract, dg-app-api `71fb7dfa474041cede287a9733d3d14a3b5fabc0`:
+ * `PrincipalController.ContextGrantsDataset` returns
+ * `List<DatasetContextGrants>` — `{ datasetId, users, userGroups }`, each
+ * principal `{ id, roles }` — serialized camelCase by Newtonsoft with nulls
+ * omitted. `AAIKeycloakService.LookupDatasetContextGrants` initializes both
+ * principal lists as empty for every requested dataset, so a present empty
+ * `userGroups` is a real answer, and a missing or `null` one is not.
  *
- * An absent key decodes to an empty role list rather than to a failure. At the
- * pinned Gateway `EffectiveContextRolesForDatasetOfUserGroup` builds its
- * dictionary from the group's grants filtered to the ids that were asked for
- * and omits ids with no match, so over the requested ids the response is a
- * complete answer and absence means "no roles for this group on this dataset".
- * Reporting that as a failed read would be its own untruth. What it still does
- * not mean is that nobody can reach the dataset: this is one group, and the
- * result is scoped by what the caller was allowed to ask.
+ * The rules, each of which refuses rather than guesses:
  *
- * A **present** role array carrying a member that is not a role identifier is
- * the opposite case, and it is rejected rather than cleaned up. Filtering
- * `[null]` down to `[]`, or `["dg_ds-browse", 17]` down to one role, turns a
- * response we do not understand into complete recipient knowledge — and the
- * view draws complete knowledge as off switches, which is the claim "this group
- * does not hold that role". Nothing here supports that claim, so the read stays
- * malformed and the caller reports it as unavailable.
+ *  - **exactly one result, for the requested dataset.** An empty list, a
+ *    second entry, a duplicate or another dataset's entry is not this
+ *    dataset's inventory. The Gateway can omit an ineligible dataset from a
+ *    multi-id request, so omission is never "no grants";
+ *  - **`userGroups` must be an array.** Absent or `null` cannot be told apart
+ *    from a dropped field, and drawing it as empty would claim nobody holds a
+ *    role;
+ *  - **every group entry must be usable.** A non-object, a blank `id` or a
+ *    `roles` value that is not an array of non-blank strings fails the whole
+ *    read. Dropping the bad entry would quietly shorten a list the view
+ *    presents as complete;
+ *  - **group ids are kept exactly as returned.** They are joined to discovery
+ *    and to the mutation route by identity, never by display name;
+ *  - **repeated entries for one group merge**, and its roles are de-duplicated
+ *    ignoring case, which is how the Gateway compares role identifiers;
+ *  - **unknown well-formed roles survive.** The Gateway may add roles this UI
+ *    does not know; they are shown, never mapped to a control;
+ *  - **`users` is not read.** Individual grants are outside this group-only
+ *    feature, so they are neither validated nor turned into group rows.
  *
- * An unrecognised but well-formed role string is *not* malformed: the Gateway
- * may add roles this UI does not know, and preserving them keeps that
- * forward-compatible. They simply match no control.
+ * The dataset id is a GUID on both sides, so it is compared without regard to
+ * case or surrounding space; that is the same identity, not a looser match.
  */
-export function decodeGroupDatasetGrants(
+export function decodeDatasetGroupGrants(
   payload: unknown,
-  scope: { readonly groupId: string; readonly datasetId: string },
+  datasetId: string,
 ): DecodeResult<readonly GroupRoleGrant[]> {
-  if (!isObject(payload)) return { ok: false, failure: "not-an-object" };
+  if (!Array.isArray(payload)) return { ok: false, failure: "not-a-list" };
+  if (payload.length !== 1) {
+    return { ok: false, failure: "dataset-not-matched" };
+  }
 
-  const canonicalDatasetId = scope.datasetId.trim().toLowerCase();
-  const key = Object.keys(payload).find(
-    (candidate) => candidate.trim().toLowerCase() === canonicalDatasetId,
-  );
-  if (key === undefined) return { ok: true, value: [] };
+  const entry = payload[0];
+  if (!isObject(entry)) return { ok: false, failure: "dataset-not-matched" };
+  const returnedId = entry.datasetId;
+  if (
+    !nonEmptyString(returnedId) ||
+    canonicalId(returnedId) !== canonicalId(datasetId)
+  ) {
+    return { ok: false, failure: "dataset-not-matched" };
+  }
 
-  const roles = payload[key];
-  if (!Array.isArray(roles)) {
-    return { ok: false, failure: "malformed-roles" };
+  const groups = entry.userGroups;
+  if (!Array.isArray(groups)) return { ok: false, failure: "groups-missing" };
+
+  // Insertion-ordered: the first time a group id appears fixes its position.
+  const rolesByGroup = new Map<string, Map<string, string>>();
+  for (const group of groups) {
+    if (!isObject(group) || !nonEmptyString(group.id)) {
+      return { ok: false, failure: "malformed-group" };
+    }
+    if (!Array.isArray(group.roles)) {
+      return { ok: false, failure: "malformed-roles" };
+    }
+    const roles = rolesByGroup.get(group.id) ?? new Map<string, string>();
+    for (const role of group.roles) {
+      if (!nonEmptyString(role)) {
+        return { ok: false, failure: "malformed-roles" };
+      }
+      const key = role.trim().toLowerCase();
+      if (!roles.has(key)) roles.set(key, role);
+    }
+    rolesByGroup.set(group.id, roles);
   }
 
   const grants: GroupRoleGrant[] = [];
-  for (const member of roles) {
-    if (!nonEmptyString(member)) {
-      return { ok: false, failure: "malformed-roles" };
-    }
-    grants.push({ groupId: scope.groupId, role: member });
+  for (const [groupId, roles] of rolesByGroup) {
+    for (const role of roles.values()) grants.push({ groupId, role });
   }
-
   return { ok: true, value: grants };
 }

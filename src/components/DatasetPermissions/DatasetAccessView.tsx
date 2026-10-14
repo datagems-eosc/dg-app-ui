@@ -15,6 +15,12 @@
  *  - **no switches without a read.** The old grid rendered every unknown role
  *    as an off switch. A denied or failed recipient read now renders an
  *    explanation and no controls at all;
+ *  - **no change from a stale list.** While the inventory is being read again,
+ *    or after a read failed or disagreed with an acknowledged change, the last
+ *    known roles stay visible and every switch waits. Refresh access reads
+ *    again; it never repeats a change;
+ *  - **every holder stays visible.** A group the inventory names but discovery
+ *    cannot identify keeps a read-only row, as does a role with no control;
  *  - **one write at a time for this dataset**, per design section 3, rather
  *    than per assignment.
  *
@@ -31,27 +37,34 @@ import { Button } from "@ui/Button";
 import { ConfirmationModal } from "@ui/ConfirmationModal";
 import { Input } from "@ui/Input";
 import { Loader2, Search } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { DatasetRoleOperationState } from "@/hooks/useDatasetPermissions";
 import type { DatasetRoleAction } from "@/lib/datasetPermissions/types";
 import { cn } from "@/lib/utils";
 import {
-  ACCESS_UNAVAILABLE_TITLE,
   AMBIGUOUS_AUDIENCE_BADGE,
   accessUnavailableMessage,
+  accessUnavailableTitle,
+  CHANGE_NOT_REFRESHED_MESSAGE,
   capabilityMessage,
   confirmationCopy,
-  DISCOVERY_CAVEAT,
   DONE_LABEL,
-  EMPTY_DISCOVERY_MESSAGE,
   everyoneUnavailableMessage,
   GRANT_RESULTS_POINTER,
   grantResultText,
   groupsUnavailableMessage,
+  HOLDER_DETAILS_UNAVAILABLE,
+  heldRolesText,
+  INVENTORY_CAPTION,
   LOADING_MESSAGE,
+  NO_GROUP_PERMISSIONS_MESSAGE,
   noSearchMatchesMessage,
+  offersRefreshAccess,
+  otherRolesText,
   PUBLIC_AUDIENCE_BADGE,
-  RECONCILIATION_FAILED_MESSAGE,
+  REFRESH_ACCESS_LABEL,
+  REFRESH_FAILED_MESSAGE,
+  REFRESHING_MESSAGE,
   rowFeedbackText,
   SEARCH_PLACEHOLDER,
   STORAGE_UNAVAILABLE_MESSAGE,
@@ -74,13 +87,14 @@ import {
   roleLabelOf,
   uncertainOperations,
 } from "./rows";
-import type {
-  ControlBlock,
-  DatasetAccessViewProps,
-  GroupAccessRow,
-  PendingConfirmation,
-  RoleActivity,
-  RoleCell,
+import {
+  type ControlBlock,
+  CURRENT_INVENTORY,
+  type DatasetAccessViewProps,
+  type GroupAccessRow,
+  type PendingConfirmation,
+  type RoleActivity,
+  type RoleCell,
 } from "./types";
 
 type NoticeTone = "info" | "warning" | "error";
@@ -127,6 +141,16 @@ const shownActivity = (operation: DatasetRoleOperationState): ShownActivity => {
     : activity;
 };
 
+/** Why the inventory itself holds every change back, if it does. */
+const inventoryBlockOf = (
+  freshness: "current" | "refreshing" | "stale",
+): ControlBlock | null =>
+  freshness === "refreshing"
+    ? "inventory-refreshing"
+    : freshness === "stale"
+      ? "inventory-stale"
+      : null;
+
 /**
  * The role control.
  *
@@ -135,12 +159,15 @@ const shownActivity = (operation: DatasetRoleOperationState): ShownActivity => {
  * and it gives the control a state a screen reader announces without the user
  * having to infer it from a toggle button's pressed-ness.
  *
- * `held` is for a switch whose *own* change is in flight or unconfirmed. It is
- * refused like a disabled one — no click handler, so pointer, Enter and Space
- * all do nothing, and `requestChange` re-checks anyway — but it stays
- * focusable. Natively disabling it would drop the keyboard focus of whoever
- * just used it to the page, and its status stays one Tab stop away through
- * `aria-describedby`. Every other blocked switch is natively disabled.
+ * `held` is for a switch whose *own* change is in flight or unconfirmed, and
+ * for every switch while the inventory is re-read or stale. It is refused like
+ * a disabled one — no click handler, so pointer, Enter and Space all do
+ * nothing, and `requestChange` re-checks anyway — but it stays focusable.
+ * Natively disabling it would drop the keyboard focus of whoever just used it
+ * to the page: the read after an acknowledged change starts while their focus
+ * is still on the switch. Its status stays one Tab stop away through
+ * `aria-describedby`, or in the inventory notice. Every other blocked switch
+ * is natively disabled.
  *
  * `pending` is the held case whose request has not answered yet. The switch
  * itself shows it — a spinner in the thumb, at full strength rather than
@@ -213,22 +240,35 @@ export function DatasetAccessView({
   everyone,
   operations,
   storageAvailable,
-  reconciliationFailed = false,
+  inventory = CURRENT_INVENTORY,
+  onRefreshAccess,
   canAttempt,
   onRoleChange,
   onDone,
 }: DatasetAccessViewProps) {
   const baseId = useId();
+  const doneId = `${baseId}-done`;
   const [search, setSearch] = useState("");
   const [confirmation, setConfirmation] = useState<PendingConfirmation | null>(
     null,
   );
 
-  // Owner *and* capability changes invalidate an unconfirmed dialog, on the
-  // render that changes them rather than in a later effect. A confirmation
-  // raised for one principal, Gateway, dataset or authority must not survive
-  // into a state where it would mean something else.
-  const ownerKey = `${scopeKey}|${capabilities.grant}|${capabilities.revoke}|${capabilities.lookupRecipients}`;
+  const settled = reads.status === "settled" ? reads : null;
+
+  // Owner, capability *and* evidence changes invalidate an unconfirmed
+  // dialog, on the render that changes them rather than in a later effect. A
+  // confirmation raised for one principal, Gateway, dataset or authority, or
+  // against an inventory or group list that has since been replaced or lost,
+  // must not survive into a state where it would mean something else.
+  const ownerKey = [
+    scopeKey,
+    capabilities.grant,
+    capabilities.revoke,
+    capabilities.lookupRecipients,
+    inventory.revision,
+    inventory.freshness,
+    settled?.groups.kind ?? "loading",
+  ].join("|");
   const [confirmationOwner, setConfirmationOwner] = useState(ownerKey);
   let activeConfirmation = confirmation;
   if (confirmationOwner !== ownerKey) {
@@ -237,26 +277,45 @@ export function DatasetAccessView({
     activeConfirmation = null;
   }
 
-  const settled = reads.status === "settled" ? reads : null;
   const discoveredGroups =
     settled !== null && settled.groups.kind === "read"
       ? settled.groups.groups
       : null;
   const everyoneGroupId =
     everyone.kind === "identified" ? everyone.group.id : null;
+  const { confirmedOperationIds } = inventory;
 
   const rows = useMemo(
     () =>
-      settled === null || discoveredGroups === null
+      settled === null
         ? null
         : buildAccessRows({
             groups: discoveredGroups,
             recipients: settled.recipients,
             operations,
             everyoneGroupId,
+            confirmedOperationIds,
           }),
-    [settled, discoveredGroups, operations, everyoneGroupId],
+    [
+      settled,
+      discoveredGroups,
+      operations,
+      everyoneGroupId,
+      confirmedOperationIds,
+    ],
   );
+  // "No group permissions assigned" is a claim about what is on screen, so it
+  // is taken from the drawn rows — acknowledged changes included — and only
+  // from a current inventory. An empty snapshot that is being re-read, or that
+  // a later read could not confirm, is not evidence of an empty list.
+  const inventoryEmpty =
+    inventory.freshness === "current" &&
+    rows !== null &&
+    rows.every(
+      (row) =>
+        row.otherRoles.length === 0 && row.cells.every((cell) => !cell.granted),
+    );
+  const hasEditableRows = rows?.some((row) => !row.readOnly) ?? false;
 
   const query = search.trim().toLowerCase();
   const visibleRows = useMemo(
@@ -310,13 +369,17 @@ export function DatasetAccessView({
     });
   }
   if (mode.kind === "full-editor") {
-    if (reconciliationFailed) {
+    if (inventory.freshness === "stale") {
       // A warning, not an error: nothing failed except our attempt to look
-      // again. Every acknowledged change is still acknowledged.
+      // again. Every acknowledged change is still acknowledged, and Refresh
+      // access below the list is the way forward.
       addNotice({
-        id: "reconciliation",
+        id: "inventory",
         tone: "warning",
-        text: RECONCILIATION_FAILED_MESSAGE,
+        text:
+          inventory.staleReason === "change-unconfirmed"
+            ? CHANGE_NOT_REFRESHED_MESSAGE
+            : REFRESH_FAILED_MESSAGE,
       });
     }
     if (settled !== null) {
@@ -401,6 +464,11 @@ export function DatasetAccessView({
         ? "not-permitted"
         : "capability-unknown";
     }
+
+    // Switches are drawn from the inventory, so a change waits for a current
+    // one: never made against a list being re-read or one that is stale.
+    const inventoryBlock = inventoryBlockOf(inventory.freshness);
+    if (inventoryBlock !== null) return inventoryBlock;
 
     // A possible public audience is never granted to as an ordinary group.
     // Removing a known role stays available under its exact confirmation.
@@ -586,6 +654,20 @@ export function DatasetAccessView({
     ) {
       return;
     }
+    // The full editor's change must still be the change the current rows
+    // offer: an editable group, a current inventory, and a role whose state
+    // still calls for this direction. The grant form has no rows to check.
+    if (mode.kind === "full-editor") {
+      if (inventoryBlockOf(inventory.freshness) !== null) return;
+      const row = rows?.find(
+        (candidate) => candidate.groupId === pending.groupId,
+      );
+      const cell = row?.cells.find(
+        (candidate) => candidate.role === pending.role,
+      );
+      if (row === undefined || row.readOnly || cell === undefined) return;
+      if (cell.granted !== (pending.action === "remove")) return;
+    }
     if (
       canAttempt(pending.groupId, pending.role, pending.action).kind ===
       "blocked"
@@ -623,6 +705,36 @@ export function DatasetAccessView({
           // that, rather than implying the account has none.
           groupsUnavailableMessage(settled.groups)
         : accessUnavailableMessage(mode.reason);
+
+  /**
+   * Refresh access, where reading again can help: after the inventory read
+   * on open failed, or once a later read failed or contradicted a change. It
+   * stays on screen while its own read runs, so the keyboard focus that used
+   * it is not dropped mid-way.
+   */
+  const [refreshRequested, setRefreshRequested] = useState(false);
+  const refreshNeeded =
+    (mode.kind === "unavailable" && offersRefreshAccess(mode.reason)) ||
+    (mode.kind === "full-editor" && inventory.freshness === "stale");
+  const showRefresh =
+    onRefreshAccess !== undefined &&
+    (refreshNeeded ||
+      (refreshRequested && inventory.freshness === "refreshing"));
+  const refreshing = inventory.freshness === "refreshing";
+
+  // When the read it started settles and the action is no longer needed, the
+  // button leaves; focus moves to Done rather than falling to the page.
+  useEffect(() => {
+    if (!refreshRequested || refreshing) return;
+    setRefreshRequested(false);
+    if (!refreshNeeded) document.getElementById(doneId)?.focus();
+  }, [refreshRequested, refreshing, refreshNeeded, doneId]);
+
+  const requestRefresh = () => {
+    if (refreshing || onRefreshAccess === undefined) return;
+    setRefreshRequested(true);
+    onRefreshAccess();
+  };
 
   const audienceNote =
     everyone.kind === "unavailable" && everyone.reason !== "multiple-matches"
@@ -702,15 +814,30 @@ export function DatasetAccessView({
             {mode.kind === "unavailable" && (
               <div className="mt-2">
                 <h3 className="text-body-16-semibold text-slate-850">
-                  {ACCESS_UNAVAILABLE_TITLE}
+                  {accessUnavailableTitle(mode.reason)}
                 </h3>
-                <p
-                  role="status"
-                  className="mt-2 text-body-14-regular text-gray-650"
-                >
-                  {unavailableText}
-                </p>
+                {unavailableText !== null && (
+                  <p
+                    role="status"
+                    className="mt-2 text-body-14-regular text-gray-650"
+                  >
+                    {unavailableText}
+                  </p>
+                )}
               </div>
+            )}
+
+            {/*
+              Mounted whenever a read may run, so its start and outcome are
+              announced; the text shows only while one does.
+            */}
+            {(mode.kind === "unavailable" || mode.kind === "full-editor") && (
+              <p
+                role="status"
+                className="mt-2 text-body-14-regular text-gray-650 empty:mt-0"
+              >
+                {refreshing ? REFRESHING_MESSAGE : ""}
+              </p>
             )}
 
             {mode.kind === "full-editor" && rows !== null && (
@@ -736,30 +863,31 @@ export function DatasetAccessView({
                     Group permissions
                   </h3>
                   <p className="mt-1 pb-2 text-descriptions-12-regular text-gray-650 sm:pb-0">
-                    {DISCOVERY_CAVEAT}
+                    {INVENTORY_CAPTION}
                     {audienceNote !== null && ` ${audienceNote}`}
                   </p>
-                  <div
-                    className="hidden justify-end gap-1 pt-3 pb-1 sm:flex"
-                    aria-hidden="true"
-                  >
-                    {(rows[0]?.cells ?? []).map((cell) => (
-                      <span
-                        key={cell.key}
-                        className="w-20 text-center text-descriptions-12-medium text-gray-750"
-                      >
-                        {cell.label}
-                      </span>
-                    ))}
-                  </div>
-
-                  {rows.length === 0 && (
+                  {inventoryEmpty && (
                     <p
                       role="status"
-                      className="border-t border-slate-200 py-6 text-body-14-regular text-gray-650"
+                      className="mt-2 text-body-14-regular text-gray-650"
                     >
-                      {EMPTY_DISCOVERY_MESSAGE}
+                      {NO_GROUP_PERMISSIONS_MESSAGE}
                     </p>
+                  )}
+                  {hasEditableRows && (
+                    <div
+                      className="hidden justify-end gap-1 pt-3 pb-1 sm:flex"
+                      aria-hidden="true"
+                    >
+                      {(rows[0]?.cells ?? []).map((cell) => (
+                        <span
+                          key={cell.key}
+                          className="w-20 text-center text-descriptions-12-medium text-gray-750"
+                        >
+                          {cell.label}
+                        </span>
+                      ))}
+                    </div>
                   )}
 
                   {rows.length > 0 && visibleRows?.length === 0 && (
@@ -817,47 +945,72 @@ export function DatasetAccessView({
                                 )}
                               </div>
 
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:gap-1">
-                                {row.cells.map((cell) => {
-                                  const block = blockFor(row, cell);
-                                  // Its own change, with its own feedback line —
-                                  // not merely a reason reported for it.
-                                  const held =
-                                    cell.activity.kind === "pending" ||
-                                    cell.activity.kind === "uncertain";
-                                  const statusId =
-                                    cell.activity.kind === "idle"
-                                      ? undefined
-                                      : `${baseId}-${row.groupId}-${cell.key}`;
-                                  return (
-                                    <div
-                                      key={cell.key}
-                                      className="flex items-center justify-between gap-2 sm:h-[21px] sm:w-20 sm:justify-center"
-                                    >
-                                      <span className="text-descriptions-12-regular text-gray-650 sm:hidden">
-                                        {cell.label}
-                                      </span>
-                                      <RoleSwitch
-                                        checked={cell.granted}
-                                        disabled={block !== null && !held}
-                                        held={held}
-                                        pending={
-                                          cell.activity.kind === "pending"
-                                        }
-                                        label={`${row.name} — ${cell.label}`}
-                                        describedBy={statusId}
-                                        attention={
-                                          cell.activity.kind === "uncertain"
-                                        }
-                                        onToggle={() =>
-                                          requestChange(row, cell)
-                                        }
-                                      />
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              {!row.readOnly && (
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:gap-1">
+                                  {row.cells.map((cell) => {
+                                    const block = blockFor(row, cell);
+                                    // Its own change, with its own feedback line —
+                                    // not merely a reason reported for it.
+                                    const held =
+                                      cell.activity.kind === "pending" ||
+                                      cell.activity.kind === "uncertain" ||
+                                      block === "inventory-refreshing" ||
+                                      block === "inventory-stale";
+                                    const statusId =
+                                      cell.activity.kind === "idle"
+                                        ? undefined
+                                        : `${baseId}-${row.groupId}-${cell.key}`;
+                                    return (
+                                      <div
+                                        key={cell.key}
+                                        className="flex items-center justify-between gap-2 sm:h-[21px] sm:w-20 sm:justify-center"
+                                      >
+                                        <span className="text-descriptions-12-regular text-gray-650 sm:hidden">
+                                          {cell.label}
+                                        </span>
+                                        <RoleSwitch
+                                          checked={cell.granted}
+                                          disabled={block !== null && !held}
+                                          held={held}
+                                          pending={
+                                            cell.activity.kind === "pending"
+                                          }
+                                          label={`${row.name} — ${cell.label}`}
+                                          describedBy={statusId}
+                                          attention={
+                                            cell.activity.kind === "uncertain"
+                                          }
+                                          onToggle={() =>
+                                            requestChange(row, cell)
+                                          }
+                                        />
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
+
+                            {row.readOnly && (
+                              <div className="mt-1 flex flex-col gap-1">
+                                <p className="text-body-14-regular break-words text-gray-750">
+                                  {heldRolesText([
+                                    ...row.cells
+                                      .filter((cell) => cell.granted)
+                                      .map((cell) => cell.label),
+                                    ...row.otherRoles,
+                                  ])}
+                                </p>
+                                <p className="text-descriptions-12-regular text-gray-650">
+                                  {HOLDER_DETAILS_UNAVAILABLE}
+                                </p>
+                              </div>
+                            )}
+                            {!row.readOnly && row.otherRoles.length > 0 && (
+                              <p className="mt-2 text-descriptions-12-regular break-words text-gray-650">
+                                {otherRolesText(row.otherRoles)}
+                              </p>
+                            )}
 
                             {/*
                               Always mounted, so a change's status and outcome
@@ -906,8 +1059,9 @@ export function DatasetAccessView({
         Closing never undoes an applied change, and needs no disclaimer to say
         so. The grant form carries its own, secondary to Grant.
       */}
-          <div className="flex justify-end border-t border-slate-200 px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-4 sm:flex-row-reverse sm:justify-start sm:px-6">
             <Button
+              id={doneId}
               variant="primary"
               size="md"
               onClick={closeView}
@@ -915,6 +1069,22 @@ export function DatasetAccessView({
             >
               {DONE_LABEL}
             </Button>
+            {showRefresh && (
+              // Held rather than disabled while its read runs, so focus stays.
+              <Button
+                variant="outline"
+                size="md"
+                onClick={requestRefresh}
+                aria-disabled={refreshing || undefined}
+                aria-busy={refreshing || undefined}
+                className={cn(
+                  "w-full whitespace-nowrap rounded-full sm:w-[180px]",
+                  refreshing && "cursor-progress",
+                )}
+              >
+                {REFRESH_ACCESS_LABEL}
+              </Button>
+            )}
           </div>
         </>
       )}

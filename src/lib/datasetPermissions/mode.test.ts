@@ -85,6 +85,20 @@ describe("the full editor", () => {
     ).toBe("full-editor");
   });
 
+  it("is selected by a successful read even when no capability could be read", () => {
+    // The dataset read is direct evidence that this caller may see the
+    // inventory. It does not grant a write: both stay unknown, so no control
+    // will be offered.
+    expect(
+      selectAccessMode(
+        evidence({
+          recipients: RECIPIENTS_KNOWN,
+          capabilities: UNKNOWN_CAPABILITIES,
+        }),
+      ).kind,
+    ).toBe("full-editor");
+  });
+
   it("is selected even when no write capability is allowed, as the read-only case", () => {
     // Read-only is the full editor with no controls offered, not a different
     // presentation: the evidence that decides what is *shown* is the same.
@@ -206,8 +220,9 @@ describe("a broken read is never worked around", () => {
 
   it("treats an unexpected refusal as a refusal, not as policy", () => {
     // The adapter maps 403 to `not-supported` — correct for one response. Only
-    // a complete global read deciding `not-permitted` confirms the policy, and
-    // this caller's lookup capability was established as *allowed*.
+    // complete global and dataset evidence deciding `not-permitted` confirms
+    // the policy, and this caller's lookup capability was established as
+    // *allowed*: a mismatch to report, not a reason for the limited form.
     expect(
       selectAccessMode(
         evidence({
@@ -216,6 +231,19 @@ describe("a broken read is never worked around", () => {
             revoke: "allowed",
             lookupRecipients: "allowed",
           },
+          recipients: RECIPIENTS_REFUSED,
+        }),
+      ),
+    ).toEqual({ kind: "unavailable", reason: "recipient-read-refused" });
+  });
+
+  it("does not read a 403 with an unknown lookup capability as policy", () => {
+    // Capability reads failed, the dataset read was refused. Nothing confirms
+    // the restriction, so the limited form is not selected.
+    expect(
+      selectAccessMode(
+        evidence({
+          capabilities: { ...UNKNOWN_CAPABILITIES, grant: "allowed" },
           recipients: RECIPIENTS_REFUSED,
         }),
       ),

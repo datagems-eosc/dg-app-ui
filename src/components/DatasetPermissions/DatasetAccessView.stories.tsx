@@ -8,6 +8,7 @@ import {
   DATASET_NAME,
   DISCOVERED_GROUPS,
   EVERYONE_AMBIGUOUS,
+  GRANTS_WITH_UNDISCOVERED_HOLDER,
   KNOWN_GRANTS,
   operation,
   READ_ONLY_CAPABILITIES,
@@ -116,6 +117,7 @@ export const GrantOnlyAmbiguousAudience: Story = {
   }),
 };
 
+/** The inventory read on open failed: no rows, and Refresh access to retry. */
 export const RecipientReadFailed: Story = {
   args: baseProps({
     reads: {
@@ -123,16 +125,65 @@ export const RecipientReadFailed: Story = {
       groups: { kind: "read", groups: DISCOVERED_GROUPS },
       recipients: { kind: "failed" },
     },
+    onRefreshAccess: () => undefined,
   }),
 };
 
+/**
+ * Group details could not be read, but the inventory was. Its holders stay
+ * visible, each read-only, and nothing can be granted.
+ */
 export const GroupDiscoveryFailed: Story = {
   args: baseProps({
     reads: {
       status: "settled",
       groups: { kind: "failed" },
+      recipients: { kind: "known", grants: [...KNOWN_GRANTS] },
+    },
+  }),
+};
+
+/**
+ * An explicitly empty inventory: no group holds a direct role, and the groups
+ * this account can choose are offered as unassigned targets.
+ */
+export const NoGroupPermissionsAssigned: Story = {
+  args: baseProps({
+    reads: {
+      status: "settled",
+      groups: { kind: "read", groups: DISCOVERED_GROUPS },
       recipients: { kind: "known", grants: [] },
     },
+  }),
+};
+
+/**
+ * A holder discovery cannot identify, and a role with no control, both kept
+ * visible and read-only.
+ */
+export const UndiscoveredHolder: Story = {
+  args: baseProps({
+    reads: {
+      status: "settled",
+      groups: { kind: "read", groups: DISCOVERED_GROUPS },
+      recipients: {
+        kind: "known",
+        grants: [...GRANTS_WITH_UNDISCOVERED_HOLDER],
+      },
+    },
+  }),
+};
+
+/** A newer inventory read is running: last-known roles shown, changes wait. */
+export const RefreshingInventory: Story = {
+  args: baseProps({
+    inventory: {
+      freshness: "refreshing",
+      staleReason: null,
+      revision: 2,
+      confirmedOperationIds: new Set(),
+    },
+    onRefreshAccess: () => undefined,
   }),
 };
 
@@ -242,10 +293,19 @@ export const RecipientReadRefusedUnexpectedly: Story = {
   }),
 };
 
-/** A re-check after an acknowledged change that did not complete. Nothing moves. */
-export const ReconciliationFailed: Story = {
+/**
+ * The read after an acknowledged change failed or disagreed with it. The change
+ * stays saved, nothing moves, every switch waits, and Refresh access is offered.
+ */
+export const ChangeNotRefreshed: Story = {
   args: baseProps({
-    reconciliationFailed: true,
+    inventory: {
+      freshness: "stale",
+      staleReason: "change-unconfirmed",
+      revision: 2,
+      confirmedOperationIds: new Set(),
+    },
+    onRefreshAccess: () => undefined,
     operations: [
       operation({
         role: DATASET_ROLE_MAP.edit,
