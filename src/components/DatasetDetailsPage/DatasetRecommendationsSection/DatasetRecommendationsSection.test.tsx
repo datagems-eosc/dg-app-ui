@@ -114,8 +114,15 @@ describe("DatasetRecommendationsSection — publication badge", () => {
     const card = screen.getByText("Alpha Dataset").closest("div");
     expect(card?.textContent).not.toMatch(/^\s*$/);
   });
+});
 
-  it("still shows the category chip, so the card is not left blank", async () => {
+describe("DatasetRecommendationsSection — collection badge", () => {
+  beforeEach(() => {
+    getDatasetRecommendations.mockReset();
+    mockPush.mockReset();
+  });
+
+  it("shows no collection chip when the dataset has no collection", async () => {
     getDatasetRecommendations.mockResolvedValue([
       { id: "r1", name: "Alpha Dataset", description: "desc" },
     ]);
@@ -124,6 +131,25 @@ describe("DatasetRecommendationsSection — publication badge", () => {
     await waitFor(() =>
       expect(screen.getByText("Alpha Dataset")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Math")).toBeInTheDocument();
+    // The mapper's internal "Math" category is not a collection (#251).
+    expect(screen.queryByText("Math")).toBeNull();
+    expect(screen.getByText("desc")).toBeInTheDocument();
+  });
+
+  it("shows a genuine collection name", async () => {
+    getDatasetRecommendations.mockResolvedValue([
+      {
+        id: "r1",
+        name: "Alpha Dataset",
+        description: "desc",
+        collections: [{ id: "c1", name: "Meteo Collection" }],
+      },
+    ]);
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+    await waitFor(() =>
+      expect(screen.getByText("Alpha Dataset")).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Meteo")).toBeInTheDocument();
   });
 });

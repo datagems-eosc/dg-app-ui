@@ -16,7 +16,7 @@ import {
   Share,
   X,
 } from "lucide-react";
-import { getDisplayCategory } from "@/config/collectionConstants";
+import { getDisplayCollectionLabel } from "@/config/collectionConstants";
 import type { Dataset } from "@/data/dataset";
 import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
 
@@ -49,15 +49,9 @@ export default function DatasetDetailsPanel({
   isVisible,
   onAddToCollection,
 }: DatasetDetailsPanelProps) {
-  const hasDatasetCollections = dataset && hasCollections(dataset);
-
-  // Calculate display category/collection name with proper processing
-  const displayCategory =
-    dataset && hasDatasetCollections
-      ? getDisplayCategory(
-          dataset.collections,
-          ("category" in dataset && dataset.category) || "",
-        )
+  const displayCollection =
+    dataset && hasCollections(dataset)
+      ? getDisplayCollectionLabel(dataset.collections)
       : "";
   const permissions =
     dataset && "permissions" in dataset ? dataset.permissions : undefined;
@@ -167,11 +161,11 @@ export default function DatasetDetailsPanel({
           <h3 className="text-H2-20-semibold text-slate-850 mb-4">
             {dataset.title}
           </h3>
-          {(displayCategory || displayAccess) && (
+          {(displayCollection || displayAccess) && (
             <div className="flex items-center gap-1">
-              {displayCategory && (
+              {displayCollection && (
                 <Chip color="info" variant="outline" size="sm">
-                  {displayCategory}
+                  {displayCollection}
                 </Chip>
               )}
               {displayAccess && (

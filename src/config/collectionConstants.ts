@@ -17,7 +17,10 @@ export function getDisplayCollections(
   return collections
     .filter((col) => {
       const name = typeof col.name === "string" ? col.name : "";
-      return !CUSTOM_COLLECTION_PATTERN.test(name);
+      return (
+        !CUSTOM_COLLECTION_PATTERN.test(name) &&
+        getDisplayCollectionName(col).trim() !== ""
+      );
     })
     .slice(0, maxCount);
 }
@@ -27,13 +30,14 @@ export function getDisplayCollectionName(col: DisplayCollection): string {
   return name.replace(/ Collection$/i, "");
 }
 
-export function getDisplayCategory(
+/**
+ * First displayable collection name, or "" when none is available. Never
+ * substitutes an internal category: that would present a fabricated
+ * collection membership (#251).
+ */
+export function getDisplayCollectionLabel(
   collections: DisplayCollection[] | undefined,
-  fallbackCategory: string,
 ): string {
-  if (!collections?.length) return fallbackCategory;
-  const display = getDisplayCollections(collections, 1);
-  return display.length > 0
-    ? getDisplayCollectionName(display[0])
-    : fallbackCategory;
+  const [first] = getDisplayCollections(collections ?? [], 1);
+  return first ? getDisplayCollectionName(first) : "";
 }

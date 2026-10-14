@@ -208,17 +208,11 @@ export default function DatasetCard({
             {getDatasetName(dataset)}
           </h2>
           <div className="flex items-center gap-1 flex-wrap">
-            {displayCollections.length > 0 ? (
-              displayCollections.map((col) => (
-                <Chip key={col.id || col.name} color="grey" size="sm">
-                  {getDisplayCollectionName(col)}
-                </Chip>
-              ))
-            ) : (
-              <Chip color="grey" size="sm">
-                {dataset.category}
+            {displayCollections.map((col) => (
+              <Chip key={col.id || col.name} color="grey" size="sm">
+                {getDisplayCollectionName(col)}
               </Chip>
-            )}
+            ))}
             <Chip color="success" size="sm">
               {dataset.license || "No License"}
             </Chip>
