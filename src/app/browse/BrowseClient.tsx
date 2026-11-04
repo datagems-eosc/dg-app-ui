@@ -254,7 +254,20 @@ export default function BrowseClient() {
    * Use sortBy to set the order.items field in the payload.
    * Show loader while fetching. If searchTerm is less than 3 chars, load all datasets.
    */
+  // Inputs the Home-handoff Smart Search already started with. StrictMode
+  // re-runs mount effects; an identical re-run must not search again.
+  const handoffSearchKey = useRef<string | null>(null);
+
   useEffect(() => {
+    if (
+      retrievalOverride &&
+      searchTerm === retrievalOverride.display &&
+      isSmartSearchEnabled
+    ) {
+      const key = JSON.stringify([searchTerm, sortBy, filters, api.hasToken]);
+      if (handoffSearchKey.current === key) return;
+      if (api.hasToken) handoffSearchKey.current = key;
+    }
     const fetchDatasets = async () => {
       setIsLoading(true);
       setError(null);

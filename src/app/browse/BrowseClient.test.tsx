@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type React from "react";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const replace = vi.fn();
@@ -112,6 +113,19 @@ describe("BrowseClient – Home handoff", () => {
     );
     expect(screen.getByTestId("smart")).toHaveTextContent("true");
     expect(api.queryDatasets).not.toHaveBeenCalled();
+  });
+
+  it("discovers once under StrictMode double effects", async () => {
+    handOff();
+    render(
+      <StrictMode>
+        <BrowseClient />
+      </StrictMode>,
+    );
+    await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+    await act(async () => {});
+    expect(api.searchCrossDataset).toHaveBeenCalledTimes(1);
+    expect(api.persistConversation).toHaveBeenCalledTimes(1);
   });
 
   it("falls back to the original text when there is no retrieval query", async () => {
