@@ -323,15 +323,34 @@ export function HomeQueryEntry({
             {busy ? (
               <>
                 <ClassifyingStatus />
-                <Button variant="tertiary" size="sm" onClick={onCancel}>
+                <Button
+                  key="cancel"
+                  variant="tertiary"
+                  size="sm"
+                  onClick={onCancel}
+                >
                   <X className="w-4 h-4 mr-1" aria-hidden="true" />
                   Cancel
                 </Button>
               </>
             ) : (
               <>
-                <span />
+                {/* Messages share the footer row so the box never changes height. */}
+                {failed ? (
+                  <p className="text-red-500 text-sm min-w-0" role="alert">
+                    {
+                      "We couldn't check your request. Something went wrong on our side."
+                    }
+                  </p>
+                ) : tooLong ? (
+                  <p className="text-red-500 text-sm min-w-0">
+                    Keep your request under 2,000 characters.
+                  </p>
+                ) : (
+                  <span />
+                )}
                 <Button
+                  key="send"
                   variant="primary"
                   size="icon"
                   className="p-1"
@@ -347,18 +366,6 @@ export function HomeQueryEntry({
               </>
             )}
           </div>
-          {tooLong && (
-            <div className="text-red-500 text-sm mt-2">
-              Keep your request under 2,000 characters.
-            </div>
-          )}
-          {failed && (
-            <div className="text-red-500 text-sm mt-2" role="alert">
-              {
-                "We couldn't check your request. Something went wrong on our side."
-              }
-            </div>
-          )}
         </div>
       </div>
 
