@@ -7,6 +7,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedPage from "@/components/ProtectedPage";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import { logError } from "@/lib/logger";
 
 const API_DATASETS_PAYLOAD = {
@@ -103,6 +104,16 @@ export function ChatPageContent({
   const searchParams = useSearchParams();
   const isInitializedRef = useRef(false);
   const lastConversationIdRef = useRef<string | null>(null);
+  // A Home question handoff (UI #352) applies only to a new general chat.
+  // `peek` is pure; `Chat` consumes the handoff when it submits.
+  const [initialHandoff] = useState(() => {
+    const id = searchParams?.get("handoff");
+    if (!id || params?.conversationId || forcedDatasetIds) return undefined;
+    const handoff = handoffStore.peek(id);
+    return handoff?.intent === "question"
+      ? { id, originalQuery: handoff.originalQuery }
+      : undefined;
+  });
 
   useEffect(() => {
     setIsMounted(true);
@@ -301,6 +312,7 @@ export function ChatPageContent({
       showConversationName={showConversationName}
       hideCollectionActions={hideCollectionActions}
       initialCollectionId={initialCollectionId}
+      initialHandoff={initialHandoff}
     />
   );
 

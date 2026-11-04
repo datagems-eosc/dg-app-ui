@@ -16,6 +16,7 @@ import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import { logError } from "@/lib/logger";
 import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
 import {
@@ -39,6 +40,8 @@ interface ChatProps {
   showConversationName?: boolean;
   hideCollectionActions?: boolean;
   initialCollectionId?: string | null; // Collection ID from URL parameter
+  /** A pending Home question handoff (UI #352), submitted at most once. */
+  initialHandoff?: { id: string; originalQuery: string };
 }
 
 // Add type for cross-dataset search result
@@ -59,6 +62,7 @@ export default function Chat({
   showConversationName = true,
   hideCollectionActions = false,
   initialCollectionId = null,
+  initialHandoff,
 }: ChatProps) {
   // Store only Message[] for UI rendering
   const [messages, setMessages] = useState<Message[]>([]);
@@ -567,8 +571,8 @@ export default function Chat({
     }
   }, [selectedDatasets, previousDatasets, messages.length, conversationId]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim()) return;
     setError(null);
     setIsLoading(true);
     // Show spinner immediately when user sends a message
@@ -590,7 +594,7 @@ export default function Chat({
         const userMessage: Message = {
           id: Date.now().toString(),
           type: "user",
-          content: inputValue,
+          content: text,
           timestamp: new Date(),
         };
         setMessages((prev) => {
@@ -653,7 +657,7 @@ export default function Chat({
         }
         // Step 1: Create conversation
         const persistPayload = {
-          name: inputValue,
+          name: text,
         };
         const persistData = await api.persistConversation(
           persistPayload,
@@ -686,7 +690,7 @@ export default function Chat({
               "distance",
             ],
           },
-          query: inputValue,
+          query: text,
           resultCount: 100,
         };
         const data = await api.searchCrossDataset(payload);
@@ -711,7 +715,7 @@ export default function Chat({
           const userMessage: Message = {
             id: Date.now().toString(),
             type: "user",
-            content: inputValue,
+            content: text,
             timestamp: new Date(),
           };
 
@@ -763,7 +767,7 @@ export default function Chat({
         }
         // Step 1: Create conversation with datasets
         const persistPayload = {
-          name: inputValue,
+          name: text,
           conversationDatasets: selectedDatasets.map((id) => ({
             datasetId: id,
           })),
@@ -788,7 +792,7 @@ export default function Chat({
           project: {
             fields: ["question", "data", "status", "entries"],
           },
-          query: inputValue,
+          query: text,
           resultCount: 100,
           datasetIds: selectedDatasets, // Add datasetIds for in-data-explore
         };
@@ -832,7 +836,7 @@ export default function Chat({
       const userMessage: Message = {
         id: Date.now().toString(),
         type: "user",
-        content: inputValue,
+        content: text,
         timestamp: new Date(),
       };
       setMessages([userMessage]);
@@ -876,6 +880,20 @@ export default function Chat({
       setIsLoading(false);
     }
   };
+
+  const handleSendMessage = () => sendMessage(inputValue);
+
+  // Submit a Home handoff once the session is ready. `consume` succeeds for
+  // the first caller only, so remounts and Back never send it twice; the
+  // handoff id leaves the URL before the conversation is created. The
+  // original text is also the discovery query: Gateway stores that text as
+  // the conversation's question, and analysis later reads it from history.
+  useEffect(() => {
+    if (!initialHandoff || !api.hasToken || conversationId) return;
+    if (!handoffStore.consume(initialHandoff.id)) return;
+    router.replace(getNavigationUrl(APP_ROUTES.CHAT));
+    void sendMessage(initialHandoff.originalQuery);
+  }, [initialHandoff, api.hasToken, conversationId]);
 
   const _handleBackToBrowse = () => {
     router.push(getNavigationUrl(APP_ROUTES.BROWSE));
