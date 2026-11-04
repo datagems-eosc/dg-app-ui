@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -17,6 +17,7 @@ import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { mapApiDatasetToDataset } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
+import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import { logDebug, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
@@ -175,10 +176,33 @@ export default function BrowseClient() {
   const [error, setError] = useState<string | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetPlus[]>([]);
   const [filteredDatasets, setFilteredDatasets] = useState<DatasetPlus[]>([]);
-  const [searchTerm, setSearchTerm] = useState(""); // used for API
-  const [pendingSearchTerm, setPendingSearchTerm] = useState(""); // input value
+  // A Home handoff (`?handoff=<id>`, UI #352) starts one Smart Search: the
+  // input shows the user's original text while discovery uses the retrieval
+  // query. `peek` is pure, so reading it in state initialisers is safe; the
+  // handoff is consumed in an effect below and never replayed.
+  const handoffId = searchParams.get("handoff");
+  const [handoff] = useState(() => {
+    const pending = handoffId ? handoffStore.peek(handoffId) : null;
+    return pending?.intent === "dataset_search" ? pending : null;
+  });
+  const [searchTerm, setSearchTerm] = useState(
+    () => handoff?.originalQuery ?? "",
+  ); // used for API
+  const [pendingSearchTerm, setPendingSearchTerm] = useState(
+    () => handoff?.originalQuery ?? "",
+  ); // input value
+  const [retrievalOverride, setRetrievalOverride] = useState(() =>
+    handoff
+      ? {
+          display: handoff.originalQuery,
+          query: handoff.retrievalQuery ?? handoff.originalQuery,
+        }
+      : null,
+  );
   const [sortBy, setSortBy] = useState("name-asc");
-  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
+  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(
+    () => handoff !== null,
+  );
   const selectedCollection = searchParams.get("collection");
   const isCustomCollection = searchParams.get("isCustom") === "true";
   const [filters, setFilters] = useState<FilterState>({
@@ -297,7 +321,10 @@ export default function BrowseClient() {
                   "maxSimilarity",
                 ],
               },
-              query: searchTerm,
+              query:
+                retrievalOverride && searchTerm === retrievalOverride.display
+                  ? retrievalOverride.query
+                  : searchTerm,
               resultCount: 100,
             } as any;
 
@@ -766,6 +793,23 @@ export default function BrowseClient() {
   }, [api.hasToken]);
 
   useEffect(() => {
+    if (!handoffId) return;
+    handoffStore.consume(handoffId);
+    router.replace(getNavigationUrl(pathname));
+  }, [handoffId, pathname, router]);
+
+  useEffect(() => {
+    if (retrievalOverride && searchTerm !== retrievalOverride.display) {
+      setRetrievalOverride(null);
+    }
+  }, [searchTerm, retrievalOverride]);
+
+  // Reset the search when the route changes, not on the first mount: a Home
+  // handoff has already initialised it.
+  const lastPathname = useRef(pathname);
+  useEffect(() => {
+    if (lastPathname.current === pathname) return;
+    lastPathname.current = pathname;
     setPendingSearchTerm("");
     setSearchTerm("");
   }, [pathname]);
