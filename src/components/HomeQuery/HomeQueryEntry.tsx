@@ -354,7 +354,9 @@ export function HomeQueryEntry({
           )}
           {failed && (
             <div className="text-red-500 text-sm mt-2" role="alert">
-              We couldn't check your request. Something went wrong on our side.
+              {
+                "We couldn't check your request. Something went wrong on our side."
+              }
             </div>
           )}
         </div>
@@ -399,8 +401,9 @@ export function HomeQueryEntry({
                 aria-hidden="true"
               />
               <p className="text-body-14-regular text-blue-650 flex-1">
-                We can't pick the right place for your request right now. Please
-                choose one.
+                {
+                  "We can't pick the right place for your request right now. Please choose one."
+                }
               </p>
             </div>
           )}
