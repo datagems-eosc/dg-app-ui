@@ -31,6 +31,20 @@ const renderSidebar = () =>
     </FeatureFlagsProvider>,
   );
 
+describe("SidebarContent – Home entry", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.__env = { DEPLOYMENT_ENV: "staging" };
+  });
+
+  it("labels the dashboard link Home and keeps its route", () => {
+    renderSidebar();
+    const home = screen.getByRole("link", { name: "Home" });
+    expect(home).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
+  });
+});
+
 describe("SidebarContent – generalChat flag (Hide general chat)", () => {
   beforeEach(() => {
     window.localStorage.clear();

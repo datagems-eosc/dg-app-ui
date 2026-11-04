@@ -44,7 +44,7 @@ function MenuItemSkeleton() {
 const menuItems = [
   {
     id: "dashboard",
-    label: "Dashboard",
+    label: "Home",
     href: APP_ROUTES.DASHBOARD,
     icon: LayoutDashboard,
   },
