@@ -108,6 +108,9 @@ export function ChatHistoryList({
   const [listFailed, setListFailed] = useState(false);
   // Only the latest list request may update the list (search, clear, load more).
   const requestSeq = useRef(0);
+  // The applied search, readable synchronously so a clear runs once even when
+  // the box reports both "changed to empty" and "cleared".
+  const appliedSearch = useRef("");
   // Visible ids fetched for the current listing; ids missing from the list
   // were deleted, so the server has shifted and the next offset moves back.
   const fetchedIds = useRef<Set<string>>(new Set());
@@ -203,12 +206,15 @@ export function ChatHistoryList({
 
   const search = (text: string) => {
     const term = text.trim();
+    appliedSearch.current = term;
     setSearchQuery(term);
     void showFirstPage(term ? toNameLike(term) : null);
   };
 
   const clearSearch = () => {
     setSearchInput("");
+    if (appliedSearch.current === "") return;
+    appliedSearch.current = "";
     setSearchQuery("");
     void showFirstPage(null);
   };
@@ -271,7 +277,11 @@ export function ChatHistoryList({
         <SearchInput
           placeholder="Search chat history..."
           value={searchInput}
-          onChange={(v) => setSearchInput(v)}
+          onChange={(v) => {
+            setSearchInput(v);
+            // Emptying the box ends the search, like the clear button.
+            if (v.trim() === "") clearSearch();
+          }}
           onSearch={(v) => search(v ?? searchInput)}
           onClear={clearSearch}
           className="text-base sm:text-sm"

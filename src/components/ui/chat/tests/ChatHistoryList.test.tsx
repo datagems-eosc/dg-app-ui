@@ -483,6 +483,28 @@ describe("ChatHistoryList", () => {
     });
   });
 
+  it("shows the newest conversations again when the search text is deleted by hand", async () => {
+    const queryConversations = vi
+      .fn()
+      .mockResolvedValueOnce({ items: defaultConversations, count: 3 })
+      .mockResolvedValueOnce({ items: [defaultConversations[0]], count: 1 })
+      .mockResolvedValueOnce({ items: defaultConversations, count: 3 });
+    mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+    render(<ChatHistoryList session={defaultSession} />);
+    await screen.findByTestId("chat-item-conv-2");
+    await searchFor("First");
+    await waitFor(() => {
+      expect(screen.queryByTestId("chat-item-conv-2")).not.toBeInTheDocument();
+    });
+
+    await userEvent.clear(screen.getByTestId("search-field"));
+
+    await screen.findByTestId("chat-item-conv-2");
+    expect(queryConversations).toHaveBeenCalledTimes(3);
+    expect(queryConversations.mock.calls[2][0].like).toBeUndefined();
+  });
+
   it("matches wildcard characters in the search literally", async () => {
     const queryConversations = vi
       .fn()
