@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Browse from "./Browse";
@@ -393,6 +393,24 @@ describe("Browse – search box follows Smart search", () => {
       "Describe what you need, e.g. “rainfall data in Central Europe”…",
     );
     expect(frameOf(searchBox())).toHaveAttribute("data-smart", "on");
+  });
+
+  it("ends the search when the box is emptied by hand", () => {
+    const onSearchTermChange = vi.fn();
+    const onSearchTermSubmit = vi.fn();
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rain"
+        onSearchTermChange={onSearchTermChange}
+        onSearchTermSubmit={onSearchTermSubmit}
+      />,
+    );
+    fireEvent.change(searchBox(), { target: { value: "" } });
+    expect(onSearchTermChange).toHaveBeenCalledWith("");
+    expect(onSearchTermSubmit).toHaveBeenCalledWith("");
   });
 
   it("asks for a name or keyword and stays neutral when off", () => {

@@ -1077,7 +1077,12 @@ export default function Browse({
                       : "Search by name or keyword…"
                   }
                   value={searchTerm}
-                  onChange={onSearchTermChange}
+                  onChange={(value) => {
+                    onSearchTermChange?.(value);
+                    // Emptying the box ends the search, like the clear button
+                    // (the box does not submit under 3 characters).
+                    if (value.trim() === "") onSearchTermSubmit?.("");
+                  }}
                   onSearch={(value) => onSearchTermSubmit?.(value)}
                   onClear={() => {
                     if (onSearchTermChange) {

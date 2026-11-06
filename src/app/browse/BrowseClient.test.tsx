@@ -60,6 +60,12 @@ vi.mock("@/components/Browse", () => ({
       >
         Search again
       </button>
+      <button
+        type="button"
+        onClick={() => props.onSearchTermSubmit("  rain  ")}
+      >
+        Search padded
+      </button>
     </div>
   ),
 }));
@@ -187,5 +193,15 @@ describe("BrowseClient – Home handoff", () => {
         autoCreateConversation: false,
       },
     );
+  });
+
+  it("trims the submitted search text", async () => {
+    render(<BrowseClient />);
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Search padded" }));
+    });
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
+    expect(api.queryDatasets.mock.calls[1][0].like).toBe("%rain%");
   });
 });

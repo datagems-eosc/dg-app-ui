@@ -771,8 +771,9 @@ export default function BrowseClient() {
 
   const handleSearchTermSubmit = useCallback(
     (searchValue?: string) => {
-      const valueToSet =
-        searchValue !== undefined ? searchValue : pendingSearchTerm.trim();
+      const valueToSet = (
+        searchValue !== undefined ? searchValue : pendingSearchTerm
+      ).trim();
       setSearchTerm(valueToSet);
     },
     [pendingSearchTerm],

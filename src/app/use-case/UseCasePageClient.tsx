@@ -321,7 +321,7 @@ export default function UseCasePageClient({
 
   const handleSearchTermSubmit = useCallback(
     (value?: string) => {
-      setSearchTerm(value !== undefined ? value : pendingSearchTerm.trim());
+      setSearchTerm((value !== undefined ? value : pendingSearchTerm).trim());
     },
     [pendingSearchTerm],
   );
