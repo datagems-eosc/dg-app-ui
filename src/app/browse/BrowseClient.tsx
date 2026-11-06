@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -17,9 +17,12 @@ import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { mapApiDatasetToDataset } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
+import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import { logDebug, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
+
+const CATALOGUE_PAGE_SIZE = 100;
 
 const API_PAYLOAD = {
   project: {
@@ -46,7 +49,7 @@ const API_PAYLOAD = {
   },
   page: {
     Offset: 0,
-    Size: 100,
+    Size: CATALOGUE_PAGE_SIZE,
   },
   Order: {
     Items: ["+code"],
@@ -174,11 +177,43 @@ export default function BrowseClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetPlus[]>([]);
+  // Catalogue paging: the request behind the current list, server items
+  // loaded and the server total. Only the catalogue path pages.
+  const cataloguePayload = useRef<Record<string, unknown> | null>(null);
+  const [catalogueLoaded, setCatalogueLoaded] = useState(0);
+  const [catalogueTotal, setCatalogueTotal] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Only the latest list request (new search/sort/filter or load more) may
+  // update the list.
+  const listRequest = useRef(0);
   const [filteredDatasets, setFilteredDatasets] = useState<DatasetPlus[]>([]);
-  const [searchTerm, setSearchTerm] = useState(""); // used for API
-  const [pendingSearchTerm, setPendingSearchTerm] = useState(""); // input value
+  // A Home handoff (`?handoff=<id>`, UI #352) starts one Smart Search: the
+  // input shows the user's original text while discovery uses the retrieval
+  // query. `peek` is pure, so reading it in state initialisers is safe; the
+  // handoff is consumed in an effect below and never replayed.
+  const handoffId = searchParams.get("handoff");
+  const [handoff] = useState(() => {
+    const pending = handoffId ? handoffStore.peek(handoffId) : null;
+    return pending?.intent === "dataset_search" ? pending : null;
+  });
+  const [searchTerm, setSearchTerm] = useState(
+    () => handoff?.originalQuery ?? "",
+  ); // used for API
+  const [pendingSearchTerm, setPendingSearchTerm] = useState(
+    () => handoff?.originalQuery ?? "",
+  ); // input value
+  const [retrievalOverride, setRetrievalOverride] = useState(() =>
+    handoff
+      ? {
+          display: handoff.originalQuery,
+          query: handoff.retrievalQuery ?? handoff.originalQuery,
+        }
+      : null,
+  );
   const [sortBy, setSortBy] = useState("name-asc");
-  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
+  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(
+    () => handoff !== null,
+  );
   const selectedCollection = searchParams.get("collection");
   const isCustomCollection = searchParams.get("isCustom") === "true";
   const [filters, setFilters] = useState<FilterState>({
@@ -230,10 +265,28 @@ export default function BrowseClient() {
    * Use sortBy to set the order.items field in the payload.
    * Show loader while fetching. If searchTerm is less than 3 chars, load all datasets.
    */
+  // Inputs the Home-handoff Smart Search already started with. StrictMode
+  // re-runs mount effects; an identical re-run must not search again.
+  const handoffSearchKey = useRef<string | null>(null);
+
   useEffect(() => {
+    if (
+      retrievalOverride &&
+      searchTerm === retrievalOverride.display &&
+      isSmartSearchEnabled
+    ) {
+      const key = JSON.stringify([searchTerm, sortBy, filters, api.hasToken]);
+      if (handoffSearchKey.current === key) return;
+      if (api.hasToken) handoffSearchKey.current = key;
+    }
     const fetchDatasets = async () => {
+      const request = ++listRequest.current;
       setIsLoading(true);
       setError(null);
+      setIsLoadingMore(false);
+      cataloguePayload.current = null;
+      setCatalogueLoaded(0);
+      setCatalogueTotal(0);
       try {
         if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
@@ -247,20 +300,11 @@ export default function BrowseClient() {
           searchTerm.trim().length >= 3
         ) {
           try {
-            const persistPayload = { name: searchTerm };
-            const persistData = await api.persistConversation(
-              persistPayload,
-              "?f=id&f=etag",
-            );
-            const conversationIdFromPersist = persistData.id;
-
-            if (!conversationIdFromPersist) {
-              throw new Error("No conversation ID returned from server.");
-            }
-
+            // A dataset search is not a chat: run discovery untracked (no
+            // conversation id, no auto-create) so it never shows up in
+            // Recent Chats.
             const crossDatasetPayload = {
               conversationOptions: {
-                conversationId: conversationIdFromPersist,
                 autoCreateConversation: false,
               },
               project: {
@@ -297,7 +341,10 @@ export default function BrowseClient() {
                   "maxSimilarity",
                 ],
               },
-              query: searchTerm,
+              query:
+                retrievalOverride && searchTerm === retrievalOverride.display
+                  ? retrievalOverride.query
+                  : searchTerm,
               resultCount: 100,
             } as any;
 
@@ -672,6 +719,7 @@ export default function BrowseClient() {
         }
 
         const data = await api.queryDatasets(payload);
+        if (request !== listRequest.current) return;
         const items = Array.isArray(data.items) ? data.items : [];
         const mappedDatasets = items.map(mapApiDatasetToDataset);
         const sortedDatasets = sortDatasetsWithSecondaryRules(
@@ -679,13 +727,18 @@ export default function BrowseClient() {
           sortBy,
         );
         setAllDatasets(sortedDatasets);
+        cataloguePayload.current = payload;
+        setCatalogueLoaded(items.length);
+        setCatalogueTotal(
+          typeof data.count === "number" ? data.count : items.length,
+        );
       } catch (err: unknown) {
         let message: string = ApiErrorMessage.UNEXPECTED_ERROR;
         if (err instanceof Error) message = err.message;
         else if (typeof err === "string") message = err;
         setError(message);
       } finally {
-        setIsLoading(false);
+        if (request === listRequest.current) setIsLoading(false);
       }
     };
     fetchDatasets();
@@ -738,10 +791,50 @@ export default function BrowseClient() {
     setPendingSearchTerm(value);
   }, []);
 
+  const handleLoadMore = useCallback(async () => {
+    const base = cataloguePayload.current;
+    if (!base) return;
+    const request = ++listRequest.current;
+    setIsLoadingMore(true);
+    try {
+      const data = await api.queryDatasets({
+        ...base,
+        page: { Offset: catalogueLoaded, Size: CATALOGUE_PAGE_SIZE },
+      });
+      if (request !== listRequest.current) return;
+      const items: unknown[] = Array.isArray(data.items) ? data.items : [];
+      const next: DatasetPlus[] = items.map(mapApiDatasetToDataset);
+      setAllDatasets((prev) => {
+        const seen = new Set(prev.map((d) => d.id));
+        return sortDatasetsWithSecondaryRules(
+          [...prev, ...next.filter((d) => !seen.has(d.id))],
+          sortBy,
+        );
+      });
+      const loaded = catalogueLoaded + items.length;
+      setCatalogueLoaded(loaded);
+      setCatalogueTotal(
+        items.length === 0
+          ? loaded
+          : typeof data.count === "number"
+            ? data.count
+            : loaded,
+      );
+    } catch (err: unknown) {
+      if (request !== listRequest.current) return;
+      setError(
+        err instanceof Error ? err.message : ApiErrorMessage.UNEXPECTED_ERROR,
+      );
+    } finally {
+      if (request === listRequest.current) setIsLoadingMore(false);
+    }
+  }, [api, catalogueLoaded, sortBy]);
+
   const handleSearchTermSubmit = useCallback(
     (searchValue?: string) => {
-      const valueToSet =
-        searchValue !== undefined ? searchValue : pendingSearchTerm.trim();
+      const valueToSet = (
+        searchValue !== undefined ? searchValue : pendingSearchTerm
+      ).trim();
       setSearchTerm(valueToSet);
     },
     [pendingSearchTerm],
@@ -766,6 +859,23 @@ export default function BrowseClient() {
   }, [api.hasToken]);
 
   useEffect(() => {
+    if (!handoffId) return;
+    handoffStore.consume(handoffId);
+    router.replace(getNavigationUrl(pathname));
+  }, [handoffId, pathname, router]);
+
+  useEffect(() => {
+    if (retrievalOverride && searchTerm !== retrievalOverride.display) {
+      setRetrievalOverride(null);
+    }
+  }, [searchTerm, retrievalOverride]);
+
+  // Reset the search when the route changes, not on the first mount: a Home
+  // handoff has already initialised it.
+  const lastPathname = useRef(pathname);
+  useEffect(() => {
+    if (lastPathname.current === pathname) return;
+    lastPathname.current = pathname;
     setPendingSearchTerm("");
     setSearchTerm("");
   }, [pathname]);
@@ -861,6 +971,10 @@ export default function BrowseClient() {
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}
           isLoading={isLoading}
+          totalCount={catalogueTotal > 0 ? catalogueTotal : undefined}
+          hasMore={catalogueTotal > catalogueLoaded}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={() => void handleLoadMore()}
           error={error}
           sortBy={sortBy}
           onSortByChange={handleSortByChange}

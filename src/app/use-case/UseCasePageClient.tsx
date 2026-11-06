@@ -129,16 +129,10 @@ export default function UseCasePageClient({
         // Results are NOT filtered by collection (same as BrowseClient: smart search
         // is cross-collection by design; the page title provides the context).
         if (isSmartSearchEnabled && searchTerm.trim().length >= 3) {
-          const persistData = await api.persistConversation(
-            { name: searchTerm },
-            "?f=id&f=etag",
-          );
-          const conversationId = persistData.id;
-          if (!conversationId) throw new Error("No conversation ID returned.");
-
+          // A dataset search is not a chat: run discovery untracked so it
+          // never shows up in Recent Chats.
           const data = await api.searchCrossDataset({
             conversationOptions: {
-              conversationId,
               autoCreateConversation: false,
             },
             project: {
@@ -327,7 +321,7 @@ export default function UseCasePageClient({
 
   const handleSearchTermSubmit = useCallback(
     (value?: string) => {
-      setSearchTerm(value !== undefined ? value : pendingSearchTerm.trim());
+      setSearchTerm((value !== undefined ? value : pendingSearchTerm).trim());
     },
     [pendingSearchTerm],
   );

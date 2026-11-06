@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Browse from "./Browse";
@@ -355,5 +355,144 @@ describe("Browse – generalChat flag (Hide general chat)", () => {
     mockUseFeatureFlag.mockReturnValue(true);
     renderBrowse();
     expect(screen.queryByRole("button", { name: /selected/i })).toBeNull();
+  });
+});
+
+describe("Browse – search box follows Smart search", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(false);
+    mockUseRouter.mockReturnValue({ push: vi.fn() });
+    mockUseCollections.mockReturnValue({
+      apiCollections: [],
+      extraCollections: [],
+      refreshExtraCollections: vi.fn(),
+      notifyCollectionModified: vi.fn(),
+    });
+    mockUseApi.mockReturnValue({
+      hasToken: false,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+    });
+  });
+
+  const searchBox = () => screen.getByRole("textbox");
+  const frameOf = (el: HTMLElement) => el.closest("[data-smart]");
+
+  it("asks for a description and frames the box with the gradient when on", () => {
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        isSmartSearchEnabled
+      />,
+    );
+    expect(searchBox()).toHaveAttribute(
+      "placeholder",
+      "Describe what you need, e.g. “rainfall data in Central Europe”…",
+    );
+    expect(frameOf(searchBox())).toHaveAttribute("data-smart", "on");
+  });
+
+  it("hides sorting and filters while Smart search ranks the results", () => {
+    render(
+      <Browse
+        datasets={[
+          {
+            id: "d1",
+            title: "Rainfall",
+            description: "",
+            license: "MIT",
+            size: "N/A",
+            datePublished: "2024-01-01",
+            category: "Math" as const,
+            access: "Open Access" as const,
+            lastUpdated: "2024-01-01",
+            tags: [],
+          },
+        ]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rainfall"
+        isSmartSearchEnabled
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Filter" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Name (A-Z)" })).toBeNull();
+    expect(screen.getByText(/Showing:/)).toBeInTheDocument();
+  });
+
+  it("shows the total and offers more datasets when there are more", () => {
+    const onLoadMore = vi.fn();
+    const one = {
+      id: "d1",
+      title: "Rainfall",
+      description: "",
+      license: "MIT",
+      size: "N/A",
+      datePublished: "2024-01-01",
+      category: "Math" as const,
+      access: "Open Access" as const,
+      lastUpdated: "2024-01-01",
+      tags: [],
+    };
+    render(
+      <Browse
+        datasets={[one]}
+        title="Datasets"
+        subtitle=""
+        totalCount={201}
+        hasMore
+        onLoadMore={onLoadMore}
+      />,
+    );
+    expect(screen.getByText(/1 of 201 results/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load more datasets" }));
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers no size sorting", async () => {
+    render(<Browse datasets={[]} title="Datasets" subtitle="" />);
+    fireEvent.click(screen.getByRole("button", { name: "Name (A-Z)" }));
+    expect(
+      screen.getByText("Date Published (newest first)"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Size (smallest first)")).toBeNull();
+    expect(screen.queryByText("Size (highest first)")).toBeNull();
+  });
+
+  it("ends the search when the box is emptied by hand", () => {
+    const onSearchTermChange = vi.fn();
+    const onSearchTermSubmit = vi.fn();
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rain"
+        onSearchTermChange={onSearchTermChange}
+        onSearchTermSubmit={onSearchTermSubmit}
+      />,
+    );
+    fireEvent.change(searchBox(), { target: { value: "" } });
+    expect(onSearchTermChange).toHaveBeenCalledWith("");
+    expect(onSearchTermSubmit).toHaveBeenCalledWith("");
+  });
+
+  it("asks for a name or keyword and stays neutral when off", () => {
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        isSmartSearchEnabled={false}
+      />,
+    );
+    expect(searchBox()).toHaveAttribute(
+      "placeholder",
+      "Search by name or keyword…",
+    );
+    expect(frameOf(searchBox())).toHaveAttribute("data-smart", "off");
   });
 });

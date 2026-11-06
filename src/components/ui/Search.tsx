@@ -4,6 +4,7 @@ import { Search as SearchIcon, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Input } from "./Input";
+import { SmartFrame } from "./SmartSearch";
 
 interface SearchProps {
   placeholder?: string;
@@ -14,6 +15,8 @@ interface SearchProps {
   className?: string;
   disabled?: boolean;
   size?: "medium" | "large";
+  /** Smart search state: gradient frame when true, neutral grey frame when false. Unset keeps the plain box. */
+  smart?: boolean;
 }
 
 export function Search({
@@ -25,6 +28,7 @@ export function Search({
   className,
   disabled = false,
   size = "large",
+  smart,
 }: SearchProps) {
   const [internalValue, setInternalValue] = useState("");
   const [showTooltip, setShowTooltip] = useState(false);
@@ -106,45 +110,61 @@ export function Search({
 
   const showClearButton = currentValue.length > 0;
 
-  return (
-    <form onSubmit={handleSubmit} className="relative">
-      <Input
-        type="text"
-        name="search"
-        size={size}
-        placeholder={placeholder}
-        value={currentValue}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        autoComplete="off"
-        enterKeyHint="search"
-        inputMode="search"
-        rightIcon={
-          <div className="flex items-center gap-1">
-            {showClearButton && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="flex-shrink-0 p-1.5 hover:bg-slate-75 rounded transition-colors"
-                aria-label="Clear search"
-                disabled={disabled}
-              >
-                <X className="w-4 h-4 text-slate-400" />
-              </button>
-            )}
+  const input = (
+    <Input
+      type="text"
+      name="search"
+      size={size}
+      placeholder={placeholder}
+      value={currentValue}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      autoComplete="off"
+      enterKeyHint="search"
+      inputMode="search"
+      rightIcon={
+        <div className="flex items-center gap-1">
+          {showClearButton && (
             <button
-              type="submit"
-              className="flex-shrink-0 p-1.5 hover:bg-slate-75 rounded transition-colors disabled:opacity-50"
-              aria-label="Search"
+              type="button"
+              onClick={handleClear}
+              className="flex-shrink-0 p-1.5 hover:bg-slate-75 rounded transition-colors"
+              aria-label="Clear search"
               disabled={disabled}
             >
-              <SearchIcon className="w-4 h-4 text-icon" />
+              <X className="w-4 h-4 text-slate-400" />
             </button>
-          </div>
-        }
-        className={`text-base sm:text-sm ${className || ""}`}
-        disabled={disabled}
-      />
+          )}
+          <button
+            type="submit"
+            className="flex-shrink-0 p-1.5 hover:bg-slate-75 rounded transition-colors disabled:opacity-50"
+            aria-label="Search"
+            disabled={disabled}
+          >
+            <SearchIcon className="w-4 h-4 text-icon" />
+          </button>
+        </div>
+      }
+      className={`text-base sm:text-sm ${
+        smart === undefined
+          ? ""
+          : smart
+            ? "border-transparent hover:border-transparent bg-white"
+            : "border-transparent hover:border-transparent bg-slate-50"
+      } ${className || ""}`}
+      disabled={disabled}
+    />
+  );
+
+  return (
+    <form onSubmit={handleSubmit} className="relative">
+      {smart === undefined ? (
+        input
+      ) : (
+        <SmartFrame active={smart} className="rounded-4xl">
+          {input}
+        </SmartFrame>
+      )}
 
       {/* Tooltip */}
       {showTooltip && (

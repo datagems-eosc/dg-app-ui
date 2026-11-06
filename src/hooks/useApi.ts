@@ -19,6 +19,8 @@ import {
 } from "@/lib/datasetPermissions/gateway";
 import { publicEnv } from "@/lib/env";
 import type { UserFavorite } from "@/lib/favorites";
+import { classifyIntent as classifyIntentRequest } from "@/lib/intentRouting/gateway";
+import type { ClassificationOutcome } from "@/lib/intentRouting/types";
 import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
 import {
   type AuthRetryPolicy,
@@ -911,6 +913,25 @@ export function useApi() {
       return response.json();
     },
     [makeRequest],
+  );
+
+  /**
+   * Home intent classification (UI #352). One classifier call through the
+   * accepted `lib/intentRouting` adapter; it never creates a conversation.
+   */
+  const classifyIntent = useCallback(
+    async (
+      query: string,
+      options: { signal?: AbortSignal } = {},
+    ): Promise<ClassificationOutcome> => {
+      if (!token) return { ok: false, kind: "auth" };
+      return classifyIntentRequest(
+        (path, init) => makeRequest(path, init),
+        query,
+        options,
+      );
+    },
+    [token, makeRequest],
   );
 
   const searchCrossDataset = useCallback(
@@ -1908,6 +1929,7 @@ export function useApi() {
     token,
     datasetOnboarding,
     datasetPermissions,
+    classifyIntent,
     queryDatasets,
     queryCollections,
     queryUserCollections,

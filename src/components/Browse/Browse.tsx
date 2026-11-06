@@ -109,6 +109,16 @@ interface BrowseProps {
    */
   error?: string | null;
   /**
+   * Server total for the current list, when it is larger than what is shown.
+   */
+  totalCount?: number;
+  /**
+   * More datasets can be loaded (catalogue paging from parent).
+   */
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  /**
    * The current sort value (controlled from parent).
    */
   sortBy?: string;
@@ -200,6 +210,10 @@ export default function Browse({
   onSearchTermSubmit,
   isLoading = false,
   error = null,
+  totalCount,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
   sortBy = "name-asc",
   onSortByChange,
   onApplyFilters,
@@ -1070,9 +1084,19 @@ export default function Browse({
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 mb-4 px-4 sm:px-6">
               <div className="flex-1 w-full">
                 <Search
-                  placeholder="Search datasets..."
+                  smart={isSmartSearchEnabled}
+                  placeholder={
+                    isSmartSearchEnabled
+                      ? "Describe what you need, e.g. “rainfall data in Central Europe”…"
+                      : "Search by name or keyword…"
+                  }
                   value={searchTerm}
-                  onChange={onSearchTermChange}
+                  onChange={(value) => {
+                    onSearchTermChange?.(value);
+                    // Emptying the box ends the search, like the clear button
+                    // (the box does not submit under 3 characters).
+                    if (value.trim() === "") onSearchTermSubmit?.("");
+                  }}
                   onSearch={(value) => onSearchTermSubmit?.(value)}
                   onClear={() => {
                     if (onSearchTermChange) {
@@ -1084,14 +1108,17 @@ export default function Browse({
                   }}
                 />
               </div>
-              <Button
-                variant="outline"
-                className="flex items-center gap-1.5"
-                onClick={() => setShowFilterModal(true)}
-              >
-                <Filter className="w-4 h-4 text-icon" />
-                Filter
-              </Button>
+              {/* Smart search results are ranked by relevance: no filters. */}
+              {!isSmartSearchEnabled && (
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-1.5"
+                  onClick={() => setShowFilterModal(true)}
+                >
+                  <Filter className="w-4 h-4 text-icon" />
+                  Filter
+                </Button>
+              )}
               {!isMobile && (
                 <Switch
                   leftIcon={ListChecks}
@@ -1155,13 +1182,15 @@ export default function Browse({
             />
           )}
           {/* Active Filters */}
-          <ActiveFilters
-            filters={displayedFilters}
-            fieldsOfScienceCategories={fieldsOfScienceCategories}
-            licenses={licenses}
-            onRemoveFilter={removeFilter}
-            showSearchAndFilters={showSearchAndFilters}
-          />
+          {!isSmartSearchEnabled && (
+            <ActiveFilters
+              filters={displayedFilters}
+              fieldsOfScienceCategories={fieldsOfScienceCategories}
+              licenses={licenses}
+              onRemoveFilter={removeFilter}
+              showSearchAndFilters={showSearchAndFilters}
+            />
+          )}
           {showSearchAndFilters !== false && hasStaleAccessFilter && (
             <p
               role="status"
@@ -1176,16 +1205,27 @@ export default function Browse({
               <p className="text-body-14-regular text-gray-650">
                 Showing:{" "}
                 <span className="text-body-14-medium text-gray-750">
-                  {filteredDatasets.length}{" "}
-                  {filteredDatasets.length === 1 ? "result" : "results"}
+                  {filteredDatasets.length}
+                  {totalCount && totalCount > filteredDatasets.length
+                    ? ` of ${totalCount}`
+                    : ""}{" "}
+                  {(totalCount ?? filteredDatasets.length) === 1
+                    ? "result"
+                    : "results"}
                 </span>
               </p>
-              <SortingDropdown
-                value={sortBy}
-                onChange={(value) => onSortByChange?.(value)}
-                options={SORTING_OPTIONS}
-                triggerLabel="Sorting"
-              />
+              {isSmartSearchEnabled ? (
+                <span className="text-body-14-regular text-gray-650">
+                  Sorted by relevance
+                </span>
+              ) : (
+                <SortingDropdown
+                  value={sortBy}
+                  onChange={(value) => onSortByChange?.(value)}
+                  options={SORTING_OPTIONS}
+                  triggerLabel="Sorting"
+                />
+              )}
             </div>
           )}
           {/* Main content area - do not shift cards when modal is open */}
@@ -1239,6 +1279,18 @@ export default function Browse({
                       isSmartSearchEnabled={isSmartSearchEnabled}
                     />
                   ))}
+                </div>
+              )}
+              {!isLoading && !error && hasMore && onLoadMore && (
+                <div className="flex justify-center py-6">
+                  <button
+                    type="button"
+                    onClick={onLoadMore}
+                    disabled={isLoadingMore}
+                    className="text-body-14-regular text-slate-500 hover:text-slate-700 hover:underline disabled:no-underline disabled:opacity-60 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850"
+                  >
+                    {isLoadingMore ? "Loading…" : "Load more datasets"}
+                  </button>
                 </div>
               )}
               {/* Empty state */}
