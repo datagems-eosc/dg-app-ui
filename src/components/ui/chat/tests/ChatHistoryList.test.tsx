@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatHistoryList } from "../ChatHistoryList";
 
@@ -16,7 +17,7 @@ vi.mock("../ChatItem", () => ({
     onConversationUpdate,
     onDeleteConversation,
   }: {
-    conversation: { id: string; name?: string };
+    conversation: { id: string; name?: string; createdAt?: string };
     isActive: boolean;
     onConversationUpdate?: (
       id: string,
@@ -25,7 +26,10 @@ vi.mock("../ChatItem", () => ({
     ) => void;
     onDeleteConversation?: (id: string, name: string) => void;
   }) => (
-    <div data-testid={`chat-item-${conversation.id}`}>
+    <div
+      data-testid={`chat-item-${conversation.id}`}
+      data-created={conversation.createdAt}
+    >
       <span>{conversation.name || "Untitled Conversation"}</span>
       {isActive && <span data-testid="active-indicator">Active</span>}
       <button
@@ -51,7 +55,7 @@ vi.mock("../ChatItem", () => ({
   ),
 }));
 
-vi.mock("../Search", () => ({
+vi.mock("../../Search", () => ({
   Search: ({
     placeholder,
     value,
@@ -85,7 +89,7 @@ vi.mock("../Search", () => ({
   ),
 }));
 
-vi.mock("../NoData", () => ({
+vi.mock("../../NoData", () => ({
   NoData: ({
     icon: Icon,
     title,
@@ -257,89 +261,74 @@ describe("ChatHistoryList", () => {
     });
   });
 
-  it("should filter conversations by search query", async () => {
-    mockUseApi.mockReturnValue({
-      hasToken: true,
-      queryConversations: vi.fn().mockResolvedValue({
-        items: defaultConversations,
-      }),
-    });
+  const searchFor = async (text: string) => {
+    await userEvent.type(screen.getByTestId("search-field"), text);
+    await userEvent.click(screen.getByTestId("search-button"));
+  };
+
+  it("searches conversation names on the server", async () => {
+    const queryConversations = vi
+      .fn()
+      .mockResolvedValueOnce({ items: defaultConversations, count: 3 })
+      .mockResolvedValueOnce({ items: [defaultConversations[0]], count: 1 });
+    mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
 
     render(<ChatHistoryList session={defaultSession} />);
+    await screen.findByTestId("chat-item-conv-2");
+    await searchFor("First");
 
     await waitFor(() => {
-      expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
-    });
-
-    const searchInput = screen.getByTestId("search-field");
-    await userEvent.type(searchInput, "First");
-
-    const searchButton = screen.getByTestId("search-button");
-    await userEvent.click(searchButton);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
       expect(screen.queryByTestId("chat-item-conv-2")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("chat-item-conv-3")).not.toBeInTheDocument();
     });
+    expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
+    const payload = queryConversations.mock.calls[1][0];
+    expect(payload.like).toBe("%First%");
+    expect(payload.page).toEqual({ Offset: 0, Size: 10 });
   });
 
   it("should show no results message when search has no matches", async () => {
     mockUseApi.mockReturnValue({
       hasToken: true,
-      queryConversations: vi.fn().mockResolvedValue({
-        items: defaultConversations,
-      }),
+      queryConversations: vi
+        .fn()
+        .mockResolvedValueOnce({ items: defaultConversations, count: 3 })
+        .mockResolvedValueOnce({ items: [], count: 0 }),
     });
 
     render(<ChatHistoryList session={defaultSession} />);
+    await screen.findByTestId("chat-item-conv-1");
+    await searchFor("Nonexistent");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
-    });
-
-    const searchInput = screen.getByTestId("search-field");
-    await userEvent.type(searchInput, "NonExistent");
-
-    const searchButton = screen.getByTestId("search-button");
-    await userEvent.click(searchButton);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("no-data")).toBeInTheDocument();
-      expect(screen.getByTestId("no-data-title")).toHaveTextContent(
-        "No results found",
-      );
-      expect(screen.getByTestId("no-data-description")).toHaveTextContent(
-        "Please try different search",
-      );
-    });
+    expect(await screen.findByTestId("no-data-title")).toHaveTextContent(
+      "No results found",
+    );
+    expect(screen.getByTestId("no-data-description")).toHaveTextContent(
+      "Please try different search",
+    );
   });
 
-  it("should clear search when clear button is clicked", async () => {
-    mockUseApi.mockReturnValue({
-      hasToken: true,
-      queryConversations: vi.fn().mockResolvedValue({
-        items: defaultConversations,
-      }),
-    });
+  it("shows the newest conversations again when the search is cleared", async () => {
+    const queryConversations = vi
+      .fn()
+      .mockResolvedValueOnce({ items: defaultConversations, count: 3 })
+      .mockResolvedValueOnce({ items: [defaultConversations[0]], count: 1 })
+      .mockResolvedValueOnce({ items: defaultConversations, count: 3 });
+    mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
 
     render(<ChatHistoryList session={defaultSession} />);
-
+    await screen.findByTestId("chat-item-conv-2");
+    await searchFor("First");
     await waitFor(() => {
-      expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
+      expect(screen.queryByTestId("chat-item-conv-2")).not.toBeInTheDocument();
     });
 
-    const searchInput = screen.getByTestId("search-field");
-    await userEvent.type(searchInput, "First");
+    await userEvent.click(screen.getByTestId("clear-button"));
 
-    const clearButton = screen.getByTestId("clear-button");
-    await userEvent.click(clearButton);
-
-    await waitFor(() => {
-      expect(searchInput).toHaveValue("");
-      expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
-      expect(screen.getByTestId("chat-item-conv-2")).toBeInTheDocument();
-      expect(screen.getByTestId("chat-item-conv-3")).toBeInTheDocument();
+    await screen.findByTestId("chat-item-conv-2");
+    expect(queryConversations.mock.calls[2][0].like).toBeUndefined();
+    expect(queryConversations.mock.calls[2][0].page).toEqual({
+      Offset: 0,
+      Size: 10,
     });
   });
 
@@ -494,29 +483,340 @@ describe("ChatHistoryList", () => {
     });
   });
 
-  it("should handle search with case-insensitive matching", async () => {
+  it("matches wildcard characters in the search literally", async () => {
+    const queryConversations = vi
+      .fn()
+      .mockResolvedValueOnce({ items: defaultConversations, count: 3 })
+      .mockResolvedValueOnce({ items: [], count: 0 });
+    mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+    render(<ChatHistoryList session={defaultSession} />);
+    await screen.findByTestId("chat-item-conv-1");
+    await searchFor("50%_a\\b");
+
+    await waitFor(() => expect(queryConversations).toHaveBeenCalledTimes(2));
+    expect(queryConversations.mock.calls[1][0].like).toBe("%50\\%\\_a\\\\b%");
+  });
+
+  it("keeps the search box and explains when a search fails", async () => {
     mockUseApi.mockReturnValue({
       hasToken: true,
-      queryConversations: vi.fn().mockResolvedValue({
-        items: defaultConversations,
-      }),
+      queryConversations: vi
+        .fn()
+        .mockResolvedValueOnce({ items: defaultConversations, count: 3 })
+        .mockRejectedValueOnce(new Error("boom")),
     });
 
     render(<ChatHistoryList session={defaultSession} />);
+    await screen.findByTestId("chat-item-conv-1");
+    await searchFor("First");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
+    expect(await screen.findByTestId("no-data-title")).toHaveTextContent(
+      "Couldn't search chats",
+    );
+    expect(screen.getByTestId("search-field")).toBeInTheDocument();
+  });
+
+  it("keeps the search when loading more results", async () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({
+      id: `s${i + 1}`,
+      name: `Temperature ${i + 1}`,
+      eTag: "e",
+      createdAt: "2024-01-01T00:00:00Z",
+      messages: [{ id: "m" }],
+    }));
+    const queryConversations = vi
+      .fn()
+      .mockResolvedValueOnce({ items: defaultConversations, count: 3 })
+      .mockResolvedValueOnce({ items: many, count: 12 })
+      .mockResolvedValueOnce({ items: [{ ...many[0], id: "s11" }], count: 12 });
+    mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+    render(<ChatHistoryList session={defaultSession} />);
+    await screen.findByTestId("chat-item-conv-1");
+    await searchFor("temp");
+    await screen.findByTestId("chat-item-s10");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Load more chats" }),
+    );
+    await screen.findByTestId("chat-item-s11");
+    expect(queryConversations.mock.calls[2][0].like).toBe("%temp%");
+    expect(queryConversations.mock.calls[2][0].page).toEqual({
+      Offset: 10,
+      Size: 10,
+    });
+  });
+
+  describe("light, paged request", () => {
+    it("asks for the first ten conversations without message content", async () => {
+      const queryConversations = vi
+        .fn()
+        .mockResolvedValue({ items: defaultConversations, count: 3 });
+      mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+      render(<ChatHistoryList session={defaultSession} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
+      });
+      expect(queryConversations).toHaveBeenCalledTimes(1);
+      const payload = queryConversations.mock.calls[0][0];
+      expect(payload.page).toEqual({ Offset: 0, Size: 10 });
+      expect(payload.Order).toEqual({ Items: ["-createdAt"] });
+      expect(payload.Metadata).toEqual({ CountAll: true });
+      expect(payload.project.fields).toEqual(
+        expect.arrayContaining([
+          "id",
+          "name",
+          "eTag",
+          "createdAt",
+          "messages.id",
+        ]),
+      );
+      expect(payload.project.fields).not.toContain("messages.data");
+      expect(payload.project.fields).not.toContain("messages.kind");
+      expect(payload.like).toBeUndefined();
     });
 
-    const searchInput = screen.getByTestId("search-field");
-    await userEvent.type(searchInput, "first");
+    it("shows the conversation's own creation date", async () => {
+      mockUseApi.mockReturnValue({
+        hasToken: true,
+        queryConversations: vi.fn().mockResolvedValue({
+          items: [
+            {
+              id: "conv-1",
+              name: "First Conversation",
+              eTag: "etag-1",
+              createdAt: "2024-01-01T00:00:00Z",
+              messages: [{ id: "m2" }, { id: "m1" }],
+            },
+          ],
+          count: 1,
+        }),
+      });
 
-    const searchButton = screen.getByTestId("search-button");
-    await userEvent.click(searchButton);
+      render(<ChatHistoryList session={defaultSession} />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("chat-item-conv-1")).toBeInTheDocument();
-      expect(screen.queryByTestId("chat-item-conv-2")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("chat-item-conv-1")).toHaveAttribute(
+        "data-created",
+        "2024-01-01T00:00:00Z",
+      );
+    });
+  });
+
+  describe("load more", () => {
+    const conv = (n: number) => ({
+      id: `c${n}`,
+      name: `Chat ${n}`,
+      eTag: `e${n}`,
+      createdAt: "2024-01-01T00:00:00Z",
+      messages: [{ id: `m${n}` }],
+    });
+    const page = (from: number, to: number) =>
+      Array.from({ length: to - from + 1 }, (_, i) => conv(from + i));
+
+    it("offers more while the server has more and appends the next page", async () => {
+      const queryConversations = vi
+        .fn()
+        .mockResolvedValueOnce({ items: page(1, 10), count: 25 })
+        .mockResolvedValueOnce({ items: page(11, 20), count: 25 })
+        .mockResolvedValueOnce({ items: page(21, 25), count: 25 });
+      mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+      render(<ChatHistoryList session={defaultSession} />);
+      await screen.findByTestId("chat-item-c10");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Load more chats" }),
+      );
+      await screen.findByTestId("chat-item-c20");
+      expect(screen.getByTestId("chat-item-c1")).toBeInTheDocument();
+      expect(queryConversations.mock.calls[1][0].page).toEqual({
+        Offset: 10,
+        Size: 10,
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Load more chats" }),
+      );
+      await screen.findByTestId("chat-item-c25");
+      expect(queryConversations.mock.calls[2][0].page).toEqual({
+        Offset: 20,
+        Size: 10,
+      });
+      expect(
+        screen.queryByRole("button", { name: "Load more chats" }),
+      ).toBeNull();
+    });
+
+    it("does not offer more when everything is loaded", async () => {
+      mockUseApi.mockReturnValue({
+        hasToken: true,
+        queryConversations: vi
+          .fn()
+          .mockResolvedValue({ items: page(1, 3), count: 3 }),
+      });
+
+      render(<ChatHistoryList session={defaultSession} />);
+      await screen.findByTestId("chat-item-c3");
+      expect(
+        screen.queryByRole("button", { name: "Load more chats" }),
+      ).toBeNull();
+    });
+
+    it("counts hidden empty conversations when paging", async () => {
+      const first = [...page(1, 9), { ...conv(10), messages: [] }];
+      const queryConversations = vi
+        .fn()
+        .mockResolvedValueOnce({ items: first, count: 12 })
+        .mockResolvedValueOnce({ items: page(11, 12), count: 12 });
+      mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+      render(<ChatHistoryList session={defaultSession} />);
+      await screen.findByTestId("chat-item-c9");
+      expect(screen.queryByTestId("chat-item-c10")).toBeNull();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Load more chats" }),
+      );
+      await screen.findByTestId("chat-item-c12");
+      expect(queryConversations.mock.calls[1][0].page).toEqual({
+        Offset: 10,
+        Size: 10,
+      });
+    });
+
+    it("keeps the list and offers a retry when loading more fails", async () => {
+      const queryConversations = vi
+        .fn()
+        .mockResolvedValueOnce({ items: page(1, 10), count: 15 })
+        .mockRejectedValueOnce(new Error("boom"));
+      mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+      render(<ChatHistoryList session={defaultSession} />);
+      await screen.findByTestId("chat-item-c10");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Load more chats" }),
+      );
+
+      expect(
+        await screen.findByText("Couldn't load more chats."),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("chat-item-c1")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Load more chats" }),
+      ).toBeEnabled();
+    });
+  });
+
+  describe("paging edge cases", () => {
+    const conv = (n: number, messages: unknown[] = [{ id: `m${n}` }]) => ({
+      id: `c${n}`,
+      name: `Chat ${n}`,
+      eTag: `e${n}`,
+      createdAt: "2024-01-01T00:00:00Z",
+      messages,
+    });
+    const page = (from: number, to: number) =>
+      Array.from({ length: to - from + 1 }, (_, i) => conv(from + i));
+    const loadMore = () =>
+      screen.queryByRole("button", { name: "Load more chats" });
+
+    it("hides Load more while a new search is loading", async () => {
+      let resolveSearch: (v: unknown) => void = () => {};
+      const queryConversations = vi
+        .fn()
+        .mockResolvedValueOnce({ items: page(1, 10), count: 25 })
+        .mockImplementationOnce(
+          () =>
+            new Promise((r) => {
+              resolveSearch = r;
+            }),
+        );
+      mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+      render(<ChatHistoryList session={defaultSession} />);
+      await screen.findByTestId("chat-item-c10");
+      expect(loadMore()).toBeInTheDocument();
+
+      await userEvent.type(screen.getByTestId("search-field"), "foo");
+      await userEvent.click(screen.getByTestId("search-button"));
+      expect(loadMore()).toBeNull();
+
+      await act(async () => resolveSearch({ items: [], count: 0 }));
+      expect(await screen.findByTestId("no-data-title")).toHaveTextContent(
+        "No results found",
+      );
+    });
+
+    it("does not skip a chat after one is deleted", async () => {
+      const queryConversations = vi
+        .fn()
+        .mockResolvedValueOnce({ items: page(1, 10), count: 25 })
+        .mockResolvedValueOnce({ items: page(11, 20), count: 24 });
+      mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+      let removeC3 = () => {};
+      function Parent() {
+        const [list, setList] = useState<any[]>([]);
+        removeC3 = () => setList((prev) => prev.filter((c) => c.id !== "c3"));
+        return (
+          <ChatHistoryList
+            session={defaultSession}
+            conversations={list}
+            setConversations={setList}
+          />
+        );
+      }
+      render(<Parent />);
+      await screen.findByTestId("chat-item-c10");
+
+      act(() => removeC3());
+      await userEvent.click(
+        screen.getByRole("button", { name: "Load more chats" }),
+      );
+
+      await waitFor(() => expect(queryConversations).toHaveBeenCalledTimes(2));
+      expect(queryConversations.mock.calls[1][0].page).toEqual({
+        Offset: 9,
+        Size: 10,
+      });
+    });
+
+    it("does not show a chat twice when the next page overlaps", async () => {
+      const queryConversations = vi
+        .fn()
+        .mockResolvedValueOnce({ items: page(1, 10), count: 26 })
+        .mockResolvedValueOnce({ items: page(10, 19), count: 26 });
+      mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+      render(<ChatHistoryList session={defaultSession} />);
+      await screen.findByTestId("chat-item-c10");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Load more chats" }),
+      );
+      await screen.findByTestId("chat-item-c19");
+
+      expect(screen.getAllByTestId("chat-item-c10")).toHaveLength(1);
+    });
+
+    it("offers Load more when a page holds only empty conversations", async () => {
+      const queryConversations = vi
+        .fn()
+        .mockResolvedValueOnce({
+          items: Array.from({ length: 10 }, (_, i) => conv(i + 1, [])),
+          count: 12,
+        })
+        .mockResolvedValueOnce({ items: page(11, 12), count: 12 });
+      mockUseApi.mockReturnValue({ hasToken: true, queryConversations });
+
+      render(<ChatHistoryList session={defaultSession} />);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Load more chats" }),
+      );
+
+      expect(await screen.findByTestId("chat-item-c12")).toBeInTheDocument();
     });
   });
 });
