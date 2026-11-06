@@ -4,7 +4,6 @@ import { MessageCircleMore, SearchX } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/hooks/useApi";
-import { Button } from "../Button";
 import { NoData } from "../NoData";
 import { Search as SearchInput } from "../Search";
 import { ChatItem } from "./ChatItem";
@@ -241,6 +240,24 @@ export function ChatHistoryList({
 
   const hasMore = serverLoaded < total;
 
+  const loadMoreControl = hasMore && !listFailed && (
+    <div className="flex flex-col items-center gap-1 py-2">
+      {loadMoreFailed && (
+        <p className="text-descriptions-12-regular text-red-600">
+          Couldn&apos;t load more chats.
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => void loadMore()}
+        disabled={isLoadingMore}
+        className="text-descriptions-12-regular text-slate-500 hover:text-slate-700 hover:underline disabled:no-underline disabled:opacity-60 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850"
+      >
+        {isLoadingMore ? "Loading…" : "Load more chats"}
+      </button>
+    </div>
+  );
+
   if (isLoading) {
     return <ChatHistorySkeleton />;
   }
@@ -270,19 +287,25 @@ export function ChatHistoryList({
           className="px-5"
         />
       ) : currentConversations.length === 0 && searchQuery.length === 0 ? (
-        <NoData
-          icon={MessageCircleMore}
-          title="Your Chat history will appear here"
-          description="Ask a question first"
-          className="px-5"
-        />
+        <>
+          <NoData
+            icon={MessageCircleMore}
+            title="Your Chat history will appear here"
+            description="Ask a question first"
+            className="px-5"
+          />
+          {loadMoreControl}
+        </>
       ) : searchQuery.trim().length > 0 && filtered.length === 0 ? (
-        <NoData
-          icon={SearchX}
-          title="No results found"
-          description="Please try different search"
-          className="px-5"
-        />
+        <>
+          <NoData
+            icon={SearchX}
+            title="No results found"
+            description="Please try different search"
+            className="px-5"
+          />
+          {loadMoreControl}
+        </>
       ) : (
         <div className="flex flex-col gap-1 overflow-y-auto pl-5 pr-4 scrollbar-hover flex-1 min-h-0">
           {filtered.map((conv) => (
@@ -294,23 +317,7 @@ export function ChatHistoryList({
               onDeleteConversation={onDeleteConversation}
             />
           ))}
-        </div>
-      )}
-      {hasMore && !listFailed && (
-        <div className="flex flex-col items-start gap-1 px-5 pb-3">
-          {loadMoreFailed && (
-            <p className="text-descriptions-12-regular text-red-600">
-              Couldn&apos;t load more chats.
-            </p>
-          )}
-          <Button
-            variant="tertiary"
-            size="sm"
-            onClick={() => void loadMore()}
-            disabled={isLoadingMore}
-          >
-            {isLoadingMore ? "Loading…" : "Load more chats"}
-          </Button>
+          {loadMoreControl}
         </div>
       )}
     </div>
