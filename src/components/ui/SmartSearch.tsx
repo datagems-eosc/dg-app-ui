@@ -3,6 +3,12 @@
 import { getBasePath } from "@/lib/utils";
 import SmartSwitch from "./SmartSwitch";
 
+// "Off" wording is a draft until the partner's copy for the toggle arrives
+// (6 November UI call); the "on" wording is unchanged.
+const DESCRIPTION_ON =
+  "Analyzes dataset contents to help you find what you're looking for";
+const DESCRIPTION_OFF = "Searches dataset metadata by keyword";
+
 type SmartSearchProps = {
   enabled?: boolean;
   onToggle?: (enabled: boolean) => void;
@@ -36,8 +42,7 @@ export default function SmartSearch({
               Smart search
             </span>
             <span className="text-descriptions-12-regular text-icon tracking-[0.01em] truncate">
-              Analyzes dataset contents to help you find what you&apos;re
-              looking for
+              {enabled ? DESCRIPTION_ON : DESCRIPTION_OFF}
             </span>
           </div>
         </div>
