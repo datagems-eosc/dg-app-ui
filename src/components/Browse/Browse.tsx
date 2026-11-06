@@ -1094,14 +1094,17 @@ export default function Browse({
                   }}
                 />
               </div>
-              <Button
-                variant="outline"
-                className="flex items-center gap-1.5"
-                onClick={() => setShowFilterModal(true)}
-              >
-                <Filter className="w-4 h-4 text-icon" />
-                Filter
-              </Button>
+              {/* Smart search results are ranked by relevance: no filters. */}
+              {!isSmartSearchEnabled && (
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-1.5"
+                  onClick={() => setShowFilterModal(true)}
+                >
+                  <Filter className="w-4 h-4 text-icon" />
+                  Filter
+                </Button>
+              )}
               {!isMobile && (
                 <Switch
                   leftIcon={ListChecks}
@@ -1165,13 +1168,15 @@ export default function Browse({
             />
           )}
           {/* Active Filters */}
-          <ActiveFilters
-            filters={displayedFilters}
-            fieldsOfScienceCategories={fieldsOfScienceCategories}
-            licenses={licenses}
-            onRemoveFilter={removeFilter}
-            showSearchAndFilters={showSearchAndFilters}
-          />
+          {!isSmartSearchEnabled && (
+            <ActiveFilters
+              filters={displayedFilters}
+              fieldsOfScienceCategories={fieldsOfScienceCategories}
+              licenses={licenses}
+              onRemoveFilter={removeFilter}
+              showSearchAndFilters={showSearchAndFilters}
+            />
+          )}
           {showSearchAndFilters !== false && hasStaleAccessFilter && (
             <p
               role="status"
@@ -1190,12 +1195,18 @@ export default function Browse({
                   {filteredDatasets.length === 1 ? "result" : "results"}
                 </span>
               </p>
-              <SortingDropdown
-                value={sortBy}
-                onChange={(value) => onSortByChange?.(value)}
-                options={SORTING_OPTIONS}
-                triggerLabel="Sorting"
-              />
+              {isSmartSearchEnabled ? (
+                <span className="text-body-14-regular text-gray-650">
+                  Sorted by relevance
+                </span>
+              ) : (
+                <SortingDropdown
+                  value={sortBy}
+                  onChange={(value) => onSortByChange?.(value)}
+                  options={SORTING_OPTIONS}
+                  triggerLabel="Sorting"
+                />
+              )}
             </div>
           )}
           {/* Main content area - do not shift cards when modal is open */}

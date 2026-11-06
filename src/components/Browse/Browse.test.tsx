@@ -395,6 +395,34 @@ describe("Browse – search box follows Smart search", () => {
     expect(frameOf(searchBox())).toHaveAttribute("data-smart", "on");
   });
 
+  it("hides sorting and filters while Smart search ranks the results", () => {
+    render(
+      <Browse
+        datasets={[
+          {
+            id: "d1",
+            title: "Rainfall",
+            description: "",
+            license: "MIT",
+            size: "N/A",
+            datePublished: "2024-01-01",
+            category: "Math" as const,
+            access: "Open Access" as const,
+            lastUpdated: "2024-01-01",
+            tags: [],
+          },
+        ]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rainfall"
+        isSmartSearchEnabled
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Filter" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Name (A-Z)" })).toBeNull();
+    expect(screen.getByText(/Showing:/)).toBeInTheDocument();
+  });
+
   it("offers no size sorting", async () => {
     render(<Browse datasets={[]} title="Datasets" subtitle="" />);
     fireEvent.click(screen.getByRole("button", { name: "Name (A-Z)" }));
