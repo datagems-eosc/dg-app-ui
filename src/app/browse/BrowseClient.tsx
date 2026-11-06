@@ -284,20 +284,11 @@ export default function BrowseClient() {
           searchTerm.trim().length >= 3
         ) {
           try {
-            const persistPayload = { name: searchTerm };
-            const persistData = await api.persistConversation(
-              persistPayload,
-              "?f=id&f=etag",
-            );
-            const conversationIdFromPersist = persistData.id;
-
-            if (!conversationIdFromPersist) {
-              throw new Error("No conversation ID returned from server.");
-            }
-
+            // A dataset search is not a chat: run discovery untracked (no
+            // conversation id, no auto-create) so it never shows up in
+            // Recent Chats.
             const crossDatasetPayload = {
               conversationOptions: {
-                conversationId: conversationIdFromPersist,
                 autoCreateConversation: false,
               },
               project: {

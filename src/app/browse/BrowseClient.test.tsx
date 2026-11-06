@@ -104,10 +104,13 @@ describe("BrowseClient – Home handoff", () => {
 
     await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
     expect(crossDatasetQueries()).toEqual(["education Greece"]);
-    expect(api.persistConversation).toHaveBeenCalledTimes(1);
-    expect(api.persistConversation.mock.calls[0][0]).toEqual({
-      name: "Do you have any datasets about education in Greece?",
-    });
+    // A dataset search is not a chat: nothing is stored in a conversation.
+    expect(api.persistConversation).not.toHaveBeenCalled();
+    expect(api.searchCrossDataset.mock.calls[0][0].conversationOptions).toEqual(
+      {
+        autoCreateConversation: false,
+      },
+    );
     expect(screen.getByLabelText("Search")).toHaveValue(
       "Do you have any datasets about education in Greece?",
     );
@@ -125,7 +128,7 @@ describe("BrowseClient – Home handoff", () => {
     await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
     await act(async () => {});
     expect(api.searchCrossDataset).toHaveBeenCalledTimes(1);
-    expect(api.persistConversation).toHaveBeenCalledTimes(1);
+    expect(api.persistConversation).not.toHaveBeenCalled();
   });
 
   it("falls back to the original text when there is no retrieval query", async () => {
@@ -178,5 +181,11 @@ describe("BrowseClient – Home handoff", () => {
       expect(api.searchCrossDataset).toHaveBeenCalledTimes(2),
     );
     expect(crossDatasetQueries()[1]).toBe("nursing data");
+    expect(api.persistConversation).not.toHaveBeenCalled();
+    expect(api.searchCrossDataset.mock.calls[1][0].conversationOptions).toEqual(
+      {
+        autoCreateConversation: false,
+      },
+    );
   });
 });
