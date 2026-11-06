@@ -12,7 +12,15 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-const renderEntry = (state: HomeQueryState) => {
+const EXAMPLES = {
+  idle: ["rainfall datasets for Crete", "How hot was Athens in July 2024?"],
+  outOfScope: ["Greek language corpora"],
+};
+
+const renderEntry = (
+  state: HomeQueryState,
+  examples: { idle: string[]; outOfScope: string[] } = EXAMPLES,
+) => {
   const handlers = {
     onTextChange: vi.fn(),
     onSubmit: vi.fn(),
@@ -20,7 +28,9 @@ const renderEntry = (state: HomeQueryState) => {
     onChoose: vi.fn(),
     onRetry: vi.fn(),
   };
-  const view = render(<HomeQueryEntry state={state} {...handlers} />);
+  const view = render(
+    <HomeQueryEntry state={state} examples={examples} {...handlers} />,
+  );
   return { ...view, ...handlers };
 };
 
@@ -39,7 +49,7 @@ describe("HomeQueryEntry", () => {
         "Type a topic or a question…",
       );
       expect(
-        screen.getByRole("button", { name: "surface temperature in Greece" }),
+        screen.getByRole("button", { name: "rainfall datasets for Crete" }),
       ).toBeInTheDocument();
       expect(
         screen.getByRole("link", { name: /or browse all datasets/i }),
@@ -57,9 +67,13 @@ describe("HomeQueryEntry", () => {
         text: "",
       });
       fireEvent.click(
-        screen.getByRole("button", { name: "datasets about education" }),
+        screen.getByRole("button", {
+          name: "How hot was Athens in July 2024?",
+        }),
       );
-      expect(onTextChange).toHaveBeenCalledWith("datasets about education");
+      expect(onTextChange).toHaveBeenCalledWith(
+        "How hot was Athens in July 2024?",
+      );
       expect(onSubmit).not.toHaveBeenCalled();
     });
 
@@ -97,7 +111,9 @@ describe("HomeQueryEntry", () => {
         screen.queryByRole("link", { name: /or browse all datasets/i }),
       ).toBeNull();
       expect(
-        screen.queryByRole("button", { name: "datasets about education" }),
+        screen.queryByRole("button", {
+          name: "How hot was Athens in July 2024?",
+        }),
       ).toBeNull();
       expect(screen.getByTestId("home-query-placeholder")).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -180,13 +196,9 @@ describe("HomeQueryEntry", () => {
         screen.getByRole("heading", { name: "DataGEMS can't help with this" }),
       ).toBeInTheDocument();
       fireEvent.click(
-        screen.getByRole("button", {
-          name: "Air temperature in Athens, July 2024",
-        }),
+        screen.getByRole("button", { name: "Greek language corpora" }),
       );
-      expect(onTextChange).toHaveBeenCalledWith(
-        "Air temperature in Athens, July 2024",
-      );
+      expect(onTextChange).toHaveBeenCalledWith("Greek language corpora");
       fireEvent.click(screen.getByRole("button", { name: /find datasets/i }));
       expect(onChoose).toHaveBeenCalledWith("dataset_search");
       expect(

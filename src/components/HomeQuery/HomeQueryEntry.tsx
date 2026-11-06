@@ -26,19 +26,6 @@ import type { HomeQueryState } from "./useHomeQuery";
 
 const PLACEHOLDER = "Type a topic or a question…";
 
-const IDLE_EXAMPLES = [
-  "surface temperature in Greece",
-  "datasets about education",
-  "What is the mean temperature in Athens?",
-  "Find datasets related to nursing",
-] as const;
-
-const OUT_OF_SCOPE_EXAMPLES = [
-  "Air temperature in Athens, July 2024",
-  "Climate indicators Mediterranean",
-  "Educational materials mathematics",
-] as const;
-
 const STATUS_MESSAGES = [
   "Working out what you need",
   "Choosing where to take you",
@@ -47,8 +34,15 @@ const STATUS_MESSAGES = [
 
 const STATUS_INTERVAL_MS = 6000;
 
+export interface HomeExamples {
+  idle: readonly string[];
+  outOfScope: readonly string[];
+}
+
 interface HomeQueryEntryProps {
   state: HomeQueryState;
+  /** Picked once per visit by the container; empty until picked. */
+  examples: HomeExamples;
   onTextChange: (text: string) => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -253,6 +247,7 @@ function PlaceholderPanel() {
 }
 
 export function HomeQueryEntry({
+  examples,
   state,
   onTextChange,
   onSubmit,
@@ -374,7 +369,7 @@ export function HomeQueryEntry({
           <SmartSearchExamples
             showHeader={false}
             align="start"
-            examples={IDLE_EXAMPLES}
+            examples={examples.idle}
             onPickExample={onTextChange}
           />
           <Link
@@ -426,7 +421,7 @@ export function HomeQueryEntry({
           <SmartSearchExamples
             showHeader={false}
             align="start"
-            examples={OUT_OF_SCOPE_EXAMPLES}
+            examples={examples.outOfScope}
             onPickExample={onTextChange}
           />
           <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-4">

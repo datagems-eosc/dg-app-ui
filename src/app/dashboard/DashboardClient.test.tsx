@@ -28,6 +28,7 @@ vi.mock("@/components/DashboardLayout", () => ({
 }));
 
 import type React from "react";
+import { EXAMPLE_POOL } from "@/lib/homeExamples/pool";
 import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import DashboardClient from "./DashboardClient";
 
@@ -58,6 +59,18 @@ describe("DashboardClient – Home", () => {
     expect(
       screen.getByRole("textbox", { name: /type a topic or a question/i }),
     ).toBeInTheDocument();
+    expect(classifyIntent).not.toHaveBeenCalled();
+  });
+
+  it("shows four distinct example queries from the curated pool", () => {
+    render(<DashboardClient />);
+    const poolTexts = new Set(EXAMPLE_POOL.map((entry) => entry.text));
+    const shown = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent?.trim() ?? "")
+      .filter((text) => poolTexts.has(text));
+    expect(shown).toHaveLength(4);
+    expect(new Set(shown).size).toBe(4);
     expect(classifyIntent).not.toHaveBeenCalled();
   });
 

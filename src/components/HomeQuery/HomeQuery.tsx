@@ -8,6 +8,7 @@ import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import type { IntentHandoff } from "@/lib/intentRouting/types";
 import { getNavigationUrl } from "@/lib/utils";
 import { HomeQueryEntry } from "./HomeQueryEntry";
+import { useHomeExamples } from "./useHomeExamples";
 import { useHomeQuery } from "./useHomeQuery";
 
 export const HANDOFF_PARAM = "handoff";
@@ -38,6 +39,7 @@ export function HomeQuery() {
     [router],
   );
 
+  const examples = useHomeExamples();
   const { state, setText, submit, cancel, choose, retry } = useHomeQuery({
     classify: classifyIntent,
     onNavigate,
@@ -46,6 +48,7 @@ export function HomeQuery() {
   return (
     <HomeQueryEntry
       state={state}
+      examples={examples}
       onTextChange={setText}
       onSubmit={() => void submit()}
       onCancel={cancel}
