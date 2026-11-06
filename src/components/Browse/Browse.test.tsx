@@ -395,6 +395,16 @@ describe("Browse – search box follows Smart search", () => {
     expect(frameOf(searchBox())).toHaveAttribute("data-smart", "on");
   });
 
+  it("offers no size sorting", async () => {
+    render(<Browse datasets={[]} title="Datasets" subtitle="" />);
+    fireEvent.click(screen.getByRole("button", { name: "Name (A-Z)" }));
+    expect(
+      screen.getByText("Date Published (newest first)"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Size (smallest first)")).toBeNull();
+    expect(screen.queryByText("Size (highest first)")).toBeNull();
+  });
+
   it("ends the search when the box is emptied by hand", () => {
     const onSearchTermChange = vi.fn();
     const onSearchTermSubmit = vi.fn();

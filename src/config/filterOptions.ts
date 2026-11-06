@@ -5,8 +5,19 @@ export const ACCESS_OPTIONS = [
   { value: "restricted", label: "Restricted" },
 ];
 
-// Sorting options for the dropdown
-export const SORTING_OPTIONS = [
+/**
+ * What the Gateway dataset query can apply today (`DatasetLookup` at
+ * dg-app-api `dcc0f67`): it drops a published-date range, has no dataset size
+ * and takes a single licence. Controls for unsupported filters are not offered;
+ * flip these when Gateway support lands.
+ */
+export const GATEWAY_FILTER_SUPPORT = {
+  creationYear: false,
+  datasetSize: false,
+  multipleLicenses: false,
+} as const;
+
+const ALL_SORTING_OPTIONS = [
   { value: "name-asc", label: "Name (A-Z)" },
   { value: "name-desc", label: "Name (Z-A)" },
   { value: "datePublished-asc", label: "Date Published (oldest first)" },
@@ -14,6 +25,12 @@ export const SORTING_OPTIONS = [
   { value: "size-asc", label: "Size (smallest first)" },
   { value: "size-desc", label: "Size (highest first)" },
 ];
+
+// Sorting options for the dropdown
+export const SORTING_OPTIONS = ALL_SORTING_OPTIONS.filter(
+  (option) =>
+    GATEWAY_FILTER_SUPPORT.datasetSize || !option.value.startsWith("size-"),
+);
 
 // Unified filter interface for both frontend and backend
 export interface UnifiedFilterState {
