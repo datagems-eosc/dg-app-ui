@@ -1070,7 +1070,12 @@ export default function Browse({
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 mb-4 px-4 sm:px-6">
               <div className="flex-1 w-full">
                 <Search
-                  placeholder="Search datasets..."
+                  smart={isSmartSearchEnabled}
+                  placeholder={
+                    isSmartSearchEnabled
+                      ? "Describe what you need, e.g. “rainfall data in Central Europe”…"
+                      : "Search by name or keyword…"
+                  }
                   value={searchTerm}
                   onChange={onSearchTermChange}
                   onSearch={(value) => onSearchTermSubmit?.(value)}

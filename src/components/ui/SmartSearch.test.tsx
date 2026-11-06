@@ -2,32 +2,25 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import SmartSearch from "./SmartSearch";
 
-describe("SmartSearch – description follows the toggle", () => {
-  it("describes content analysis when Smart search is on", () => {
-    render(<SmartSearch enabled />);
+const ON_TEXT = "Looks inside the data too. Results can take a few seconds.";
+const OFF_TEXT = "Matches your keywords in dataset titles and descriptions.";
+
+describe("SmartSearch – follows the toggle", () => {
+  it("describes content search and shows the gradient when on", () => {
+    const { container } = render(<SmartSearch enabled />);
 
     expect(screen.getByText("Smart search")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Analyzes dataset contents to help you find what you're looking for",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Searches dataset metadata by keyword"),
-    ).toBeNull();
+    expect(screen.getByText(ON_TEXT)).toBeInTheDocument();
+    expect(screen.queryByText(OFF_TEXT)).toBeNull();
+    expect(container.firstElementChild).toHaveAttribute("data-smart", "on");
   });
 
-  it("describes the keyword metadata search when Smart search is off", () => {
-    render(<SmartSearch enabled={false} />);
+  it("describes the keyword search and turns neutral when off", () => {
+    const { container } = render(<SmartSearch enabled={false} />);
 
     expect(screen.getByText("Smart search")).toBeInTheDocument();
-    expect(
-      screen.getByText("Searches dataset metadata by keyword"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Analyzes dataset contents to help you find what you're looking for",
-      ),
-    ).toBeNull();
+    expect(screen.getByText(OFF_TEXT)).toBeInTheDocument();
+    expect(screen.queryByText(ON_TEXT)).toBeNull();
+    expect(container.firstElementChild).toHaveAttribute("data-smart", "off");
   });
 });

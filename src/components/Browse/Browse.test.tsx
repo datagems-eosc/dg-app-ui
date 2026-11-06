@@ -357,3 +357,57 @@ describe("Browse – generalChat flag (Hide general chat)", () => {
     expect(screen.queryByRole("button", { name: /selected/i })).toBeNull();
   });
 });
+
+describe("Browse – search box follows Smart search", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(false);
+    mockUseRouter.mockReturnValue({ push: vi.fn() });
+    mockUseCollections.mockReturnValue({
+      apiCollections: [],
+      extraCollections: [],
+      refreshExtraCollections: vi.fn(),
+      notifyCollectionModified: vi.fn(),
+    });
+    mockUseApi.mockReturnValue({
+      hasToken: false,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+    });
+  });
+
+  const searchBox = () => screen.getByRole("textbox");
+  const frameOf = (el: HTMLElement) => el.closest("[data-smart]");
+
+  it("asks for a description and frames the box with the gradient when on", () => {
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        isSmartSearchEnabled
+      />,
+    );
+    expect(searchBox()).toHaveAttribute(
+      "placeholder",
+      "Describe what you need, e.g. “rainfall data in Central Europe”…",
+    );
+    expect(frameOf(searchBox())).toHaveAttribute("data-smart", "on");
+  });
+
+  it("asks for a name or keyword and stays neutral when off", () => {
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        isSmartSearchEnabled={false}
+      />,
+    );
+    expect(searchBox()).toHaveAttribute(
+      "placeholder",
+      "Search by name or keyword…",
+    );
+    expect(frameOf(searchBox())).toHaveAttribute("data-smart", "off");
+  });
+});
