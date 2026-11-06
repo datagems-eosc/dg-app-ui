@@ -109,6 +109,16 @@ interface BrowseProps {
    */
   error?: string | null;
   /**
+   * Server total for the current list, when it is larger than what is shown.
+   */
+  totalCount?: number;
+  /**
+   * More datasets can be loaded (catalogue paging from parent).
+   */
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  /**
    * The current sort value (controlled from parent).
    */
   sortBy?: string;
@@ -200,6 +210,10 @@ export default function Browse({
   onSearchTermSubmit,
   isLoading = false,
   error = null,
+  totalCount,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
   sortBy = "name-asc",
   onSortByChange,
   onApplyFilters,
@@ -1191,8 +1205,13 @@ export default function Browse({
               <p className="text-body-14-regular text-gray-650">
                 Showing:{" "}
                 <span className="text-body-14-medium text-gray-750">
-                  {filteredDatasets.length}{" "}
-                  {filteredDatasets.length === 1 ? "result" : "results"}
+                  {filteredDatasets.length}
+                  {totalCount && totalCount > filteredDatasets.length
+                    ? ` of ${totalCount}`
+                    : ""}{" "}
+                  {(totalCount ?? filteredDatasets.length) === 1
+                    ? "result"
+                    : "results"}
                 </span>
               </p>
               {isSmartSearchEnabled ? (
@@ -1260,6 +1279,18 @@ export default function Browse({
                       isSmartSearchEnabled={isSmartSearchEnabled}
                     />
                   ))}
+                </div>
+              )}
+              {!isLoading && !error && hasMore && onLoadMore && (
+                <div className="flex justify-center py-6">
+                  <button
+                    type="button"
+                    onClick={onLoadMore}
+                    disabled={isLoadingMore}
+                    className="text-body-14-regular text-slate-500 hover:text-slate-700 hover:underline disabled:no-underline disabled:opacity-60 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850"
+                  >
+                    {isLoadingMore ? "Loading…" : "Load more datasets"}
+                  </button>
                 </div>
               )}
               {/* Empty state */}

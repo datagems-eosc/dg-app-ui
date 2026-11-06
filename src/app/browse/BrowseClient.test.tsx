@@ -50,8 +50,19 @@ vi.mock("@/components/Browse", () => ({
     searchTerm: string;
     isSmartSearchEnabled: boolean;
     onSearchTermSubmit: (value?: string) => void;
+    datasets: unknown[];
+    totalCount?: number;
+    hasMore?: boolean;
+    onLoadMore?: () => void;
   }) => (
     <div>
+      <span data-testid="shown">{props.datasets.length}</span>
+      <span data-testid="total">{String(props.totalCount)}</span>
+      {props.hasMore && (
+        <button type="button" onClick={() => props.onLoadMore?.()}>
+          Load more datasets
+        </button>
+      )}
       <input aria-label="Search" readOnly value={props.searchTerm} />
       <span data-testid="smart">{String(props.isSmartSearchEnabled)}</span>
       <button
@@ -203,5 +214,58 @@ describe("BrowseClient – Home handoff", () => {
     });
     await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
     expect(api.queryDatasets.mock.calls[1][0].like).toBe("%rain%");
+  });
+
+  describe("catalogue paging", () => {
+    const item = (n: number) => ({
+      id: `d${n}`,
+      name: `Dataset ${String(n).padStart(3, "0")}`,
+    });
+    const items = (from: number, to: number) =>
+      Array.from({ length: to - from + 1 }, (_, i) => item(from + i));
+
+    it("loads the next hundred with the same search, filters and sort", async () => {
+      api.queryDatasets
+        .mockResolvedValueOnce({ items: items(1, 100), count: 150 })
+        .mockResolvedValueOnce({ items: items(101, 150), count: 150 });
+      render(<BrowseClient />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId("shown")).toHaveTextContent("100"),
+      );
+      expect(screen.getByTestId("total")).toHaveTextContent("150");
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "Load more datasets" }),
+        );
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId("shown")).toHaveTextContent("150"),
+      );
+      const [first, second] = api.queryDatasets.mock.calls.map(([p]) => p);
+      expect(second.page).toEqual({ Offset: 100, Size: 100 });
+      expect({ ...second, page: undefined }).toEqual({
+        ...first,
+        page: undefined,
+      });
+      expect(
+        screen.queryByRole("button", { name: "Load more datasets" }),
+      ).toBeNull();
+    });
+
+    it("does not offer more when everything is shown", async () => {
+      api.queryDatasets.mockResolvedValueOnce({
+        items: items(1, 20),
+        count: 20,
+      });
+      render(<BrowseClient />);
+      await waitFor(() =>
+        expect(screen.getByTestId("shown")).toHaveTextContent("20"),
+      );
+      expect(
+        screen.queryByRole("button", { name: "Load more datasets" }),
+      ).toBeNull();
+    });
   });
 });

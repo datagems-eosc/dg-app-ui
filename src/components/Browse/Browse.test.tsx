@@ -423,6 +423,35 @@ describe("Browse – search box follows Smart search", () => {
     expect(screen.getByText(/Showing:/)).toBeInTheDocument();
   });
 
+  it("shows the total and offers more datasets when there are more", () => {
+    const onLoadMore = vi.fn();
+    const one = {
+      id: "d1",
+      title: "Rainfall",
+      description: "",
+      license: "MIT",
+      size: "N/A",
+      datePublished: "2024-01-01",
+      category: "Math" as const,
+      access: "Open Access" as const,
+      lastUpdated: "2024-01-01",
+      tags: [],
+    };
+    render(
+      <Browse
+        datasets={[one]}
+        title="Datasets"
+        subtitle=""
+        totalCount={201}
+        hasMore
+        onLoadMore={onLoadMore}
+      />,
+    );
+    expect(screen.getByText(/1 of 201 results/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load more datasets" }));
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
   it("offers no size sorting", async () => {
     render(<Browse datasets={[]} title="Datasets" subtitle="" />);
     fireEvent.click(screen.getByRole("button", { name: "Name (A-Z)" }));

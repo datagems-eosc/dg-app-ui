@@ -22,6 +22,8 @@ import { logDebug, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
 
+const CATALOGUE_PAGE_SIZE = 100;
+
 const API_PAYLOAD = {
   project: {
     fields: [
@@ -47,7 +49,7 @@ const API_PAYLOAD = {
   },
   page: {
     Offset: 0,
-    Size: 100,
+    Size: CATALOGUE_PAGE_SIZE,
   },
   Order: {
     Items: ["+code"],
@@ -175,6 +177,15 @@ export default function BrowseClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetPlus[]>([]);
+  // Catalogue paging: the request behind the current list, server items
+  // loaded and the server total. Only the catalogue path pages.
+  const cataloguePayload = useRef<Record<string, unknown> | null>(null);
+  const [catalogueLoaded, setCatalogueLoaded] = useState(0);
+  const [catalogueTotal, setCatalogueTotal] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Only the latest list request (new search/sort/filter or load more) may
+  // update the list.
+  const listRequest = useRef(0);
   const [filteredDatasets, setFilteredDatasets] = useState<DatasetPlus[]>([]);
   // A Home handoff (`?handoff=<id>`, UI #352) starts one Smart Search: the
   // input shows the user's original text while discovery uses the retrieval
@@ -269,8 +280,13 @@ export default function BrowseClient() {
       if (api.hasToken) handoffSearchKey.current = key;
     }
     const fetchDatasets = async () => {
+      const request = ++listRequest.current;
       setIsLoading(true);
       setError(null);
+      setIsLoadingMore(false);
+      cataloguePayload.current = null;
+      setCatalogueLoaded(0);
+      setCatalogueTotal(0);
       try {
         if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
@@ -703,6 +719,7 @@ export default function BrowseClient() {
         }
 
         const data = await api.queryDatasets(payload);
+        if (request !== listRequest.current) return;
         const items = Array.isArray(data.items) ? data.items : [];
         const mappedDatasets = items.map(mapApiDatasetToDataset);
         const sortedDatasets = sortDatasetsWithSecondaryRules(
@@ -710,13 +727,18 @@ export default function BrowseClient() {
           sortBy,
         );
         setAllDatasets(sortedDatasets);
+        cataloguePayload.current = payload;
+        setCatalogueLoaded(items.length);
+        setCatalogueTotal(
+          typeof data.count === "number" ? data.count : items.length,
+        );
       } catch (err: unknown) {
         let message: string = ApiErrorMessage.UNEXPECTED_ERROR;
         if (err instanceof Error) message = err.message;
         else if (typeof err === "string") message = err;
         setError(message);
       } finally {
-        setIsLoading(false);
+        if (request === listRequest.current) setIsLoading(false);
       }
     };
     fetchDatasets();
@@ -768,6 +790,45 @@ export default function BrowseClient() {
   const handleSearchTermChange = useCallback((value: string) => {
     setPendingSearchTerm(value);
   }, []);
+
+  const handleLoadMore = useCallback(async () => {
+    const base = cataloguePayload.current;
+    if (!base) return;
+    const request = ++listRequest.current;
+    setIsLoadingMore(true);
+    try {
+      const data = await api.queryDatasets({
+        ...base,
+        page: { Offset: catalogueLoaded, Size: CATALOGUE_PAGE_SIZE },
+      });
+      if (request !== listRequest.current) return;
+      const items: unknown[] = Array.isArray(data.items) ? data.items : [];
+      const next: DatasetPlus[] = items.map(mapApiDatasetToDataset);
+      setAllDatasets((prev) => {
+        const seen = new Set(prev.map((d) => d.id));
+        return sortDatasetsWithSecondaryRules(
+          [...prev, ...next.filter((d) => !seen.has(d.id))],
+          sortBy,
+        );
+      });
+      const loaded = catalogueLoaded + items.length;
+      setCatalogueLoaded(loaded);
+      setCatalogueTotal(
+        items.length === 0
+          ? loaded
+          : typeof data.count === "number"
+            ? data.count
+            : loaded,
+      );
+    } catch (err: unknown) {
+      if (request !== listRequest.current) return;
+      setError(
+        err instanceof Error ? err.message : ApiErrorMessage.UNEXPECTED_ERROR,
+      );
+    } finally {
+      if (request === listRequest.current) setIsLoadingMore(false);
+    }
+  }, [api, catalogueLoaded, sortBy]);
 
   const handleSearchTermSubmit = useCallback(
     (searchValue?: string) => {
@@ -910,6 +971,10 @@ export default function BrowseClient() {
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}
           isLoading={isLoading}
+          totalCount={catalogueTotal > 0 ? catalogueTotal : undefined}
+          hasMore={catalogueTotal > catalogueLoaded}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={() => void handleLoadMore()}
           error={error}
           sortBy={sortBy}
           onSortByChange={handleSortByChange}
