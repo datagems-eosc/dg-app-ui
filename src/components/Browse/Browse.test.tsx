@@ -496,3 +496,121 @@ describe("Browse – search box follows Smart search", () => {
     expect(frameOf(searchBox())).toHaveAttribute("data-smart", "off");
   });
 });
+
+describe("Browse – search progress and empty results", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(false);
+    mockUseRouter.mockReturnValue({ push: vi.fn() });
+    mockUseCollections.mockReturnValue({
+      apiCollections: [],
+      extraCollections: [],
+      refreshExtraCollections: vi.fn(),
+      notifyCollectionModified: vi.fn(),
+    });
+    mockUseApi.mockReturnValue({
+      hasToken: false,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+    });
+  });
+
+  it("shows that Smart search is running, for which text, instead of an old count", () => {
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rainfall data"
+        appliedSearchTerm="rainfall data"
+        isSmartSearchEnabled
+        isLoading
+        totalCount={14}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Searching for “rainfall data”",
+    );
+    expect(screen.getByText("Searching inside the data")).toBeInTheDocument();
+    expect(screen.queryByText(/Showing:/)).toBeNull();
+  });
+
+  it("keeps the plain loading cards for keyword search", () => {
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rain"
+        appliedSearchTerm="rain"
+        isLoading
+      />,
+    );
+    expect(screen.queryByText("Searching inside the data")).toBeNull();
+    expect(screen.queryByText(/Showing:/)).toBeNull();
+    expect(screen.getByText("Searching…")).toBeInTheDocument();
+  });
+
+  it("explains an empty keyword result and offers Smart search", () => {
+    const onSmartSearchToggle = vi.fn();
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rainfall data in Central Europe"
+        appliedSearchTerm="rainfall data in Central Europe"
+        isSmartSearchEnabled={false}
+        onSmartSearchToggle={onSmartSearchToggle}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "No dataset names or descriptions contain “rainfall data in Central Europe”.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Turn on Smart search" }),
+    );
+    expect(onSmartSearchToggle).toHaveBeenCalledWith(true);
+  });
+
+  it("explains an empty Smart search result without offering Smart search", () => {
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="quantum gravity"
+        appliedSearchTerm="quantum gravity"
+        isSmartSearchEnabled
+        onSmartSearchToggle={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("No datasets found for “quantum gravity”."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Try describing what you need in other words."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Turn on Smart search" }),
+    ).toBeNull();
+  });
+
+  it("announces the result count when a search finishes", () => {
+    render(
+      <Browse
+        datasets={[]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rain"
+        appliedSearchTerm="rain"
+      />,
+    );
+    expect(screen.getByText(/Showing:/).closest("[aria-live]")).toHaveAttribute(
+      "aria-live",
+      "polite",
+    );
+  });
+});

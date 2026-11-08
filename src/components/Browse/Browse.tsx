@@ -30,6 +30,7 @@ import SmartSearch from "@ui/SmartSearch";
 import SmartSearchExamples from "@ui/SmartSearchExamples";
 import Switch from "@ui/Switch";
 import { Toast } from "@ui/Toast";
+import { WorkingStatus } from "@ui/WorkingStatus";
 import { useRouter } from "next/navigation";
 import { APP_ROUTES } from "@/config/appUrls";
 import {
@@ -61,6 +62,11 @@ import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
 import { CollectionPermissionsModal } from "../ui/user/CollectionPermissionsModal";
 import ActiveFilters from "./ActiveFilters";
+
+const SMART_SEARCH_STATUS = [
+  "Searching inside the data",
+  "Still searching",
+] as const;
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -100,6 +106,10 @@ interface BrowseProps {
    * Handler for when the search is submitted (Enter or button click).
    */
   onSearchTermSubmit?: (searchValue?: string) => void;
+  /**
+   * The search the shown results belong to (the last submitted text).
+   */
+  appliedSearchTerm?: string;
   /**
    * Loader state for async dataset fetching (from parent).
    */
@@ -208,6 +218,7 @@ export default function Browse({
   searchTerm = "",
   onSearchTermChange,
   onSearchTermSubmit,
+  appliedSearchTerm = "",
   isLoading = false,
   error = null,
   totalCount,
@@ -1202,17 +1213,30 @@ export default function Browse({
           {/* Results count and sorting */}
           {showSearchAndFilters !== false && !shouldShowSmartExamples && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
-              <p className="text-body-14-regular text-gray-650">
-                Showing:{" "}
-                <span className="text-body-14-medium text-gray-750">
-                  {filteredDatasets.length}
-                  {totalCount && totalCount > filteredDatasets.length
-                    ? ` of ${totalCount}`
-                    : ""}{" "}
-                  {(totalCount ?? filteredDatasets.length) === 1
-                    ? "result"
-                    : "results"}
-                </span>
+              <p
+                aria-live="polite"
+                className="text-body-14-regular text-gray-650"
+              >
+                {isLoading ? (
+                  appliedSearchTerm ? (
+                    "Searching…"
+                  ) : (
+                    "Loading datasets…"
+                  )
+                ) : (
+                  <>
+                    Showing:{" "}
+                    <span className="text-body-14-medium text-gray-750">
+                      {filteredDatasets.length}
+                      {totalCount && totalCount > filteredDatasets.length
+                        ? ` of ${totalCount}`
+                        : ""}{" "}
+                      {(totalCount ?? filteredDatasets.length) === 1
+                        ? "result"
+                        : "results"}
+                    </span>
+                  </>
+                )}
               </p>
               {isSmartSearchEnabled ? (
                 <span className="text-body-14-regular text-gray-650">
@@ -1233,17 +1257,32 @@ export default function Browse({
             <div className="transition-all duration-300 px-4 sm:px-6">
               {/* Loader or error */}
               {isLoading ? (
-                <div
-                  className={
-                    viewMode === "grid"
-                      ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-                      : "grid grid-cols-1 gap-4"
-                  }
-                >
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <DatasetCardSkeleton key={index} viewMode={viewMode} />
-                  ))}
-                </div>
+                <>
+                  {isSmartSearchEnabled && appliedSearchTerm && (
+                    <div className="flex flex-col items-center gap-1 pt-4 pb-8 text-center">
+                      <WorkingStatus
+                        messages={SMART_SEARCH_STATUS}
+                        repeat={false}
+                        announcement={`Searching for “${appliedSearchTerm}”`}
+                        iconSize={20}
+                      />
+                      <p className="max-w-xl line-clamp-2 break-words text-body-14-regular text-gray-650">
+                        for “{appliedSearchTerm}”
+                      </p>
+                    </div>
+                  )}
+                  <div
+                    className={
+                      viewMode === "grid"
+                        ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                        : "grid grid-cols-1 gap-4"
+                    }
+                  >
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <DatasetCardSkeleton key={index} viewMode={viewMode} />
+                    ))}
+                  </div>
+                </>
               ) : error ? (
                 <div className="text-red-600 text-center py-8">{error}</div>
               ) : (
@@ -1297,12 +1336,49 @@ export default function Browse({
               {!isLoading && !error && filteredDatasets.length === 0 && (
                 <div className="text-center py-18 space-y-2">
                   <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
-                  <h3 className="text-body-16-semibold text-slate-850">
-                    No datasets found matching your search criteria.
-                  </h3>
-                  <p className="text-body-14-regular text-gray-650">
-                    Try rephrasing your question or using different keywords.
-                  </p>
+                  {appliedSearchTerm && isSmartSearchEnabled ? (
+                    <>
+                      <h3 className="text-body-16-semibold text-slate-850">
+                        No datasets found for “{appliedSearchTerm}”.
+                      </h3>
+                      <p className="text-body-14-regular text-gray-650">
+                        Try describing what you need in other words.
+                      </p>
+                    </>
+                  ) : appliedSearchTerm ? (
+                    <>
+                      <h3 className="text-body-16-semibold text-slate-850">
+                        No dataset names or descriptions contain “
+                        {appliedSearchTerm}”.
+                      </h3>
+                      <p className="text-body-14-regular text-gray-650">
+                        Try fewer or different words
+                        {onSmartSearchToggle
+                          ? ", or let Smart search look inside the data."
+                          : "."}
+                      </p>
+                      {onSmartSearchToggle && (
+                        <Button
+                          variant="tertiary"
+                          size="sm"
+                          className="mx-auto"
+                          onClick={() => onSmartSearchToggle(true)}
+                        >
+                          Turn on Smart search
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-body-16-semibold text-slate-850">
+                        No datasets found matching your search criteria.
+                      </h3>
+                      <p className="text-body-14-regular text-gray-650">
+                        Try rephrasing your question or using different
+                        keywords.
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -20,8 +20,8 @@ import {
 import type { DestinationIntent } from "@/lib/intentRouting/types";
 import { cn, createUrl } from "@/lib/utils";
 import { Button } from "../ui/Button";
-import DGIcon from "../ui/chat/DGIcon";
 import SmartSearchExamples from "../ui/SmartSearchExamples";
+import { WorkingStatus } from "../ui/WorkingStatus";
 import type { HomeQueryState } from "./useHomeQuery";
 
 const PLACEHOLDER = "Type a topic or a question…";
@@ -31,8 +31,6 @@ const STATUS_MESSAGES = [
   "Choosing where to take you",
   "Checking how best to help",
 ] as const;
-
-const STATUS_INTERVAL_MS = 6000;
 
 export interface HomeExamples {
   idle: readonly string[];
@@ -48,68 +46,6 @@ interface HomeQueryEntryProps {
   onCancel: () => void;
   onChoose: (intent: DestinationIntent) => void;
   onRetry: () => void;
-}
-
-const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-function Dots() {
-  return (
-    <span aria-hidden="true">
-      {[0, 200, 400].map((delay) => (
-        <span
-          key={delay}
-          className="animate-pulse motion-reduce:animate-none"
-          style={{ animationDelay: `${delay}ms` }}
-        >
-          .
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function ClassifyingStatus() {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const timer = window.setInterval(
-      () => setIndex((current) => (current + 1) % STATUS_MESSAGES.length),
-      STATUS_INTERVAL_MS,
-    );
-    return () => window.clearInterval(timer);
-  }, []);
-
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      <DGIcon
-        size={16}
-        className="opacity-60 animate-pulse motion-reduce:animate-none shrink-0"
-        aria-hidden="true"
-      />
-      <span role="status" className="sr-only">
-        {STATUS_MESSAGES[0]}
-      </span>
-      <span className="inline-grid" aria-hidden="true">
-        {STATUS_MESSAGES.map((message, i) => (
-          <span
-            key={message}
-            data-active={i === index}
-            className={cn(
-              "col-start-1 row-start-1 text-body-14-regular text-slate-600 whitespace-nowrap transition-opacity duration-300",
-              i === index ? "opacity-100" : "opacity-0",
-            )}
-          >
-            {message}
-            <Dots />
-          </span>
-        ))}
-      </span>
-    </div>
-  );
 }
 
 interface ChoiceRowProps {
@@ -317,7 +253,7 @@ export function HomeQueryEntry({
           <div className="flex items-center justify-between gap-2 mt-3 sm:mt-4 min-h-8">
             {busy ? (
               <>
-                <ClassifyingStatus />
+                <WorkingStatus messages={STATUS_MESSAGES} />
                 <Button
                   key="cancel"
                   variant="tertiary"
