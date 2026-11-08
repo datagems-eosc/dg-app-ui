@@ -22,7 +22,7 @@ import { logDebug, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
 
-const CATALOGUE_PAGE_SIZE = 100;
+const CATALOGUE_PAGE_SIZE = 25;
 
 const API_PAYLOAD = {
   project: {
@@ -681,6 +681,12 @@ export default function BrowseClient() {
             ...payload,
             like: `%${searchTerm}%`,
           };
+        }
+
+        // A built-in collection is filtered by the Gateway, so its count and
+        // paging cover the whole collection, not one catalogue page.
+        if (selectedCollection) {
+          payload.collectionIds = [selectedCollection];
         }
 
         const backendFilters = convertToBackendFilters(filters);
