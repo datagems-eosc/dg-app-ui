@@ -20,6 +20,10 @@ vi.mock("../DatasetCard", () => ({
   default: () => null,
 }));
 
+vi.mock("./useDatasetSearchExamples", () => ({
+  useDatasetSearchExamples: () => ["rainfall datasets", "Greek corpora"],
+}));
+
 vi.mock("@/contexts/CollectionsContext", () => ({
   useCollections: () => mockUseCollections(),
 }));
@@ -612,5 +616,79 @@ describe("Browse – search progress and empty results", () => {
       "aria-live",
       "polite",
     );
+  });
+});
+
+describe("Browse – Smart search with an empty box", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(false);
+    mockUseRouter.mockReturnValue({ push: vi.fn() });
+    mockUseCollections.mockReturnValue({
+      apiCollections: [],
+      extraCollections: [],
+      refreshExtraCollections: vi.fn(),
+      notifyCollectionModified: vi.fn(),
+    });
+    mockUseApi.mockReturnValue({
+      hasToken: false,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+    });
+  });
+
+  const dataset = {
+    id: "d1",
+    title: "Rainfall",
+    description: "",
+    license: "MIT",
+    size: "N/A",
+    datePublished: "2024-01-01",
+    category: "Math" as const,
+    access: "Open Access" as const,
+    lastUpdated: "2024-01-01",
+    tags: [],
+  };
+
+  it("keeps the list and offers dataset-search examples above it", () => {
+    const onSearchTermChange = vi.fn();
+    const onSearchTermSubmit = vi.fn();
+    render(
+      <Browse
+        datasets={[dataset]}
+        title="Datasets"
+        subtitle=""
+        searchTerm=""
+        isSmartSearchEnabled
+        totalCount={201}
+        onSearchTermChange={onSearchTermChange}
+        onSearchTermSubmit={onSearchTermSubmit}
+      />,
+    );
+    expect(screen.getByText(/1 of 201 results/)).toBeInTheDocument();
+    expect(screen.queryByText("Example Searches")).toBeNull();
+    expect(
+      screen.getByText("Describe what you need to rank by relevance"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Sorted by relevance")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Greek corpora" }));
+    expect(onSearchTermChange).toHaveBeenCalledWith("Greek corpora");
+    expect(onSearchTermSubmit).toHaveBeenCalledWith("Greek corpora");
+  });
+
+  it("shows no examples once a Smart search has text", () => {
+    render(
+      <Browse
+        datasets={[dataset]}
+        title="Datasets"
+        subtitle=""
+        searchTerm="rainfall"
+        appliedSearchTerm="rainfall"
+        isSmartSearchEnabled
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Greek corpora" })).toBeNull();
+    expect(screen.getByText("Sorted by relevance")).toBeInTheDocument();
   });
 });

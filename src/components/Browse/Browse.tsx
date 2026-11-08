@@ -62,6 +62,7 @@ import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
 import { CollectionPermissionsModal } from "../ui/user/CollectionPermissionsModal";
 import ActiveFilters from "./ActiveFilters";
+import { useDatasetSearchExamples } from "./useDatasetSearchExamples";
 
 const SMART_SEARCH_STATUS = [
   "Searching inside the data",
@@ -740,6 +741,7 @@ export default function Browse({
   };
 
   const isPanelVisible = showSelectedPanel || isPanelClosing;
+  const datasetSearchExamples = useDatasetSearchExamples();
   const shouldShowSmartExamples =
     showSearchAndFilters !== false &&
     isSmartSearchEnabled &&
@@ -1182,15 +1184,22 @@ export default function Browse({
               )}
             </div>
           )}
-          {/* Smart search examples */}
-          {shouldShowSmartExamples && (
-            <SmartSearchExamples
-              className="px-4 pt-6 sm:px-6 sm:pt-24 mb-4"
-              onPickExample={(value) => {
-                if (onSearchTermChange) onSearchTermChange(value);
-                if (onSearchTermSubmit) onSearchTermSubmit(value);
-              }}
-            />
+          {/* Smart search examples: the list stays, examples sit above it */}
+          {shouldShowSmartExamples && datasetSearchExamples.length > 0 && (
+            <div className="px-4 sm:px-6 mb-4">
+              <p className="text-body-14-regular text-gray-650 mb-2">
+                Try an example:
+              </p>
+              <SmartSearchExamples
+                showHeader={false}
+                align="start"
+                examples={datasetSearchExamples}
+                onPickExample={(value) => {
+                  if (onSearchTermChange) onSearchTermChange(value);
+                  if (onSearchTermSubmit) onSearchTermSubmit(value);
+                }}
+              />
+            </div>
           )}
           {/* Active Filters */}
           {!isSmartSearchEnabled && (
@@ -1211,7 +1220,7 @@ export default function Browse({
             </p>
           )}
           {/* Results count and sorting */}
-          {showSearchAndFilters !== false && !shouldShowSmartExamples && (
+          {showSearchAndFilters !== false && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
               <p
                 aria-live="polite"
@@ -1240,7 +1249,9 @@ export default function Browse({
               </p>
               {isSmartSearchEnabled ? (
                 <span className="text-body-14-regular text-gray-650">
-                  Sorted by relevance
+                  {shouldShowSmartExamples
+                    ? "Describe what you need to rank by relevance"
+                    : "Sorted by relevance"}
                 </span>
               ) : (
                 <SortingDropdown
@@ -1253,39 +1264,23 @@ export default function Browse({
             </div>
           )}
           {/* Main content area - do not shift cards when modal is open */}
-          {!shouldShowSmartExamples && (
-            <div className="transition-all duration-300 px-4 sm:px-6">
-              {/* Loader or error */}
-              {isLoading ? (
-                <>
-                  {isSmartSearchEnabled && appliedSearchTerm && (
-                    <div className="flex flex-col items-center gap-1 pt-4 pb-8 text-center">
-                      <WorkingStatus
-                        messages={SMART_SEARCH_STATUS}
-                        repeat={false}
-                        announcement={`Searching for “${appliedSearchTerm}”`}
-                        iconSize={20}
-                      />
-                      <p className="max-w-xl line-clamp-2 break-words text-body-14-regular text-gray-650">
-                        for “{appliedSearchTerm}”
-                      </p>
-                    </div>
-                  )}
-                  <div
-                    className={
-                      viewMode === "grid"
-                        ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-                        : "grid grid-cols-1 gap-4"
-                    }
-                  >
-                    {Array.from({ length: 6 }).map((_, index) => (
-                      <DatasetCardSkeleton key={index} viewMode={viewMode} />
-                    ))}
+          <div className="transition-all duration-300 px-4 sm:px-6">
+            {/* Loader or error */}
+            {isLoading ? (
+              <>
+                {isSmartSearchEnabled && appliedSearchTerm && (
+                  <div className="flex flex-col items-center gap-1 pt-4 pb-8 text-center">
+                    <WorkingStatus
+                      messages={SMART_SEARCH_STATUS}
+                      repeat={false}
+                      announcement={`Searching for “${appliedSearchTerm}”`}
+                      iconSize={20}
+                    />
+                    <p className="max-w-xl line-clamp-2 break-words text-body-14-regular text-gray-650">
+                      for “{appliedSearchTerm}”
+                    </p>
                   </div>
-                </>
-              ) : error ? (
-                <div className="text-red-600 text-center py-8">{error}</div>
-              ) : (
+                )}
                 <div
                   className={
                     viewMode === "grid"
@@ -1293,96 +1288,109 @@ export default function Browse({
                       : "grid grid-cols-1 gap-4"
                   }
                 >
-                  {filteredDatasets.map((dataset, index) => (
-                    <DatasetCard
-                      key={dataset.id || `dataset-${index}`}
-                      dataset={dataset}
-                      onClick={() => handleDatasetClick(dataset)}
-                      isMultiSelected={currentSelectedDatasets.includes(
-                        dataset.id,
-                      )}
-                      onSelect={(isSelected) =>
-                        handleDatasetSelect(dataset.id, isSelected)
-                      }
-                      showSelectButton={!hideGeneralChat}
-                      isEditMode={isEditMode}
-                      onRemove={
-                        isEditMode && onRemoveDataset
-                          ? () => onRemoveDataset(dataset.id)
-                          : undefined
-                      }
-                      viewMode={viewMode}
-                      onAddToCollection={() => handleAddToCollection(dataset)}
-                      showAddButton={showAddButton && !hideGeneralChat}
-                      hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
-                      isSmartSearchEnabled={isSmartSearchEnabled}
-                    />
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <DatasetCardSkeleton key={index} viewMode={viewMode} />
                   ))}
                 </div>
-              )}
-              {!isLoading && !error && hasMore && onLoadMore && (
-                <div className="flex justify-center py-6">
-                  <button
-                    type="button"
-                    onClick={onLoadMore}
-                    disabled={isLoadingMore}
-                    className="text-body-14-regular text-slate-500 hover:text-slate-700 hover:underline disabled:no-underline disabled:opacity-60 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850"
-                  >
-                    {isLoadingMore ? "Loading…" : "Load more datasets"}
-                  </button>
-                </div>
-              )}
-              {/* Empty state */}
-              {!isLoading && !error && filteredDatasets.length === 0 && (
-                <div className="text-center py-18 space-y-2">
-                  <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
-                  {appliedSearchTerm && isSmartSearchEnabled ? (
-                    <>
-                      <h3 className="text-body-16-semibold text-slate-850">
-                        No datasets found for “{appliedSearchTerm}”.
-                      </h3>
-                      <p className="text-body-14-regular text-gray-650">
-                        Try describing what you need in other words.
-                      </p>
-                    </>
-                  ) : appliedSearchTerm ? (
-                    <>
-                      <h3 className="text-body-16-semibold text-slate-850">
-                        No dataset names or descriptions contain “
-                        {appliedSearchTerm}”.
-                      </h3>
-                      <p className="text-body-14-regular text-gray-650">
-                        Try fewer or different words
-                        {onSmartSearchToggle
-                          ? ", or let Smart search look inside the data."
-                          : "."}
-                      </p>
-                      {onSmartSearchToggle && (
-                        <Button
-                          variant="tertiary"
-                          size="sm"
-                          className="mx-auto"
-                          onClick={() => onSmartSearchToggle(true)}
-                        >
-                          Turn on Smart search
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-body-16-semibold text-slate-850">
-                        No datasets found matching your search criteria.
-                      </h3>
-                      <p className="text-body-14-regular text-gray-650">
-                        Try rephrasing your question or using different
-                        keywords.
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+              </>
+            ) : error ? (
+              <div className="text-red-600 text-center py-8">{error}</div>
+            ) : (
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                    : "grid grid-cols-1 gap-4"
+                }
+              >
+                {filteredDatasets.map((dataset, index) => (
+                  <DatasetCard
+                    key={dataset.id || `dataset-${index}`}
+                    dataset={dataset}
+                    onClick={() => handleDatasetClick(dataset)}
+                    isMultiSelected={currentSelectedDatasets.includes(
+                      dataset.id,
+                    )}
+                    onSelect={(isSelected) =>
+                      handleDatasetSelect(dataset.id, isSelected)
+                    }
+                    showSelectButton={!hideGeneralChat}
+                    isEditMode={isEditMode}
+                    onRemove={
+                      isEditMode && onRemoveDataset
+                        ? () => onRemoveDataset(dataset.id)
+                        : undefined
+                    }
+                    viewMode={viewMode}
+                    onAddToCollection={() => handleAddToCollection(dataset)}
+                    showAddButton={showAddButton && !hideGeneralChat}
+                    hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
+                    isSmartSearchEnabled={isSmartSearchEnabled}
+                  />
+                ))}
+              </div>
+            )}
+            {!isLoading && !error && hasMore && onLoadMore && (
+              <div className="flex justify-center py-6">
+                <button
+                  type="button"
+                  onClick={onLoadMore}
+                  disabled={isLoadingMore}
+                  className="text-body-14-regular text-slate-500 hover:text-slate-700 hover:underline disabled:no-underline disabled:opacity-60 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850"
+                >
+                  {isLoadingMore ? "Loading…" : "Load more datasets"}
+                </button>
+              </div>
+            )}
+            {/* Empty state */}
+            {!isLoading && !error && filteredDatasets.length === 0 && (
+              <div className="text-center py-18 space-y-2">
+                <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
+                {appliedSearchTerm && isSmartSearchEnabled ? (
+                  <>
+                    <h3 className="text-body-16-semibold text-slate-850">
+                      No datasets found for “{appliedSearchTerm}”.
+                    </h3>
+                    <p className="text-body-14-regular text-gray-650">
+                      Try describing what you need in other words.
+                    </p>
+                  </>
+                ) : appliedSearchTerm ? (
+                  <>
+                    <h3 className="text-body-16-semibold text-slate-850">
+                      No dataset names or descriptions contain “
+                      {appliedSearchTerm}”.
+                    </h3>
+                    <p className="text-body-14-regular text-gray-650">
+                      Try fewer or different words
+                      {onSmartSearchToggle
+                        ? ", or let Smart search look inside the data."
+                        : "."}
+                    </p>
+                    {onSmartSearchToggle && (
+                      <Button
+                        variant="tertiary"
+                        size="sm"
+                        className="mx-auto"
+                        onClick={() => onSmartSearchToggle(true)}
+                      >
+                        Turn on Smart search
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-body-16-semibold text-slate-850">
+                      No datasets found matching your search criteria.
+                    </h3>
+                    <p className="text-body-14-regular text-gray-650">
+                      Try rephrasing your question or using different keywords.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

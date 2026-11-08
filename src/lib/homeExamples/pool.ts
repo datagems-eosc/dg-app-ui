@@ -16,6 +16,9 @@ export interface ExampleQuery {
 
 export const HOME_EXAMPLE_COUNTS = { idle: 4, outOfScope: 3 } as const;
 
+/** Datasets shows dataset searches only, when Smart search is on and the box is empty. */
+export const DATASETS_EXAMPLE_COUNT = 4;
+
 export const EXAMPLE_POOL: readonly ExampleQuery[] = [
   {
     text: "datasets about air temperature in Greece",
