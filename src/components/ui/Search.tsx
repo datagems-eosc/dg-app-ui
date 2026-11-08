@@ -85,19 +85,7 @@ export function Search({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      if (currentValue.length < 3) {
-        // Show tooltip immediately when Enter is pressed with less than 3 characters
-        setShowTooltip(true);
-        // Hide tooltip after 10 seconds
-        setTimeout(() => setShowTooltip(false), 10000);
-        return;
-      }
-      onSearch?.(currentValue);
-    }
-  };
-
+  // Enter submits the form, so this is the only place that searches.
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (currentValue.length < 3) {
@@ -118,7 +106,6 @@ export function Search({
       placeholder={placeholder}
       value={currentValue}
       onChange={handleChange}
-      onKeyDown={handleKeyDown}
       autoComplete="off"
       enterKeyHint="search"
       inputMode="search"
