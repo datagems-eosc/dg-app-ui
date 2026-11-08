@@ -32,8 +32,15 @@ vi.mock("@/components/Browse", () => ({
   default: (props: {
     onSmartSearchToggle: (enabled: boolean) => void;
     onSearchTermSubmit: (value?: string) => void;
+    onSearchTermChange: (value: string) => void;
   }) => (
     <div>
+      <button
+        type="button"
+        onClick={() => props.onSearchTermChange("air quality")}
+      >
+        Type air quality
+      </button>
       <button type="button" onClick={() => props.onSmartSearchToggle(true)}>
         Smart on
       </button>
@@ -75,5 +82,37 @@ describe("UseCasePageClient – Smart search", () => {
     expect(payload.conversationOptions).toEqual({
       autoCreateConversation: false,
     });
+  });
+
+  const click = (view: ReturnType<typeof render>, name: string) =>
+    act(async () => {
+      fireEvent.click(view.getByRole("button", { name }));
+    });
+
+  it("runs Smart search again when the same text is submitted again", async () => {
+    const view = render(
+      <UseCasePageClient collectionName="Math" title="Math" subtitle="" />,
+    );
+    await click(view, "Smart on");
+    await click(view, "Search");
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(1),
+    );
+    await click(view, "Search");
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it("searches the text in the box when Smart search is switched on", async () => {
+    const view = render(
+      <UseCasePageClient collectionName="Math" title="Math" subtitle="" />,
+    );
+    await click(view, "Type air quality");
+    await click(view, "Smart on");
+    await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+    expect(api.searchCrossDataset.mock.calls.at(-1)?.[0].query).toBe(
+      "air quality",
+    );
   });
 });

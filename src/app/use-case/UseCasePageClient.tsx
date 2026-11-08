@@ -104,6 +104,8 @@ export default function UseCasePageClient({
   const [pendingSearchTerm, setPendingSearchTerm] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
+  // Counts Smart searches, so submitting the same text searches again.
+  const [smartRun, setSmartRun] = useState(0);
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
@@ -295,6 +297,7 @@ export default function UseCasePageClient({
   }, [
     api.hasToken,
     searchTerm,
+    smartRun,
     isSmartSearchEnabled,
     collectionName,
     collections,
@@ -322,6 +325,18 @@ export default function UseCasePageClient({
   const handleSearchTermSubmit = useCallback(
     (value?: string) => {
       setSearchTerm((value !== undefined ? value : pendingSearchTerm).trim());
+      // Keyword search filters on the client; only Smart search runs again.
+      if (isSmartSearchEnabled) setSmartRun((run) => run + 1);
+    },
+    [pendingSearchTerm, isSmartSearchEnabled],
+  );
+
+  // Switching the mode searches the text the user sees in the box.
+  const handleSmartSearchToggle = useCallback(
+    (enabled: boolean) => {
+      const visible = pendingSearchTerm.trim();
+      if (visible === "" || visible.length >= 3) setSearchTerm(visible);
+      setIsSmartSearchEnabled(enabled);
     },
     [pendingSearchTerm],
   );
@@ -353,8 +368,9 @@ export default function UseCasePageClient({
         searchTerm={pendingSearchTerm}
         onSearchTermChange={handleSearchTermChange}
         onSearchTermSubmit={handleSearchTermSubmit}
+        appliedSearchTerm={searchTerm}
         isSmartSearchEnabled={isSmartSearchEnabled}
-        onSmartSearchToggle={setIsSmartSearchEnabled}
+        onSmartSearchToggle={handleSmartSearchToggle}
         selectedDatasets={selectedDatasets}
         onSelectedDatasetsChange={setSelectedDatasets}
         showSelectedPanel={showSelectedPanel}

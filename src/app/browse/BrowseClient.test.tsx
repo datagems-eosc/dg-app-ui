@@ -50,6 +50,8 @@ vi.mock("@/components/Browse", () => ({
     searchTerm: string;
     isSmartSearchEnabled: boolean;
     onSearchTermSubmit: (value?: string) => void;
+    onSearchTermChange?: (value: string) => void;
+    onSmartSearchToggle?: (enabled: boolean) => void;
     datasets: unknown[];
     totalCount?: number;
     hasMore?: boolean;
@@ -76,6 +78,18 @@ vi.mock("@/components/Browse", () => ({
         onClick={() => props.onSearchTermSubmit("  rain  ")}
       >
         Search padded
+      </button>
+      <button
+        type="button"
+        onClick={() => props.onSearchTermChange?.("air quality")}
+      >
+        Type air quality
+      </button>
+      <button
+        type="button"
+        onClick={() => props.onSmartSearchToggle?.(!props.isSmartSearchEnabled)}
+      >
+        Toggle Smart search
       </button>
     </div>
   ),
@@ -214,6 +228,77 @@ describe("BrowseClient – Home handoff", () => {
     });
     await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
     expect(api.queryDatasets.mock.calls[1][0].like).toBe("%rain%");
+  });
+
+  it("searches again when the same text is submitted again", async () => {
+    render(<BrowseClient />);
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+    const submit = () =>
+      act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Search padded" }));
+      });
+    await submit();
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
+    await submit();
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(3));
+    expect(api.queryDatasets.mock.calls[2][0].like).toBe("%rain%");
+  });
+
+  it("runs Smart search again when the same text is submitted again", async () => {
+    handOff();
+    render(<BrowseClient />);
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(1),
+    );
+    const again = () =>
+      act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Search again" }));
+      });
+    await again();
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(2),
+    );
+    await again();
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(3),
+    );
+  });
+
+  const click = (name: string) =>
+    act(async () => {
+      fireEvent.click(screen.getByRole("button", { name }));
+    });
+
+  it("searches the text in the box when Smart search is switched", async () => {
+    render(<BrowseClient />);
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+    await click("Type air quality");
+    await click("Toggle Smart search");
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(1),
+    );
+    expect(crossDatasetQueries()).toEqual(["air quality"]);
+
+    await click("Toggle Smart search");
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
+    expect(api.queryDatasets.mock.calls[1][0].like).toBe("%air quality%");
+  });
+
+  it("runs Smart search again when switched back on after a Home handoff", async () => {
+    handOff();
+    render(<BrowseClient />);
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(1),
+    );
+
+    await click("Toggle Smart search");
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+    await click("Toggle Smart search");
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(2),
+    );
+    expect(crossDatasetQueries()[1]).toBe("education Greece");
   });
 
   describe("catalogue paging", () => {

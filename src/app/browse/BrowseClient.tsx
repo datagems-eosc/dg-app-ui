@@ -210,6 +210,8 @@ export default function BrowseClient() {
         }
       : null,
   );
+  // Counts explicit searches, so submitting the same text searches again.
+  const [searchRun, setSearchRun] = useState(0);
   const [sortBy, setSortBy] = useState("name-asc");
   const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(
     () => handoff !== null,
@@ -271,6 +273,7 @@ export default function BrowseClient() {
 
   useEffect(() => {
     if (
+      searchRun === 0 &&
       retrievalOverride &&
       searchTerm === retrievalOverride.display &&
       isSmartSearchEnabled
@@ -746,6 +749,7 @@ export default function BrowseClient() {
     router,
     api.hasToken,
     searchTerm,
+    searchRun,
     sortBy,
     filters,
     selectedCollection,
@@ -835,7 +839,21 @@ export default function BrowseClient() {
       const valueToSet = (
         searchValue !== undefined ? searchValue : pendingSearchTerm
       ).trim();
+      // Emptying a box that was never searched leaves the catalogue as it is.
+      if (valueToSet === "" && searchTerm === "") return;
       setSearchTerm(valueToSet);
+      setSearchRun((run) => run + 1);
+    },
+    [pendingSearchTerm, searchTerm],
+  );
+
+  // Switching the mode searches the text the user sees in the box.
+  const handleSmartSearchToggle = useCallback(
+    (enabled: boolean) => {
+      const visible = pendingSearchTerm.trim();
+      if (visible === "" || visible.length >= 3) setSearchTerm(visible);
+      setSearchRun((run) => run + 1);
+      setIsSmartSearchEnabled(enabled);
     },
     [pendingSearchTerm],
   );
@@ -970,6 +988,7 @@ export default function BrowseClient() {
           searchTerm={pendingSearchTerm}
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}
+          appliedSearchTerm={searchTerm}
           isLoading={isLoading}
           totalCount={catalogueTotal > 0 ? catalogueTotal : undefined}
           hasMore={catalogueTotal > catalogueLoaded}
@@ -981,7 +1000,7 @@ export default function BrowseClient() {
           filters={filters}
           onApplyFilters={handleApplyFilters}
           isSmartSearchEnabled={isSmartSearchEnabled}
-          onSmartSearchToggle={setIsSmartSearchEnabled}
+          onSmartSearchToggle={handleSmartSearchToggle}
           selectedDatasets={selectedDatasets}
           onSelectedDatasetsChange={setSelectedDatasets}
           selectedPackageIds={selectedPackageIds}
