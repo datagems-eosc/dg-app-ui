@@ -21,7 +21,12 @@ import { publicEnv } from "@/lib/env";
 import type { UserFavorite } from "@/lib/favorites";
 import { classifyIntent as classifyIntentRequest } from "@/lib/intentRouting/gateway";
 import type { ClassificationOutcome } from "@/lib/intentRouting/types";
-import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
+import {
+  logApiError,
+  logApiRequest,
+  logApiResponse,
+  logWarn,
+} from "@/lib/logger";
 import {
   type AuthRetryPolicy,
   fetchWithAuth,
@@ -1609,7 +1614,11 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("getRecommendNextQueries", errorData);
+        // Recommendations are optional: Chat falls back to its own suggestions.
+        logWarn("Query recommendations unavailable", {
+          status: response.status,
+          error: errorData.error,
+        });
         throw new Error(
           errorData.error || ApiErrorMessage.FETCH_RECOMMENDATIONS_FAILED,
         );
