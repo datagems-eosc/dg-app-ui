@@ -311,9 +311,7 @@ export default function Chat({
                   "permissions.editDataset",
                 ],
               },
-              collections: {
-                ids: [collection.id],
-              },
+              collectionIds: [collection.id],
               page: {
                 Offset: 0,
                 Size: 100,

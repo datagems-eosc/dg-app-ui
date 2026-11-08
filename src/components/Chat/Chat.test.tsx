@@ -47,8 +47,17 @@ vi.mock("@ui/chat/ChatInput", () => ({
     value: string;
     onChange: (v: string) => void;
     onSend: (e?: unknown) => void;
+    onSelectCollection?: (c: unknown) => void;
   }) => (
     <div>
+      <button
+        type="button"
+        onClick={() =>
+          props.onSelectCollection?.({ id: "col-7", name: "Weather" })
+        }
+      >
+        Pick collection
+      </button>
       <input
         aria-label="Message"
         value={props.value}
@@ -216,6 +225,39 @@ describe("Chat – Home handoff", () => {
     );
     await waitFor(() =>
       expect(api.persistConversation).toHaveBeenCalledTimes(1),
+    );
+  });
+});
+
+describe("Chat – collection selection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+  });
+
+  it("asks the Gateway for the collection's datasets with collectionIds", async () => {
+    const queryDatasets = vi.fn().mockResolvedValue({
+      items: [{ id: "ds-a" }, { id: "ds-b" }],
+      count: 2,
+    });
+    api.queryDatasets = queryDatasets;
+    const onSelectedDatasetsChange = vi.fn();
+    renderChat({ onSelectedDatasetsChange });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Pick collection" }));
+    });
+
+    await waitFor(() => expect(queryDatasets).toHaveBeenCalledTimes(1));
+    const payload = queryDatasets.mock.calls[0][0];
+    expect(payload.collectionIds).toEqual(["col-7"]);
+    expect(payload).not.toHaveProperty("collections");
+    await waitFor(() =>
+      expect(onSelectedDatasetsChange).toHaveBeenCalledWith(["ds-a", "ds-b"]),
     );
   });
 });
