@@ -5,36 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import Chat from "@/components/Chat";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProtectedPage from "@/components/ProtectedPage";
-import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import { logError } from "@/lib/logger";
-
-const API_DATASETS_PAYLOAD = {
-  project: {
-    fields: [
-      "id",
-      "code",
-      "name",
-      "description",
-      "license",
-      "size",
-      "datePublished",
-      "mimeType",
-      "url",
-      "version",
-      "collections.id",
-      "collections.code",
-      "collections.name",
-      "collections.datasetCount",
-      "permissions.browseDataset",
-      "permissions.editDataset",
-    ],
-  },
-  page: { Offset: 0, Size: 100 },
-  Order: { Items: ["-code"] },
-  Metadata: { CountAll: true },
-};
 
 interface ConversationDataset {
   dataset: {
@@ -96,7 +69,6 @@ export function ChatPageContent({
     ConversationMessage[] | undefined
   >(undefined);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [initialCollectionId, setInitialCollectionId] = useState<string | null>(
     null,
   );
@@ -205,52 +177,6 @@ export function ChatPageContent({
   }, [params?.conversationId]);
 
   useEffect(() => {
-    if (conversationId) return;
-    const fetchAllDatasets = async () => {
-      if (!api.hasToken) return;
-      const data = await api.queryDatasets(API_DATASETS_PAYLOAD);
-      if (Array.isArray(data.items)) {
-        setDatasets(data.items);
-      }
-    };
-    fetchAllDatasets();
-  }, [conversationId, api.hasToken]);
-
-  useEffect(() => {
-    const fetchDatasets = async () => {
-      if (!conversationId || selectedDatasets.length === 0) return;
-      if (!api.hasToken) return;
-      const payload = {
-        project: {
-          fields: [
-            "id",
-            "code",
-            "name",
-            "description",
-            "size",
-            "datePublished",
-            "collections.id",
-            "collections.code",
-            "collections.name",
-            "collections.datasetCount",
-            "permissions.browseDataset",
-            "permissions.editDataset",
-          ],
-        },
-        ids: selectedDatasets,
-        page: { Offset: 0, Size: 100 },
-        Order: { Items: ["+code"] },
-        Metadata: { CountAll: true },
-      };
-      const data = await api.queryDatasets(payload);
-      if (Array.isArray(data.items)) {
-        setDatasets(data.items);
-      }
-    };
-    fetchDatasets();
-  }, [conversationId, selectedDatasets, api.hasToken]);
-
-  useEffect(() => {
     if (!conversationId) return;
     setChatInitialMessages(undefined);
     const fetchMessages = async () => {
@@ -281,29 +207,9 @@ export function ChatPageContent({
     fetchMessages();
   }, [conversationId, api.hasToken]);
 
-  function normalizeDatasets(rawDatasets: unknown[]): unknown[] {
-    return rawDatasets.map((d) => {
-      if (d && typeof d === "object") {
-        const obj = d as Record<string, unknown>;
-        if (
-          "dataset" in obj &&
-          obj.dataset &&
-          typeof (obj.dataset as Record<string, unknown>).id === "string"
-        ) {
-          return { ...obj, id: (obj.dataset as Record<string, unknown>).id };
-        }
-        if ("id" in obj && typeof obj.id === "string") {
-          return obj;
-        }
-      }
-      return d;
-    });
-  }
-
   const chat = (
     <Chat
       selectedDatasets={selectedDatasets}
-      datasets={normalizeDatasets(datasets) as Dataset[]}
       onSelectedDatasetsChange={(datasets) => {
         setSelectedDatasets(forcedDatasetIds ?? datasets);
       }}

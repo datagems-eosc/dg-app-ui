@@ -89,3 +89,19 @@ describe("ChatPageContent – Home handoff", () => {
     expect(lastChatProps().initialHandoff).toBeUndefined();
   });
 });
+
+describe("ChatPageContent – dataset details", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    params = {};
+    searchParams = new URLSearchParams();
+    api.hasToken = true;
+  });
+
+  it("does not load a catalogue page for a new chat", async () => {
+    render(<ChatPageContent />);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(api.queryDatasets).not.toHaveBeenCalled();
+  });
+});

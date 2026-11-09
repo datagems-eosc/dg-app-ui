@@ -95,7 +95,22 @@ vi.mock("@ui/chat/ChatMessagesSkeleton", () => ({
   ChatMessagesSkeleton: () => null,
 }));
 vi.mock("@ui/chat/DatasetChangeWarning", () => ({ default: () => null }));
-vi.mock("../SelectedDatasetsPanel", () => ({ default: () => null }));
+vi.mock("../SelectedDatasetsPanel", () => ({
+  default: ({
+    selectedDatasetIds,
+    datasets,
+  }: {
+    selectedDatasetIds: string[];
+    datasets: { id: string; name?: string; title?: string }[];
+  }) => (
+    <ul aria-label="Selected datasets panel">
+      {selectedDatasetIds.map((id) => {
+        const found = datasets.find((d) => d.id === id);
+        return <li key={id}>{found ? `Details: ${id}` : `Missing: ${id}`}</li>;
+      })}
+    </ul>
+  ),
+}));
 vi.mock("../AddDatasetsModal", () => ({ default: () => null }));
 
 import { handoffStore } from "@/lib/intentRouting/handoffStore";
@@ -109,7 +124,6 @@ const renderChat = (props: Partial<React.ComponentProps<typeof Chat>> = {}) =>
   render(
     <Chat
       selectedDatasets={[]}
-      datasets={[]}
       onSelectedDatasetsChange={vi.fn()}
       conversationId={null}
       initialMessages={undefined}
@@ -213,6 +227,31 @@ describe("Chat – follow-up suggestions", () => {
     await ask();
 
     expect(screen.queryByText(/^Suggestion:/)).not.toBeInTheDocument();
+  });
+});
+
+describe("Chat – selected dataset details", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    api.queryDatasets = vi.fn(async (payload: { ids?: string[] }) => ({
+      items: (payload.ids ?? []).map((id) => ({ id, name: id })),
+    }));
+  });
+
+  it("loads details for the selected datasets by id", async () => {
+    renderChat({ selectedDatasets: ["ds-1", "ds-2"] });
+
+    expect(await screen.findByText("Details: ds-2")).toBeInTheDocument();
+    expect(screen.getByText("Details: ds-1")).toBeInTheDocument();
+    const payloads = (
+      api.queryDatasets as ReturnType<typeof vi.fn>
+    ).mock.calls.map(([payload]) => payload);
+    expect(payloads.every((p) => Array.isArray(p.ids))).toBe(true);
   });
 });
 
@@ -336,7 +375,6 @@ describe("Chat – Home handoff", () => {
     view.rerender(
       <Chat
         selectedDatasets={[]}
-        datasets={[]}
         onSelectedDatasetsChange={vi.fn()}
         conversationId={null}
         initialMessages={undefined}

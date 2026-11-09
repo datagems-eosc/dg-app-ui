@@ -14,8 +14,8 @@ import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
 import { UI_CONSTANTS } from "@/config/uiConstants";
 import { useCollections } from "@/contexts/CollectionsContext";
-import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { useDatasetDetails } from "@/hooks/useDatasetDetails";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import { logError } from "@/lib/logger";
@@ -33,7 +33,6 @@ import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 
 interface ChatProps {
   selectedDatasets: string[];
-  datasets: Dataset[];
   onSelectedDatasetsChange: (selected: string[]) => void;
   conversationId?: string | null;
   initialMessages?: ConversationMessage[]; // undefined while loading, [] when loaded and empty
@@ -64,7 +63,6 @@ function chatInputPlaceholder(selectedCount: number): string {
 
 export default function Chat({
   selectedDatasets,
-  datasets,
   onSelectedDatasetsChange,
   conversationId,
   initialMessages,
@@ -100,6 +98,9 @@ export default function Chat({
     string[]
   >([]);
   const [isSourcesPanel, setIsSourcesPanel] = useState(false);
+  const datasets = useDatasetDetails(
+    Array.from(new Set([...selectedDatasets, ...messageRelatedDatasets])),
+  );
 
   const fetchedRecommendationsRef = useRef<Set<string>>(new Set());
 
