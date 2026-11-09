@@ -56,8 +56,41 @@ vi.mock("@/components/Browse", () => ({
     totalCount?: number;
     hasMore?: boolean;
     onLoadMore?: () => void;
+    error?: string | null;
+    loadMoreError?: string | null;
+    appliedSearchTerm?: string;
+    onApplyFilters?: (filters: unknown) => void;
+    onSortByChange?: (value: string) => void;
   }) => (
     <div>
+      {props.error && <p data-testid="error">{props.error}</p>}
+      <span data-testid="applied">{props.appliedSearchTerm}</span>
+      {props.loadMoreError && (
+        <p data-testid="load-more-error">{props.loadMoreError}</p>
+      )}
+      <button type="button" onClick={() => props.onSearchTermChange?.("ab")}>
+        Type ab
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onApplyFilters?.({
+            access: "",
+            creationYear: { start: "", end: "" },
+            datasetSize: { start: "", end: "" },
+            fieldsOfScience: [],
+            license: ["cc-by-4.0"],
+          })
+        }
+      >
+        Filter by licence
+      </button>
+      <button
+        type="button"
+        onClick={() => props.onSortByChange?.("datePublished-desc")}
+      >
+        Sort newest
+      </button>
       <span data-testid="shown">{props.datasets.length}</span>
       <span data-testid="total">{String(props.totalCount)}</span>
       {props.hasMore && (
@@ -98,9 +131,12 @@ vi.mock("@/components/Browse", () => ({
 import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import BrowseClient from "./BrowseClient";
 
-const handOff = (retrievalQuery: string | null = "education Greece") => {
+const handOff = (
+  retrievalQuery: string | null = "education Greece",
+  originalQuery = "Do you have any datasets about education in Greece?",
+) => {
   const id = handoffStore.create({
-    originalQuery: "Do you have any datasets about education in Greece?",
+    originalQuery,
     retrievalQuery,
     intent: "dataset_search",
     chosenBy: "classifier",
@@ -301,6 +337,200 @@ describe("BrowseClient – Home handoff", () => {
     expect(crossDatasetQueries()[1]).toBe("education Greece");
   });
 
+  it("asks for a collection's datasets when one is opened after a handoff", async () => {
+    handOff();
+    const { rerender } = render(<BrowseClient />);
+    await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+
+    params = new URLSearchParams({ collection: "col-9" });
+    rerender(<BrowseClient />);
+
+    await waitFor(() =>
+      expect(
+        api.queryDatasets.mock.calls.some(
+          ([p]) => p.collectionIds?.[0] === "col-9",
+        ),
+      ).toBe(true),
+    );
+  });
+
+  it("ignores a late Smart search reply after switching Smart search off", async () => {
+    let answerSmart: (value: unknown) => void = () => {};
+    api.searchCrossDataset.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answerSmart = resolve;
+      }),
+    );
+    api.queryDatasets.mockResolvedValue({
+      items: [{ id: "c1" }, { id: "c2" }, { id: "c3" }],
+      count: 3,
+    });
+    handOff();
+    render(<BrowseClient />);
+    await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Toggle Smart search" }),
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("shown")).toHaveTextContent("3"),
+    );
+    await act(async () => {
+      answerSmart({ result: [{ dataset: { id: "s1", name: "Late" } }] });
+    });
+
+    expect(screen.getByTestId("shown")).toHaveTextContent("3");
+    expect(screen.getByTestId("smart")).toHaveTextContent("false");
+  });
+
+  it("ignores a late Smart search failure after switching Smart search off", async () => {
+    let failSmart: (reason: unknown) => void = () => {};
+    api.searchCrossDataset.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        failSmart = reject;
+      }),
+    );
+    api.queryDatasets.mockResolvedValue({ items: [{ id: "c1" }], count: 1 });
+    handOff();
+    render(<BrowseClient />);
+    await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Toggle Smart search" }),
+      );
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("shown")).toHaveTextContent("1"),
+    );
+    const catalogueCalls = api.queryDatasets.mock.calls.length;
+    await act(async () => {
+      failSmart(new Error("timeout"));
+    });
+
+    expect(screen.queryByTestId("error")).toBeNull();
+    expect(api.queryDatasets.mock.calls.length).toBe(catalogueCalls);
+    expect(screen.getByTestId("shown")).toHaveTextContent("1");
+  });
+
+  it("reports a failed Smart search instead of showing no results", async () => {
+    api.searchCrossDataset.mockRejectedValueOnce(new Error("timeout"));
+    handOff();
+    render(<BrowseClient />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("error")).toHaveTextContent(
+        "Smart search is not available right now.",
+      ),
+    );
+    expect(api.queryDatasets).not.toHaveBeenCalled();
+  });
+
+  it("runs Smart search for a short query with a longer retrieval query", async () => {
+    handOff("United Kingdom", "UK");
+    render(<BrowseClient />);
+
+    await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+    expect(crossDatasetQueries()).toEqual(["United Kingdom"]);
+    expect(screen.getByLabelText("Search")).toHaveValue("UK");
+  });
+
+  it("applies one or two characters in the box when Smart search is switched", async () => {
+    render(<BrowseClient />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Search padded" }));
+    });
+    await waitFor(() =>
+      expect(api.queryDatasets.mock.calls.at(-1)?.[0].like).toBe("%rain%"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Type ab" }));
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Toggle Smart search" }),
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("smart")).toHaveTextContent("true"),
+    );
+    expect(api.searchCrossDataset).not.toHaveBeenCalled();
+    expect(api.queryDatasets.mock.calls.at(-1)?.[0].like).toBeUndefined();
+    // Nothing was searched, so the page must not describe a search.
+    expect(screen.getByTestId("applied")).toHaveTextContent("");
+  });
+
+  it("does not apply hidden filters or sort while Smart search lists the catalogue", async () => {
+    render(<BrowseClient />);
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Filter by licence" }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Sort newest" }));
+    });
+    await waitFor(() =>
+      expect(api.queryDatasets.mock.calls.at(-1)?.[0].license).toBe(
+        "cc-by-4.0",
+      ),
+    );
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Toggle Smart search" }),
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("smart")).toHaveTextContent("true"),
+    );
+    const last = api.queryDatasets.mock.calls.at(-1)?.[0];
+    expect(last.license).toBeUndefined();
+    expect(last.Order).toEqual({ Items: ["+name"] });
+  });
+
+  it("ignores a late reply for the custom collection opened before", async () => {
+    let answerA: (value: unknown) => void = () => {};
+    api.queryUserCollections
+      .mockResolvedValueOnce({ items: [{ id: "A", datasets: [{ id: "a1" }] }] })
+      .mockResolvedValueOnce({
+        items: [{ id: "B", datasets: [{ id: "b1" }, { id: "b2" }] }],
+      });
+    api.queryDatasets
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          answerA = resolve;
+        }),
+      )
+      .mockResolvedValueOnce({ items: [{ id: "b1" }, { id: "b2" }] });
+    params = new URLSearchParams({ collection: "A", isCustom: "true" });
+    const { rerender } = render(<BrowseClient />);
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+    params = new URLSearchParams({ collection: "B", isCustom: "true" });
+    rerender(<BrowseClient />);
+    await waitFor(() =>
+      expect(screen.getByTestId("shown")).toHaveTextContent("2"),
+    );
+    await act(async () => {
+      answerA({ items: [{ id: "a1" }] });
+    });
+
+    expect(screen.getByTestId("shown")).toHaveTextContent("2");
+  });
+
+  it("runs Smart search with the user's text when the retrieval query is too short", async () => {
+    handOff("AI");
+    render(<BrowseClient />);
+
+    await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+    expect(crossDatasetQueries()).toEqual([
+      "Do you have any datasets about education in Greece?",
+    ]);
+    expect(api.queryDatasets).not.toHaveBeenCalled();
+  });
+
   describe("catalogue paging", () => {
     const item = (n: number) => ({
       id: `d${n}`,
@@ -354,6 +584,32 @@ describe("BrowseClient – Home handoff", () => {
       await waitFor(() =>
         expect(screen.getByTestId("total")).toHaveTextContent("30"),
       );
+    });
+
+    it("keeps the list and reports a failed load more beside the button", async () => {
+      api.queryDatasets
+        .mockResolvedValueOnce({ items: items(1, 25), count: 40 })
+        .mockRejectedValueOnce(new Error("Server error (502): upstream"));
+      render(<BrowseClient />);
+      await waitFor(() =>
+        expect(screen.getByTestId("shown")).toHaveTextContent("25"),
+      );
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "Load more datasets" }),
+        );
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId("load-more-error")).toHaveTextContent(
+          "Couldn't load more datasets. Try again.",
+        ),
+      );
+      expect(screen.queryByTestId("error")).toBeNull();
+      expect(screen.getByTestId("shown")).toHaveTextContent("25");
+      expect(
+        screen.getByRole("button", { name: "Load more datasets" }),
+      ).toBeInTheDocument();
     });
 
     it("does not offer more when everything is shown", async () => {

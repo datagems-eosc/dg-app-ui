@@ -890,6 +890,8 @@ export default function Chat({
     if (!initialHandoff || !api.hasToken || conversationId) return;
     if (!handoffStore.consume(initialHandoff.id)) return;
     router.replace(getNavigationUrl(APP_ROUTES.CHAT));
+    // In the box like a typed question: a failed submission keeps it there.
+    setInputValue(initialHandoff.originalQuery);
     void sendMessage(initialHandoff.originalQuery);
   }, [initialHandoff, api.hasToken, conversationId]);
 

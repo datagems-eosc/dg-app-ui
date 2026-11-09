@@ -129,6 +129,8 @@ interface BrowseProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  /** Shown beside "Load more"; the list already loaded stays. */
+  loadMoreError?: string | null;
   /**
    * The current sort value (controlled from parent).
    */
@@ -226,6 +228,7 @@ export default function Browse({
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
+  loadMoreError = null,
   sortBy = "name-asc",
   onSortByChange,
   onApplyFilters,
@@ -1331,7 +1334,12 @@ export default function Browse({
               </div>
             )}
             {!isLoading && !error && hasMore && onLoadMore && (
-              <div className="flex justify-center py-6">
+              <div className="flex flex-col items-center gap-2 py-6">
+                {loadMoreError && (
+                  <p role="alert" className="text-body-14-regular text-red-600">
+                    {loadMoreError}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={onLoadMore}

@@ -33,8 +33,16 @@ vi.mock("@/components/Browse", () => ({
     onSmartSearchToggle: (enabled: boolean) => void;
     onSearchTermSubmit: (value?: string) => void;
     onSearchTermChange: (value: string) => void;
+    datasets: unknown[];
   }) => (
     <div>
+      <span data-testid="shown">{props.datasets.length}</span>
+      <button type="button" onClick={() => props.onSearchTermChange("ab")}>
+        Type ab
+      </button>
+      <button type="button" onClick={() => props.onSmartSearchToggle(false)}>
+        Smart off
+      </button>
       <button
         type="button"
         onClick={() => props.onSearchTermChange("air quality")}
@@ -55,6 +63,12 @@ vi.mock("@/components/Browse", () => ({
 }));
 
 import UseCasePageClient from "./UseCasePageClient";
+
+const mathItem = (id: string) => ({
+  id,
+  name: id,
+  collections: [{ id: "col-math", name: "Math" }],
+});
 
 describe("UseCasePageClient – Smart search", () => {
   beforeEach(() => {
@@ -114,5 +128,49 @@ describe("UseCasePageClient – Smart search", () => {
     expect(api.searchCrossDataset.mock.calls.at(-1)?.[0].query).toBe(
       "air quality",
     );
+  });
+
+  it("ignores a late Smart search reply after switching Smart search off", async () => {
+    let answerSmart: (value: unknown) => void = () => {};
+    api.searchCrossDataset.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answerSmart = resolve;
+      }),
+    );
+    api.queryDatasets.mockResolvedValue({
+      items: [mathItem("m1"), mathItem("m2")],
+    });
+    const view = render(
+      <UseCasePageClient collectionName="Math" title="Math" subtitle="" />,
+    );
+    await click(view, "Smart on");
+    await click(view, "Search");
+    await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+    await click(view, "Smart off");
+    await waitFor(() =>
+      expect(view.getByTestId("shown")).toHaveTextContent("2"),
+    );
+
+    await act(async () => {
+      answerSmart({ result: [{ dataset: { id: "s1", name: "Late" } }] });
+    });
+
+    expect(view.getByTestId("shown")).toHaveTextContent("2");
+  });
+
+  it("applies one or two characters in the box when Smart search is switched", async () => {
+    const view = render(
+      <UseCasePageClient collectionName="Math" title="Math" subtitle="" />,
+    );
+    await click(view, "Smart on");
+    await click(view, "Search");
+    await waitFor(() =>
+      expect(api.searchCrossDataset).toHaveBeenCalledTimes(1),
+    );
+    await click(view, "Type ab");
+    await click(view, "Smart off");
+    await click(view, "Smart on");
+
+    expect(api.searchCrossDataset).toHaveBeenCalledTimes(1);
   });
 });

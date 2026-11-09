@@ -49,10 +49,10 @@ describe("useApi().getRecommendNextQueries", () => {
     ).rejects.toThrow("System error");
 
     expect(logApiError).not.toHaveBeenCalled();
-    expect(logWarn).toHaveBeenCalledWith(
-      "Query recommendations unavailable",
-      expect.objectContaining({ status: 500, error: "System error" }),
-    );
+    // Status only: a Gateway message can echo the user's query.
+    expect(logWarn).toHaveBeenCalledWith("Query recommendations unavailable", {
+      status: 500,
+    });
   });
 
   it("warns without a Gateway message when the error body is not JSON", async () => {

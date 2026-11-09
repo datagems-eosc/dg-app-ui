@@ -45,8 +45,17 @@ export function createHandoffStore({
     return entry;
   };
 
+  // Drops abandoned handoffs, so they never pile up in memory.
+  const prune = () => {
+    const cutoff = now() - HANDOFF_TTL_MS;
+    for (const [id, entry] of entries) {
+      if (entry.createdAt < cutoff) entries.delete(id);
+    }
+  };
+
   return {
     create(handoff: IntentHandoff): string {
+      prune();
       const id = randomId();
       entries.set(id, { handoff, createdAt: now() });
       return id;

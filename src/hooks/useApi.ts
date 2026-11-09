@@ -930,11 +930,7 @@ export function useApi() {
       options: { signal?: AbortSignal } = {},
     ): Promise<ClassificationOutcome> => {
       if (!token) return { ok: false, kind: "auth" };
-      return classifyIntentRequest(
-        (path, init) => makeRequest(path, init),
-        query,
-        options,
-      );
+      return classifyIntentRequest(makeRequest, query, options);
     },
     [token, makeRequest],
   );
@@ -1617,7 +1613,6 @@ export function useApi() {
         // Recommendations are optional: Chat falls back to its own suggestions.
         logWarn("Query recommendations unavailable", {
           status: response.status,
-          error: errorData.error,
         });
         throw new Error(
           errorData.error || ApiErrorMessage.FETCH_RECOMMENDATIONS_FAILED,

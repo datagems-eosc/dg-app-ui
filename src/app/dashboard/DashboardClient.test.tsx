@@ -95,6 +95,19 @@ describe("DashboardClient – Home", () => {
     ).toHaveAttribute("href", href);
   });
 
+  it("leaves the base path to the link, so it is not added twice", () => {
+    window.__env = { BASE_PATH: "/ui" };
+    try {
+      render(<DashboardClient />);
+      expect(topics().getByRole("link", { name: /^Weather/ })).toHaveAttribute(
+        "href",
+        "/use-case/weather/home",
+      );
+    } finally {
+      window.__env = undefined;
+    }
+  });
+
   it("hides a pilot card whose use-case flag is off, like the navigation", () => {
     flags = { ...ALL_USE_CASES, useCaseMath: false };
     render(<DashboardClient />);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -112,6 +112,8 @@ export default function UseCasePageClient({
     useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Only the latest list request may update the list.
+  const listRequest = useRef(0);
 
   useEffect(() => {
     localStorage.removeItem("chatSelectedDatasets");
@@ -123,6 +125,7 @@ export default function UseCasePageClient({
     const normalized = collectionName.toLowerCase().trim();
 
     const fetchDatasets = async () => {
+      const request = ++listRequest.current;
       setIsLoading(true);
       setError(null);
 
@@ -174,6 +177,7 @@ export default function UseCasePageClient({
             query: searchTerm,
             resultCount: 100,
           } as any);
+          if (request !== listRequest.current) return;
 
           const results = Array.isArray(data.result) ? data.result : [];
           const byId = new Map<string, DatasetPlus>();
@@ -268,6 +272,7 @@ export default function UseCasePageClient({
           : DATASET_FIELDS;
 
         const data = await api.queryDatasets(payload);
+        if (request !== listRequest.current) return;
         const items: unknown[] = Array.isArray(data.items) ? data.items : [];
         const mapped = items
           .filter(
@@ -284,12 +289,13 @@ export default function UseCasePageClient({
           );
         setAllDatasets(mapped as DatasetPlus[]);
       } catch (err) {
+        if (request !== listRequest.current) return;
         logError("fetchDatasets failed", err);
         setError(
           err instanceof Error ? err.message : "Failed to load datasets",
         );
       } finally {
-        setIsLoading(false);
+        if (request === listRequest.current) setIsLoading(false);
       }
     };
 
@@ -334,8 +340,7 @@ export default function UseCasePageClient({
   // Switching the mode searches the text the user sees in the box.
   const handleSmartSearchToggle = useCallback(
     (enabled: boolean) => {
-      const visible = pendingSearchTerm.trim();
-      if (visible === "" || visible.length >= 3) setSearchTerm(visible);
+      setSearchTerm(pendingSearchTerm.trim());
       setIsSmartSearchEnabled(enabled);
     },
     [pendingSearchTerm],

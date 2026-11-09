@@ -120,6 +120,11 @@ describe("HomeQueryEntry", () => {
       expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
+    it("offers no Cancel once navigation has started", () => {
+      renderEntry({ status: "navigating", text: "rainfall in Crete" });
+      expect(screen.queryByRole("button", { name: /cancel/i })).toBeNull();
+    });
+
     it("cycles the visible status every six seconds", () => {
       vi.useFakeTimers();
       const { container } = renderEntry({ status: "classifying", text: "q" });
@@ -168,6 +173,31 @@ describe("HomeQueryEntry", () => {
       expect(
         screen.getByRole("button", { name: /find datasets/i }),
       ).toHaveFocus();
+    });
+
+    it("returns focus to the input on Escape", () => {
+      renderEntry({ status: "clarify", text: "q", degraded: false });
+      fireEvent.keyDown(
+        screen.getByRole("button", { name: /find datasets/i }),
+        {
+          key: "Escape",
+        },
+      );
+      expect(textbox()).toHaveFocus();
+    });
+
+    it.each([
+      [{ status: "failed", text: "q", kind: "network" } as HomeQueryState],
+      [{ status: "outOfScope", text: "q" } as HomeQueryState],
+    ])("returns focus to the input on Escape from %o", (state) => {
+      renderEntry(state);
+      fireEvent.keyDown(
+        screen.getByRole("button", { name: /find datasets/i }),
+        {
+          key: "Escape",
+        },
+      );
+      expect(textbox()).toHaveFocus();
     });
 
     it("explains a degraded result instead of claiming ambiguity", () => {

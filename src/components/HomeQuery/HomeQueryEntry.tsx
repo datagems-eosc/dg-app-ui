@@ -192,6 +192,7 @@ export function HomeQueryEntry({
   onRetry,
 }: HomeQueryEntryProps) {
   const firstChoiceRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const { status, text } = state;
   const busy = status === "classifying" || status === "navigating";
   const tooLong = text.trim().length > MAX_QUERY_LENGTH;
@@ -221,8 +222,18 @@ export function HomeQueryEntry({
     </div>
   );
 
+  // Escape from a panel's choices returns to the input to edit the question.
+  const handleRootKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (
+      event.key === "Escape" &&
+      (status === "clarify" || status === "outOfScope" || failed)
+    ) {
+      inputRef.current?.focus();
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" onKeyDown={handleRootKeyDown}>
       <div
         className={cn(
           "w-full bg-white border rounded-2xl transition-all duration-300",
@@ -239,6 +250,7 @@ export function HomeQueryEntry({
             {PLACEHOLDER}
           </label>
           <textarea
+            ref={inputRef}
             id="home-query"
             name="home-query"
             rows={2}
@@ -254,15 +266,18 @@ export function HomeQueryEntry({
             {busy ? (
               <>
                 <WorkingStatus messages={STATUS_MESSAGES} />
-                <Button
-                  key="cancel"
-                  variant="tertiary"
-                  size="sm"
-                  onClick={onCancel}
-                >
-                  <X className="w-4 h-4 mr-1" aria-hidden="true" />
-                  Cancel
-                </Button>
+                {/* Once navigation has started there is nothing to cancel. */}
+                {status === "classifying" && (
+                  <Button
+                    key="cancel"
+                    variant="tertiary"
+                    size="sm"
+                    onClick={onCancel}
+                  >
+                    <X className="w-4 h-4 mr-1" aria-hidden="true" />
+                    Cancel
+                  </Button>
+                )}
               </>
             ) : (
               <>

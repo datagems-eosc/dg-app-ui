@@ -9,7 +9,6 @@ import { APP_ROUTES } from "@/config/appUrls";
 import type { FeatureFlagId } from "@/config/featureFlags";
 import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { useUser } from "@/contexts/UserContext";
-import { createUrl } from "@/lib/utils";
 
 interface TopicCardProps {
   title: string;
@@ -23,7 +22,7 @@ interface TopicCardProps {
 function TopicCard({ title, description, icon, iconBg, href }: TopicCardProps) {
   return (
     <Link
-      href={createUrl(href)}
+      href={href}
       className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-4 min-w-0 hover:shadow-s2 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850 focus-visible:ring-offset-1"
     >
       <div

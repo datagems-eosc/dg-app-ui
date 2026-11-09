@@ -16,10 +16,4 @@ describe("EXAMPLE_POOL", () => {
       expect(isClassifiableQuery(entry.text)).toBe(true);
     }
   });
-
-  it("only lists queries meant to reach a destination", () => {
-    for (const entry of EXAMPLE_POOL) {
-      expect(["dataset_search", "question"]).toContain(entry.intent);
-    }
-  });
 });

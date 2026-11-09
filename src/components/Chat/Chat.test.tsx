@@ -205,6 +205,18 @@ describe("Chat – Home handoff", () => {
     expect(api.persistConversation).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the question in the box when the handoff submission fails", async () => {
+    api.persistConversation.mockRejectedValueOnce(new Error("unavailable"));
+    renderChat({ initialHandoff: handOff() });
+
+    await waitFor(() =>
+      expect(api.persistConversation).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText("Message")).toHaveValue(ORIGINAL),
+    );
+  });
+
   it("waits for authentication before submitting", async () => {
     api.hasToken = false;
     const handoff = handOff();
