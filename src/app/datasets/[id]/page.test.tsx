@@ -220,3 +220,86 @@ describe("dataset details page – existing management entry", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("dataset details page headline", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  });
+
+  it("requests the headline field from the Gateway", async () => {
+    mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+    await renderPage();
+    expect(mockGetDatasetById).toHaveBeenCalledWith(
+      "ds-1",
+      expect.arrayContaining(["headline"]),
+    );
+  });
+  it("shows the returned headline separately from the full description", async () => {
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      headline: "Short ocean measurements summary",
+    });
+    await renderPage();
+    expect(
+      screen.getByText("Short ocean measurements summary"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("A dataset")).toHaveLength(1);
+  });
+
+  it.each([
+    "Sea surface temperature",
+    "A dataset",
+    "  Sea surface temperature  ",
+    "  A dataset  ",
+  ])(
+    "hides a headline duplicating the name or description: %s",
+    async (headline) => {
+      mockGetDatasetById.mockResolvedValue({
+        ...datasetPayload(["browsedataset"]),
+        headline,
+      });
+      await renderPage();
+      const header = screen.getByRole("heading", {
+        level: 1,
+        name: "Sea surface temperature",
+      }).parentElement;
+      expect(header?.querySelector("p")).toBeNull();
+      expect(screen.getAllByText("A dataset")).toHaveLength(1);
+    },
+  );
+
+  it.each([undefined, null, "", "  ", 42, { text: "Unexpected value" }])(
+    "does not invent a headline for missing or invalid data: %j",
+    async (headline) => {
+      mockGetDatasetById.mockResolvedValue({
+        ...datasetPayload(["browsedataset"]),
+        headline,
+      });
+      await renderPage();
+      const header = screen.getByRole("heading", {
+        level: 1,
+        name: "Sea surface temperature",
+      }).parentElement;
+      expect(header?.querySelector("p")).toBeNull();
+      expect(screen.getAllByText("A dataset")).toHaveLength(1);
+    },
+  );
+
+  it.each([undefined, null, "", "  "])(
+    "keeps a distinct headline when the full description is absent: %j",
+    async (description) => {
+      mockGetDatasetById.mockResolvedValue({
+        ...datasetPayload(["browsedataset"]),
+        name: "  Sea surface temperature  ",
+        headline: "  Short ocean measurements summary  ",
+        description,
+      });
+      await renderPage();
+      expect(
+        screen.getByText("Short ocean measurements summary"),
+      ).toBeInTheDocument();
+      expect(screen.getAllByText("No description available.")).toHaveLength(1);
+    },
+  );
+});
