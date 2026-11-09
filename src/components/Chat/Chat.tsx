@@ -6,6 +6,7 @@ import { ChatInput, type ChatInputRef } from "@ui/chat/ChatInput";
 import ChatMessages from "@ui/chat/ChatMessages";
 import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
+import { datasetProposalPrompt } from "@ui/chat/DatasetProposalBlock";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -51,6 +52,15 @@ interface CrossDatasetSearchResult {
     code: string;
     name: string;
   };
+}
+
+function chatInputPlaceholder(selectedCount: number): string {
+  if (selectedCount === 0) {
+    return "Ask a question and I'll find datasets to answer it...";
+  }
+  return selectedCount === 1
+    ? "Ask about your selected dataset..."
+    : `Ask about your ${selectedCount} selected datasets...`;
 }
 
 export default function Chat({
@@ -730,7 +740,7 @@ export default function Chat({
           const proposalMessage: Message = {
             id: `proposal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             type: "ai",
-            content: "Do you want to answer based on these datasets?",
+            content: datasetProposalPrompt(datasetProposal.length),
             timestamp: new Date(),
             sources: datasetProposal.length,
             relatedDatasetIds: datasetProposal.map((d) => d.id),
@@ -1293,6 +1303,7 @@ export default function Chat({
                 disabled={isInputDisabled}
                 error={error}
                 showAddDatasetsModal={showAddDatasetsModal}
+                placeholder={chatInputPlaceholder(selectedDatasets.length)}
               />
             </div>
           </div>
@@ -1328,6 +1339,7 @@ export default function Chat({
               disabled={isInputDisabled}
               error={error}
               showAddDatasetsModal={showAddDatasetsModal}
+              placeholder={chatInputPlaceholder(selectedDatasets.length)}
             />
           </div>
         </div>

@@ -48,6 +48,7 @@ vi.mock("@ui/chat/ChatInput", () => ({
     onChange: (v: string) => void;
     onSend: (e?: unknown) => void;
     onSelectCollection?: (c: unknown) => void;
+    placeholder?: string;
   }) => (
     <div>
       <button
@@ -60,6 +61,7 @@ vi.mock("@ui/chat/ChatInput", () => ({
       </button>
       <input
         aria-label="Message"
+        placeholder={props.placeholder}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
       />
@@ -141,8 +143,48 @@ describe("Chat – first question without datasets", () => {
     });
     expect(screen.getByText("average rainfall in Basel")).toBeInTheDocument();
     expect(
-      screen.getByText("Do you want to answer based on these datasets?"),
+      screen.getByText(
+        "This dataset looks relevant to your question. Use it to answer?",
+      ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Chat – input placeholder", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+  });
+
+  it("offers to find datasets when none are selected", () => {
+    renderChat();
+
+    expect(screen.getByLabelText("Message")).toHaveAttribute(
+      "placeholder",
+      "Ask a question and I'll find datasets to answer it...",
+    );
+  });
+
+  it("names the count when several datasets are selected", () => {
+    renderChat({ selectedDatasets: ["ds-1", "ds-2", "ds-3"] });
+
+    expect(screen.getByLabelText("Message")).toHaveAttribute(
+      "placeholder",
+      "Ask about your 3 selected datasets...",
+    );
+  });
+
+  it("uses the singular wording for one selected dataset", () => {
+    renderChat({ selectedDatasets: ["ds-1"] });
+
+    expect(screen.getByLabelText("Message")).toHaveAttribute(
+      "placeholder",
+      "Ask about your selected dataset...",
+    );
   });
 });
 

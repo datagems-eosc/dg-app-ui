@@ -18,9 +18,7 @@ describe("ChatRecommendations", () => {
       />,
     );
 
-    expect(
-      screen.getByText("Would you be also interested in these topics?"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("You could also ask")).toBeInTheDocument();
     expect(screen.getByText("Machine learning basics")).toBeInTheDocument();
     expect(screen.getByText("Neural networks")).toBeInTheDocument();
     expect(screen.getByText("Data preprocessing")).toBeInTheDocument();
@@ -73,9 +71,7 @@ describe("ChatRecommendations", () => {
       />,
     );
 
-    expect(
-      screen.queryByText("Would you be also interested in these topics?"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("You could also ask")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Machine learning basics"),
     ).not.toBeInTheDocument();
