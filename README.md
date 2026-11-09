@@ -366,6 +366,8 @@ The port mapping and healthcheck URL will automatically adjust based on the `FRO
    # Or create .env.local with required variables (see Keycloak Authentication section)
    ```
 
+   `pnpm dev` and `pnpm start` read the environment with `env.sh`, which sources the first file found among `.env.${NODE_ENV}`, `.env.local` and `.env` as a shell script. Save these files with LF line endings: with CRLF endings the shell fails or the values carry a trailing carriage return. To convert a file, run `sed -i 's/\r$//' .env.local`.
+
 4. **Start development server**
 
    ```bash
