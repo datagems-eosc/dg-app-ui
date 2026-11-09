@@ -21,7 +21,6 @@ import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import { logError } from "@/lib/logger";
 import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
 import {
-  buildRecommendationFallback,
   extractRecommendations,
   parseConversationMessage,
   parseSearchInDataExploreResponse,
@@ -1118,13 +1117,8 @@ export default function Chat({
         UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
       );
 
-      const resolvedRecommendations =
-        recommendations.length > 0
-          ? recommendations
-          : buildRecommendationFallback(
-              currentQuery,
-              UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
-            );
+      // Only Gateway suggestions are shown; none is better than made-up ones.
+      const resolvedRecommendations = recommendations;
 
       setMessages((prev) => {
         const messageIndex = prev.findIndex((msg) => msg.id === messageId);
@@ -1156,10 +1150,6 @@ export default function Chat({
         return updated;
       });
     } catch (_error) {
-      const fallbackRecommendations = buildRecommendationFallback(
-        currentQuery,
-        UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
-      );
       setMessages((prev) => {
         const messageIndex = prev.findIndex((msg) => msg.id === messageId);
         if (messageIndex === -1) {
@@ -1168,7 +1158,7 @@ export default function Chat({
         const updated = [...prev];
         updated[messageIndex] = {
           ...updated[messageIndex],
-          recommendations: fallbackRecommendations,
+          recommendations: [],
           recommendationsLoading: false,
         };
         return updated;

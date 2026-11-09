@@ -72,10 +72,20 @@ vi.mock("@ui/chat/ChatInput", () => ({
   ),
 }));
 vi.mock("@ui/chat/ChatMessages", () => ({
-  default: ({ messages }: { messages: { id: string; content: string }[] }) => (
+  default: ({
+    messages,
+  }: {
+    messages: { id: string; content: string; recommendations?: string[] }[];
+  }) => (
     <ul>
       {messages.map((m) => (
-        <li key={m.id}>{m.content}</li>
+        <li key={m.id}>
+          {m.content}
+          {m.recommendations?.map((r) => (
+            <span key={r}>Suggestion: {r}</span>
+          ))}
+          {m.recommendations ? <span>Suggestions settled</span> : null}
+        </li>
       ))}
     </ul>
   ),
@@ -147,6 +157,62 @@ describe("Chat – first question without datasets", () => {
         "This dataset looks relevant to your question. Use it to answer?",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Chat – follow-up suggestions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    api.persistConversation.mockResolvedValue({ id: "conv-1" });
+    api.searchCrossDataset.mockResolvedValue(crossDatasetResult);
+  });
+
+  const ask = async () => {
+    renderChat();
+    fireEvent.change(screen.getByLabelText("Message"), {
+      target: { value: "average rainfall in Basel" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    });
+    await screen.findByText("Suggestions settled", undefined, {
+      timeout: 3000,
+    });
+  };
+
+  it("shows the suggestions the Gateway returns", async () => {
+    api.getRecommendNextQueries = vi
+      .fn()
+      .mockResolvedValue({ result: [{ query: "Rainfall in Zurich" }] });
+
+    await ask();
+
+    expect(
+      screen.getByText("Suggestion: Rainfall in Zurich"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no made-up suggestions when the Gateway call fails", async () => {
+    api.getRecommendNextQueries = vi
+      .fn()
+      .mockRejectedValue(new Error("System error"));
+
+    await ask();
+
+    expect(screen.queryByText(/^Suggestion:/)).not.toBeInTheDocument();
+  });
+
+  it("shows no made-up suggestions when the Gateway returns none", async () => {
+    api.getRecommendNextQueries = vi.fn().mockResolvedValue({ result: [] });
+
+    await ask();
+
+    expect(screen.queryByText(/^Suggestion:/)).not.toBeInTheDocument();
   });
 });
 
