@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 
 const DASH = "/bin/dash";
 const skip = existsSync(DASH) ? false : "dash is not installed";
@@ -33,16 +34,19 @@ const runEnvScript = (
       writeFileSync(path.join(dir, name), content);
     }
 
+    // Drop inherited inputs env.sh reads: NODE_ENV, the public variables it
+    // exports, and its ENVSH_* output and prefix overrides.
     const env: Record<string, string> = {};
     for (const [key, value] of Object.entries(process.env)) {
       if (value === undefined || key === "NODE_ENV") continue;
-      if (/^(PUBLIC_|NEXT_PUBLIC_)/.test(key)) continue;
+      if (/^(PUBLIC_|NEXT_PUBLIC_|ENVSH_)/.test(key)) continue;
       env[key] = value;
     }
-    // dash resolves `. file` through PATH; keep the current directory out of it.
+    // dash resolves `. file` through PATH; keep only absolute entries so no
+    // relative entry ("", ".", "./") can point back at the working directory.
     env.PATH = (process.env.PATH ?? "")
       .split(path.delimiter)
-      .filter((entry) => entry !== "" && entry !== "." && entry !== dir)
+      .filter((entry) => path.isAbsolute(entry))
       .join(path.delimiter);
     Object.assign(env, extraEnv);
 
@@ -54,14 +58,14 @@ const runEnvScript = (
     });
 
     const output = path.join(dir, "public", "__env.js");
-    const values: Record<string, string> = {};
+    // Evaluate the generated script as the browser would and read window.__env.
+    const context: { window: { __env?: Record<string, string> } } = {
+      window: {},
+    };
     if (existsSync(output)) {
-      for (const match of readFileSync(output, "utf8").matchAll(
-        /^ {2}"([^"]+)": "(.*)",$/gm,
-      )) {
-        values[match[1]] = match[2];
-      }
+      runInNewContext(readFileSync(output, "utf8"), context);
     }
+    const values = context.window.__env ?? {};
 
     return { status: result.status, stderr: result.stderr, values };
   } finally {
@@ -157,5 +161,19 @@ test(
 
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.values.PROBE, "public");
+  },
+);
+
+test(
+  "env.sh - falls back to .env when NODE_ENV has no file and no .env.local exists",
+  { skip },
+  () => {
+    const result = runEnvScript(
+      { ".env": "PUBLIC_PROBE=dotenv\n" },
+      { NODE_ENV: "production" },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.values.PROBE, "dotenv");
   },
 );
