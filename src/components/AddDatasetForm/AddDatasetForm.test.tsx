@@ -104,6 +104,7 @@ const LICENSES = [
 ];
 
 interface GatewayOptions {
+  readonly editDataset?: Record<string, unknown>;
   /** Answer to `POST /workflow-process/onboard`. */
   readonly start?: { readonly status: number; readonly body: unknown };
   /** Answer to the upload XHR. */
@@ -152,6 +153,16 @@ const stubBoundaries = (options: GatewayOptions = {}): Ledger => {
         body: typeof init?.body === "string" ? init.body : "",
       });
 
+      if (url.endsWith("/dataset/query") && options.editDataset) {
+        const query = JSON.parse(String(init?.body));
+        const fields: string[] = query.project.fields;
+        const item = Object.fromEntries(
+          Object.entries(options.editDataset).filter(
+            ([key]) => key === "citation" || fields.includes(key),
+          ),
+        );
+        return new Response(JSON.stringify({ items: [item] }), { status: 200 });
+      }
       if (url.includes("/storage/upload/allowed-extension")) {
         return new Response(JSON.stringify([".csv"]), { status: 200 });
       }
@@ -1234,4 +1245,60 @@ describe("AddDatasetForm draft lifetime across an unavailable session", () => {
     expect(titleField()).toHaveValue("After recovery");
     expect(startButton()).toBeEnabled();
   });
+});
+
+describe("AddDatasetForm citation hydration", () => {
+  it("requests citeAs and fills the citation from the Gateway response", async () => {
+    const citeAs = "Marine Institute (2026). Sea surface temperature.";
+    const ledger = stubBoundaries({
+      editDataset: { id: "ds-1", name: "Sea surface temperature", citeAs },
+    });
+    mockSearchParams.mockReturnValue(
+      new URLSearchParams({ datasetId: "ds-1" }),
+    );
+    mount();
+
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText("How should this dataset be cited?"),
+      ).toHaveValue(citeAs),
+    );
+    const request = ledger.requests.find(({ url }) =>
+      url.endsWith("/dataset/query"),
+    );
+    expect(request).toBeDefined();
+    const fields = JSON.parse(request?.body ?? "{}").project.fields;
+    expect(fields).toContain("citeAs");
+    expect(fields).not.toContain("citation");
+    expect(ledger.starts()).toHaveLength(0);
+  });
+
+  it.each([
+    ["missing", {}, ""],
+    ["null", { citeAs: null }, ""],
+    ["empty", { citeAs: "" }, ""],
+    ["legacy only", { citation: "Unsupported citation" }, ""],
+    [
+      "conflicting legacy",
+      { citeAs: "Gateway citation", citation: "Unsupported citation" },
+      "Gateway citation",
+    ],
+  ])(
+    "hydrates a %s citation without using the unsupported field",
+    async (_name, metadata, expected) => {
+      const name = "Hydrated dataset";
+      stubBoundaries({ editDataset: { id: "ds-1", name, ...metadata } });
+      mockSearchParams.mockReturnValue(
+        new URLSearchParams({ datasetId: "ds-1" }),
+      );
+      mount();
+
+      await waitFor(() =>
+        expect(screen.getAllByDisplayValue(name).length).toBeGreaterThan(0),
+      );
+      expect(
+        screen.getByPlaceholderText("How should this dataset be cited?"),
+      ).toHaveValue(expected);
+    },
+  );
 });

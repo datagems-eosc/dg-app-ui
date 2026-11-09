@@ -527,7 +527,7 @@ export default function AddDatasetForm() {
           "license",
           "collections.id",
           "url",
-          "citation",
+          "citeAs",
         ],
       },
       page: { Offset: 0, Size: 1 },
@@ -558,9 +558,7 @@ export default function AddDatasetForm() {
           : [];
         const collection = collections[0]?.id != null ? collections[0].id : "";
         const url = String(item.url ?? "");
-        const citeAs = String(
-          (item as { citation?: string }).citation ?? item.citeAs ?? "",
-        );
+        const citeAs = String(item.citeAs ?? "");
         applyToDraft(draftId, (previous) => ({
           ...previous,
           formData: {
