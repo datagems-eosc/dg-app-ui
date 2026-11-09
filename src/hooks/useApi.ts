@@ -558,12 +558,13 @@ export function useApi() {
         return [];
       }
 
-      const data = await response.json();
+      const data: Record<string, string[]> = await response.json();
+      const grants = data[collectionId] ?? [];
       logApiResponse("getCollectionGrants", {
         collectionId,
-        grants: data.grants || [],
+        grants,
       });
-      return data.grants || [];
+      return grants;
     },
     [makeRequest],
   );
