@@ -59,8 +59,9 @@ describe("MessageItem", () => {
   it("should render AIMessage for ai type messages", () => {
     render(<MessageItem message={defaultAIMessage} />);
 
-    expect(screen.getByTestId("ai-message")).toBeInTheDocument();
-    expect(screen.getByText("I'm doing well, thank you!")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-message")).toHaveTextContent(
+      "AI Message: I'm doing well, thank you!",
+    );
   });
 
   it("should pass message content to UserMessage", () => {
@@ -140,7 +141,8 @@ describe("MessageItem", () => {
 
     render(<MessageItem message={messageWithAllFields} />);
 
-    expect(screen.getByTestId("ai-message")).toBeInTheDocument();
-    expect(screen.getByText("Full message")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-message")).toHaveTextContent(
+      "AI Message: Full message",
+    );
   });
 });
