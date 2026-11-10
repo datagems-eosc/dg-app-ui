@@ -150,7 +150,7 @@ describe("collection context grants", () => {
     const { result } = renderHook(() => useApi());
     await expect(
       result.current.getCollectionGrants(COLLECTION_ID),
-    ).rejects.toThrow("Network unavailable");
+    ).resolves.toEqual([]);
   });
   it("sends no request without an authenticated token", async () => {
     mockUseSession.mockReturnValue({ status: "unauthenticated", data: null });
@@ -159,7 +159,143 @@ describe("collection context grants", () => {
     const { result } = renderHook(() => useApi());
     await expect(
       result.current.getCollectionGrants(COLLECTION_ID),
-    ).rejects.toThrow();
+    ).resolves.toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("returns no roles when the collection entry is not an array", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ [COLLECTION_ID]: "dg_col-delete" })),
+        ),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles when the role list contains invalid entries", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ [COLLECTION_ID]: ["dg_col-delete", null] }),
+          ),
+        ),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles for a null map", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify(null))),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles for a primitive map", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify("dg_col-delete"))),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles for an array instead of a map", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify([["dg_col-delete"]]))),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles for an object instead of roles", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ [COLLECTION_ID]: { delete: true } })),
+        ),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles for a null role entry", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ [COLLECTION_ID]: null })),
+        ),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles for a numeric role entry", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ [COLLECTION_ID]: 1 })),
+        ),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles for numeric roles mixed with a valid role", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ [COLLECTION_ID]: ["dg_col-delete", 1] }),
+          ),
+        ),
+    );
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns no roles when the response is malformed JSON", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not JSON")));
+    const { result } = renderHook(() => useApi());
+    await expect(
+      result.current.getCollectionGrants(COLLECTION_ID),
+    ).resolves.toEqual([]);
   });
 });

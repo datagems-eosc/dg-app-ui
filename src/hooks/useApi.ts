@@ -545,26 +545,39 @@ export function useApi() {
         collectionId,
       });
 
-      const response = await makeRequest(
-        `/principal/me/context-grants/collection?id=${collectionId}`,
-        {
-          method: "GET",
-        },
-      );
+      try {
+        const response = await makeRequest(
+          `/principal/me/context-grants/collection?id=${collectionId}`,
+          {
+            method: "GET",
+          },
+        );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        logApiError("getCollectionGrants", errorData, { collectionId });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          logApiError("getCollectionGrants", errorData, { collectionId });
+          return [];
+        }
+
+        const data: Record<string, unknown> | null = await response.json();
+        const value =
+          data && typeof data === "object" && !Array.isArray(data)
+            ? data[collectionId]
+            : undefined;
+        const grants =
+          Array.isArray(value) &&
+          value.every((role) => typeof role === "string")
+            ? value
+            : [];
+        logApiResponse("getCollectionGrants", {
+          collectionId,
+          grants,
+        });
+        return grants;
+      } catch (error) {
+        logApiError("getCollectionGrants", error, { collectionId });
         return [];
       }
-
-      const data: Record<string, string[]> = await response.json();
-      const grants = data[collectionId] ?? [];
-      logApiResponse("getCollectionGrants", {
-        collectionId,
-        grants,
-      });
-      return grants;
     },
     [makeRequest],
   );
