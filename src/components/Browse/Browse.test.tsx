@@ -98,12 +98,48 @@ describe("Browse - Delete Collection Feature", () => {
       expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
     });
 
-    const moreButton = screen.getByRole("button", { name: "" });
+    const moreButton = screen.getByRole("button", {
+      name: "Collection actions",
+    });
     await userEvent.click(moreButton);
 
     await waitFor(() => {
       expect(screen.getByText("Delete Collection")).toBeInTheDocument();
     });
+  });
+
+  it("names the collection actions button and reports its menu state", async () => {
+    const mockGetCollectionGrants = vi.fn().mockResolvedValue([]);
+
+    mockUseApi.mockReturnValue({
+      ...baseApiMock(),
+      getCollectionGrants: mockGetCollectionGrants,
+    });
+
+    render(
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId="123"
+        collectionName="Test Collection"
+      />,
+    );
+
+    const moreButton = screen.getByRole("button", {
+      name: "Collection actions",
+    });
+    expect(moreButton).toHaveAttribute("aria-haspopup", "menu");
+    expect(moreButton).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(moreButton);
+
+    expect(moreButton).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(moreButton);
+
+    expect(moreButton).toHaveAttribute("aria-expanded", "false");
   });
 
   it("should NOT show Delete Collection button when user does not have dg_col-delete grant", async () => {
@@ -129,7 +165,9 @@ describe("Browse - Delete Collection Feature", () => {
       expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
     });
 
-    const moreButton = screen.getByRole("button", { name: "" });
+    const moreButton = screen.getByRole("button", {
+      name: "Collection actions",
+    });
     await userEvent.click(moreButton);
 
     await waitFor(() => {
@@ -186,7 +224,9 @@ describe("Browse - Delete Collection Feature", () => {
       expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
     });
 
-    const moreButton = screen.getByRole("button", { name: "" });
+    const moreButton = screen.getByRole("button", {
+      name: "Collection actions",
+    });
     await userEvent.click(moreButton);
 
     const deleteCollectionButton = await screen.findByText("Delete Collection");
@@ -240,7 +280,9 @@ describe("Browse - Delete Collection Feature", () => {
       expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
     });
 
-    const moreButton = screen.getByRole("button", { name: "" });
+    const moreButton = screen.getByRole("button", {
+      name: "Collection actions",
+    });
     await userEvent.click(moreButton);
 
     const deleteCollectionButton = await screen.findByText("Delete Collection");
@@ -293,7 +335,9 @@ describe("Browse - Delete Collection Feature", () => {
       expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
     });
 
-    const moreButton = screen.getByRole("button", { name: "" });
+    const moreButton = screen.getByRole("button", {
+      name: "Collection actions",
+    });
     await userEvent.click(moreButton);
 
     const deleteCollectionButton = await screen.findByText("Delete Collection");

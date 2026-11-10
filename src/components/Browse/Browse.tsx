@@ -865,6 +865,9 @@ export default function Browse({
                       <Button
                         variant="outline"
                         size="sm"
+                        aria-label="Collection actions"
+                        aria-haspopup="menu"
+                        aria-expanded={showTitleActionsDropdown}
                         onClick={() =>
                           setShowTitleActionsDropdown(!showTitleActionsDropdown)
                         }
