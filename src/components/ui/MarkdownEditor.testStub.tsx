@@ -8,7 +8,8 @@
  * textareaProps). MarkdownEditor.test.tsx keeps
  * one test on the real editor.
  *
- * Test use only; nothing here reaches the application bundle.
+ * Test use only: Biome's noRestrictedImports rejects `*.testStub` imports
+ * outside test files.
  */
 import type { MDEditorProps } from "@uiw/react-md-editor";
 
