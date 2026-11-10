@@ -156,6 +156,8 @@ const stubBoundaries = (options: GatewayOptions = {}): Ledger => {
       if (url.endsWith("/dataset/query") && options.editDataset) {
         const query = JSON.parse(String(init?.body));
         const fields: string[] = query.project.fields;
+        // Unlike the Gateway, retain a supplied legacy citation field so the
+        // precedence cases verify that hydration ignores it in favor of citeAs.
         const item = Object.fromEntries(
           Object.entries(options.editDataset).filter(
             ([key]) => key === "citation" || fields.includes(key),
