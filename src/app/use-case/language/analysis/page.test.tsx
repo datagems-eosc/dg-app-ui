@@ -18,6 +18,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }));
 
+const mockLogWarn = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/logger", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/logger")>()),
+  logWarn: mockLogWarn,
+}));
+
 const EMPTY_MESSAGE = "No results for this feature.";
 
 const store = (result: unknown) =>
@@ -37,6 +43,7 @@ const store = (result: unknown) =>
 describe("LanguageAnalysisPage", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    mockLogWarn.mockClear();
   });
 
   afterEach(() => {
@@ -71,7 +78,7 @@ describe("LanguageAnalysisPage", () => {
   });
 
   it("shows an error instead of placeholders for an unrecognized response", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn");
     store(unrecognizedEnvelope);
     render(<LanguageAnalysisPage />);
 
@@ -79,13 +86,13 @@ describe("LanguageAnalysisPage", () => {
       "We could not read this analysis",
     );
     expect(screen.queryByText(EMPTY_MESSAGE)).not.toBeInTheDocument();
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(warn.mock.calls)).toContain("items");
-    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/Vienna/);
+    expect(warn).not.toHaveBeenCalled();
+    expect(mockLogWarn).toHaveBeenCalledTimes(1);
+    expect(mockLogWarn.mock.calls[0][1]).toMatchObject({ unknownKeyCount: 2 });
+    expect(JSON.stringify(mockLogWarn.mock.calls)).not.toMatch(/Vienna|items/);
   });
 
   it("shows the error for a stored entry that is not valid JSON", async () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
     sessionStorage.setItem("language_analysis", "{not json");
     render(<LanguageAnalysisPage />);
 

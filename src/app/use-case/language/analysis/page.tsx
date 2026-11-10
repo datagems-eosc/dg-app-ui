@@ -11,9 +11,11 @@ import {
   toAnalysisPanels,
 } from "@/lib/languageAnalysis/panels";
 import {
+  INVALID_JSON_DIAGNOSTIC,
   parseLinguisticFeatures,
   type UnrecognizedDiagnostic,
 } from "@/lib/languageAnalysis/parse";
+import { logWarn } from "@/lib/logger";
 
 interface AnalysisState extends AnalysisPanels {
   query: string;
@@ -27,11 +29,10 @@ interface AnalysisState extends AnalysisPanels {
 const STORAGE_KEY = "language_analysis";
 
 const reportUnreadable = (diagnostic: UnrecognizedDiagnostic) => {
-  // Keys and value type only: the response may carry corpus text.
-  console.warn(
-    "[language-analysis] Unrecognized linguistic-features response",
-    diagnostic,
-  );
+  // Schema keys, a count of other keys and the value type: never response text.
+  logWarn("[language-analysis] Unrecognized linguistic-features response", {
+    ...diagnostic,
+  });
 };
 
 function DonutChart({ data }: { data: SentimentData }) {
@@ -107,7 +108,7 @@ export default function LanguageAnalysisPage() {
     try {
       parsed = JSON.parse(stored);
     } catch {
-      reportUnreadable({ keys: [], valueType: "invalid-json" });
+      reportUnreadable(INVALID_JSON_DIAGNOSTIC);
       setUnreadable(true);
       return;
     }

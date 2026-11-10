@@ -60,9 +60,10 @@ export function toAnalysisPanels({
     .sort((a, b) => b.frequency - a.frequency)
     .slice(0, 20);
 
-  // Aggregate sentiment — sum term counts, average polarity/subjectivity scores
+  // Aggregate sentiment — sum term counts, average polarity/subjectivity scores.
+  // Empty when no chunk carries a profile (the Gateway omits null profiles).
   let sentimentData: SentimentData | null = null;
-  if (features.length > 0) {
+  if (features.some((feature) => feature.sentiment_profile)) {
     let posTerms = 0;
     let negTerms = 0;
     let neutTerms = 0;

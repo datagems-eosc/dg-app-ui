@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  analysisPayload,
   bareWithData,
   envelopedEmpty,
   envelopedWithData,
@@ -51,6 +52,20 @@ describe("toAnalysisPanels", () => {
     expect(panels.termFreqData).toEqual([]);
     expect(panels.sentimentData).toBeNull();
     expect(panels.collocationData).toEqual([]);
+  });
+
+  it("shows no sentiment when no chunk carries a sentiment profile", () => {
+    const withoutProfiles = {
+      result: {
+        features: analysisPayload.features.map(
+          ({ sentiment_profile: _omitted, ...feature }) => feature,
+        ),
+      },
+    };
+    const panels = panelsFor(withoutProfiles);
+
+    expect(panels.sentimentData).toBeNull();
+    expect(panels.termFreqData).not.toEqual([]);
   });
 
   it("leaves every panel empty for an empty result", () => {

@@ -63,6 +63,8 @@ describe("parseLinguisticFeatures", () => {
     ["a bare payload with only rag_output", { rag_output: null }, 0],
     ["an envelope whose fields were all omitted", envelopedAllFieldsOmitted, 0],
     ["passages without features", passagesWithoutFeatures, 2],
+    ["a bare payload whose fields were all omitted", {}, 0],
+    ["a bare payload with only used_chunks", { used_chunks: [] }, 0],
   ])("treats %s as recognized", (_, raw, passageCount) => {
     const outcome = parseLinguisticFeatures(raw);
 
@@ -73,31 +75,56 @@ describe("parseLinguisticFeatures", () => {
   });
 
   it.each([
-    ["a different envelope", unrecognizedEnvelope, ["count", "items"]],
+    ["a different envelope", unrecognizedEnvelope, [], 2],
+    [
+      "an envelope around a different payload",
+      { result: { Vienna: 3, items: [] }, conversationId: null },
+      ["conversationId", "result"],
+      2,
+    ],
     [
       "features of the wrong type",
       wrongTypeFeatures,
       ["conversationId", "result", "result.features", "result.rag_output"],
+      0,
+    ],
+    [
+      "features entries that are not objects",
+      { result: { features: ["Vienna"], rag_output: null } },
+      ["result", "result.features", "result.rag_output"],
+      0,
     ],
     [
       "rag_output.results of the wrong type",
       { result: { features: [], rag_output: { results: "Vienna" } } },
       ["result", "result.features", "result.rag_output"],
+      0,
+    ],
+    [
+      "passages that are not objects",
+      { result: { rag_output: { results: ["Vienna"] } } },
+      ["result", "result.rag_output"],
+      0,
     ],
     [
       "a null result",
       { result: null, conversationId: null },
       ["conversationId", "result"],
+      0,
     ],
-    ["a string", "Vienna lies on the Danube.", []],
-    ["null", null, []],
-    ["an array", [{ content: "Vienna" }], []],
-  ])("reports %s as unrecognized with keys only", (_, raw, keys) => {
-    const outcome = parseLinguisticFeatures(raw);
+    ["a string", "Vienna lies on the Danube.", [], 0],
+    ["null", null, [], 0],
+    ["an array", [{ content: "Vienna" }], [], 0],
+  ])(
+    "reports %s as unrecognized with schema keys only",
+    (_, raw, keys, unknownKeyCount) => {
+      const outcome = parseLinguisticFeatures(raw);
 
-    expect(outcome.kind).toBe("unrecognized");
-    if (outcome.kind !== "unrecognized") return;
-    expect(outcome.diagnostic.keys).toEqual(keys);
-    expect(JSON.stringify(outcome.diagnostic)).not.toMatch(/Vienna/);
-  });
+      expect(outcome.kind).toBe("unrecognized");
+      if (outcome.kind !== "unrecognized") return;
+      expect(outcome.diagnostic.keys).toEqual(keys);
+      expect(outcome.diagnostic.unknownKeyCount).toBe(unknownKeyCount);
+      expect(JSON.stringify(outcome.diagnostic)).not.toMatch(/Vienna/);
+    },
+  );
 });

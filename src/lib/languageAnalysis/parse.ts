@@ -56,18 +56,24 @@ export interface LinguisticFeaturesResult {
 }
 
 /**
- * Safe description of a response the reader could not use: key names and the
- * top-level value type only, never values, so no passage or term text leaks
- * into logs.
+ * Safe description of a response the reader could not use. Only keys from the
+ * Gateway schema are named; any other key is counted, never named, because a
+ * drifted response could carry corpus terms or identifiers as keys.
  */
 export interface UnrecognizedDiagnostic {
   keys: string[];
+  unknownKeyCount: number;
   valueType: string;
 }
 
 export type LinguisticFeaturesOutcome =
   | { kind: "ok"; result: LinguisticFeaturesResult }
   | { kind: "unrecognized"; diagnostic: UnrecognizedDiagnostic };
+
+/** `LanguagePilotResponse` fields. */
+const PAYLOAD_KEYS = ["features", "rag_output", "used_chunks"];
+/** `SearchResult` fields plus the bare payload fields. */
+const TOP_LEVEL_KEYS = ["result", "conversationId", ...PAYLOAD_KEYS];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -76,10 +82,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isAbsent = (value: unknown): value is null | undefined =>
   value === null || value === undefined;
 
-/** An array, or empty when absent; `undefined` signals the wrong type. */
-const listOrEmpty = (value: unknown): unknown[] | undefined => {
+/** A list of objects, or empty when absent; `undefined` signals the wrong type. */
+const recordsOrEmpty = (
+  value: unknown,
+): Record<string, unknown>[] | undefined => {
   if (isAbsent(value)) return [];
-  return Array.isArray(value) ? value : undefined;
+  return Array.isArray(value) && value.every(isRecord) ? value : undefined;
 };
 
 const valueTypeOf = (value: unknown): string => {
@@ -88,25 +96,51 @@ const valueTypeOf = (value: unknown): string => {
   return typeof value;
 };
 
+/** Diagnostic for a stored entry that is not valid JSON. */
+export const INVALID_JSON_DIAGNOSTIC: UnrecognizedDiagnostic = {
+  keys: [],
+  unknownKeyCount: 0,
+  valueType: "invalid-json",
+};
+
 const diagnose = (raw: unknown): UnrecognizedDiagnostic => {
-  if (!isRecord(raw)) return { keys: [], valueType: valueTypeOf(raw) };
-  const keys = Object.keys(raw);
-  if (isRecord(raw.result)) {
-    keys.push(...Object.keys(raw.result).map((key) => `result.${key}`));
+  if (!isRecord(raw)) {
+    return { keys: [], unknownKeyCount: 0, valueType: valueTypeOf(raw) };
   }
-  return { keys: keys.sort(), valueType: "object" };
+  const keys: string[] = [];
+  let unknownKeyCount = 0;
+  const collect = (
+    record: Record<string, unknown>,
+    known: string[],
+    prefix: string,
+  ) => {
+    for (const key of Object.keys(record)) {
+      if (known.includes(key)) keys.push(`${prefix}${key}`);
+      else unknownKeyCount += 1;
+    }
+  };
+  collect(raw, TOP_LEVEL_KEYS, "");
+  if (isRecord(raw.result)) collect(raw.result, PAYLOAD_KEYS, "result.");
+  return { keys: keys.sort(), unknownKeyCount, valueType: "object" };
 };
 
 /**
- * The analysis payload. An envelope's `result` object is always the payload:
- * the Gateway omits null fields, so an empty analysis arrives as `{ result: {} }`.
- * A bare object counts only when it carries `features` or `rag_output`.
+ * A payload is recognized when it is empty or carries a `LanguagePilotResponse`
+ * field. Empty counts because the Gateway omits null fields, so an analysis with
+ * nothing in it arrives as `{}`; an object with only foreign keys is a different
+ * contract and must not pass as "no results".
  */
+const isAnalysisPayload = (value: Record<string, unknown>): boolean => {
+  const keys = Object.keys(value);
+  return keys.length === 0 || keys.some((key) => PAYLOAD_KEYS.includes(key));
+};
+
+/** The analysis payload: the envelope's `result`, or the bare object. */
 const payloadOf = (
   raw: Record<string, unknown>,
 ): Record<string, unknown> | undefined => {
-  if ("result" in raw) return isRecord(raw.result) ? raw.result : undefined;
-  return "features" in raw || "rag_output" in raw ? raw : undefined;
+  const payload = "result" in raw ? raw.result : raw;
+  return isRecord(payload) && isAnalysisPayload(payload) ? payload : undefined;
 };
 
 export function parseLinguisticFeatures(
@@ -123,15 +157,15 @@ export function parseLinguisticFeatures(
 
   const ragOutput = payload.rag_output;
   if (!isAbsent(ragOutput) && !isRecord(ragOutput)) return unrecognized();
-  const features = listOrEmpty(payload.features);
-  const passages = listOrEmpty(ragOutput?.results);
+  const features = recordsOrEmpty(payload.features);
+  const passages = recordsOrEmpty(ragOutput?.results);
   if (!features || !passages) return unrecognized();
 
   return {
     kind: "ok",
     result: {
-      features: features.filter(isRecord) as FeatureMetric[],
-      passages: passages.filter(isRecord) as RetrievedPassage[],
+      features: features as FeatureMetric[],
+      passages: passages as RetrievedPassage[],
       conversationId:
         typeof raw.conversationId === "string" ? raw.conversationId : null,
     },
