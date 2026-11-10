@@ -4,28 +4,36 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TableData } from "@/types/chat";
 import { TemperatureMap } from "../TemperatureMap";
 
-const mockMapInstance = {
-  setCenter: vi.fn(),
-  setStyle: vi.fn(),
-  zoomIn: vi.fn(),
-  zoomOut: vi.fn(),
-  project: vi.fn(() => ({ x: 0, y: 0 })),
-  unproject: vi.fn(() => ({ lng: 0, lat: 0 })),
-  getSource: vi.fn(),
-  getLayer: vi.fn(),
-  addSource: vi.fn(),
-  addLayer: vi.fn(),
-  removeSource: vi.fn(),
-  removeLayer: vi.fn(),
-  on: vi.fn(),
-  off: vi.fn(),
-  isStyleLoaded: vi.fn(() => true),
-  remove: vi.fn(),
-};
+// vi.mock factories are hoisted above imports, so the mocks they use are too.
+const { mockMapInstance, mockMapLibre } = vi.hoisted(() => {
+  const mockMapInstance = {
+    setCenter: vi.fn(),
+    setStyle: vi.fn(),
+    zoomIn: vi.fn(),
+    zoomOut: vi.fn(),
+    project: vi.fn(() => ({ x: 0, y: 0 })),
+    unproject: vi.fn(() => ({ lng: 0, lat: 0 })),
+    getSource: vi.fn(),
+    getLayer: vi.fn(),
+    addSource: vi.fn(),
+    addLayer: vi.fn(),
+    removeSource: vi.fn(),
+    removeLayer: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    isStyleLoaded: vi.fn(() => true),
+    remove: vi.fn(),
+  };
 
-const mockMapLibre = {
-  Map: vi.fn(() => mockMapInstance),
-};
+  // A regular function so the component can call it with `new`.
+  const mockMapLibre = {
+    Map: vi.fn(function MockMap() {
+      return mockMapInstance;
+    }),
+  };
+
+  return { mockMapInstance, mockMapLibre };
+});
 
 vi.mock("maplibre-gl", () => ({
   default: mockMapLibre,
