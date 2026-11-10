@@ -1,154 +1,38 @@
 "use client";
 
 import { FeatureEmptyState } from "@ui/FeatureEmptyState";
-import { ArrowLeft, Download } from "lucide-react";
+import { NoData } from "@ui/NoData";
+import { ArrowLeft, Download, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  type AnalysisPanels,
+  type SentimentData,
+  toAnalysisPanels,
+} from "@/lib/languageAnalysis/panels";
+import {
+  parseLinguisticFeatures,
+  type UnrecognizedDiagnostic,
+} from "@/lib/languageAnalysis/parse";
 
-interface TermFreqRow {
-  token: string;
-  frequency: number;
-}
-
-interface SentimentData {
-  positive: number;
-  neutral: number;
-  negative: number;
-  avgSentiment: number;
-  confidence: number;
-  totalDocs: number;
-}
-
-interface CollocationRow {
-  bigram: string;
-  frequency: number;
-  pmi: number;
-}
-
-interface RetrievedTextRow {
-  content: string;
-}
-
-interface AnalysisState {
+interface AnalysisState extends AnalysisPanels {
   query: string;
   features: {
     termFrequency: boolean;
     sentimentProfile: boolean;
     collocations: boolean;
   };
-  termFreqData: TermFreqRow[];
-  sentimentData: SentimentData | null;
-  collocationData: CollocationRow[];
-  retrievedTexts: RetrievedTextRow[];
 }
 
-function mapResponse(
-  raw: any,
-): Pick<
-  AnalysisState,
-  "termFreqData" | "sentimentData" | "collocationData" | "retrievedTexts"
-> {
-  const features: any[] = Array.isArray(raw?.features) ? raw.features : [];
-  if (features.length === 0) {
-    return {
-      termFreqData: [],
-      sentimentData: null,
-      collocationData: [],
-      retrievedTexts: [],
-    };
-  }
+const STORAGE_KEY = "language_analysis";
 
-  // Aggregate term frequency — sum counts across all feature chunks, sort by count desc
-  const termCounts = new Map<string, number>();
-  for (const feature of features) {
-    for (const item of Array.isArray(feature.term_frequency)
-      ? feature.term_frequency
-      : []) {
-      const term = String(item.term ?? "").trim();
-      if (!term) continue;
-      termCounts.set(
-        term,
-        (termCounts.get(term) ?? 0) + Number(item.count ?? 0),
-      );
-    }
-  }
-  const termFreqData: TermFreqRow[] = Array.from(termCounts.entries())
-    .map(([token, frequency]) => ({ token, frequency }))
-    .sort((a, b) => b.frequency - a.frequency)
-    .slice(0, 20);
-
-  // Aggregate sentiment — sum term counts, average polarity/subjectivity scores
-  let posTerms = 0;
-  let negTerms = 0;
-  let neutTerms = 0;
-  let totalTerms = 0;
-  let polaritySum = 0;
-  let subjectivitySum = 0;
-  for (const feature of features) {
-    const sp = feature.sentiment_profile ?? {};
-    posTerms += Number(sp.positive_terms ?? 0);
-    negTerms += Number(sp.negative_terms ?? 0);
-    neutTerms += Number(sp.neutral_terms ?? 0);
-    totalTerms += Number(sp.total_terms ?? 0);
-    polaritySum += Number(sp.polarity_score ?? 0);
-    subjectivitySum += Number(sp.subjectivity_score ?? 0);
-  }
-  const denom = totalTerms || 1;
-  const sentimentData: SentimentData = {
-    positive: (posTerms / denom) * 100,
-    neutral: (neutTerms / denom) * 100,
-    negative: (negTerms / denom) * 100,
-    avgSentiment: polaritySum / features.length,
-    confidence: subjectivitySum / features.length,
-    totalDocs: features.length,
-  };
-
-  // Aggregate collocations — join terms[] to bigram, sum counts, take max association_score
-  const colMap = new Map<string, { count: number; score: number }>();
-  for (const feature of features) {
-    for (const col of Array.isArray(feature.collocations)
-      ? feature.collocations
-      : []) {
-      const terms: string[] = Array.isArray(col.terms) ? col.terms : [];
-      const bigram = terms.join(" ");
-      if (!bigram) continue;
-      const existing = colMap.get(bigram);
-      if (existing) {
-        existing.count += Number(col.count ?? 0);
-        existing.score = Math.max(
-          existing.score,
-          Number(col.association_score ?? 0),
-        );
-      } else {
-        colMap.set(bigram, {
-          count: Number(col.count ?? 0),
-          score: Number(col.association_score ?? 0),
-        });
-      }
-    }
-  }
-  const collocationData: CollocationRow[] = Array.from(colMap.entries())
-    .map(([bigram, { count, score }]) => ({
-      bigram,
-      frequency: count,
-      pmi: score,
-    }))
-    .sort((a, b) => b.pmi - a.pmi)
-    .slice(0, 20);
-
-  const ragResults: any[] = Array.isArray(raw?.rag_output?.results)
-    ? raw.rag_output.results
-    : [];
-  const retrievedTexts: RetrievedTextRow[] = ragResults
-    .filter((r) => typeof r?.content === "string")
-    .sort((a, b) => Number(b.similarity ?? 0) - Number(a.similarity ?? 0))
-    .slice(0, 10)
-    .map((r) => ({
-      content: String(r.content),
-    }));
-
-  return { termFreqData, sentimentData, collocationData, retrievedTexts };
-}
+const reportUnreadable = (diagnostic: UnrecognizedDiagnostic) => {
+  // Keys and value type only: the response may carry corpus text.
+  console.warn(
+    "[language-analysis] Unrecognized linguistic-features response",
+    diagnostic,
+  );
+};
 
 function DonutChart({ data }: { data: SentimentData }) {
   const total = data.positive + data.neutral + data.negative || 1;
@@ -210,25 +94,38 @@ function DonutChart({ data }: { data: SentimentData }) {
 export default function LanguageAnalysisPage() {
   const router = useRouter();
   const [state, setState] = useState<AnalysisState | null>(null);
+  const [unreadable, setUnreadable] = useState(false);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("language_analysis");
+    const stored = sessionStorage.getItem(STORAGE_KEY);
     if (!stored) return;
+    let parsed: {
+      query?: string;
+      features?: AnalysisState["features"];
+      result?: unknown;
+    };
     try {
-      const parsed = JSON.parse(stored);
-      const mapped = mapResponse(parsed.result ?? {});
-      setState({
-        query: parsed.query ?? "",
-        features: parsed.features ?? {
-          termFrequency: true,
-          sentimentProfile: true,
-          collocations: true,
-        },
-        ...mapped,
-      });
+      parsed = JSON.parse(stored);
     } catch {
-      // ignore parse errors
+      reportUnreadable({ keys: [], valueType: "invalid-json" });
+      setUnreadable(true);
+      return;
     }
+    const outcome = parseLinguisticFeatures(parsed?.result);
+    if (outcome.kind === "unrecognized") {
+      reportUnreadable(outcome.diagnostic);
+      setUnreadable(true);
+      return;
+    }
+    setState({
+      query: parsed.query ?? "",
+      features: parsed.features ?? {
+        termFrequency: true,
+        sentimentProfile: true,
+        collocations: true,
+      },
+      ...toAnalysisPanels(outcome.result),
+    });
   }, []);
 
   const showTermFreq = state?.features.termFrequency ?? true;
@@ -277,6 +174,19 @@ export default function LanguageAnalysisPage() {
             </p>
           )}
         </div>
+
+        {unreadable && (
+          <div
+            role="alert"
+            className="bg-white border border-[#e2e8f0] rounded-2xl p-5"
+          >
+            <NoData
+              icon={TriangleAlert}
+              title="We could not read this analysis"
+              description="The analysis service returned a response this page does not recognize. Run the question again; if it keeps happening, report it to the DataGEMS team."
+            />
+          </div>
+        )}
 
         {/* Term Frequency */}
         {state && showTermFreq && (
