@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -85,6 +86,91 @@ const section = (title: string) => {
   return heading.closest("div")?.parentElement?.parentElement as HTMLElement;
 };
 const permissions = () => within(section("Your permissions"));
+
+describe("dataset details page headline", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  });
+
+  it("requests the headline field from the Gateway", async () => {
+    mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+    await renderPage();
+    expect(mockGetDatasetById).toHaveBeenCalledWith(
+      "ds-1",
+      expect.arrayContaining(["headline"]),
+    );
+  });
+  it("shows the returned headline separately from the full description", async () => {
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      headline: "Short ocean measurements summary",
+    });
+    await renderPage();
+    expect(
+      screen.getByText("Short ocean measurements summary"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("A dataset")).toHaveLength(1);
+  });
+
+  it.each([
+    "Sea surface temperature",
+    "A dataset",
+    "  Sea surface temperature  ",
+    "  A dataset  ",
+  ])(
+    "hides a headline duplicating the name or description: %s",
+    async (headline) => {
+      mockGetDatasetById.mockResolvedValue({
+        ...datasetPayload(["browsedataset"]),
+        headline,
+      });
+      await renderPage();
+      expect(screen.queryByText("Sea surface temperature")).toBe(
+        screen.getByRole("heading", {
+          level: 1,
+          name: "Sea surface temperature",
+        }),
+      );
+      expect(screen.getAllByText("A dataset")).toHaveLength(1);
+    },
+  );
+
+  it.each([undefined, null, "", "  ", 42, { text: "Unexpected value" }])(
+    "does not invent a headline for missing or invalid data: %j",
+    async (headline) => {
+      mockGetDatasetById.mockResolvedValue({
+        ...datasetPayload(["browsedataset"]),
+        headline,
+      });
+      await renderPage();
+      expect(screen.queryByText("Sea surface temperature")).toBe(
+        screen.getByRole("heading", {
+          level: 1,
+          name: "Sea surface temperature",
+        }),
+      );
+      expect(screen.getAllByText("A dataset")).toHaveLength(1);
+    },
+  );
+
+  it.each([undefined, null, "", "  "])(
+    "keeps a distinct headline when the full description is absent: %j",
+    async (description) => {
+      mockGetDatasetById.mockResolvedValue({
+        ...datasetPayload(["browsedataset"]),
+        name: "  Sea surface temperature  ",
+        headline: "  Short ocean measurements summary  ",
+        description,
+      });
+      await renderPage();
+      expect(
+        screen.getByText("Short ocean measurements summary"),
+      ).toBeInTheDocument();
+      expect(screen.getAllByText("No description available.")).toHaveLength(1);
+    },
+  );
+});
 
 describe("dataset details page – caller permissions", () => {
   beforeEach(() => {
@@ -218,5 +304,64 @@ describe("dataset details page – existing management entry", () => {
     expect(
       screen.queryByRole("button", { name: /manage/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("dataset details page citation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  });
+
+  it("requests citeAs and displays and copies the returned citation", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    const citeAs = "Marine Institute (2026). Sea surface temperature.";
+    mockGetDatasetById.mockImplementation(async (_id, fields: string[]) => ({
+      ...datasetPayload(["browsedataset"]),
+      ...(fields.includes("citeAs") ? { citeAs } : {}),
+    }));
+
+    await renderPage();
+
+    expect(mockGetDatasetById).toHaveBeenCalledWith(
+      "ds-1",
+      expect.arrayContaining(["citeAs"]),
+    );
+    expect(mockGetDatasetById.mock.calls[0][1]).not.toContain("citation");
+    expect(screen.getByRole("heading", { name: "Citation" })).toBeVisible();
+    expect(screen.getByText(citeAs)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /^Copy$/ }));
+    expect(writeText).toHaveBeenCalledWith(citeAs);
+  });
+
+  it.each([
+    ["missing", {}],
+    ["null", { citeAs: null }],
+    ["empty", { citeAs: "" }],
+    ["legacy only", { citation: "Unsupported citation" }],
+  ])("omits the Citation section for a %s citeAs", async (_name, metadata) => {
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      ...metadata,
+    });
+    await renderPage();
+    expect(
+      screen.queryByRole("heading", { name: "Citation" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Copy$/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses citeAs when an unsupported citation field is also returned", async () => {
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      citeAs: "Gateway citation",
+      citation: "Unsupported citation",
+    });
+    await renderPage();
+    expect(screen.getByText("Gateway citation")).toBeVisible();
+    expect(screen.queryByText("Unsupported citation")).not.toBeInTheDocument();
   });
 });

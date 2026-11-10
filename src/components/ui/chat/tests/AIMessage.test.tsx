@@ -4,22 +4,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "@/types/chat";
 import { AIMessage } from "../AIMessage";
 
+const flags = vi.hoisted(() => ({
+  datasetRecommendation: true,
+  questionRecommendation: true,
+}));
+
+vi.mock("@/contexts/FeatureFlagsContext", () => ({
+  useFeatureFlag: (id: keyof typeof flags) => flags[id] ?? false,
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock("@ui/chat/AIMessageHeader", () => ({
-  AIMessageHeader: ({
-    sources,
-    onSourcesClick,
-  }: {
-    sources?: number;
-    onSourcesClick?: () => void;
-  }) => (
-    <div
-      data-testid="ai-message-header"
-      data-sources={sources}
-      onClick={onSourcesClick}
-    >
-      Header
-    </div>
-  ),
+  AIMessageHeader: () => <div data-testid="ai-message-header">Header</div>,
 }));
 
 vi.mock("@ui/chat/TemperatureMap", () => ({
@@ -97,37 +96,74 @@ describe("AIMessage", () => {
     expect(screen.getByTestId("has-table-data")).toBeInTheDocument();
   });
 
-  it("should pass sources to header when provided", () => {
-    const messageWithSources: Message = {
-      ...defaultMessage,
-      sources: 3,
-    };
+  it("shows Sources in a row under the answer", () => {
+    render(<AIMessage message={{ ...defaultMessage, sources: 3 }} />);
 
-    render(<AIMessage message={messageWithSources} />);
-
-    const header = screen.getByTestId("ai-message-header");
-    expect(header).toHaveAttribute("data-sources", "3");
+    const sources = screen.getByRole("button", { name: "3 Sources" });
+    const content = screen.getByTestId("ai-message-content");
+    expect(
+      content.compareDocumentPosition(sources) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it("should call onSourcesClick when header sources button is clicked", async () => {
+  it("opens the sources from the row under the answer", async () => {
     const user = userEvent.setup();
     const onSourcesClick = vi.fn();
-    const messageWithSources: Message = {
-      ...defaultMessage,
-      sources: 2,
-    };
-
     render(
       <AIMessage
-        message={messageWithSources}
+        message={{ ...defaultMessage, sources: 2 }}
         onSourcesClick={onSourcesClick}
       />,
     );
 
-    const header = screen.getByTestId("ai-message-header");
-    await user.click(header);
+    await user.click(screen.getByRole("button", { name: "2 Sources" }));
 
     expect(onSourcesClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no Sources row on a dataset proposal", () => {
+    render(
+      <AIMessage
+        message={{
+          ...defaultMessage,
+          sources: 2,
+          datasetProposal: [
+            { id: "d1", title: "Rainfall" },
+            { id: "d2", title: "Stations" },
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Open dataset Rainfall" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /sources?$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("places the suggestions after the Sources row", () => {
+    render(
+      <AIMessage
+        isLastAIMessage
+        message={{
+          ...defaultMessage,
+          sources: 1,
+          recommendations: ["Monthly rainfall"],
+        }}
+      />,
+    );
+
+    const sources = screen.getByRole("button", { name: "1 Source" });
+    const suggestion = screen.getByRole("button", {
+      name: /monthly rainfall/i,
+    });
+    expect(
+      sources.compareDocumentPosition(suggestion) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("should render temperature map for messages with coordinates", () => {

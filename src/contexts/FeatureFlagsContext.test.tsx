@@ -20,7 +20,7 @@ describe("FeatureFlagsContext", () => {
 
   it("resolves a flag to its environment default when no override exists", () => {
     const { result } = renderHook(() => useFeatureFlags(), { wrapper });
-    expect(result.current.flags.datasetPackage).toBe(true);
+    expect(result.current.flags.useCaseWeather).toBe(true);
     expect(result.current.environment).toBe("playground");
   });
 
@@ -28,27 +28,27 @@ describe("FeatureFlagsContext", () => {
     const { result } = renderHook(() => useFeatureFlags(), { wrapper });
 
     act(() => {
-      result.current.setOverride("datasetPackage", false);
+      result.current.setOverride("useCaseWeather", false);
     });
 
-    expect(result.current.flags.datasetPackage).toBe(false);
+    expect(result.current.flags.useCaseWeather).toBe(false);
     expect(
       JSON.parse(
         window.localStorage.getItem(FEATURE_FLAGS_STORAGE_KEY) ?? "{}",
       ),
-    ).toEqual({ datasetPackage: false });
+    ).toEqual({ useCaseWeather: false });
   });
 
   it("loads persisted overrides from localStorage on mount", async () => {
     window.localStorage.setItem(
       FEATURE_FLAGS_STORAGE_KEY,
-      JSON.stringify({ datasetPackage: false }),
+      JSON.stringify({ useCaseWeather: false }),
     );
 
     const { result } = renderHook(() => useFeatureFlags(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.flags.datasetPackage).toBe(false);
+      expect(result.current.flags.useCaseWeather).toBe(false);
     });
   });
 

@@ -8,6 +8,8 @@ type SmartSearchExamplesProps = {
   className?: string;
   onPickExample?: (value: string) => void;
   showHeader?: boolean;
+  examples?: readonly string[];
+  align?: "center" | "start";
 };
 
 const HINTS = [
@@ -22,6 +24,8 @@ export default function SmartSearchExamples({
   className,
   onPickExample,
   showHeader = true,
+  examples = HINTS,
+  align = "center",
 }: SmartSearchExamplesProps) {
   const handlePick = (value: string) => {
     if (onPickExample) onPickExample(value);
@@ -29,7 +33,12 @@ export default function SmartSearchExamples({
 
   return (
     <div className={cn("w-full", className)}>
-      <div className="flex flex-col items-center text-center">
+      <div
+        className={cn(
+          "flex flex-col",
+          align === "center" ? "items-center text-center" : "items-start",
+        )}
+      >
         {showHeader && (
           <>
             <MessageCircleQuestion
@@ -41,10 +50,16 @@ export default function SmartSearchExamples({
             </div>
           </>
         )}
-        <div className="flex flex-wrap justify-center items-center gap-2">
-          {HINTS.map((hint, idx) => (
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-2",
+            align === "center" && "justify-center",
+          )}
+        >
+          {examples.map((hint, idx) => (
             <Button
               key={`${hint}-${idx}`}
+              type="button"
               variant="tertiary"
               size="smPlus"
               className="!px-3"

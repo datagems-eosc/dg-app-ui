@@ -6,6 +6,7 @@ import { ChatInput, type ChatInputRef } from "@ui/chat/ChatInput";
 import ChatMessages from "@ui/chat/ChatMessages";
 import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
+import { datasetProposalPrompt } from "@ui/chat/DatasetProposalBlock";
 import { Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -13,13 +14,13 @@ import type { ConversationMessage } from "@/app/chat/page";
 import { APP_ROUTES } from "@/config/appUrls";
 import { UI_CONSTANTS } from "@/config/uiConstants";
 import { useCollections } from "@/contexts/CollectionsContext";
-import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { useDatasetDetails } from "@/hooks/useDatasetDetails";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { handoffStore } from "@/lib/intentRouting/handoffStore";
 import { logError } from "@/lib/logger";
 import { detectNewAIMessages, mergeMessages } from "@/lib/messageMergeUtils";
 import {
-  buildRecommendationFallback,
   extractRecommendations,
   parseConversationMessage,
   parseSearchInDataExploreResponse,
@@ -32,13 +33,14 @@ import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 
 interface ChatProps {
   selectedDatasets: string[];
-  datasets: Dataset[];
   onSelectedDatasetsChange: (selected: string[]) => void;
   conversationId?: string | null;
   initialMessages?: ConversationMessage[]; // undefined while loading, [] when loaded and empty
   showConversationName?: boolean;
   hideCollectionActions?: boolean;
   initialCollectionId?: string | null; // Collection ID from URL parameter
+  /** A pending Home question handoff (UI #352), submitted at most once. */
+  initialHandoff?: { id: string; originalQuery: string };
 }
 
 // Add type for cross-dataset search result
@@ -50,15 +52,24 @@ interface CrossDatasetSearchResult {
   };
 }
 
+function chatInputPlaceholder(selectedCount: number): string {
+  if (selectedCount === 0) {
+    return "Ask a question and I'll find datasets to answer it...";
+  }
+  return selectedCount === 1
+    ? "Ask about your selected dataset..."
+    : `Ask about your ${selectedCount} selected datasets...`;
+}
+
 export default function Chat({
   selectedDatasets,
-  datasets,
   onSelectedDatasetsChange,
   conversationId,
   initialMessages,
   showConversationName = true,
   hideCollectionActions = false,
   initialCollectionId = null,
+  initialHandoff,
 }: ChatProps) {
   // Store only Message[] for UI rendering
   const [messages, setMessages] = useState<Message[]>([]);
@@ -87,6 +98,9 @@ export default function Chat({
     string[]
   >([]);
   const [isSourcesPanel, setIsSourcesPanel] = useState(false);
+  const datasets = useDatasetDetails(
+    Array.from(new Set([...selectedDatasets, ...messageRelatedDatasets])),
+  );
 
   const fetchedRecommendationsRef = useRef<Set<string>>(new Set());
 
@@ -307,9 +321,7 @@ export default function Chat({
                   "permissions.editDataset",
                 ],
               },
-              collections: {
-                ids: [collection.id],
-              },
+              collectionIds: [collection.id],
               page: {
                 Offset: 0,
                 Size: 100,
@@ -567,8 +579,8 @@ export default function Chat({
     }
   }, [selectedDatasets, previousDatasets, messages.length, conversationId]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim()) return;
     setError(null);
     setIsLoading(true);
     // Show spinner immediately when user sends a message
@@ -590,7 +602,7 @@ export default function Chat({
         const userMessage: Message = {
           id: Date.now().toString(),
           type: "user",
-          content: inputValue,
+          content: text,
           timestamp: new Date(),
         };
         setMessages((prev) => {
@@ -653,7 +665,7 @@ export default function Chat({
         }
         // Step 1: Create conversation
         const persistPayload = {
-          name: inputValue,
+          name: text,
         };
         const persistData = await api.persistConversation(
           persistPayload,
@@ -686,7 +698,7 @@ export default function Chat({
               "distance",
             ],
           },
-          query: inputValue,
+          query: text,
           resultCount: 100,
         };
         const data = await api.searchCrossDataset(payload);
@@ -711,7 +723,7 @@ export default function Chat({
           const userMessage: Message = {
             id: Date.now().toString(),
             type: "user",
-            content: inputValue,
+            content: text,
             timestamp: new Date(),
           };
 
@@ -728,7 +740,7 @@ export default function Chat({
           const proposalMessage: Message = {
             id: `proposal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             type: "ai",
-            content: "Do you want to answer based on these datasets?",
+            content: datasetProposalPrompt(datasetProposal.length),
             timestamp: new Date(),
             sources: datasetProposal.length,
             relatedDatasetIds: datasetProposal.map((d) => d.id),
@@ -763,7 +775,7 @@ export default function Chat({
         }
         // Step 1: Create conversation with datasets
         const persistPayload = {
-          name: inputValue,
+          name: text,
           conversationDatasets: selectedDatasets.map((id) => ({
             datasetId: id,
           })),
@@ -788,7 +800,7 @@ export default function Chat({
           project: {
             fields: ["question", "data", "status", "entries"],
           },
-          query: inputValue,
+          query: text,
           resultCount: 100,
           datasetIds: selectedDatasets, // Add datasetIds for in-data-explore
         };
@@ -832,7 +844,7 @@ export default function Chat({
       const userMessage: Message = {
         id: Date.now().toString(),
         type: "user",
-        content: inputValue,
+        content: text,
         timestamp: new Date(),
       };
       setMessages([userMessage]);
@@ -876,6 +888,22 @@ export default function Chat({
       setIsLoading(false);
     }
   };
+
+  const handleSendMessage = () => sendMessage(inputValue);
+
+  // Submit a Home handoff once the session is ready. `consume` succeeds for
+  // the first caller only, so remounts and Back never send it twice; the
+  // handoff id leaves the URL before the conversation is created. The
+  // original text is also the discovery query: Gateway stores that text as
+  // the conversation's question, and analysis later reads it from history.
+  useEffect(() => {
+    if (!initialHandoff || !api.hasToken || conversationId) return;
+    if (!handoffStore.consume(initialHandoff.id)) return;
+    router.replace(getNavigationUrl(APP_ROUTES.CHAT));
+    // In the box like a typed question: a failed submission keeps it there.
+    setInputValue(initialHandoff.originalQuery);
+    void sendMessage(initialHandoff.originalQuery);
+  }, [initialHandoff, api.hasToken, conversationId]);
 
   const _handleBackToBrowse = () => {
     router.push(getNavigationUrl(APP_ROUTES.BROWSE));
@@ -1090,13 +1118,8 @@ export default function Chat({
         UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
       );
 
-      const resolvedRecommendations =
-        recommendations.length > 0
-          ? recommendations
-          : buildRecommendationFallback(
-              currentQuery,
-              UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
-            );
+      // Only Gateway suggestions are shown; none is better than made-up ones.
+      const resolvedRecommendations = recommendations;
 
       setMessages((prev) => {
         const messageIndex = prev.findIndex((msg) => msg.id === messageId);
@@ -1128,10 +1151,6 @@ export default function Chat({
         return updated;
       });
     } catch (_error) {
-      const fallbackRecommendations = buildRecommendationFallback(
-        currentQuery,
-        UI_CONSTANTS.CHAT_RECOMMENDATIONS_LIMIT,
-      );
       setMessages((prev) => {
         const messageIndex = prev.findIndex((msg) => msg.id === messageId);
         if (messageIndex === -1) {
@@ -1140,7 +1159,7 @@ export default function Chat({
         const updated = [...prev];
         updated[messageIndex] = {
           ...updated[messageIndex],
-          recommendations: fallbackRecommendations,
+          recommendations: [],
           recommendationsLoading: false,
         };
         return updated;
@@ -1275,6 +1294,7 @@ export default function Chat({
                 disabled={isInputDisabled}
                 error={error}
                 showAddDatasetsModal={showAddDatasetsModal}
+                placeholder={chatInputPlaceholder(selectedDatasets.length)}
               />
             </div>
           </div>
@@ -1310,6 +1330,7 @@ export default function Chat({
               disabled={isInputDisabled}
               error={error}
               showAddDatasetsModal={showAddDatasetsModal}
+              placeholder={chatInputPlaceholder(selectedDatasets.length)}
             />
           </div>
         </div>

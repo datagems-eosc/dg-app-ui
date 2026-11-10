@@ -44,13 +44,13 @@ function MenuItemSkeleton() {
 const menuItems = [
   {
     id: "dashboard",
-    label: "Dashboard",
+    label: "Home",
     href: APP_ROUTES.DASHBOARD,
     icon: LayoutDashboard,
   },
   {
     id: "browse",
-    label: "Browse",
+    label: "Datasets",
     href: APP_ROUTES.BROWSE,
     icon: FolderSearch,
   },
@@ -64,7 +64,7 @@ const menuItems = [
 
 const askAQuestionItem = {
   id: "ask-a-question",
-  label: "Ask a Question",
+  label: "Chat",
   href: APP_ROUTES.CHAT,
   icon: Bot,
 };

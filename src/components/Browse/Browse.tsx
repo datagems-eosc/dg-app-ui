@@ -17,7 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
@@ -30,6 +30,7 @@ import SmartSearch from "@ui/SmartSearch";
 import SmartSearchExamples from "@ui/SmartSearchExamples";
 import Switch from "@ui/Switch";
 import { Toast } from "@ui/Toast";
+import { WorkingStatus } from "@ui/WorkingStatus";
 import { useRouter } from "next/navigation";
 import { APP_ROUTES } from "@/config/appUrls";
 import {
@@ -61,6 +62,12 @@ import SelectedDatasetsPanel from "../SelectedDatasetsPanel";
 import SortingDropdown from "../SortingDropdown";
 import { CollectionPermissionsModal } from "../ui/user/CollectionPermissionsModal";
 import ActiveFilters from "./ActiveFilters";
+import { useDatasetSearchExamples } from "./useDatasetSearchExamples";
+
+const SMART_SEARCH_STATUS = [
+  "Searching inside the data",
+  "Still searching",
+] as const;
 
 interface BrowseProps {
   datasets: DatasetWithCollections[];
@@ -101,6 +108,10 @@ interface BrowseProps {
    */
   onSearchTermSubmit?: (searchValue?: string) => void;
   /**
+   * The search the shown results belong to (the last submitted text).
+   */
+  appliedSearchTerm?: string;
+  /**
    * Loader state for async dataset fetching (from parent).
    */
   isLoading?: boolean;
@@ -108,6 +119,18 @@ interface BrowseProps {
    * Error message for async dataset fetching (from parent).
    */
   error?: string | null;
+  /**
+   * Server total for the current list, when it is larger than what is shown.
+   */
+  totalCount?: number;
+  /**
+   * More datasets can be loaded (catalogue paging from parent).
+   */
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  /** Shown beside "Load more"; the list already loaded stays. */
+  loadMoreError?: string | null;
   /**
    * The current sort value (controlled from parent).
    */
@@ -198,8 +221,14 @@ export default function Browse({
   searchTerm = "",
   onSearchTermChange,
   onSearchTermSubmit,
+  appliedSearchTerm = "",
   isLoading = false,
   error = null,
+  totalCount,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
+  loadMoreError = null,
   sortBy = "name-asc",
   onSortByChange,
   onApplyFilters,
@@ -241,8 +270,10 @@ export default function Browse({
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const actionsPanelId = useId();
   const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
     useState(false);
+  const titleActionsPanelId = useId();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCollectionPermissions, setShowCollectionPermissions] =
     useState(false);
@@ -715,6 +746,7 @@ export default function Browse({
   };
 
   const isPanelVisible = showSelectedPanel || isPanelClosing;
+  const datasetSearchExamples = useDatasetSearchExamples();
   const shouldShowSmartExamples =
     showSearchAndFilters !== false &&
     isSmartSearchEnabled &&
@@ -835,6 +867,13 @@ export default function Browse({
                       <Button
                         variant="outline"
                         size="sm"
+                        aria-label="Collection actions"
+                        aria-expanded={showTitleActionsDropdown}
+                        aria-controls={
+                          showTitleActionsDropdown
+                            ? titleActionsPanelId
+                            : undefined
+                        }
                         onClick={() =>
                           setShowTitleActionsDropdown(!showTitleActionsDropdown)
                         }
@@ -846,6 +885,7 @@ export default function Browse({
                       {/* Actions dropdown menu */}
                       {showTitleActionsDropdown && (
                         <div
+                          id={titleActionsPanelId}
                           data-title-actions-dropdown
                           className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
                         >
@@ -962,6 +1002,11 @@ export default function Browse({
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label="Selected dataset actions"
+                      aria-expanded={showActionsDropdown}
+                      aria-controls={
+                        showActionsDropdown ? actionsPanelId : undefined
+                      }
                       onClick={() =>
                         setShowActionsDropdown(!showActionsDropdown)
                       }
@@ -973,6 +1018,7 @@ export default function Browse({
                     {/* Actions dropdown menu */}
                     {showActionsDropdown && (
                       <div
+                        id={actionsPanelId}
                         data-actions-dropdown
                         className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
                       >
@@ -1070,9 +1116,19 @@ export default function Browse({
             <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 mb-4 px-4 sm:px-6">
               <div className="flex-1 w-full">
                 <Search
-                  placeholder="Search datasets..."
+                  smart={isSmartSearchEnabled}
+                  placeholder={
+                    isSmartSearchEnabled
+                      ? "Describe what you need, e.g. “rainfall data in Central Europe”…"
+                      : "Search by name or keyword…"
+                  }
                   value={searchTerm}
-                  onChange={onSearchTermChange}
+                  onChange={(value) => {
+                    onSearchTermChange?.(value);
+                    // Emptying the box ends the search, like the clear button
+                    // (the box does not submit under 3 characters).
+                    if (value.trim() === "") onSearchTermSubmit?.("");
+                  }}
                   onSearch={(value) => onSearchTermSubmit?.(value)}
                   onClear={() => {
                     if (onSearchTermChange) {
@@ -1084,14 +1140,17 @@ export default function Browse({
                   }}
                 />
               </div>
-              <Button
-                variant="outline"
-                className="flex items-center gap-1.5"
-                onClick={() => setShowFilterModal(true)}
-              >
-                <Filter className="w-4 h-4 text-icon" />
-                Filter
-              </Button>
+              {/* Smart search results are ranked by relevance: no filters. */}
+              {!isSmartSearchEnabled && (
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-1.5"
+                  onClick={() => setShowFilterModal(true)}
+                >
+                  <Filter className="w-4 h-4 text-icon" />
+                  Filter
+                </Button>
+              )}
               {!isMobile && (
                 <Switch
                   leftIcon={ListChecks}
@@ -1144,24 +1203,33 @@ export default function Browse({
               )}
             </div>
           )}
-          {/* Smart search examples */}
-          {shouldShowSmartExamples && (
-            <SmartSearchExamples
-              className="px-4 pt-6 sm:px-6 sm:pt-24 mb-4"
-              onPickExample={(value) => {
-                if (onSearchTermChange) onSearchTermChange(value);
-                if (onSearchTermSubmit) onSearchTermSubmit(value);
-              }}
-            />
+          {/* Smart search examples: the list stays, examples sit above it */}
+          {shouldShowSmartExamples && datasetSearchExamples.length > 0 && (
+            <div className="px-4 sm:px-6 mb-4">
+              <p className="text-body-14-regular text-gray-650 mb-2">
+                Try an example:
+              </p>
+              <SmartSearchExamples
+                showHeader={false}
+                align="start"
+                examples={datasetSearchExamples}
+                onPickExample={(value) => {
+                  if (onSearchTermChange) onSearchTermChange(value);
+                  if (onSearchTermSubmit) onSearchTermSubmit(value);
+                }}
+              />
+            </div>
           )}
           {/* Active Filters */}
-          <ActiveFilters
-            filters={displayedFilters}
-            fieldsOfScienceCategories={fieldsOfScienceCategories}
-            licenses={licenses}
-            onRemoveFilter={removeFilter}
-            showSearchAndFilters={showSearchAndFilters}
-          />
+          {!isSmartSearchEnabled && (
+            <ActiveFilters
+              filters={displayedFilters}
+              fieldsOfScienceCategories={fieldsOfScienceCategories}
+              licenses={licenses}
+              onRemoveFilter={removeFilter}
+              showSearchAndFilters={showSearchAndFilters}
+            />
+          )}
           {showSearchAndFilters !== false && hasStaleAccessFilter && (
             <p
               role="status"
@@ -1171,28 +1239,67 @@ export default function Browse({
             </p>
           )}
           {/* Results count and sorting */}
-          {showSearchAndFilters !== false && !shouldShowSmartExamples && (
+          {showSearchAndFilters !== false && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
-              <p className="text-body-14-regular text-gray-650">
-                Showing:{" "}
-                <span className="text-body-14-medium text-gray-750">
-                  {filteredDatasets.length}{" "}
-                  {filteredDatasets.length === 1 ? "result" : "results"}
-                </span>
+              <p
+                aria-live="polite"
+                className="text-body-14-regular text-gray-650"
+              >
+                {isLoading ? (
+                  appliedSearchTerm ? (
+                    "Searching…"
+                  ) : (
+                    "Loading datasets…"
+                  )
+                ) : (
+                  <>
+                    Showing:{" "}
+                    <span className="text-body-14-medium text-gray-750">
+                      {filteredDatasets.length}
+                      {totalCount && totalCount > filteredDatasets.length
+                        ? ` of ${totalCount}`
+                        : ""}{" "}
+                      {(totalCount ?? filteredDatasets.length) === 1
+                        ? "result"
+                        : "results"}
+                    </span>
+                  </>
+                )}
               </p>
-              <SortingDropdown
-                value={sortBy}
-                onChange={(value) => onSortByChange?.(value)}
-                options={SORTING_OPTIONS}
-                triggerLabel="Sorting"
-              />
+              {isSmartSearchEnabled ? (
+                <span className="text-body-14-regular text-gray-650">
+                  {shouldShowSmartExamples
+                    ? "Describe what you need to rank by relevance"
+                    : "Sorted by relevance"}
+                </span>
+              ) : (
+                <SortingDropdown
+                  value={sortBy}
+                  onChange={(value) => onSortByChange?.(value)}
+                  options={SORTING_OPTIONS}
+                  triggerLabel="Sorting"
+                />
+              )}
             </div>
           )}
           {/* Main content area - do not shift cards when modal is open */}
-          {!shouldShowSmartExamples && (
-            <div className="transition-all duration-300 px-4 sm:px-6">
-              {/* Loader or error */}
-              {isLoading ? (
+          <div className="transition-all duration-300 px-4 sm:px-6">
+            {/* Loader or error */}
+            {isLoading ? (
+              <>
+                {isSmartSearchEnabled && appliedSearchTerm && (
+                  <div className="flex flex-col items-center gap-1 pt-4 pb-8 text-center">
+                    <WorkingStatus
+                      messages={SMART_SEARCH_STATUS}
+                      repeat={false}
+                      announcement={`Searching for “${appliedSearchTerm}”`}
+                      iconSize={20}
+                    />
+                    <p className="max-w-xl line-clamp-2 break-words text-body-14-regular text-gray-650">
+                      for “{appliedSearchTerm}”
+                    </p>
+                  </div>
+                )}
                 <div
                   className={
                     viewMode === "grid"
@@ -1204,57 +1311,110 @@ export default function Browse({
                     <DatasetCardSkeleton key={index} viewMode={viewMode} />
                   ))}
                 </div>
-              ) : error ? (
-                <div className="text-red-600 text-center py-8">{error}</div>
-              ) : (
-                <div
-                  className={
-                    viewMode === "grid"
-                      ? "grid grid-cols-1 md:grid-cols-2 gap-4"
-                      : "grid grid-cols-1 gap-4"
-                  }
-                >
-                  {filteredDatasets.map((dataset, index) => (
-                    <DatasetCard
-                      key={dataset.id || `dataset-${index}`}
-                      dataset={dataset}
-                      onClick={() => handleDatasetClick(dataset)}
-                      isMultiSelected={currentSelectedDatasets.includes(
-                        dataset.id,
-                      )}
-                      onSelect={(isSelected) =>
-                        handleDatasetSelect(dataset.id, isSelected)
-                      }
-                      showSelectButton={!hideGeneralChat}
-                      isEditMode={isEditMode}
-                      onRemove={
-                        isEditMode && onRemoveDataset
-                          ? () => onRemoveDataset(dataset.id)
-                          : undefined
-                      }
-                      viewMode={viewMode}
-                      onAddToCollection={() => handleAddToCollection(dataset)}
-                      showAddButton={showAddButton && !hideGeneralChat}
-                      hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
-                      isSmartSearchEnabled={isSmartSearchEnabled}
-                    />
-                  ))}
-                </div>
-              )}
-              {/* Empty state */}
-              {!isLoading && !error && filteredDatasets.length === 0 && (
-                <div className="text-center py-18 space-y-2">
-                  <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
-                  <h3 className="text-body-16-semibold text-slate-850">
-                    No datasets found matching your search criteria.
-                  </h3>
-                  <p className="text-body-14-regular text-gray-650">
-                    Try rephrasing your question or using different keywords.
+              </>
+            ) : error ? (
+              <div className="text-red-600 text-center py-8">{error}</div>
+            ) : (
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+                    : "grid grid-cols-1 gap-4"
+                }
+              >
+                {filteredDatasets.map((dataset, index) => (
+                  <DatasetCard
+                    key={dataset.id || `dataset-${index}`}
+                    dataset={dataset}
+                    onClick={() => handleDatasetClick(dataset)}
+                    isMultiSelected={currentSelectedDatasets.includes(
+                      dataset.id,
+                    )}
+                    onSelect={(isSelected) =>
+                      handleDatasetSelect(dataset.id, isSelected)
+                    }
+                    showSelectButton={!hideGeneralChat}
+                    isEditMode={isEditMode}
+                    onRemove={
+                      isEditMode && onRemoveDataset
+                        ? () => onRemoveDataset(dataset.id)
+                        : undefined
+                    }
+                    viewMode={viewMode}
+                    onAddToCollection={() => handleAddToCollection(dataset)}
+                    showAddButton={showAddButton && !hideGeneralChat}
+                    hasSidePanelOpen={showSelectedPanel && !isPanelClosing}
+                    isSmartSearchEnabled={isSmartSearchEnabled}
+                  />
+                ))}
+              </div>
+            )}
+            {!isLoading && !error && hasMore && onLoadMore && (
+              <div className="flex flex-col items-center gap-2 py-6">
+                {loadMoreError && (
+                  <p role="alert" className="text-body-14-regular text-red-600">
+                    {loadMoreError}
                   </p>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+                <button
+                  type="button"
+                  onClick={onLoadMore}
+                  disabled={isLoadingMore}
+                  className="text-body-14-regular text-slate-500 hover:text-slate-700 hover:underline disabled:no-underline disabled:opacity-60 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-850"
+                >
+                  {isLoadingMore ? "Loading…" : "Load more datasets"}
+                </button>
+              </div>
+            )}
+            {/* Empty state */}
+            {!isLoading && !error && filteredDatasets.length === 0 && (
+              <div className="text-center py-18 space-y-2">
+                <SearchIcon className="w-10 h-10 mx-auto text-slate-350" />
+                {appliedSearchTerm && isSmartSearchEnabled ? (
+                  <>
+                    <h3 className="text-body-16-semibold text-slate-850">
+                      No datasets found for “{appliedSearchTerm}”.
+                    </h3>
+                    <p className="text-body-14-regular text-gray-650">
+                      Try describing what you need in other words.
+                    </p>
+                  </>
+                ) : appliedSearchTerm ? (
+                  <>
+                    <h3 className="text-body-16-semibold text-slate-850">
+                      No dataset names or descriptions contain “
+                      {appliedSearchTerm}”.
+                    </h3>
+                    <p className="text-body-14-regular text-gray-650">
+                      Try fewer or different words
+                      {onSmartSearchToggle
+                        ? ", or let Smart search look inside the data."
+                        : "."}
+                    </p>
+                    {onSmartSearchToggle && (
+                      <Button
+                        variant="tertiary"
+                        size="sm"
+                        className="mx-auto"
+                        onClick={() => onSmartSearchToggle(true)}
+                      >
+                        Turn on Smart search
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-body-16-semibold text-slate-850">
+                      No datasets found matching your search criteria.
+                    </h3>
+                    <p className="text-body-14-regular text-gray-650">
+                      Try rephrasing your question or using different keywords.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

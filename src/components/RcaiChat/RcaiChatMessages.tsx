@@ -292,7 +292,7 @@ export default function RcaiChatMessages({
         return (
           <div
             key={message.id}
-            className="w-full max-w-full space-y-4 shadow-s1 border border-slate-350 rounded-2xl px-4 pt-2 pb-4 sm:px-6 sm:pt-4 sm:pb-6"
+            className="w-full max-w-full space-y-4 shadow-s1 border border-slate-350 rounded-2xl p-4 sm:px-6 sm:py-5"
           >
             <AIMessageHeader />
             <div className="text-body-16-regular text-gray-750 break-words overflow-hidden">

@@ -67,7 +67,9 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
   {
     id: "datasetPackage",
     label: "Dataset packaging",
-    defaults: enabledEverywhere(),
+    // Off until packages come from the Gateway: the Datasets carousel shows
+    // invented packages (mockPackages).
+    defaults: disabledEverywhere(),
   },
   {
     id: "useCaseWeather",

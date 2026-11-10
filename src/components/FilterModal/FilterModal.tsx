@@ -15,6 +15,7 @@ import { logError } from "@/lib/logger";
 import {
   ACCESS_OPTIONS,
   type FilterState,
+  GATEWAY_FILTER_SUPPORT,
   processFieldsOfScience,
   processLicenses,
   VALIDATION_CONFIG,
@@ -240,11 +241,18 @@ export default function FilterModal({
 
     if (hasErrors) return;
 
-    onApplyFilters(
-      accessUnavailableReason === undefined
-        ? filters
-        : { ...filters, access: "" },
-    );
+    // Never apply a value for a filter that is not offered (stale state).
+    const applied = {
+      ...filters,
+      ...(accessUnavailableReason === undefined ? {} : { access: "" }),
+      ...(GATEWAY_FILTER_SUPPORT.creationYear
+        ? {}
+        : { creationYear: { start: "", end: "" } }),
+      ...(GATEWAY_FILTER_SUPPORT.datasetSize
+        ? {}
+        : { datasetSize: { start: "", end: "" } }),
+    };
+    onApplyFilters(applied);
     onClose();
   };
 
@@ -306,53 +314,61 @@ export default function FilterModal({
                 )}
               </div>
 
-              <div className="pb-6 px-6 border-b border-slate-200">
-                <h4 className="text-body-16-medium mb-4 text-slate-850">
-                  Creation Year
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="From"
-                    type="text"
-                    value={filters.creationYear.start}
-                    onChange={(e) => handleYearChange("start", e.target.value)}
-                    placeholder="YYYY"
-                    error={yearErrors.start}
-                  />
-                  <Input
-                    label="To"
-                    type="text"
-                    value={filters.creationYear.end}
-                    onChange={(e) => handleYearChange("end", e.target.value)}
-                    placeholder="YYYY"
-                    error={yearErrors.end}
-                  />
+              {GATEWAY_FILTER_SUPPORT.creationYear && (
+                <div className="pb-6 px-6 border-b border-slate-200">
+                  <h4 className="text-body-16-medium mb-4 text-slate-850">
+                    Creation Year
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="From"
+                      type="text"
+                      value={filters.creationYear.start}
+                      onChange={(e) =>
+                        handleYearChange("start", e.target.value)
+                      }
+                      placeholder="YYYY"
+                      error={yearErrors.start}
+                    />
+                    <Input
+                      label="To"
+                      type="text"
+                      value={filters.creationYear.end}
+                      onChange={(e) => handleYearChange("end", e.target.value)}
+                      placeholder="YYYY"
+                      error={yearErrors.end}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="pb-6 px-6 border-b border-slate-200">
-                <h4 className="text-body-16-medium mb-4 text-slate-850">
-                  Dataset Size
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Min (MB)"
-                    type="text"
-                    value={filters.datasetSize.start}
-                    onChange={(e) => handleSizeChange("start", e.target.value)}
-                    placeholder="0"
-                    error={sizeErrors.start}
-                  />
-                  <Input
-                    label="Max (MB)"
-                    type="text"
-                    value={filters.datasetSize.end}
-                    onChange={(e) => handleSizeChange("end", e.target.value)}
-                    placeholder="∞"
-                    error={sizeErrors.end}
-                  />
+              {GATEWAY_FILTER_SUPPORT.datasetSize && (
+                <div className="pb-6 px-6 border-b border-slate-200">
+                  <h4 className="text-body-16-medium mb-4 text-slate-850">
+                    Dataset Size
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="Min (MB)"
+                      type="text"
+                      value={filters.datasetSize.start}
+                      onChange={(e) =>
+                        handleSizeChange("start", e.target.value)
+                      }
+                      placeholder="0"
+                      error={sizeErrors.start}
+                    />
+                    <Input
+                      label="Max (MB)"
+                      type="text"
+                      value={filters.datasetSize.end}
+                      onChange={(e) => handleSizeChange("end", e.target.value)}
+                      placeholder="∞"
+                      error={sizeErrors.end}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="pb-6 px-6 border-b border-slate-200">
                 <h4 className="text-body-16-medium mb-4 text-slate-850">
@@ -389,9 +405,21 @@ export default function FilterModal({
                     options={licenses}
                     value={filters.license}
                     onChange={(value) =>
-                      setFilters({ ...filters, license: value })
+                      setFilters({
+                        ...filters,
+                        // The Gateway takes one licence: keep the latest pick.
+                        license: GATEWAY_FILTER_SUPPORT.multipleLicenses
+                          ? value
+                          : value
+                              .filter((v) => !filters.license.includes(v))
+                              .slice(-1),
+                      })
                     }
-                    placeholder="Select licenses..."
+                    placeholder={
+                      GATEWAY_FILTER_SUPPORT.multipleLicenses
+                        ? "Select licenses..."
+                        : "Select a license..."
+                    }
                     searchable
                     variant="inline"
                     searchPlaceholder="Search..."

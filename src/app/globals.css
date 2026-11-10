@@ -292,11 +292,17 @@
   --text-tiny: 0.625rem; /* 10px */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* The UI is light-only: keep the page background and native controls light
+   under a dark OS theme, and stop the page from rubber-banding on macOS
+   (fixed sidebar, header-less panels and the chat input stay put while the
+   rest of the document bounces). */
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  overscroll-behavior-y: none;
 }
 
 @layer base {
@@ -651,15 +657,4 @@
 
 .scrollbar-hover:hover {
   scrollbar-color: #cbd5e1 transparent;
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .scrollbar-hover:hover::-webkit-scrollbar-thumb {
-    background: #475569; /* slate-600 */
-  }
-
-  .scrollbar-hover:hover {
-    scrollbar-color: #475569 transparent;
-  }
 }

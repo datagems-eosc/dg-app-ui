@@ -8,12 +8,18 @@ interface DatasetHeaderProps {
 }
 
 export default function DatasetHeader({ dataset }: DatasetHeaderProps) {
+  const headline = dataset.headline?.trim();
+  const showHeadline =
+    headline &&
+    headline !== dataset.title.trim() &&
+    headline !== dataset.description.trim();
+
   return (
     <div className={styles.datasetHeader}>
       <h1 className={styles.datasetHeader__title}>{dataset.title}</h1>
-      <p className={styles.datasetHeader__description}>
-        {dataset.description || "No description available."}
-      </p>
+      {showHeadline && (
+        <p className={styles.datasetHeader__description}>{headline}</p>
+      )}
     </div>
   );
 }
