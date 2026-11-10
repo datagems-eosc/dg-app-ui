@@ -7,7 +7,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
+import { FEATURE_FLAGS_STORAGE_KEY } from "@/lib/featureFlags/storage";
 import { FeatureFlagGuard } from "./FeatureFlagGuard";
+
+const setFlagOverride = (datasetPackage: boolean) =>
+  window.localStorage.setItem(
+    FEATURE_FLAGS_STORAGE_KEY,
+    JSON.stringify({ datasetPackage }),
+  );
 
 describe("FeatureFlagGuard", () => {
   beforeEach(() => {
@@ -15,21 +22,21 @@ describe("FeatureFlagGuard", () => {
     window.localStorage.clear();
   });
 
-  it("renders children when the flag is enabled", () => {
-    window.__env = { DEPLOYMENT_ENV: "playground" }; // useCaseWeather default true everywhere
+  it("renders children when the flag is enabled", async () => {
+    setFlagOverride(true);
     render(
       <FeatureFlagsProvider>
-        <FeatureFlagGuard flag="useCaseWeather">
+        <FeatureFlagGuard flag="datasetPackage">
           <p>visible</p>
         </FeatureFlagGuard>
       </FeatureFlagsProvider>,
     );
-    expect(screen.getByText("visible")).toBeInTheDocument();
+    expect(await screen.findByText("visible")).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
   });
 
   it("hides children and redirects once hydrated when the flag is disabled", async () => {
-    window.__env = { DEPLOYMENT_ENV: "staging" }; // datasetPackage default false everywhere
+    setFlagOverride(false);
     render(
       <FeatureFlagsProvider>
         <FeatureFlagGuard flag="datasetPackage" redirectTo="/dashboard">

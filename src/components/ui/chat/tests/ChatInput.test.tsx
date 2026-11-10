@@ -222,7 +222,8 @@ describe("ChatInput", () => {
     expect(sendButton).toBeInTheDocument();
   });
 
-  it("should render Collections button when collections are not provided", () => {
+  it("shows the selected collection's name on the Collections button", () => {
+    // No " Collection" suffix here: stripping it has its own test below.
     const mockSelectedCollection: Collection = {
       id: "1",
       name: "Climate data",
