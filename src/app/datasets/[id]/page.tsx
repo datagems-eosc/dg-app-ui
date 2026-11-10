@@ -57,6 +57,7 @@ export default function DatasetDetailsPage() {
           "id",
           "code",
           "name",
+          "headline",
           "description",
           "license",
           "mimeType",
@@ -245,6 +246,7 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     // no group semantics and no dataset grants, and the caller's own Browse
     // permission says nothing about whether the Everyone audience has any.
     sharing: SHARING_WITHOUT_EVIDENCE.state,
+    headline: typeof obj.headline === "string" ? obj.headline : undefined,
     description: String(obj.description ?? ""),
     size: obj.size ? String(obj.size) : "N/A",
     lastUpdated: obj.lastUpdated

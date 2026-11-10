@@ -29,6 +29,7 @@ export interface Dataset {
  * neither existing label can express it. See `@/lib/datasetPermissions/model`.
  */
 export type DatasetPlus = Dataset & {
+  headline?: string;
   sharing?: DatasetSharingState;
   collections?: { id: string; name: string; code: string }[];
   license?: string;
