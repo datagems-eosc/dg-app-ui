@@ -68,6 +68,30 @@ describe("toAnalysisPanels", () => {
     expect(panels.termFreqData).not.toEqual([]);
   });
 
+  it("averages sentiment over the chunks that carry a profile", () => {
+    const mixed = {
+      result: {
+        features: [
+          ...analysisPayload.features,
+          {
+            object_id: "chunk-without-profile",
+            term_frequency: [{ term: "vienna", count: 1 }],
+          },
+        ],
+      },
+    };
+    const panels = panelsFor(mixed);
+
+    expect(panels.sentimentData).toMatchObject({
+      positive: 25,
+      neutral: 70,
+      negative: 5,
+      totalDocs: 2,
+    });
+    expect(panels.sentimentData?.avgSentiment).toBeCloseTo(0.4);
+    expect(panels.sentimentData?.confidence).toBeCloseTo(0.3);
+  });
+
   it("leaves every panel empty for an empty result", () => {
     expect(panelsFor(envelopedEmpty)).toEqual({
       termFreqData: [],

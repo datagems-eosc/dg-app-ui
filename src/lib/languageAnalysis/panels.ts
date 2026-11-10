@@ -60,18 +60,21 @@ export function toAnalysisPanels({
     .sort((a, b) => b.frequency - a.frequency)
     .slice(0, 20);
 
-  // Aggregate sentiment — sum term counts, average polarity/subjectivity scores.
-  // Empty when no chunk carries a profile (the Gateway omits null profiles).
+  // Aggregate sentiment — sum term counts, average polarity/subjectivity scores
+  // over the chunks that carry a profile (the Gateway omits null profiles).
+  // Empty when no chunk carries one.
+  const profiles = features.flatMap((feature) =>
+    feature.sentiment_profile ? [feature.sentiment_profile] : [],
+  );
   let sentimentData: SentimentData | null = null;
-  if (features.some((feature) => feature.sentiment_profile)) {
+  if (profiles.length > 0) {
     let posTerms = 0;
     let negTerms = 0;
     let neutTerms = 0;
     let totalTerms = 0;
     let polaritySum = 0;
     let subjectivitySum = 0;
-    for (const feature of features) {
-      const sp = feature.sentiment_profile ?? {};
+    for (const sp of profiles) {
       posTerms += Number(sp.positive_terms ?? 0);
       negTerms += Number(sp.negative_terms ?? 0);
       neutTerms += Number(sp.neutral_terms ?? 0);
@@ -84,9 +87,9 @@ export function toAnalysisPanels({
       positive: (posTerms / denom) * 100,
       neutral: (neutTerms / denom) * 100,
       negative: (negTerms / denom) * 100,
-      avgSentiment: polaritySum / features.length,
-      confidence: subjectivitySum / features.length,
-      totalDocs: features.length,
+      avgSentiment: polaritySum / profiles.length,
+      confidence: subjectivitySum / profiles.length,
+      totalDocs: profiles.length,
     };
   }
 
