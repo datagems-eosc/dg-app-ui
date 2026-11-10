@@ -270,6 +270,7 @@ export default function Browse({
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const actionsPanelId = useId();
   const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
     useState(false);
   const titleActionsPanelId = useId();
@@ -1001,6 +1002,11 @@ export default function Browse({
                     <Button
                       variant="outline"
                       size="sm"
+                      aria-label="Selected dataset actions"
+                      aria-expanded={showActionsDropdown}
+                      aria-controls={
+                        showActionsDropdown ? actionsPanelId : undefined
+                      }
                       onClick={() =>
                         setShowActionsDropdown(!showActionsDropdown)
                       }
@@ -1012,6 +1018,7 @@ export default function Browse({
                     {/* Actions dropdown menu */}
                     {showActionsDropdown && (
                       <div
+                        id={actionsPanelId}
                         data-actions-dropdown
                         className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
                       >

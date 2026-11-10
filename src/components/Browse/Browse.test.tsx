@@ -613,3 +613,75 @@ describe("Browse – Smart search with an empty box", () => {
     expect(screen.getByText("Sorted by relevance")).toBeInTheDocument();
   });
 });
+
+describe("Browse – selected datasets actions", () => {
+  const mockDatasets = [
+    {
+      id: "1",
+      title: "Test Dataset",
+      description: "Test description",
+      license: "MIT",
+      size: "1 MB",
+      datePublished: "2024-01-01",
+      category: "Math" as const,
+      access: "Open Access" as const,
+      lastUpdated: "2024-01-01",
+      tags: ["test"],
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(false);
+    mockUseRouter.mockReturnValue({ push: vi.fn() });
+    mockUseCollections.mockReturnValue({
+      apiCollections: [],
+      extraCollections: [],
+      refreshExtraCollections: vi.fn(),
+      notifyCollectionModified: vi.fn(),
+    });
+    mockUseApi.mockReturnValue({
+      hasToken: false,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+    });
+  });
+
+  it("names the actions button and links it to the panel it opens", async () => {
+    render(
+      <Browse
+        datasets={mockDatasets}
+        title="Browse"
+        subtitle=""
+        selectedDatasets={["1"]}
+      />,
+    );
+
+    const actionsButton = screen.getByRole("button", {
+      name: "Selected dataset actions",
+    });
+    expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+    expect(actionsButton).not.toHaveAttribute("aria-controls");
+
+    await userEvent.click(actionsButton);
+
+    expect(actionsButton).toHaveAttribute("aria-expanded", "true");
+    const panelId = actionsButton.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    const panel = document.getElementById(String(panelId));
+    expect(panel).toHaveTextContent("Select All");
+
+    await userEvent.click(actionsButton);
+
+    expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+    expect(actionsButton).not.toHaveAttribute("aria-controls");
+  });
+
+  it("offers no actions button when nothing is selected", () => {
+    render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
+
+    expect(
+      screen.queryByRole("button", { name: "Selected dataset actions" }),
+    ).not.toBeInTheDocument();
+  });
+});
