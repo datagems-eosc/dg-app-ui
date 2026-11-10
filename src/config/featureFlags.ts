@@ -4,7 +4,6 @@ export type FeatureFlagId =
   | "datasetRecommendation"
   | "questionRecommendation"
   | "customCollection"
-  | "generalChat"
   | "expertMode"
   | "datasetPackage"
   | "useCaseWeather"
@@ -52,11 +51,6 @@ export const FEATURE_FLAGS: readonly FeatureFlagDefinition[] = [
   {
     id: "customCollection",
     label: "Custom collection",
-    defaults: disabledEverywhere(),
-  },
-  {
-    id: "generalChat",
-    label: "Hide general chat",
     defaults: disabledEverywhere(),
   },
   {

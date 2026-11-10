@@ -22,8 +22,8 @@ vi.mock("@/contexts/FeatureFlagsContext", () => ({
   useFeatureFlag: (id: string) => mockUseFeatureFlag(id),
 }));
 
-vi.mock("../DatasetCard", () => ({
-  default: () => null,
+vi.mock("@/contexts/DatasetContext", () => ({
+  useDataset: () => ({ toggleFavorite: vi.fn(), isFavorite: () => false }),
 }));
 
 vi.mock("./useDatasetSearchExamples", () => ({
@@ -265,7 +265,7 @@ describe("Browse - Delete Collection Feature", () => {
   });
 });
 
-describe("Browse – generalChat flag (Hide general chat)", () => {
+describe("Browse selection availability", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setDefaultBrowseMocks();
@@ -274,7 +274,7 @@ describe("Browse – generalChat flag (Hide general chat)", () => {
   const renderBrowse = () =>
     render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
 
-  it("shows X Selected button when flag is OFF (false)", () => {
+  it("shows the selection counter with default settings", () => {
     mockUseFeatureFlag.mockReturnValue(false);
     renderBrowse();
     expect(
@@ -282,10 +282,83 @@ describe("Browse – generalChat flag (Hide general chat)", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides X Selected button when flag is ON (true)", () => {
+  it("keeps the selection counter available with feature overrides enabled", () => {
     mockUseFeatureFlag.mockReturnValue(true);
     renderBrowse();
-    expect(screen.queryByRole("button", { name: /selected/i })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "0 Selected" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps dataset selection available when feature overrides are enabled", async () => {
+    mockUseFeatureFlag.mockReturnValue(true);
+    renderBrowse();
+    await userEvent.click(screen.getByRole("button", { name: "Select" }));
+    expect(
+      screen.getByRole("button", { name: "1 Selected" }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Deselect" }));
+    expect(
+      screen.getByRole("button", { name: "0 Selected" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps Add available with feature overrides enabled", async () => {
+    mockUseFeatureFlag.mockReturnValue(true);
+    renderBrowse();
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(screen.getByText("Add to Collection")).toBeInTheDocument();
+  });
+
+  it.each(["grid", "list"] as const)(
+    "respects caller suppression of Add in %s view",
+    (viewMode) => {
+      window.localStorage.setItem("browseViewMode", viewMode);
+      mockUseFeatureFlag.mockReturnValue(true);
+      render(
+        <Browse
+          datasets={mockDatasets}
+          title="Browse"
+          subtitle=""
+          showAddButton={false}
+        />,
+      );
+      window.localStorage.removeItem("browseViewMode");
+      expect(
+        screen.queryByRole("button", { name: "Add" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Select" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("toggles the selected panel through the existing callbacks", async () => {
+    const onReopenSidebar = vi.fn();
+    const onCloseSidebar = vi.fn();
+    const { rerender } = render(
+      <Browse
+        datasets={[]}
+        title="Browse"
+        subtitle=""
+        onReopenSidebar={onReopenSidebar}
+        onCloseSidebar={onCloseSidebar}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "0 Selected" }));
+    expect(onReopenSidebar).toHaveBeenCalledTimes(1);
+    rerender(
+      <Browse
+        datasets={[]}
+        title="Browse"
+        subtitle=""
+        showSelectedPanel
+        onReopenSidebar={onReopenSidebar}
+        onCloseSidebar={onCloseSidebar}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "0 Selected" }));
+    await waitFor(() => expect(onCloseSidebar).toHaveBeenCalledTimes(1));
   });
 });
 

@@ -62,7 +62,6 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
     const [showBottomFade, setShowBottomFade] = useState(false);
     const [isExpertMode, setIsExpertMode] = useState(false);
     const expertModeEnabled = useFeatureFlag("expertMode");
-    const generalChatEnabled = useFeatureFlag("generalChat");
     const hasText = value.trim().length > 0;
 
     useEffect(() => {
@@ -217,26 +216,25 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
                       </span>
                     </div>
                   ) : null}
-                  {!generalChatEnabled &&
-                    (collections && onSelectCollection ? (
-                      <CollectionsDropdown
-                        collections={collections}
-                        selectedCollection={selectedCollection || null}
-                        onSelectCollection={onSelectCollection}
-                        disabled={disabled}
-                      />
-                    ) : showCollectionsButton ? (
-                      <Button
-                        variant="outline"
-                        onClick={onAddDatasets}
-                        disabled={disabled}
-                      >
-                        <span className="w-4 h-4 mr-2">📁</span>
-                        {selectedCollection
-                          ? selectedCollection.name.replace(/ Collection$/i, "")
-                          : "Collections"}
-                      </Button>
-                    ) : null)}
+                  {collections && onSelectCollection ? (
+                    <CollectionsDropdown
+                      collections={collections}
+                      selectedCollection={selectedCollection || null}
+                      onSelectCollection={onSelectCollection}
+                      disabled={disabled}
+                    />
+                  ) : showCollectionsButton ? (
+                    <Button
+                      variant="outline"
+                      onClick={onAddDatasets}
+                      disabled={disabled}
+                    >
+                      <span className="w-4 h-4 mr-2">📁</span>
+                      {selectedCollection
+                        ? selectedCollection.name.replace(/ Collection$/i, "")
+                        : "Collections"}
+                    </Button>
+                  ) : null}
 
                   {expertModeEnabled && (
                     <div
