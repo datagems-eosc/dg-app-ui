@@ -1,12 +1,14 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { RecommendationsSkeleton } from "./RecommendationsSkeleton";
 
 describe("RecommendationsSkeleton", () => {
-  it("should render a root element", () => {
-    const { container } = render(<RecommendationsSkeleton />);
+  it("announces that recommendations are loading", () => {
+    render(<RecommendationsSkeleton />);
 
-    expect(container.firstElementChild).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Loading recommendations" }),
+    ).toBeInTheDocument();
   });
 
   it("should render skeleton elements with animation", () => {
