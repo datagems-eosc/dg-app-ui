@@ -72,7 +72,7 @@ export type LinguisticFeaturesOutcome =
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** `null` or absent: the Gateway model has no defaults, so empty fields may arrive as `null`. */
+/** `null` or absent: the Gateway omits null fields (`NullValueHandling.Ignore`); explicit `null` is accepted defensively. */
 const isAbsent = (value: unknown): value is null | undefined =>
   value === null || value === undefined;
 
@@ -97,12 +97,16 @@ const diagnose = (raw: unknown): UnrecognizedDiagnostic => {
   return { keys: keys.sort(), valueType: "object" };
 };
 
-/** The analysis payload: the `result` of the envelope, or the bare object. */
+/**
+ * The analysis payload. An envelope's `result` object is always the payload:
+ * the Gateway omits null fields, so an empty analysis arrives as `{ result: {} }`.
+ * A bare object counts only when it carries `features` or `rag_output`.
+ */
 const payloadOf = (
   raw: Record<string, unknown>,
 ): Record<string, unknown> | undefined => {
   if ("result" in raw) return isRecord(raw.result) ? raw.result : undefined;
-  return raw;
+  return "features" in raw || "rag_output" in raw ? raw : undefined;
 };
 
 export function parseLinguisticFeatures(
@@ -115,9 +119,7 @@ export function parseLinguisticFeatures(
 
   if (!isRecord(raw)) return unrecognized();
   const payload = payloadOf(raw);
-  if (!payload || !("features" in payload || "rag_output" in payload)) {
-    return unrecognized();
-  }
+  if (!payload) return unrecognized();
 
   const ragOutput = payload.rag_output;
   if (!isAbsent(ragOutput) && !isRecord(ragOutput)) return unrecognized();

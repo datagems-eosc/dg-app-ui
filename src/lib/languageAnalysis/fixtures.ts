@@ -94,7 +94,17 @@ export const envelopedEmpty = {
   conversationId: null,
 };
 
-/** The Gateway model has no defaults, so absent service fields serialize as `null`. */
+/**
+ * Shape seen on dev on 10 November: the Gateway serializes with
+ * `NullValueHandling.Ignore` (`Startup.cs`), so a null `conversationId` is
+ * omitted rather than sent as `null`.
+ */
+export const envelopedWithoutConversationId = { result: analysisPayload };
+
+/** Every analysis field was null, so the Gateway omitted all of them. */
+export const envelopedAllFieldsOmitted = { result: {} };
+
+/** Explicit nulls, kept defensively in case serialization settings change. */
 export const envelopedNullFields = {
   result: { rag_output: null, features: null, used_chunks: null },
   conversationId: null,

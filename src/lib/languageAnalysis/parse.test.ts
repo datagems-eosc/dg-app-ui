@@ -3,9 +3,11 @@ import {
   bareWithData,
   CONVERSATION_ID,
   DATASET_ID,
+  envelopedAllFieldsOmitted,
   envelopedEmpty,
   envelopedNullFields,
   envelopedWithData,
+  envelopedWithoutConversationId,
   PASSAGE_OBJECT_ID,
   passagesWithoutFeatures,
   unrecognizedEnvelope,
@@ -22,6 +24,14 @@ describe("parseLinguisticFeatures", () => {
     expect(outcome.result.conversationId).toBe(CONVERSATION_ID);
     expect(outcome.result.features).toHaveLength(2);
     expect(outcome.result.passages).toHaveLength(2);
+  });
+
+  it("reads the dev envelope that omits a null conversationId", () => {
+    const outcome = parseLinguisticFeatures(envelopedWithoutConversationId);
+
+    if (outcome.kind !== "ok") throw new Error("expected ok");
+    expect(outcome.result.conversationId).toBeNull();
+    expect(outcome.result.features).toHaveLength(2);
   });
 
   it("keeps per-passage source identifiers", () => {
@@ -51,6 +61,7 @@ describe("parseLinguisticFeatures", () => {
     ["an enveloped empty result", envelopedEmpty, 0],
     ["null fields from the Gateway", envelopedNullFields, 0],
     ["a bare payload with only rag_output", { rag_output: null }, 0],
+    ["an envelope whose fields were all omitted", envelopedAllFieldsOmitted, 0],
     ["passages without features", passagesWithoutFeatures, 2],
   ])("treats %s as recognized", (_, raw, passageCount) => {
     const outcome = parseLinguisticFeatures(raw);
