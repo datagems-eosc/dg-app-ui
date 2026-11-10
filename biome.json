@@ -82,6 +82,17 @@
         "noDangerouslySetInnerHtmlWithChildren": "error"
       },
       "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["**/*.testStub", "**/*.testStub.*"],
+                "message": "Test stubs replace packages in tests only; import the real module instead."
+              }
+            ]
+          }
+        },
         "useConst": "error",
         "useDefaultParameterLast": "warn",
         "useExportType": "warn",
@@ -184,6 +195,9 @@
         "rules": {
           "suspicious": {
             "noExplicitAny": "off"
+          },
+          "style": {
+            "noRestrictedImports": "off"
           }
         }
       }

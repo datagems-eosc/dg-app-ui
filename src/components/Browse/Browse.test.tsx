@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Browse from "./Browse";
@@ -34,22 +40,38 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-describe("Browse - Delete Collection Feature", () => {
-  const mockDatasets = [
-    {
-      id: "1",
-      title: "Test Dataset",
-      description: "Test description",
-      license: "MIT",
-      size: "1 MB",
-      datePublished: "2024-01-01",
-      category: "Math" as const,
-      access: "Open Access" as const,
-      lastUpdated: "2024-01-01",
-      tags: ["test"],
-    },
-  ];
+const mockDatasets = [
+  {
+    id: "1",
+    title: "Test Dataset",
+    description: "Test description",
+    license: "MIT",
+    size: "1 MB",
+    datePublished: "2024-01-01",
+    category: "Math" as const,
+    access: "Open Access" as const,
+    lastUpdated: "2024-01-01",
+    tags: ["test"],
+  },
+];
 
+// Router, collections and a signed-out API: enough for Browse to render.
+const setDefaultBrowseMocks = () => {
+  mockUseRouter.mockReturnValue({ push: vi.fn() });
+  mockUseCollections.mockReturnValue({
+    apiCollections: [],
+    extraCollections: [],
+    refreshExtraCollections: vi.fn(),
+    notifyCollectionModified: vi.fn(),
+  });
+  mockUseApi.mockReturnValue({
+    hasToken: false,
+    getCollectionGrants: vi.fn().mockResolvedValue([]),
+    getFieldsOfScience: vi.fn().mockResolvedValue([]),
+  });
+};
+
+describe("Browse - Delete Collection Feature", () => {
   const baseApiMock = () => ({
     hasToken: true,
     getCollectionGrants: vi.fn().mockResolvedValue([]),
@@ -60,29 +82,14 @@ describe("Browse - Delete Collection Feature", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockUseRouter.mockReturnValue({
-      push: vi.fn(),
-    });
-
-    mockUseCollections.mockReturnValue({
-      apiCollections: [],
-      extraCollections: [],
-      refreshExtraCollections: vi.fn(),
-      notifyCollectionModified: vi.fn(),
-    });
+    setDefaultBrowseMocks();
   });
 
-  it("should show Delete Collection button when user has dg_col-delete grant", async () => {
-    const mockGetCollectionGrants = vi
-      .fn()
-      .mockResolvedValue(["dg_col-delete"]);
-
-    mockUseApi.mockReturnValue({
-      ...baseApiMock(),
-      getCollectionGrants: mockGetCollectionGrants,
-    });
-
+  const renderCustomCollection = (
+    api: Partial<ReturnType<typeof baseApiMock>> = {},
+  ) => {
+    const apiMock = { ...baseApiMock(), ...api };
+    mockUseApi.mockReturnValue(apiMock);
     render(
       <Browse
         datasets={mockDatasets}
@@ -93,44 +100,82 @@ describe("Browse - Delete Collection Feature", () => {
         collectionName="Test Collection"
       />,
     );
+    return apiMock;
+  };
 
+  const collectionActionsButton = () =>
+    screen.getByRole("button", { name: "Collection actions" });
+
+  // Waits until every grant lookup has resolved, so the panel reflects the
+  // grants, then opens it.
+  const openCollectionActions = async (
+    apiMock: ReturnType<typeof baseApiMock>,
+  ) => {
     await waitFor(() => {
-      expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
+      expect(apiMock.getCollectionGrants).toHaveBeenCalledWith("123");
     });
+    await act(async () => {
+      await Promise.all(
+        apiMock.getCollectionGrants.mock.results.map((result) => result.value),
+      );
+    });
+    await userEvent.click(collectionActionsButton());
+  };
 
-    const moreButton = screen.getByRole("button", { name: "" });
-    await userEvent.click(moreButton);
+  const withDeleteGrant = () => ({
+    getCollectionGrants: vi.fn().mockResolvedValue(["dg_col-delete"]),
+  });
+
+  it("should show Delete Collection button when user has dg_col-delete grant", async () => {
+    const apiMock = renderCustomCollection(withDeleteGrant());
+
+    await openCollectionActions(apiMock);
 
     await waitFor(() => {
       expect(screen.getByText("Delete Collection")).toBeInTheDocument();
     });
   });
 
-  it("should NOT show Delete Collection button when user does not have dg_col-delete grant", async () => {
-    const mockGetCollectionGrants = vi.fn().mockResolvedValue([]);
+  it("names the collection actions button and links it to the panel it opens", async () => {
+    renderCustomCollection();
 
-    mockUseApi.mockReturnValue({
-      ...baseApiMock(),
-      getCollectionGrants: mockGetCollectionGrants,
-    });
+    const moreButton = collectionActionsButton();
+    // Disclosure pattern: the panel is a list of buttons, not an ARIA menu.
+    expect(moreButton).not.toHaveAttribute("aria-haspopup");
+    expect(moreButton).toHaveAttribute("aria-expanded", "false");
+    expect(moreButton).not.toHaveAttribute("aria-controls");
 
-    render(
-      <Browse
-        datasets={mockDatasets}
-        title="Test Collection"
-        subtitle="Test subtitle"
-        isCustomCollection={true}
-        collectionId="123"
-        collectionName="Test Collection"
-      />,
-    );
-
-    await waitFor(() => {
-      expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
-    });
-
-    const moreButton = screen.getByRole("button", { name: "" });
     await userEvent.click(moreButton);
+
+    expect(moreButton).toHaveAttribute("aria-expanded", "true");
+    const panelId = moreButton.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    expect(document.getElementById(String(panelId))).toBeInTheDocument();
+
+    await userEvent.click(moreButton);
+
+    expect(moreButton).toHaveAttribute("aria-expanded", "false");
+    expect(moreButton).not.toHaveAttribute("aria-controls");
+  });
+
+  it("closes the collection actions panel on a click outside it", async () => {
+    renderCustomCollection();
+    const moreButton = collectionActionsButton();
+    await userEvent.click(moreButton);
+    const panelId = String(moreButton.getAttribute("aria-controls"));
+    expect(document.getElementById(panelId)).toBeInTheDocument();
+
+    await userEvent.click(document.body);
+
+    expect(moreButton).toHaveAttribute("aria-expanded", "false");
+    expect(moreButton).not.toHaveAttribute("aria-controls");
+    expect(document.getElementById(panelId)).not.toBeInTheDocument();
+  });
+
+  it("should NOT show Delete Collection button when user does not have dg_col-delete grant", async () => {
+    const apiMock = renderCustomCollection();
+
+    await openCollectionActions(apiMock);
 
     await waitFor(() => {
       expect(screen.queryByText("Delete Collection")).not.toBeInTheDocument();
@@ -138,14 +183,8 @@ describe("Browse - Delete Collection Feature", () => {
   });
 
   it("should NOT check grants when isCustomCollection is false", async () => {
-    const mockGetCollectionGrants = vi
-      .fn()
-      .mockResolvedValue(["dg_col-delete"]);
-
-    mockUseApi.mockReturnValue({
-      ...baseApiMock(),
-      getCollectionGrants: mockGetCollectionGrants,
-    });
+    const apiMock = { ...baseApiMock(), ...withDeleteGrant() };
+    mockUseApi.mockReturnValue(apiMock);
 
     render(
       <Browse
@@ -157,40 +196,15 @@ describe("Browse - Delete Collection Feature", () => {
     );
 
     await waitFor(() => {
-      expect(mockGetCollectionGrants).not.toHaveBeenCalled();
+      expect(apiMock.getCollectionGrants).not.toHaveBeenCalled();
     });
   });
 
   it("should open delete modal when Delete Collection is clicked", async () => {
-    const mockGetCollectionGrants = vi
-      .fn()
-      .mockResolvedValue(["dg_col-delete"]);
+    const apiMock = renderCustomCollection(withDeleteGrant());
 
-    mockUseApi.mockReturnValue({
-      ...baseApiMock(),
-      getCollectionGrants: mockGetCollectionGrants,
-    });
-
-    render(
-      <Browse
-        datasets={mockDatasets}
-        title="Test Collection"
-        subtitle="Test subtitle"
-        isCustomCollection={true}
-        collectionId="123"
-        collectionName="Test Collection"
-      />,
-    );
-
-    await waitFor(() => {
-      expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
-    });
-
-    const moreButton = screen.getByRole("button", { name: "" });
-    await userEvent.click(moreButton);
-
-    const deleteCollectionButton = await screen.findByText("Delete Collection");
-    await userEvent.click(deleteCollectionButton);
+    await openCollectionActions(apiMock);
+    await userEvent.click(await screen.findByText("Delete Collection"));
 
     await waitFor(() => {
       expect(
@@ -200,23 +214,8 @@ describe("Browse - Delete Collection Feature", () => {
   });
 
   it("should call deleteCollection API and show success toast", async () => {
-    const mockGetCollectionGrants = vi
-      .fn()
-      .mockResolvedValue(["dg_col-delete"]);
-    const mockDeleteCollection = vi.fn().mockResolvedValue({});
     const mockRefreshExtraCollections = vi.fn();
     const mockNotifyCollectionModified = vi.fn();
-    const mockPush = vi.fn();
-
-    mockUseApi.mockReturnValue({
-      ...baseApiMock(),
-      getCollectionGrants: mockGetCollectionGrants,
-      deleteCollection: mockDeleteCollection,
-    });
-
-    mockUseRouter.mockReturnValue({
-      push: mockPush,
-    });
 
     mockUseCollections.mockReturnValue({
       apiCollections: [],
@@ -225,34 +224,16 @@ describe("Browse - Delete Collection Feature", () => {
       notifyCollectionModified: mockNotifyCollectionModified,
     });
 
-    render(
-      <Browse
-        datasets={mockDatasets}
-        title="Test Collection"
-        subtitle="Test subtitle"
-        isCustomCollection={true}
-        collectionId="123"
-        collectionName="Test Collection"
-      />,
+    const apiMock = renderCustomCollection(withDeleteGrant());
+
+    await openCollectionActions(apiMock);
+    await userEvent.click(await screen.findByText("Delete Collection"));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /^delete$/i }),
     );
 
     await waitFor(() => {
-      expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
-    });
-
-    const moreButton = screen.getByRole("button", { name: "" });
-    await userEvent.click(moreButton);
-
-    const deleteCollectionButton = await screen.findByText("Delete Collection");
-    await userEvent.click(deleteCollectionButton);
-
-    const confirmDeleteButton = await screen.findByRole("button", {
-      name: /^delete$/i,
-    });
-    await userEvent.click(confirmDeleteButton);
-
-    await waitFor(() => {
-      expect(mockDeleteCollection).toHaveBeenCalledWith("123");
+      expect(apiMock.deleteCollection).toHaveBeenCalledWith("123");
       expect(mockRefreshExtraCollections).toHaveBeenCalled();
       expect(mockNotifyCollectionModified).toHaveBeenCalled();
     });
@@ -265,44 +246,16 @@ describe("Browse - Delete Collection Feature", () => {
   });
 
   it("should show error toast when deletion fails", async () => {
-    const mockGetCollectionGrants = vi
-      .fn()
-      .mockResolvedValue(["dg_col-delete"]);
-    const mockDeleteCollection = vi
-      .fn()
-      .mockRejectedValue(new Error("API Error"));
-
-    mockUseApi.mockReturnValue({
-      ...baseApiMock(),
-      getCollectionGrants: mockGetCollectionGrants,
-      deleteCollection: mockDeleteCollection,
+    const apiMock = renderCustomCollection({
+      ...withDeleteGrant(),
+      deleteCollection: vi.fn().mockRejectedValue(new Error("API Error")),
     });
 
-    render(
-      <Browse
-        datasets={mockDatasets}
-        title="Test Collection"
-        subtitle="Test subtitle"
-        isCustomCollection={true}
-        collectionId="123"
-        collectionName="Test Collection"
-      />,
+    await openCollectionActions(apiMock);
+    await userEvent.click(await screen.findByText("Delete Collection"));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /^delete$/i }),
     );
-
-    await waitFor(() => {
-      expect(mockGetCollectionGrants).toHaveBeenCalledWith("123");
-    });
-
-    const moreButton = screen.getByRole("button", { name: "" });
-    await userEvent.click(moreButton);
-
-    const deleteCollectionButton = await screen.findByText("Delete Collection");
-    await userEvent.click(deleteCollectionButton);
-
-    const confirmDeleteButton = await screen.findByRole("button", {
-      name: /^delete$/i,
-    });
-    await userEvent.click(confirmDeleteButton);
 
     await waitFor(() => {
       expect(
@@ -313,35 +266,9 @@ describe("Browse - Delete Collection Feature", () => {
 });
 
 describe("Browse – generalChat flag (Hide general chat)", () => {
-  const mockDatasets = [
-    {
-      id: "1",
-      title: "Test Dataset",
-      description: "Test description",
-      license: "MIT",
-      size: "1 MB",
-      datePublished: "2024-01-01",
-      category: "Math" as const,
-      access: "Open Access" as const,
-      lastUpdated: "2024-01-01",
-      tags: ["test"],
-    },
-  ];
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseRouter.mockReturnValue({ push: vi.fn() });
-    mockUseCollections.mockReturnValue({
-      apiCollections: [],
-      extraCollections: [],
-      refreshExtraCollections: vi.fn(),
-      notifyCollectionModified: vi.fn(),
-    });
-    mockUseApi.mockReturnValue({
-      hasToken: false,
-      getCollectionGrants: vi.fn().mockResolvedValue([]),
-      getFieldsOfScience: vi.fn().mockResolvedValue([]),
-    });
+    setDefaultBrowseMocks();
   });
 
   const renderBrowse = () =>
@@ -690,5 +617,69 @@ describe("Browse – Smart search with an empty box", () => {
     );
     expect(screen.queryByRole("button", { name: "Greek corpora" })).toBeNull();
     expect(screen.getByText("Sorted by relevance")).toBeInTheDocument();
+  });
+});
+
+describe("Browse – selected datasets actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(false);
+    setDefaultBrowseMocks();
+  });
+
+  const renderWithSelection = () =>
+    render(
+      <Browse
+        datasets={mockDatasets}
+        title="Browse"
+        subtitle=""
+        selectedDatasets={["1"]}
+      />,
+    );
+
+  const selectedActionsButton = () =>
+    screen.getByRole("button", { name: "Selected dataset actions" });
+
+  it("names the actions button and links it to the panel it opens", async () => {
+    renderWithSelection();
+
+    const actionsButton = selectedActionsButton();
+    expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+    expect(actionsButton).not.toHaveAttribute("aria-controls");
+
+    await userEvent.click(actionsButton);
+
+    expect(actionsButton).toHaveAttribute("aria-expanded", "true");
+    const panelId = actionsButton.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    const panel = document.getElementById(String(panelId));
+    expect(panel).toHaveTextContent("Select All");
+
+    await userEvent.click(actionsButton);
+
+    expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+    expect(actionsButton).not.toHaveAttribute("aria-controls");
+  });
+
+  it("closes the actions panel on a click outside it", async () => {
+    renderWithSelection();
+    const actionsButton = selectedActionsButton();
+    await userEvent.click(actionsButton);
+    const panelId = String(actionsButton.getAttribute("aria-controls"));
+    expect(document.getElementById(panelId)).toBeInTheDocument();
+
+    await userEvent.click(document.body);
+
+    expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+    expect(actionsButton).not.toHaveAttribute("aria-controls");
+    expect(document.getElementById(panelId)).not.toBeInTheDocument();
+  });
+
+  it("offers no actions button when nothing is selected", () => {
+    render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
+
+    expect(
+      screen.queryByRole("button", { name: "Selected dataset actions" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -3,11 +3,16 @@ import { describe, expect, it } from "vitest";
 import { RecommendationsSkeleton } from "./RecommendationsSkeleton";
 
 describe("RecommendationsSkeleton", () => {
-  it("should render the skeleton structure", () => {
-    render(<RecommendationsSkeleton />);
+  it("announces that recommendations are loading", () => {
+    const { container } = render(<RecommendationsSkeleton />);
 
-    const container = screen.getByRole("generic");
-    expect(container).toBeInTheDocument();
+    // Screen readers read a status region's text, not its label.
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading recommendations",
+    );
+    for (const bar of container.querySelectorAll(".animate-pulse")) {
+      expect(bar.closest('[aria-hidden="true"]')).not.toBeNull();
+    }
   });
 
   it("should render skeleton elements with animation", () => {

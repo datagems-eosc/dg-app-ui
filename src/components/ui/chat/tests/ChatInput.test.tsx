@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Collection } from "@/types/collection";
 import { ChatInput } from "../ChatInput";
@@ -52,13 +53,29 @@ describe("ChatInput", () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
 
-    render(<ChatInput {...defaultProps} onChange={onChange} />);
+    // ChatInput is controlled: the parent keeps the value, as in the app.
+    function ControlledChatInput() {
+      const [value, setValue] = useState("");
+      return (
+        <ChatInput
+          {...defaultProps}
+          value={value}
+          onChange={(next) => {
+            setValue(next);
+            onChange(next);
+          }}
+        />
+      );
+    }
+
+    render(<ControlledChatInput />);
 
     const textarea = screen.getByPlaceholderText("Ask me anything...");
     await user.type(textarea, "Hello");
 
     expect(onChange).toHaveBeenCalledTimes(5);
     expect(onChange).toHaveBeenLastCalledWith("Hello");
+    expect(textarea).toHaveValue("Hello");
   });
 
   it("should display the value prop in textarea", () => {
@@ -205,10 +222,11 @@ describe("ChatInput", () => {
     expect(sendButton).toBeInTheDocument();
   });
 
-  it("should render Collections button when collections are not provided", () => {
+  it("shows the selected collection's name on the Collections button", () => {
+    // No " Collection" suffix here: stripping it has its own test below.
     const mockSelectedCollection: Collection = {
       id: "1",
-      name: "Test Collection",
+      name: "Climate data",
     };
 
     render(
@@ -218,8 +236,9 @@ describe("ChatInput", () => {
       />,
     );
 
-    const collectionsButton = screen.getByText("Test Collection");
-    expect(collectionsButton).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Climate data/ }),
+    ).toBeInTheDocument();
   });
 
   it("should render Collections button with default text when no collection is selected", () => {

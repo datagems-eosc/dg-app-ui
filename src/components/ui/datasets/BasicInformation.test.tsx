@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { BasicInformation } from "./BasicInformation";
+
+// The real editor loads through next/dynamic and can exceed the default find
+// timeout under a full-suite run.
+vi.mock("@uiw/react-md-editor", () => import("@ui/MarkdownEditor.testStub"));
 
 type BasicInformationData = {
   title: string;
@@ -28,13 +32,11 @@ describe("BasicInformation", () => {
     expect(
       screen.getAllByPlaceholderText("Enter short headline").length,
     ).toBeGreaterThanOrEqual(1);
-    expect(
-      (
-        await screen.findAllByPlaceholderText(
-          "Provide a detailed description of the dataset contents",
-        )
-      ).length,
-    ).toBeGreaterThanOrEqual(1);
+    const descriptions = await screen.findAllByPlaceholderText(
+      "Provide a detailed description of the dataset contents",
+    );
+    expect(descriptions.length).toBeGreaterThanOrEqual(1);
+    expect(descriptions[0]).toHaveAttribute("maxLength", "3000");
   });
 
   it("does not render an Authors field", () => {

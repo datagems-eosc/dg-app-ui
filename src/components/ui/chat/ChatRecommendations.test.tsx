@@ -71,6 +71,9 @@ describe("ChatRecommendations", () => {
       />,
     );
 
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading recommendations",
+    );
     expect(screen.queryByText("You could also ask")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Machine learning basics"),
