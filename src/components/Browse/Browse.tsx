@@ -17,7 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
@@ -272,6 +272,7 @@ export default function Browse({
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
   const [showTitleActionsDropdown, setShowTitleActionsDropdown] =
     useState(false);
+  const titleActionsPanelId = useId();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCollectionPermissions, setShowCollectionPermissions] =
     useState(false);
@@ -866,8 +867,12 @@ export default function Browse({
                         variant="outline"
                         size="sm"
                         aria-label="Collection actions"
-                        aria-haspopup="menu"
                         aria-expanded={showTitleActionsDropdown}
+                        aria-controls={
+                          showTitleActionsDropdown
+                            ? titleActionsPanelId
+                            : undefined
+                        }
                         onClick={() =>
                           setShowTitleActionsDropdown(!showTitleActionsDropdown)
                         }
@@ -879,6 +884,7 @@ export default function Browse({
                       {/* Actions dropdown menu */}
                       {showTitleActionsDropdown && (
                         <div
+                          id={titleActionsPanelId}
                           data-title-actions-dropdown
                           className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
                         >

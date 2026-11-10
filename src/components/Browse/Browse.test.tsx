@@ -108,13 +108,8 @@ describe("Browse - Delete Collection Feature", () => {
     });
   });
 
-  it("names the collection actions button and reports its menu state", async () => {
-    const mockGetCollectionGrants = vi.fn().mockResolvedValue([]);
-
-    mockUseApi.mockReturnValue({
-      ...baseApiMock(),
-      getCollectionGrants: mockGetCollectionGrants,
-    });
+  it("names the collection actions button and links it to the panel it opens", async () => {
+    mockUseApi.mockReturnValue(baseApiMock());
 
     render(
       <Browse
@@ -130,16 +125,22 @@ describe("Browse - Delete Collection Feature", () => {
     const moreButton = screen.getByRole("button", {
       name: "Collection actions",
     });
-    expect(moreButton).toHaveAttribute("aria-haspopup", "menu");
+    // Disclosure pattern: the panel is a list of buttons, not an ARIA menu.
+    expect(moreButton).not.toHaveAttribute("aria-haspopup");
     expect(moreButton).toHaveAttribute("aria-expanded", "false");
+    expect(moreButton).not.toHaveAttribute("aria-controls");
 
     await userEvent.click(moreButton);
 
     expect(moreButton).toHaveAttribute("aria-expanded", "true");
+    const panelId = moreButton.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    expect(document.getElementById(String(panelId))).toBeInTheDocument();
 
     await userEvent.click(moreButton);
 
     expect(moreButton).toHaveAttribute("aria-expanded", "false");
+    expect(moreButton).not.toHaveAttribute("aria-controls");
   });
 
   it("should NOT show Delete Collection button when user does not have dg_col-delete grant", async () => {
