@@ -78,7 +78,7 @@ export default function DatasetDetailsPage() {
           "permissions.manageDataset",
           "language",
           "country",
-          "citation",
+          "citeAs",
           "profileRaw",
         ]);
 
@@ -266,7 +266,7 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     permissions: permissionLabels,
     language: obj.language ? String(obj.language) : undefined,
     country: obj.country ? String(obj.country) : undefined,
-    citation: obj.citation ? String(obj.citation) : undefined,
+    citation: obj.citeAs ? String(obj.citeAs) : undefined,
     profileRaw: obj.profileRaw ?? null,
   };
 }
