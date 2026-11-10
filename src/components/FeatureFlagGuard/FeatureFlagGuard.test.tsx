@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
+import { writeOverrides } from "@/lib/featureFlags/storage";
 import { FeatureFlagGuard } from "./FeatureFlagGuard";
 
 describe("FeatureFlagGuard", () => {
@@ -15,8 +16,8 @@ describe("FeatureFlagGuard", () => {
     window.localStorage.clear();
   });
 
-  it("renders children when the flag is enabled", () => {
-    window.__env = { DEPLOYMENT_ENV: "playground" }; // datasetPackage default true
+  it("renders children when the flag is enabled", async () => {
+    writeOverrides({ datasetPackage: true });
     render(
       <FeatureFlagsProvider>
         <FeatureFlagGuard flag="datasetPackage">
@@ -24,12 +25,12 @@ describe("FeatureFlagGuard", () => {
         </FeatureFlagGuard>
       </FeatureFlagsProvider>,
     );
-    expect(screen.getByText("visible")).toBeInTheDocument();
+    expect(await screen.findByText("visible")).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
   });
 
   it("hides children and redirects once hydrated when the flag is disabled", async () => {
-    window.__env = { DEPLOYMENT_ENV: "staging" }; // datasetPackage default false
+    writeOverrides({ datasetPackage: false });
     render(
       <FeatureFlagsProvider>
         <FeatureFlagGuard flag="datasetPackage" redirectTo="/dashboard">

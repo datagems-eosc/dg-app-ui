@@ -26,7 +26,7 @@ export function ChatRecommendations({
   return (
     <div className="border-t border-slate-200 pt-4 mt-4">
       <p className="text-body-16-semibold text-gray-750 mb-2">
-        Would you be also interested in these topics?
+        You could also ask
       </p>
       <div className="flex flex-wrap gap-2">
         {recommendations.map((recommendation, idx) => (

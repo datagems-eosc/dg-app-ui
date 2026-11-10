@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -9,6 +9,7 @@ import { APP_ROUTES } from "@/config/appUrls";
 import {
   convertToBackendFilters,
   type FilterState,
+  type UnifiedFilterState,
 } from "@/config/filterOptions";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Collection, Dataset, DatasetPlus } from "@/data/dataset";
@@ -20,6 +21,10 @@ import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
 import { logDebug, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ApiCollection } from "@/types/collection";
+import { useBrowseHandoff } from "./useBrowseHandoff";
+import { CATALOGUE_PAGE_SIZE, useCataloguePaging } from "./useCataloguePaging";
+
+const DEFAULT_SORT = "name-asc";
 
 const API_PAYLOAD = {
   project: {
@@ -46,7 +51,7 @@ const API_PAYLOAD = {
   },
   page: {
     Offset: 0,
-    Size: 100,
+    Size: CATALOGUE_PAGE_SIZE,
   },
   Order: {
     Items: ["+code"],
@@ -174,11 +179,41 @@ export default function BrowseClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allDatasets, setAllDatasets] = useState<DatasetPlus[]>([]);
+  // Only the latest list request (new search/sort/filter or load more) may
+  // update the list.
+  const listRequest = useRef(0);
+  const appendCataloguePage = useCallback((items: unknown[], sort: string) => {
+    const next: DatasetPlus[] = items.map(mapApiDatasetToDataset);
+    setAllDatasets((prev) => {
+      const seen = new Set(prev.map((d) => d.id));
+      return sortDatasetsWithSecondaryRules(
+        [...prev, ...next.filter((d) => !seen.has(d.id))],
+        sort,
+      );
+    });
+  }, []);
+  // Only the catalogue path pages.
+  const paging = useCataloguePaging({
+    listRequest,
+    query: api.queryDatasets,
+    appendPage: appendCataloguePage,
+  });
   const [filteredDatasets, setFilteredDatasets] = useState<DatasetPlus[]>([]);
-  const [searchTerm, setSearchTerm] = useState(""); // used for API
-  const [pendingSearchTerm, setPendingSearchTerm] = useState(""); // input value
-  const [sortBy, setSortBy] = useState("name-asc");
-  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
+  const handoff = useBrowseHandoff(
+    searchParams.get("handoff"),
+    pathname,
+    router,
+  );
+  const [searchTerm, setSearchTerm] = useState(handoff.initialText); // used for API
+  const [pendingSearchTerm, setPendingSearchTerm] = useState(
+    handoff.initialText,
+  ); // input value
+  // Counts explicit searches, so submitting the same text searches again.
+  const [searchRun, setSearchRun] = useState(0);
+  const [sortBy, setSortBy] = useState(DEFAULT_SORT);
+  const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(
+    handoff.startsSmart,
+  );
   const selectedCollection = searchParams.get("collection");
   const isCustomCollection = searchParams.get("isCustom") === "true";
   const [filters, setFilters] = useState<FilterState>({
@@ -231,9 +266,29 @@ export default function BrowseClient() {
    * Show loader while fetching. If searchTerm is less than 3 chars, load all datasets.
    */
   useEffect(() => {
+    if (
+      searchRun === 0 &&
+      isSmartSearchEnabled &&
+      api.hasToken &&
+      handoff.isRepeatedStart(searchTerm, [
+        searchTerm,
+        sortBy,
+        filters,
+        selectedCollection,
+        isCustomCollection,
+      ])
+    ) {
+      return;
+    }
+    // A Home handoff shows the user's text but discovers with the
+    // classifier's retrieval query, unless that is too short to search.
+    const retrieval = handoff.smartQueryFor(searchTerm);
+    const smartQuery = retrieval.trim().length >= 3 ? retrieval : searchTerm;
     const fetchDatasets = async () => {
+      const request = ++listRequest.current;
       setIsLoading(true);
       setError(null);
+      paging.reset();
       try {
         if (!api.hasToken) {
           setError("No authentication token found. Please log in again.");
@@ -244,23 +299,14 @@ export default function BrowseClient() {
         if (
           !selectedCollection &&
           isSmartSearchEnabled &&
-          searchTerm.trim().length >= 3
+          smartQuery.trim().length >= 3
         ) {
           try {
-            const persistPayload = { name: searchTerm };
-            const persistData = await api.persistConversation(
-              persistPayload,
-              "?f=id&f=etag",
-            );
-            const conversationIdFromPersist = persistData.id;
-
-            if (!conversationIdFromPersist) {
-              throw new Error("No conversation ID returned from server.");
-            }
-
+            // A dataset search is not a chat: run discovery untracked (no
+            // conversation id, no auto-create) so it never shows up in
+            // Recent Chats.
             const crossDatasetPayload = {
               conversationOptions: {
-                conversationId: conversationIdFromPersist,
                 autoCreateConversation: false,
               },
               project: {
@@ -297,11 +343,12 @@ export default function BrowseClient() {
                   "maxSimilarity",
                 ],
               },
-              query: searchTerm,
+              query: smartQuery,
               resultCount: 100,
             } as any;
 
             const data = await api.searchCrossDataset(crossDatasetPayload);
+            if (request !== listRequest.current) return;
 
             const results = Array.isArray(data.result) ? data.result : [];
 
@@ -437,7 +484,11 @@ export default function BrowseClient() {
             setIsLoading(false);
             return;
           } catch (smartErr: any) {
-            logError("Smart search failed, falling back", smartErr);
+            if (request !== listRequest.current) return;
+            // A name search on a whole sentence would only show "no results".
+            logError("Smart search failed", smartErr);
+            setError(ApiErrorMessage.SMART_SEARCH_FAILED);
+            return;
           }
         }
 
@@ -448,6 +499,7 @@ export default function BrowseClient() {
           };
 
           const data = await api.queryUserCollections(payload);
+          if (request !== listRequest.current) return;
           const items = Array.isArray(data.items) ? data.items : [];
 
           if (items.length > 0) {
@@ -511,6 +563,7 @@ export default function BrowseClient() {
                 };
 
                 const datasetData = await api.queryDatasets(datasetPayload);
+                if (request !== listRequest.current) return;
                 const datasets = Array.isArray(datasetData.items)
                   ? datasetData.items
                   : [];
@@ -601,6 +654,7 @@ export default function BrowseClient() {
                 const uniqueDatasets = Array.from(byId.values());
                 setAllDatasets(uniqueDatasets);
               } catch (error) {
+                if (request !== listRequest.current) return;
                 logError("Failed to fetch dataset details", error);
                 setError(ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED);
                 setAllDatasets([]);
@@ -611,19 +665,21 @@ export default function BrowseClient() {
           } else {
             setAllDatasets([]);
           }
-          setIsLoading(false);
           return;
         }
 
         let payload: any = { ...API_PAYLOAD };
 
+        // Smart search hides sort and filters, so the catalogue it lists
+        // must not be sorted or filtered by them either.
+        const listSort = isSmartSearchEnabled ? DEFAULT_SORT : sortBy;
         let orderField = "name";
         let orderDir = "+";
-        if (sortBy.startsWith("name")) orderField = "name";
-        else if (sortBy.startsWith("size")) orderField = "size";
-        else if (sortBy.startsWith("datePublished"))
+        if (listSort.startsWith("name")) orderField = "name";
+        else if (listSort.startsWith("size")) orderField = "size";
+        else if (listSort.startsWith("datePublished"))
           orderField = "datePublished";
-        if (sortBy.endsWith("desc")) orderDir = "-";
+        if (listSort.endsWith("desc")) orderDir = "-";
         payload.Order = { Items: [orderDir + orderField] };
 
         if (searchTerm.length >= 3) {
@@ -633,7 +689,15 @@ export default function BrowseClient() {
           };
         }
 
-        const backendFilters = convertToBackendFilters(filters);
+        // A built-in collection is filtered by the Gateway, so its count and
+        // paging cover the whole collection, not one catalogue page.
+        if (selectedCollection) {
+          payload.collectionIds = [selectedCollection];
+        }
+
+        const backendFilters: UnifiedFilterState = isSmartSearchEnabled
+          ? {}
+          : convertToBackendFilters(filters);
 
         if (backendFilters.license && backendFilters.license.length > 0) {
           payload.license = backendFilters.license.join(",");
@@ -672,20 +736,23 @@ export default function BrowseClient() {
         }
 
         const data = await api.queryDatasets(payload);
+        if (request !== listRequest.current) return;
         const items = Array.isArray(data.items) ? data.items : [];
         const mappedDatasets = items.map(mapApiDatasetToDataset);
         const sortedDatasets = sortDatasetsWithSecondaryRules(
           mappedDatasets,
-          sortBy,
+          listSort,
         );
         setAllDatasets(sortedDatasets);
+        paging.start(payload, listSort, items.length, data.count);
       } catch (err: unknown) {
+        if (request !== listRequest.current) return;
         let message: string = ApiErrorMessage.UNEXPECTED_ERROR;
         if (err instanceof Error) message = err.message;
         else if (typeof err === "string") message = err;
         setError(message);
       } finally {
-        setIsLoading(false);
+        if (request === listRequest.current) setIsLoading(false);
       }
     };
     fetchDatasets();
@@ -693,6 +760,7 @@ export default function BrowseClient() {
     router,
     api.hasToken,
     searchTerm,
+    searchRun,
     sortBy,
     filters,
     selectedCollection,
@@ -740,9 +808,23 @@ export default function BrowseClient() {
 
   const handleSearchTermSubmit = useCallback(
     (searchValue?: string) => {
-      const valueToSet =
-        searchValue !== undefined ? searchValue : pendingSearchTerm.trim();
+      const valueToSet = (
+        searchValue !== undefined ? searchValue : pendingSearchTerm
+      ).trim();
+      // Emptying a box that was never searched leaves the catalogue as it is.
+      if (valueToSet === "" && searchTerm === "") return;
       setSearchTerm(valueToSet);
+      setSearchRun((run) => run + 1);
+    },
+    [pendingSearchTerm, searchTerm],
+  );
+
+  // Switching the mode searches the text the user sees in the box.
+  const handleSmartSearchToggle = useCallback(
+    (enabled: boolean) => {
+      setSearchTerm(pendingSearchTerm.trim());
+      setSearchRun((run) => run + 1);
+      setIsSmartSearchEnabled(enabled);
     },
     [pendingSearchTerm],
   );
@@ -765,7 +847,12 @@ export default function BrowseClient() {
     });
   }, [api.hasToken]);
 
+  // Reset the search when the route changes, not on the first mount: a Home
+  // handoff has already initialised it.
+  const lastPathname = useRef(pathname);
   useEffect(() => {
+    if (lastPathname.current === pathname) return;
+    lastPathname.current = pathname;
     setPendingSearchTerm("");
     setSearchTerm("");
   }, [pathname]);
@@ -860,14 +947,21 @@ export default function BrowseClient() {
           searchTerm={pendingSearchTerm}
           onSearchTermChange={handleSearchTermChange}
           onSearchTermSubmit={handleSearchTermSubmit}
+          // Under 3 characters nothing is searched (see the fetch effect).
+          appliedSearchTerm={searchTerm.length >= 3 ? searchTerm : ""}
           isLoading={isLoading}
+          totalCount={paging.total > 0 ? paging.total : undefined}
+          hasMore={paging.hasMore}
+          isLoadingMore={paging.isLoadingMore}
+          onLoadMore={() => void paging.loadMore()}
+          loadMoreError={paging.loadMoreError}
           error={error}
           sortBy={sortBy}
           onSortByChange={handleSortByChange}
           filters={filters}
           onApplyFilters={handleApplyFilters}
           isSmartSearchEnabled={isSmartSearchEnabled}
-          onSmartSearchToggle={setIsSmartSearchEnabled}
+          onSmartSearchToggle={handleSmartSearchToggle}
           selectedDatasets={selectedDatasets}
           onSelectedDatasetsChange={setSelectedDatasets}
           selectedPackageIds={selectedPackageIds}

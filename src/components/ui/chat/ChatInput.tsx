@@ -28,6 +28,7 @@ interface ChatInputProps {
   error?: string | null;
   showAddDatasetsModal?: boolean;
   showCollectionsButton?: boolean;
+  placeholder?: string;
 }
 
 export interface ChatInputRef {
@@ -51,6 +52,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
       error = null,
       showAddDatasetsModal = false,
       showCollectionsButton = true,
+      placeholder = "Ask me anything...",
     },
     ref,
   ) => {
@@ -162,7 +164,7 @@ export const ChatInput = React.forwardRef<ChatInputRef, ChatInputProps>(
               onScroll={checkScroll}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder="Ask me anything..."
+              placeholder={placeholder}
               className={cn(
                 "w-full border-none transition-all resize-none bg-transparent",
                 "text-descriptions-14-regular sm:text-body-16-regular",

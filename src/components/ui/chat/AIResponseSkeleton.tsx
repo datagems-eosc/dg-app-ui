@@ -2,17 +2,11 @@
 
 export function AIResponseSkeleton() {
   return (
-    <div className="space-y-4 shadow-s1 border border-slate-350 rounded-2xl px-6 pt-4 pb-6">
+    <div className="space-y-4 shadow-s1 border border-slate-350 rounded-2xl p-4 sm:px-6 sm:py-5">
       {/* AI Message Header Skeleton */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse" />
-          <div className="space-y-1">
-            <div className="w-24 h-4 bg-slate-200 rounded animate-pulse" />
-            <div className="w-16 h-3 bg-slate-100 rounded animate-pulse" />
-          </div>
-        </div>
-        <div className="w-16 h-6 bg-slate-200 rounded-full animate-pulse" />
+      <div className="flex items-center gap-2">
+        <div className="w-5 h-5 bg-slate-200 rounded-full animate-pulse" />
+        <div className="w-20 h-4 bg-slate-200 rounded animate-pulse" />
       </div>
 
       {/* AI Message Content Skeleton - Multiple lines with different widths */}

@@ -33,19 +33,19 @@ describe("FeatureFlagsManager", () => {
     renderManager();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Edit Dataset packaging" }),
+      screen.getByRole("button", { name: "Edit Use case – Weather" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Dataset packaging" }),
+      screen.getByRole("button", { name: "Use case – Weather" }),
     ); // playground default true -> false
     await userEvent.click(
-      screen.getByRole("button", { name: "Save Dataset packaging" }),
+      screen.getByRole("button", { name: "Save Use case – Weather" }),
     );
 
     expect(
       JSON.parse(
         window.localStorage.getItem(FEATURE_FLAGS_STORAGE_KEY) ?? "{}",
       ),
-    ).toMatchObject({ datasetPackage: false });
+    ).toMatchObject({ useCaseWeather: false });
   });
 });

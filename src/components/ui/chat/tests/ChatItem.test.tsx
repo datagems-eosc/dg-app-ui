@@ -20,9 +20,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@/lib/utils", () => ({
-  formatRelativeTime: (date: string) => {
-    return new Date(date).toLocaleDateString();
-  },
+  formatRelativeTime: (date: string) => `formatted:${date}`,
 }));
 
 describe("ChatItem", () => {
@@ -65,7 +63,9 @@ describe("ChatItem", () => {
   it("should render formatted creation date", () => {
     render(<ChatItem {...defaultProps} />);
 
-    expect(screen.getByText(/1\/1\/2024/)).toBeInTheDocument();
+    expect(
+      screen.getByText("formatted:2024-01-01T00:00:00Z"),
+    ).toBeInTheDocument();
   });
 
   it("should render empty date when createdAt is not provided", () => {
@@ -76,8 +76,8 @@ describe("ChatItem", () => {
       />,
     );
 
-    const dateElement = screen.getByText("");
-    expect(dateElement).toBeInTheDocument();
+    expect(screen.getByText("Test Conversation")).toBeInTheDocument();
+    expect(screen.queryByText(/^formatted:/)).not.toBeInTheDocument();
   });
 
   it("should render as Link when not active and not editing", () => {

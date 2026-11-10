@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Browse from "@/components/Browse";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -104,12 +104,16 @@ export default function UseCasePageClient({
   const [pendingSearchTerm, setPendingSearchTerm] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isSmartSearchEnabled, setIsSmartSearchEnabled] = useState(false);
+  // Counts Smart searches, so submitting the same text searches again.
+  const [smartRun, setSmartRun] = useState(0);
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
   const [showCreateCollectionModal, setShowCreateCollectionModal] =
     useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Only the latest list request may update the list.
+  const listRequest = useRef(0);
 
   useEffect(() => {
     localStorage.removeItem("chatSelectedDatasets");
@@ -121,6 +125,7 @@ export default function UseCasePageClient({
     const normalized = collectionName.toLowerCase().trim();
 
     const fetchDatasets = async () => {
+      const request = ++listRequest.current;
       setIsLoading(true);
       setError(null);
 
@@ -129,16 +134,10 @@ export default function UseCasePageClient({
         // Results are NOT filtered by collection (same as BrowseClient: smart search
         // is cross-collection by design; the page title provides the context).
         if (isSmartSearchEnabled && searchTerm.trim().length >= 3) {
-          const persistData = await api.persistConversation(
-            { name: searchTerm },
-            "?f=id&f=etag",
-          );
-          const conversationId = persistData.id;
-          if (!conversationId) throw new Error("No conversation ID returned.");
-
+          // A dataset search is not a chat: run discovery untracked so it
+          // never shows up in Recent Chats.
           const data = await api.searchCrossDataset({
             conversationOptions: {
-              conversationId,
               autoCreateConversation: false,
             },
             project: {
@@ -178,6 +177,7 @@ export default function UseCasePageClient({
             query: searchTerm,
             resultCount: 100,
           } as any);
+          if (request !== listRequest.current) return;
 
           const results = Array.isArray(data.result) ? data.result : [];
           const byId = new Map<string, DatasetPlus>();
@@ -272,6 +272,7 @@ export default function UseCasePageClient({
           : DATASET_FIELDS;
 
         const data = await api.queryDatasets(payload);
+        if (request !== listRequest.current) return;
         const items: unknown[] = Array.isArray(data.items) ? data.items : [];
         const mapped = items
           .filter(
@@ -288,12 +289,13 @@ export default function UseCasePageClient({
           );
         setAllDatasets(mapped as DatasetPlus[]);
       } catch (err) {
+        if (request !== listRequest.current) return;
         logError("fetchDatasets failed", err);
         setError(
           err instanceof Error ? err.message : "Failed to load datasets",
         );
       } finally {
-        setIsLoading(false);
+        if (request === listRequest.current) setIsLoading(false);
       }
     };
 
@@ -301,6 +303,7 @@ export default function UseCasePageClient({
   }, [
     api.hasToken,
     searchTerm,
+    smartRun,
     isSmartSearchEnabled,
     collectionName,
     collections,
@@ -327,7 +330,18 @@ export default function UseCasePageClient({
 
   const handleSearchTermSubmit = useCallback(
     (value?: string) => {
-      setSearchTerm(value !== undefined ? value : pendingSearchTerm.trim());
+      setSearchTerm((value !== undefined ? value : pendingSearchTerm).trim());
+      // Keyword search filters on the client; only Smart search runs again.
+      if (isSmartSearchEnabled) setSmartRun((run) => run + 1);
+    },
+    [pendingSearchTerm, isSmartSearchEnabled],
+  );
+
+  // Switching the mode searches the text the user sees in the box.
+  const handleSmartSearchToggle = useCallback(
+    (enabled: boolean) => {
+      setSearchTerm(pendingSearchTerm.trim());
+      setIsSmartSearchEnabled(enabled);
     },
     [pendingSearchTerm],
   );
@@ -359,8 +373,9 @@ export default function UseCasePageClient({
         searchTerm={pendingSearchTerm}
         onSearchTermChange={handleSearchTermChange}
         onSearchTermSubmit={handleSearchTermSubmit}
+        appliedSearchTerm={searchTerm}
         isSmartSearchEnabled={isSmartSearchEnabled}
-        onSmartSearchToggle={setIsSmartSearchEnabled}
+        onSmartSearchToggle={handleSmartSearchToggle}
         selectedDatasets={selectedDatasets}
         onSelectedDatasetsChange={setSelectedDatasets}
         showSelectedPanel={showSelectedPanel}

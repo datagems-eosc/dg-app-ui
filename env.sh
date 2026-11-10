@@ -14,15 +14,15 @@ fi
 
 if [ -n "${NODE_ENV:-}" ] && [ -f ".env.${NODE_ENV}" ]; then
   set -a
-  . ".env.${NODE_ENV}"
+  . "./.env.${NODE_ENV}"
   set +a
 elif [ -f ".env.local" ]; then
   set -a
-  . ".env.local"
+  . "./.env.local"
   set +a
 elif [ -f ".env" ]; then
   set -a
-  . ".env"
+  . "./.env"
   set +a
 fi
 
