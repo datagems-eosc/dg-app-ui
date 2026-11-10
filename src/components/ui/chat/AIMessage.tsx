@@ -1,5 +1,6 @@
 "use client";
 
+import { AIMessageActions } from "@ui/chat/AIMessageActions";
 import { AIMessageContent } from "@ui/chat/AIMessageContent";
 import { AIMessageHeader } from "@ui/chat/AIMessageHeader";
 import { ChatRecommendations } from "@ui/chat/ChatRecommendations";
@@ -34,11 +35,8 @@ export function AIMessage({
       (message.recommendations && message.recommendations.length > 0));
 
   return (
-    <div className="w-full max-w-full space-y-4 shadow-s1 border border-slate-350 rounded-2xl px-4 pt-2 pb-4 sm:px-6 sm:pt-4 sm:pb-6">
-      <AIMessageHeader
-        sources={message.sources}
-        onSourcesClick={onSourcesClick}
-      />
+    <div className="w-full max-w-full space-y-4 shadow-s1 border border-slate-350 rounded-2xl p-4 sm:px-6 sm:py-5">
+      <AIMessageHeader />
 
       {datasetRecommendationEnabled &&
       message.datasetProposal &&
@@ -64,6 +62,10 @@ export function AIMessage({
             content={message.content}
             tableData={message.tableData}
             sqlQuery={message.sqlQuery}
+          />
+          <AIMessageActions
+            sources={message.sources}
+            onSourcesClick={onSourcesClick}
           />
         </>
       )}

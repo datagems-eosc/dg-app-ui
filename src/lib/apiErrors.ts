@@ -41,4 +41,6 @@ export enum ApiErrorMessage {
   ONBOARD_DATASET_FAILED = "Failed to onboard dataset",
   PROFILE_DATASET_FAILED = "Failed to profile dataset",
   DOWNLOAD_FILE_FAILED = "Failed to download file",
+  SMART_SEARCH_FAILED = "Smart search is not available right now. Try again, or turn off Smart search to search dataset names and descriptions.",
+  LOAD_MORE_DATASETS_FAILED = "Couldn't load more datasets. Try again.",
 }

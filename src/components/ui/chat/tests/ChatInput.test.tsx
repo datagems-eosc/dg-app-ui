@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Collection } from "@/types/collection";
 import { ChatInput } from "../ChatInput";
 
+vi.mock("@/contexts/FeatureFlagsContext", () => ({
+  useFeatureFlag: () => false,
+}));
+
 const mockCollections = {
   apiCollections: [] as Collection[],
   collections: [] as Collection[],
@@ -29,6 +33,19 @@ describe("ChatInput", () => {
     const textarea = screen.getByPlaceholderText("Ask me anything...");
     expect(textarea).toBeInTheDocument();
     expect(textarea).toHaveValue("");
+  });
+
+  it("shows the placeholder it is given", () => {
+    render(
+      <ChatInput
+        {...defaultProps}
+        placeholder="Ask about your 2 selected datasets..."
+      />,
+    );
+
+    expect(
+      screen.getByPlaceholderText("Ask about your 2 selected datasets..."),
+    ).toBeInTheDocument();
   });
 
   it("should call onChange when typing in textarea", async () => {
