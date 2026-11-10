@@ -21,7 +21,8 @@ vi.mock("next/link", () => ({
 
 vi.mock("@/lib/utils", () => ({
   formatRelativeTime: (date: string) => {
-    return new Date(date).toLocaleDateString();
+    // Fixed locale and time zone so the date does not depend on the machine.
+    return new Date(date).toLocaleDateString("en-US", { timeZone: "UTC" });
   },
 }));
 
@@ -76,8 +77,10 @@ describe("ChatItem", () => {
       />,
     );
 
-    const dateElement = screen.getByText("");
-    expect(dateElement).toBeInTheDocument();
+    expect(screen.getByText("Test Conversation")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/\d{1,2}\/\d{1,2}\/\d{4}/),
+    ).not.toBeInTheDocument();
   });
 
   it("should render as Link when not active and not editing", () => {
