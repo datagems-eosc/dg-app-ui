@@ -189,8 +189,7 @@
         "**/*.test.ts",
         "**/*.test.tsx",
         "**/*.spec.ts",
-        "**/*.spec.tsx",
-        "**/vitest.setup.ts"
+        "**/*.spec.tsx"
       ],
       "linter": {
         "rules": {

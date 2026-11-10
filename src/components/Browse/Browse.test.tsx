@@ -82,17 +82,7 @@ describe("Browse - Delete Collection Feature", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockUseRouter.mockReturnValue({
-      push: vi.fn(),
-    });
-
-    mockUseCollections.mockReturnValue({
-      apiCollections: [],
-      extraCollections: [],
-      refreshExtraCollections: vi.fn(),
-      notifyCollectionModified: vi.fn(),
-    });
+    setDefaultBrowseMocks();
   });
 
   const renderCustomCollection = (
@@ -116,7 +106,7 @@ describe("Browse - Delete Collection Feature", () => {
   const collectionActionsButton = () =>
     screen.getByRole("button", { name: "Collection actions" });
 
-  // Waits until the grant lookup has resolved, so the panel reflects the
+  // Waits until every grant lookup has resolved, so the panel reflects the
   // grants, then opens it.
   const openCollectionActions = async (
     apiMock: ReturnType<typeof baseApiMock>,
@@ -125,7 +115,9 @@ describe("Browse - Delete Collection Feature", () => {
       expect(apiMock.getCollectionGrants).toHaveBeenCalledWith("123");
     });
     await act(async () => {
-      await apiMock.getCollectionGrants.mock.results[0]?.value;
+      await Promise.all(
+        apiMock.getCollectionGrants.mock.results.map((result) => result.value),
+      );
     });
     await userEvent.click(collectionActionsButton());
   };
@@ -164,6 +156,20 @@ describe("Browse - Delete Collection Feature", () => {
 
     expect(moreButton).toHaveAttribute("aria-expanded", "false");
     expect(moreButton).not.toHaveAttribute("aria-controls");
+  });
+
+  it("closes the collection actions panel on a click outside it", async () => {
+    renderCustomCollection();
+    const moreButton = collectionActionsButton();
+    await userEvent.click(moreButton);
+    const panelId = String(moreButton.getAttribute("aria-controls"));
+    expect(document.getElementById(panelId)).toBeInTheDocument();
+
+    await userEvent.click(document.body);
+
+    expect(moreButton).toHaveAttribute("aria-expanded", "false");
+    expect(moreButton).not.toHaveAttribute("aria-controls");
+    expect(document.getElementById(panelId)).not.toBeInTheDocument();
   });
 
   it("should NOT show Delete Collection button when user does not have dg_col-delete grant", async () => {
