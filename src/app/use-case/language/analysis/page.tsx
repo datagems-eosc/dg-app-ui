@@ -18,7 +18,6 @@ import {
 import { logWarn } from "@/lib/logger";
 
 interface AnalysisState extends AnalysisPanels {
-  query: string;
   features: {
     termFrequency: boolean;
     sentimentProfile: boolean;
@@ -96,6 +95,7 @@ export default function LanguageAnalysisPage() {
   const router = useRouter();
   const [state, setState] = useState<AnalysisState | null>(null);
   const [unreadable, setUnreadable] = useState(false);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     const stored = sessionStorage.getItem(STORAGE_KEY);
@@ -112,6 +112,7 @@ export default function LanguageAnalysisPage() {
       setUnreadable(true);
       return;
     }
+    setQuery(typeof parsed?.query === "string" ? parsed.query : "");
     const outcome = parseLinguisticFeatures(parsed?.result);
     if (outcome.kind === "unrecognized") {
       reportUnreadable(outcome.diagnostic);
@@ -119,7 +120,6 @@ export default function LanguageAnalysisPage() {
       return;
     }
     setState({
-      query: parsed.query ?? "",
       features: parsed.features ?? {
         termFrequency: true,
         sentimentProfile: true,
@@ -164,12 +164,12 @@ export default function LanguageAnalysisPage() {
           <h1 className="text-[32px] font-semibold text-[#314158] leading-[1.4]">
             Analysis Workspace
           </h1>
-          {state?.query && (
+          {query && (
             <p className="text-[20px] font-normal text-[#5b708f] leading-[1.4]">
-              {state.query}
+              {query}
             </p>
           )}
-          {!state?.query && (
+          {!query && (
             <p className="text-[20px] font-normal text-[#5b708f] leading-[1.4]">
               Feature extraction, concept tracking and document grouping
             </p>

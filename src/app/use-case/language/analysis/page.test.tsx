@@ -92,10 +92,23 @@ describe("LanguageAnalysisPage", () => {
     expect(JSON.stringify(mockLogWarn.mock.calls)).not.toMatch(/Vienna|items/);
   });
 
+  it("keeps the question in the header above the error", async () => {
+    store(unrecognizedEnvelope);
+    render(<LanguageAnalysisPage />);
+
+    await screen.findByRole("alert");
+    expect(screen.getByText("Vienna")).toBeInTheDocument();
+  });
+
   it("shows the error for a stored entry that is not valid JSON", async () => {
     sessionStorage.setItem("language_analysis", "{not json");
     render(<LanguageAnalysisPage />);
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(mockLogWarn).toHaveBeenCalledTimes(1);
+    expect(mockLogWarn.mock.calls[0][1]).toMatchObject({
+      valueType: "invalid-json",
+    });
+    expect(JSON.stringify(mockLogWarn.mock.calls)).not.toMatch(/not json/);
   });
 });
