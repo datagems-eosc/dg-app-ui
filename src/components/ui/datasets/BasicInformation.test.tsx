@@ -1,28 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import type { TextareaHTMLAttributes } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { BasicInformation } from "./BasicInformation";
 
-// The real editor is a large package loaded through next/dynamic. Under a
-// full-suite run it can take longer than the default find timeout, so stand
-// in a plain textarea that receives the same props from MarkdownEditor.
-vi.mock("@uiw/react-md-editor", () => ({
-  default: ({
-    value,
-    onChange,
-    textareaProps,
-  }: {
-    value?: string;
-    onChange?: (value?: string) => void;
-    textareaProps?: TextareaHTMLAttributes<HTMLTextAreaElement>;
-  }) => (
-    <textarea
-      {...textareaProps}
-      value={value}
-      onChange={(event) => onChange?.(event.target.value)}
-    />
-  ),
-}));
+// The real editor loads through next/dynamic and can exceed the default find
+// timeout under a full-suite run.
+vi.mock("@uiw/react-md-editor", () => import("@ui/markdownEditorTestStub"));
 
 type BasicInformationData = {
   title: string;
