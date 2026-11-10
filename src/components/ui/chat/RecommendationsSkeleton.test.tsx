@@ -4,11 +4,15 @@ import { RecommendationsSkeleton } from "./RecommendationsSkeleton";
 
 describe("RecommendationsSkeleton", () => {
   it("announces that recommendations are loading", () => {
-    render(<RecommendationsSkeleton />);
+    const { container } = render(<RecommendationsSkeleton />);
 
-    expect(
-      screen.getByRole("status", { name: "Loading recommendations" }),
-    ).toBeInTheDocument();
+    // Screen readers read a status region's text, not its label.
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading recommendations",
+    );
+    for (const bar of container.querySelectorAll(".animate-pulse")) {
+      expect(bar.closest('[aria-hidden="true"]')).not.toBeNull();
+    }
   });
 
   it("should render skeleton elements with animation", () => {
