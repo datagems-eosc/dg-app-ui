@@ -1,32 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TableData } from "@/types/chat";
 import { DataTable } from "../DataTable";
-
-vi.mock("../Button", () => ({
-  Button: ({
-    children,
-    onClick,
-    variant,
-    size,
-  }: {
-    children: React.ReactNode;
-    onClick?: () => void;
-    variant?: string;
-    size?: string;
-  }) => (
-    <button
-      onClick={onClick}
-      data-variant={variant}
-      data-size={size}
-      data-testid="show-more-button"
-    >
-      {children}
-    </button>
-  ),
-}));
 
 describe("DataTable", () => {
   const createMockTableData = (
@@ -102,7 +78,7 @@ describe("DataTable", () => {
 
     render(<DataTable tableData={tableData} />);
 
-    const showMoreButton = screen.getByTestId("show-more-button");
+    const showMoreButton = screen.getByRole("button", { name: /show more/i });
     expect(showMoreButton).toBeInTheDocument();
     expect(showMoreButton).toHaveTextContent(/Show more.*5 more rows/i);
   });
@@ -112,7 +88,9 @@ describe("DataTable", () => {
 
     render(<DataTable tableData={tableData} />);
 
-    expect(screen.queryByTestId("show-more-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /show (more|less)/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("should show all rows when 'Show more' button is clicked", async () => {
@@ -121,7 +99,7 @@ describe("DataTable", () => {
 
     render(<DataTable tableData={tableData} />);
 
-    const showMoreButton = screen.getByTestId("show-more-button");
+    const showMoreButton = screen.getByRole("button", { name: /show more/i });
     await user.click(showMoreButton);
 
     expect(screen.getByText("value-1-column")).toBeInTheDocument();
@@ -134,10 +112,10 @@ describe("DataTable", () => {
 
     render(<DataTable tableData={tableData} />);
 
-    const showMoreButton = screen.getByTestId("show-more-button");
+    const showMoreButton = screen.getByRole("button", { name: /show more/i });
     await user.click(showMoreButton);
 
-    const showLessButton = screen.getByTestId("show-more-button");
+    const showLessButton = screen.getByRole("button", { name: /show less/i });
     expect(showLessButton).toHaveTextContent(/Show less.*20 rows/i);
   });
 
@@ -147,10 +125,10 @@ describe("DataTable", () => {
 
     render(<DataTable tableData={tableData} />);
 
-    const showMoreButton = screen.getByTestId("show-more-button");
+    const showMoreButton = screen.getByRole("button", { name: /show more/i });
     await user.click(showMoreButton);
 
-    const showLessButton = screen.getByTestId("show-more-button");
+    const showLessButton = screen.getByRole("button", { name: /show less/i });
     await user.click(showLessButton);
 
     expect(screen.getByText("value-1-column")).toBeInTheDocument();
@@ -167,6 +145,8 @@ describe("DataTable", () => {
     render(<DataTable tableData={tableData} />);
 
     expect(screen.getByText("Column")).toBeInTheDocument();
-    expect(screen.queryByTestId("show-more-button")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /show (more|less)/i }),
+    ).not.toBeInTheDocument();
   });
 });
