@@ -87,7 +87,7 @@
           "options": {
             "patterns": [
               {
-                "group": ["**/*.testStub"],
+                "group": ["**/*.testStub", "**/*.testStub.*"],
                 "message": "Test stubs replace packages in tests only; import the real module instead."
               }
             ]
@@ -189,7 +189,8 @@
         "**/*.test.ts",
         "**/*.test.tsx",
         "**/*.spec.ts",
-        "**/*.spec.tsx"
+        "**/*.spec.tsx",
+        "**/vitest.setup.ts"
       ],
       "linter": {
         "rules": {

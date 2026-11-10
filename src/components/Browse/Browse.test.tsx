@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Browse from "./Browse";
@@ -34,22 +40,38 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-describe("Browse - Delete Collection Feature", () => {
-  const mockDatasets = [
-    {
-      id: "1",
-      title: "Test Dataset",
-      description: "Test description",
-      license: "MIT",
-      size: "1 MB",
-      datePublished: "2024-01-01",
-      category: "Math" as const,
-      access: "Open Access" as const,
-      lastUpdated: "2024-01-01",
-      tags: ["test"],
-    },
-  ];
+const mockDatasets = [
+  {
+    id: "1",
+    title: "Test Dataset",
+    description: "Test description",
+    license: "MIT",
+    size: "1 MB",
+    datePublished: "2024-01-01",
+    category: "Math" as const,
+    access: "Open Access" as const,
+    lastUpdated: "2024-01-01",
+    tags: ["test"],
+  },
+];
 
+// Router, collections and a signed-out API: enough for Browse to render.
+const setDefaultBrowseMocks = () => {
+  mockUseRouter.mockReturnValue({ push: vi.fn() });
+  mockUseCollections.mockReturnValue({
+    apiCollections: [],
+    extraCollections: [],
+    refreshExtraCollections: vi.fn(),
+    notifyCollectionModified: vi.fn(),
+  });
+  mockUseApi.mockReturnValue({
+    hasToken: false,
+    getCollectionGrants: vi.fn().mockResolvedValue([]),
+    getFieldsOfScience: vi.fn().mockResolvedValue([]),
+  });
+};
+
+describe("Browse - Delete Collection Feature", () => {
   const baseApiMock = () => ({
     hasToken: true,
     getCollectionGrants: vi.fn().mockResolvedValue([]),
@@ -94,12 +116,16 @@ describe("Browse - Delete Collection Feature", () => {
   const collectionActionsButton = () =>
     screen.getByRole("button", { name: "Collection actions" });
 
-  // Waits for the grant lookup so the panel reflects the grants, then opens it.
+  // Waits until the grant lookup has resolved, so the panel reflects the
+  // grants, then opens it.
   const openCollectionActions = async (
     apiMock: ReturnType<typeof baseApiMock>,
   ) => {
     await waitFor(() => {
       expect(apiMock.getCollectionGrants).toHaveBeenCalledWith("123");
+    });
+    await act(async () => {
+      await apiMock.getCollectionGrants.mock.results[0]?.value;
     });
     await userEvent.click(collectionActionsButton());
   };
@@ -234,35 +260,9 @@ describe("Browse - Delete Collection Feature", () => {
 });
 
 describe("Browse – generalChat flag (Hide general chat)", () => {
-  const mockDatasets = [
-    {
-      id: "1",
-      title: "Test Dataset",
-      description: "Test description",
-      license: "MIT",
-      size: "1 MB",
-      datePublished: "2024-01-01",
-      category: "Math" as const,
-      access: "Open Access" as const,
-      lastUpdated: "2024-01-01",
-      tags: ["test"],
-    },
-  ];
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseRouter.mockReturnValue({ push: vi.fn() });
-    mockUseCollections.mockReturnValue({
-      apiCollections: [],
-      extraCollections: [],
-      refreshExtraCollections: vi.fn(),
-      notifyCollectionModified: vi.fn(),
-    });
-    mockUseApi.mockReturnValue({
-      hasToken: false,
-      getCollectionGrants: vi.fn().mockResolvedValue([]),
-      getFieldsOfScience: vi.fn().mockResolvedValue([]),
-    });
+    setDefaultBrowseMocks();
   });
 
   const renderBrowse = () =>
@@ -615,39 +615,13 @@ describe("Browse – Smart search with an empty box", () => {
 });
 
 describe("Browse – selected datasets actions", () => {
-  const mockDatasets = [
-    {
-      id: "1",
-      title: "Test Dataset",
-      description: "Test description",
-      license: "MIT",
-      size: "1 MB",
-      datePublished: "2024-01-01",
-      category: "Math" as const,
-      access: "Open Access" as const,
-      lastUpdated: "2024-01-01",
-      tags: ["test"],
-    },
-  ];
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseFeatureFlag.mockReturnValue(false);
-    mockUseRouter.mockReturnValue({ push: vi.fn() });
-    mockUseCollections.mockReturnValue({
-      apiCollections: [],
-      extraCollections: [],
-      refreshExtraCollections: vi.fn(),
-      notifyCollectionModified: vi.fn(),
-    });
-    mockUseApi.mockReturnValue({
-      hasToken: false,
-      getCollectionGrants: vi.fn().mockResolvedValue([]),
-      getFieldsOfScience: vi.fn().mockResolvedValue([]),
-    });
+    setDefaultBrowseMocks();
   });
 
-  it("names the actions button and links it to the panel it opens", async () => {
+  const renderWithSelection = () =>
     render(
       <Browse
         datasets={mockDatasets}
@@ -657,9 +631,13 @@ describe("Browse – selected datasets actions", () => {
       />,
     );
 
-    const actionsButton = screen.getByRole("button", {
-      name: "Selected dataset actions",
-    });
+  const selectedActionsButton = () =>
+    screen.getByRole("button", { name: "Selected dataset actions" });
+
+  it("names the actions button and links it to the panel it opens", async () => {
+    renderWithSelection();
+
+    const actionsButton = selectedActionsButton();
     expect(actionsButton).toHaveAttribute("aria-expanded", "false");
     expect(actionsButton).not.toHaveAttribute("aria-controls");
 
@@ -675,6 +653,20 @@ describe("Browse – selected datasets actions", () => {
 
     expect(actionsButton).toHaveAttribute("aria-expanded", "false");
     expect(actionsButton).not.toHaveAttribute("aria-controls");
+  });
+
+  it("closes the actions panel on a click outside it", async () => {
+    renderWithSelection();
+    const actionsButton = selectedActionsButton();
+    await userEvent.click(actionsButton);
+    const panelId = String(actionsButton.getAttribute("aria-controls"));
+    expect(document.getElementById(panelId)).toBeInTheDocument();
+
+    await userEvent.click(document.body);
+
+    expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+    expect(actionsButton).not.toHaveAttribute("aria-controls");
+    expect(document.getElementById(panelId)).not.toBeInTheDocument();
   });
 
   it("offers no actions button when nothing is selected", () => {
