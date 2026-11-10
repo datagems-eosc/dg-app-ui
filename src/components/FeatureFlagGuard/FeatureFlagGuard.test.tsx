@@ -16,10 +16,10 @@ describe("FeatureFlagGuard", () => {
   });
 
   it("renders children when the flag is enabled", () => {
-    window.__env = { DEPLOYMENT_ENV: "playground" }; // datasetPackage default true
+    window.__env = { DEPLOYMENT_ENV: "playground" }; // useCaseWeather default true everywhere
     render(
       <FeatureFlagsProvider>
-        <FeatureFlagGuard flag="datasetPackage">
+        <FeatureFlagGuard flag="useCaseWeather">
           <p>visible</p>
         </FeatureFlagGuard>
       </FeatureFlagsProvider>,
@@ -29,7 +29,7 @@ describe("FeatureFlagGuard", () => {
   });
 
   it("hides children and redirects once hydrated when the flag is disabled", async () => {
-    window.__env = { DEPLOYMENT_ENV: "staging" }; // datasetPackage default false
+    window.__env = { DEPLOYMENT_ENV: "staging" }; // datasetPackage default false everywhere
     render(
       <FeatureFlagsProvider>
         <FeatureFlagGuard flag="datasetPackage" redirectTo="/dashboard">
