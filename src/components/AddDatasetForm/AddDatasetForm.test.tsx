@@ -45,6 +45,11 @@ import { PROCESS_INSTANCE_ID } from "@/lib/datasetOnboarding/fixtures";
 import { FEATURE_FLAGS_STORAGE_KEY } from "@/lib/featureFlags/storage";
 import AddDatasetForm from "./AddDatasetForm";
 
+// These tests walk the whole form with user-event (upload, metadata, start).
+// Under a full-suite run several take 3-5 s, close to Vitest's 5 s default,
+// and one occasionally exceeded it. Give them room without hiding a hang.
+vi.setConfig({ testTimeout: 15_000 });
+
 // ---------------------------------------------------------------------------
 // Harness
 // ---------------------------------------------------------------------------
