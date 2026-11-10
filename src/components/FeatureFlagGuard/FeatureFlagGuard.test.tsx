@@ -7,14 +7,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
-import { FEATURE_FLAGS_STORAGE_KEY } from "@/lib/featureFlags/storage";
+import { writeOverrides } from "@/lib/featureFlags/storage";
 import { FeatureFlagGuard } from "./FeatureFlagGuard";
-
-const setFlagOverride = (datasetPackage: boolean) =>
-  window.localStorage.setItem(
-    FEATURE_FLAGS_STORAGE_KEY,
-    JSON.stringify({ datasetPackage }),
-  );
 
 describe("FeatureFlagGuard", () => {
   beforeEach(() => {
@@ -23,7 +17,7 @@ describe("FeatureFlagGuard", () => {
   });
 
   it("renders children when the flag is enabled", async () => {
-    setFlagOverride(true);
+    writeOverrides({ datasetPackage: true });
     render(
       <FeatureFlagsProvider>
         <FeatureFlagGuard flag="datasetPackage">
@@ -36,7 +30,7 @@ describe("FeatureFlagGuard", () => {
   });
 
   it("hides children and redirects once hydrated when the flag is disabled", async () => {
-    setFlagOverride(false);
+    writeOverrides({ datasetPackage: false });
     render(
       <FeatureFlagsProvider>
         <FeatureFlagGuard flag="datasetPackage" redirectTo="/dashboard">

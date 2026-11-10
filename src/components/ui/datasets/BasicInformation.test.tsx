@@ -4,7 +4,7 @@ import { BasicInformation } from "./BasicInformation";
 
 // The real editor loads through next/dynamic and can exceed the default find
 // timeout under a full-suite run.
-vi.mock("@uiw/react-md-editor", () => import("@ui/markdownEditorTestStub"));
+vi.mock("@uiw/react-md-editor", () => import("@ui/MarkdownEditor.testStub"));
 
 type BasicInformationData = {
   title: string;

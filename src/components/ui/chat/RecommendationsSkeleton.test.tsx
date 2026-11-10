@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { RecommendationsSkeleton } from "./RecommendationsSkeleton";
 
 describe("RecommendationsSkeleton", () => {
-  it("should render the skeleton structure", () => {
+  it("should render a root element", () => {
     const { container } = render(<RecommendationsSkeleton />);
 
     expect(container.firstElementChild).toBeInTheDocument();
