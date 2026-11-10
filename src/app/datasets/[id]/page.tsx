@@ -57,6 +57,7 @@ export default function DatasetDetailsPage() {
           "id",
           "code",
           "name",
+          "headline",
           "description",
           "license",
           "mimeType",
@@ -77,7 +78,7 @@ export default function DatasetDetailsPage() {
           "permissions.manageDataset",
           "language",
           "country",
-          "citation",
+          "citeAs",
           "profileRaw",
         ]);
 
@@ -245,6 +246,7 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     // no group semantics and no dataset grants, and the caller's own Browse
     // permission says nothing about whether the Everyone audience has any.
     sharing: SHARING_WITHOUT_EVIDENCE.state,
+    headline: typeof obj.headline === "string" ? obj.headline : undefined,
     description: String(obj.description ?? ""),
     size: obj.size ? String(obj.size) : "N/A",
     lastUpdated: obj.lastUpdated
@@ -264,7 +266,7 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     permissions: permissionLabels,
     language: obj.language ? String(obj.language) : undefined,
     country: obj.country ? String(obj.country) : undefined,
-    citation: obj.citation ? String(obj.citation) : undefined,
+    citation: obj.citeAs ? String(obj.citeAs) : undefined,
     profileRaw: obj.profileRaw ?? null,
   };
 }

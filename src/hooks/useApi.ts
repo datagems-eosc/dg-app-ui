@@ -19,7 +19,14 @@ import {
 } from "@/lib/datasetPermissions/gateway";
 import { publicEnv } from "@/lib/env";
 import type { UserFavorite } from "@/lib/favorites";
-import { logApiError, logApiRequest, logApiResponse } from "@/lib/logger";
+import { classifyIntent as classifyIntentRequest } from "@/lib/intentRouting/gateway";
+import type { ClassificationOutcome } from "@/lib/intentRouting/types";
+import {
+  logApiError,
+  logApiRequest,
+  logApiResponse,
+  logWarn,
+} from "@/lib/logger";
 import {
   type AuthRetryPolicy,
   fetchWithAuth,
@@ -545,25 +552,39 @@ export function useApi() {
         collectionId,
       });
 
-      const response = await makeRequest(
-        `/principal/me/context-grants/collection?id=${collectionId}`,
-        {
-          method: "GET",
-        },
-      );
+      try {
+        const response = await makeRequest(
+          `/principal/me/context-grants/collection?id=${collectionId}`,
+          {
+            method: "GET",
+          },
+        );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        logApiError("getCollectionGrants", errorData, { collectionId });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          logApiError("getCollectionGrants", errorData, { collectionId });
+          return [];
+        }
+
+        const data: Record<string, unknown> | null = await response.json();
+        const value =
+          data && typeof data === "object" && !Array.isArray(data)
+            ? data[collectionId]
+            : undefined;
+        const grants =
+          Array.isArray(value) &&
+          value.every((role) => typeof role === "string")
+            ? value
+            : [];
+        logApiResponse("getCollectionGrants", {
+          collectionId,
+          grants,
+        });
+        return grants;
+      } catch (error) {
+        logApiError("getCollectionGrants", error, { collectionId });
         return [];
       }
-
-      const data = await response.json();
-      logApiResponse("getCollectionGrants", {
-        collectionId,
-        grants: data.grants || [],
-      });
-      return data.grants || [];
     },
     [makeRequest],
   );
@@ -911,6 +932,21 @@ export function useApi() {
       return response.json();
     },
     [makeRequest],
+  );
+
+  /**
+   * Home intent classification (UI #352). One classifier call through the
+   * accepted `lib/intentRouting` adapter; it never creates a conversation.
+   */
+  const classifyIntent = useCallback(
+    async (
+      query: string,
+      options: { signal?: AbortSignal } = {},
+    ): Promise<ClassificationOutcome> => {
+      if (!token) return { ok: false, kind: "auth" };
+      return classifyIntentRequest(makeRequest, query, options);
+    },
+    [token, makeRequest],
   );
 
   const searchCrossDataset = useCallback(
@@ -1588,7 +1624,10 @@ export function useApi() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        logApiError("getRecommendNextQueries", errorData);
+        // Recommendations are optional: Chat falls back to its own suggestions.
+        logWarn("Query recommendations unavailable", {
+          status: response.status,
+        });
         throw new Error(
           errorData.error || ApiErrorMessage.FETCH_RECOMMENDATIONS_FAILED,
         );
@@ -1908,6 +1947,7 @@ export function useApi() {
     token,
     datasetOnboarding,
     datasetPermissions,
+    classifyIntent,
     queryDatasets,
     queryCollections,
     queryUserCollections,

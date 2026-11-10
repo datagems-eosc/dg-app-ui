@@ -5,6 +5,12 @@ import { Chip } from "@ui/Chip";
 import { useRouter } from "next/navigation";
 import { getNavigationUrl } from "@/lib/utils";
 
+export function datasetProposalPrompt(count: number): string {
+  return count === 1
+    ? "This dataset looks relevant to your question. Use it to answer?"
+    : `These ${count} datasets look relevant to your question. Use them to answer?`;
+}
+
 interface DatasetProposalBlockProps {
   datasets: Array<{ id: string; title: string }>;
   onConfirm: () => void;
@@ -23,7 +29,7 @@ export default function DatasetProposalBlock({
   return (
     <div className="space-y-4">
       <p className="text-body-16-regular text-gray-750">
-        Do you want to answer based on these datasets?
+        {datasetProposalPrompt(datasets.length)}
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -50,7 +56,9 @@ export default function DatasetProposalBlock({
         onClick={onConfirm}
         disabled={isSubmitting || isResolved || datasets.length === 0}
       >
-        Yes, answer this question
+        {datasets.length === 1
+          ? "Answer with this dataset"
+          : "Answer with these datasets"}
       </Button>
     </div>
   );

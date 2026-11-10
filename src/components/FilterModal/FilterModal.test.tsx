@@ -169,8 +169,36 @@ describe("FilterModal", () => {
     expect(screen.queryAllByRole("radio")).toHaveLength(0);
 
     await user.click(screen.getByRole("button", { name: /apply/i }));
-    // Only Access is neutralized; every other filter is applied as it was.
-    expect(onApplyFilters).toHaveBeenCalledWith({ ...stale, access: "" });
+    // Access and filters the Gateway cannot apply are neutralized; the rest
+    // is applied as it was.
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      ...stale,
+      access: "",
+      creationYear: { start: "", end: "" },
+    });
+  });
+
+  it("does not offer filters the Gateway cannot apply", () => {
+    render(<FilterModal {...defaultProps} />);
+    expect(screen.queryByText("Creation Year")).toBeNull();
+    expect(screen.queryByText("Dataset Size")).toBeNull();
+    expect(screen.queryByPlaceholderText("YYYY")).toBeNull();
+    expect(screen.getByText("License")).toBeInTheDocument();
+  });
+
+  it("keeps one licence at a time", async () => {
+    const user = userEvent.setup();
+    const onApplyFilters = vi.fn();
+    render(<FilterModal {...defaultProps} onApplyFilters={onApplyFilters} />);
+
+    await user.click(await screen.findByText("MIT License"));
+    await user.click(screen.getByText("Apache 2.0"));
+    await user.click(screen.getByRole("button", { name: /apply/i }));
+
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      ...defaultFilters,
+      license: ["Apache-2.0"],
+    });
   });
 
   // ON-BUG-01 consumer coverage: the shared Field of science dropdown is also

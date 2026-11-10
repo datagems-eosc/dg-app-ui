@@ -31,33 +31,59 @@ const renderSidebar = () =>
     </FeatureFlagsProvider>,
   );
 
+describe("SidebarContent – Home entry", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.__env = { DEPLOYMENT_ENV: "staging" };
+  });
+
+  it("labels the dashboard link Home and keeps its route", () => {
+    renderSidebar();
+    const home = screen.getByRole("link", { name: "Home" });
+    expect(home).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
+  });
+
+  it("labels the browse link Datasets and keeps its route", () => {
+    renderSidebar();
+    const datasets = screen.getByRole("link", { name: "Datasets" });
+    expect(datasets).toHaveAttribute("href", "/browse");
+    expect(screen.queryByRole("link", { name: "Browse" })).toBeNull();
+  });
+
+  it("labels the general chat link Chat and keeps its route", () => {
+    renderSidebar();
+    const chat = screen.getByRole("link", { name: "Chat" });
+    expect(chat).toHaveAttribute("href", "/chat");
+    expect(screen.queryByRole("link", { name: /ask a question/i })).toBeNull();
+  });
+});
+
 describe("SidebarContent – generalChat flag (Hide general chat)", () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  it("hides Ask a Question when flag is ON (true)", () => {
+  it("hides Chat when flag is ON (true)", () => {
     window.__env = { DEPLOYMENT_ENV: "playground" };
     renderSidebar();
-    expect(screen.queryByRole("link", { name: /ask a question/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Chat" })).toBeNull();
   });
 
-  it("shows Ask a Question when flag is OFF (false)", () => {
+  it("shows Chat when flag is OFF (false)", () => {
     window.__env = { DEPLOYMENT_ENV: "staging" };
     renderSidebar();
-    expect(
-      screen.getByRole("link", { name: /ask a question/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Chat" })).toBeInTheDocument();
   });
 
-  it("positions Ask a Question between Browse and Favourites", () => {
+  it("positions Chat between Datasets and Favourites", () => {
     window.__env = { DEPLOYMENT_ENV: "staging" };
     renderSidebar();
 
     const links = screen.getAllByRole("link");
     const labels = links.map((l) => l.textContent?.trim());
-    const browseIndex = labels.findIndex((l) => l === "Browse");
-    const askIndex = labels.findIndex((l) => /ask a question/i.test(l ?? ""));
+    const browseIndex = labels.findIndex((l) => l === "Datasets");
+    const askIndex = labels.findIndex((l) => l === "Chat");
     const favouritesIndex = labels.findIndex((l) => l === "Favourites");
 
     expect(browseIndex).toBeLessThan(askIndex);
