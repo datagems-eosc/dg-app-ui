@@ -407,8 +407,9 @@ uploader regressions (`DatasetUpload.test.tsx` and `FileUploadCard.test.tsx`). A
 selection fails rather than passing: Vitest exits 1 when a filter matches no
 test files.
 
-The `Run dataset onboarding tests (Vitest)` step of the `quality` job in
-`.github/workflows/ci.yml` runs that script, and a failing test fails the job.
+The `Run unit tests (Vitest)` step of the `quality` job in
+`.github/workflows/ci.yml` runs the full suite (`pnpm run test:unit`), which
+includes this selection, and a failing test fails the job.
 The separate `tsx --test` step (`pnpm run test:coverage`) is unchanged and
 still executes no Vitest suite.
 
@@ -720,8 +721,8 @@ pnpm exec vitest run --config vitest.unit.config.ts \
   src/components/AddDatasetForm/AddDatasetForm.test.tsx
 ```
 
-These run locally. The Actions job is also configured to run them, through
-`pnpm run test:onboarding`; see
+These run locally. The Actions job also runs them, as part of the full suite
+(`pnpm run test:unit`); see
 [Continuous integration](#continuous-integration-task-66). No hosted run of
 that step has been observed.
 
