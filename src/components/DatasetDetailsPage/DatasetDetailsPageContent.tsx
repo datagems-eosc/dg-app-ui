@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
 import { getDisplayCollectionLabel } from "@/config/collectionConstants";
-import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { sharingStateFromLegacyAccess } from "@/lib/datasetPermissions/model";
@@ -69,7 +68,6 @@ export default function DatasetDetailsPageContent({
 }: DatasetDetailsPageContentProps) {
   const router = useRouter();
   const { downloadDatasetFile } = useApi();
-  const hideGeneralChat = useFeatureFlag("generalChat");
 
   const previewEntries = useMemo(
     () => buildFilePreviews(dataset.profileRaw),
@@ -202,16 +200,12 @@ export default function DatasetDetailsPageContent({
                 <Button variant="outline" size="sm">
                   Edit
                 </Button>
-                {!hideGeneralChat && (
-                  <>
-                    <Button variant="outline" size="sm">
-                      Select
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      0 Selected
-                    </Button>
-                  </>
-                )}
+                <Button variant="outline" size="sm">
+                  Select
+                </Button>
+                <Button variant="outline" size="sm">
+                  0 Selected
+                </Button>
               </div>
             </div>
             <DatasetHeader dataset={dataset} />
