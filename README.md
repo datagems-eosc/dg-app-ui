@@ -254,7 +254,7 @@ pnpm run type-check      # Run TypeScript type checking
 pnpm test                # Run the Node baseline tests in tests/*.test.{ts,mjs}
 pnpm run test:coverage   # Same as pnpm test (no coverage report)
 pnpm run test:unit       # Run every Vitest unit test under src/
-pnpm run test:onboarding # Run the dataset onboarding Vitest selection (also run in CI)
+pnpm run test:onboarding # Run the dataset onboarding Vitest selection
 pnpm run test:browser:onboarding # Run the local dataset onboarding browser journey (not run in CI)
 pnpm run test:dataset-permissions # Run the dataset permissions Vitest selection
 
@@ -292,11 +292,10 @@ Automatically runs on push and pull requests to `main`, `develop`, and `staging`
 - **Lint with Biome**: Validates code quality and formatting
 - **Type Check**: Ensures TypeScript types are correct
 - **Tests**: Runs the Node baseline tests (`pnpm run test:coverage`)
-- **Dataset onboarding tests**: Runs `pnpm run test:onboarding` (Vitest)
-- **Dataset permissions tests**: Runs `pnpm run test:dataset-permissions` (Vitest)
+- **Unit tests**: Runs the full Vitest suite (`pnpm run test:unit`)
 - **Security Audit**: Checks for known vulnerabilities in dependencies (non-blocking)
 
-The job runs on Node 20.x. The two Vitest steps run named selections, not every unit test; `pnpm run test:unit` runs them all. Each selection fails if its filters match no test file. Browser journeys are not part of CI. Whether a failing check blocks merging depends on branch protection, which is configured outside this repository.
+The job runs on Node 20.x. The Vitest step runs every unit test under `src/`; `pnpm run test:onboarding` and `pnpm run test:dataset-permissions` remain for running one feature's selection locally. Browser journeys are not part of CI. Whether a failing check blocks merging depends on branch protection, which is configured outside this repository.
 
 ### CodeQL Analysis (Static Code Analysis)
 

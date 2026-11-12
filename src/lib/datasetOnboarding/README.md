@@ -407,16 +407,14 @@ uploader regressions (`DatasetUpload.test.tsx` and `FileUploadCard.test.tsx`). A
 selection fails rather than passing: Vitest exits 1 when a filter matches no
 test files.
 
-The `Run dataset onboarding tests (Vitest)` step of the `quality` job in
-`.github/workflows/ci.yml` runs that script, and a failing test fails the job.
+The `Run unit tests (Vitest)` step of the `quality` job in
+`.github/workflows/ci.yml` runs the full suite (`pnpm run test:unit`), which
+includes this selection, and a failing test fails the job.
 The separate `tsx --test` step (`pnpm run test:coverage`) is unchanged and
 still executes no Vitest suite.
 
-This describes **configured** CI execution only. No hosted Actions run of the
-step has been observed. The job requests Node 20.x, while the local validation
-ran on Node 24.14.0: Vite 7.3.1 and jsdom 28.0.0 require `^20.19.0` within that
-major and no such Node 20 build was installed locally, so Node 20 execution of
-this selection is unverified. The workflow file itself is unchanged by the form
+The first hosted run of that step, on Node 20.x in #379 (12 November 2026),
+passed with the rest of the suite: 118 test files, 1756 tests. The workflow file itself is unchanged by the form
 integration; only the script's selection grew.
 
 ## Presentation (task 5.1/5.2)
@@ -588,9 +586,9 @@ node <batch>/evidence/browser-check.mjs --base http://127.0.0.1:3117
 
 What none of this establishes: authentication, deployed permissions, real
 uploader or group-member access, asynchronous Gateway processing, submission,
-sharing, or an observed CI result — the Actions job is configured to run this
-Vitest selection (see [Continuous integration](#continuous-integration-task-66)),
-but no hosted run has been observed and it never runs the browser script.
+or sharing. The Actions job runs this Vitest selection as part of the full
+suite on Node 20.x (see [Continuous integration](#continuous-integration-task-66)),
+but it never runs the browser script.
 
 ## Submission ownership (task 6.1, offline subset)
 
@@ -720,10 +718,10 @@ pnpm exec vitest run --config vitest.unit.config.ts \
   src/components/AddDatasetForm/AddDatasetForm.test.tsx
 ```
 
-These run locally. The Actions job is also configured to run them, through
-`pnpm run test:onboarding`; see
-[Continuous integration](#continuous-integration-task-66). No hosted run of
-that step has been observed.
+These run locally. The Actions job also runs them, as part of the full suite
+(`pnpm run test:unit`); see
+[Continuous integration](#continuous-integration-task-66). The first hosted
+run, on Node 20.x in #379, passed.
 
 ## Private onboarding and the migrated form (tasks 6.1–6.5)
 

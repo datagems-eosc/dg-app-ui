@@ -73,4 +73,4 @@ Desktop is 1440×900. The narrow checks use 390×844.
 - Gateway authorization, the deployed contract or the effect on real recipients. Those need the authorized real-account smoke (tasks 4.3 and 6.1), including whether a deployed manager receives 200, whether returned group ids match discovery and the write route, and whether the inventory is complete.
 - Production-build behaviour: this runs the development server.
 - That the flow is ready to enable. The flag stays off by default everywhere.
-- CI coverage: this journey is local only. CI runs the Vitest selection `pnpm run test:dataset-permissions`.
+- CI coverage: this journey is local only. CI runs the full Vitest suite (`pnpm run test:unit`), which includes the `pnpm run test:dataset-permissions` selection.
