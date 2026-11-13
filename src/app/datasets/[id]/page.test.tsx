@@ -23,6 +23,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockGetDatasetById = vi.fn();
 const mockGetCurrentUserContextGrants = vi.fn();
 const mockPush = vi.fn();
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
+
 let mockPrincipalId: string | null = "account-a";
 let mockDatasetId = "ds-1";
 let mockHasToken = true;
@@ -446,7 +454,7 @@ it.each(["account", "dataset", "sign-out", "missing-principal"])(
   async (change) => {
     vi.clearAllMocks();
     mockGetCurrentUserContextGrants.mockResolvedValue([]);
-    const pending = Promise.withResolvers<unknown>();
+    const pending = deferred<unknown>();
     mockGetDatasetById
       .mockReturnValueOnce(pending.promise)
       .mockResolvedValueOnce({
@@ -480,7 +488,7 @@ it.each(["account", "dataset", "sign-out", "missing-principal"])(
 
 it("rejects late context-grant results after the account changes", async () => {
   vi.clearAllMocks();
-  const pending = Promise.withResolvers<unknown>();
+  const pending = deferred<unknown>();
   mockGetDatasetById.mockResolvedValue({
     ...datasetPayload(["browsedataset"]),
     name: "Current dataset",
