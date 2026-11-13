@@ -519,8 +519,9 @@ it("requests supported metadata and does not fabricate an updated date", async (
   const fields = mockGetDatasetById.mock.calls[0][1];
   expect(fields).not.toContain("mimeType");
   expect(fields).not.toContain("size");
+  expect(fields).not.toContain("lastUpdated");
   expect(fields).toEqual(
-    expect.arrayContaining(["profileRaw", "datePublished", "lastUpdated"]),
+    expect.arrayContaining(["profileRaw", "datePublished"]),
   );
   expect(screen.queryByText("2024-01-01")).not.toBeInTheDocument();
   expect(screen.queryByText("Last updated")).not.toBeInTheDocument();

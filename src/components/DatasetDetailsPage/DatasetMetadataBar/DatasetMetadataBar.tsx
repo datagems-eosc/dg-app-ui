@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, FileCheck, HardDrive, RefreshCcw } from "lucide-react";
+import { CalendarPlus, FileCheck, HardDrive } from "lucide-react";
 import React from "react";
 import type { DatasetPlus } from "@/data/dataset";
 import {
@@ -36,16 +36,8 @@ export default function DatasetMetadataBar({
       value: suppliedDate(dataset.datePublished),
     },
     {
-      icon: <RefreshCcw className={styles.datasetMetadataBar__icon} />,
-      label: "Last updated",
-      value: suppliedDate(dataset.lastUpdated),
-    },
-    {
       icon: <HardDrive className={styles.datasetMetadataBar__icon} />,
-      label:
-        metadata.size.kind === "partial"
-          ? "Known profiled file size"
-          : "Profiled file size",
+      label: "File size",
       value:
         metadata.size.kind === "unavailable"
           ? undefined

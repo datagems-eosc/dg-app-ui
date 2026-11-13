@@ -10,7 +10,36 @@ const file = (id: unknown, properties: Record<string, unknown>) => ({
 const profile = (...nodes: unknown[]) => ({ nodes, edges: [] });
 
 describe("profile formats", () => {
-  it("normalizes MIME labels and uses extensions only without usable MIME", () => {
+  it("omits invalid MIME values that happen to be object property names", () => {
+    expect(
+      deriveProfileMetadata(
+        profile(
+          file("constructor", { encodingFormat: "constructor" }),
+          file("prototype", { encodingFormat: "__proto__" }),
+        ),
+      ).formats,
+    ).toEqual([]);
+  });
+
+  it("prefers a supplied extension to an unknown MIME type", () => {
+    expect(
+      deriveProfileMetadata(
+        profile(
+          file("json", {
+            encodingFormat: "application/octet-stream",
+            name: "data.json",
+          }),
+          file("excel", {
+            encodingFormat: "application/x-custom",
+            name: "report.xlsx",
+          }),
+          file("raw", { encodingFormat: "Application/X-Custom; version=1" }),
+        ),
+      ).formats,
+    ).toEqual(["JSON", "Excel", "application/x-custom"]);
+  });
+
+  it("normalizes known MIME labels and falls back to supplied extensions", () => {
     const graph = profile(
       file("pdf", {
         encodingFormat: " Application/PDF; charset=utf-8 ",
@@ -38,34 +67,25 @@ describe("profile formats", () => {
   });
 });
 
-it("omits ambiguous file identities and retains independent siblings", () => {
+it("reads file metadata without requiring a file ID", () => {
   expect(
     deriveProfileMetadata(
       profile(
-        file("same", { encodingFormat: "application/pdf" }),
-        file("same", { encodingFormat: "application/json" }),
-        file(undefined, { encodingFormat: "text/csv" }),
-        file("   ", { encodingFormat: "text/csv" }),
-        file("valid", {
-          name: "same.pdf",
-          encodingFormat: "application/x-zip",
-        }),
-        file("valid", {
-          encodingFormat: "application/x-zip",
-          name: "same.pdf",
-          unrelated: 1,
-        }),
+        file(undefined, { encodingFormat: "application/pdf", contentSize: 2 }),
+        file("json", { encodingFormat: "application/json", contentSize: 3 }),
       ),
-    ).formats,
-  ).toEqual(["application/x-zip"]);
+    ),
+  ).toMatchObject({
+    formats: ["PDF", "JSON"],
+    size: { kind: "complete", bytes: 5, knownFiles: 2, representedFiles: 2 },
+  });
 });
 
-it("sums validated represented-file sizes once per ID, preserving zero", () => {
+it("sums validated file sizes, preserving zero", () => {
   const first = file("a", { name: "same.pdf", contentSize: " 140048 B " });
   expect(
     deriveProfileMetadata(
       profile(
-        first,
         first,
         file("b", { name: "same.pdf", contentSize: 0 }),
         file("c", { contentSize: "005209" }),
@@ -84,7 +104,7 @@ it("sums validated represented-file sizes once per ID, preserving zero", () => {
   ).toMatchObject({ size: { kind: "complete", bytes: 0 } });
 });
 
-it("marks known sizes as partial when represented files are unknown or ambiguous", () => {
+it("sums only valid sizes when some files have unavailable sizes", () => {
   const invalid = [
     undefined,
     null,
@@ -117,18 +137,6 @@ it("marks known sizes as partial when represented files are unknown or ambiguous
       deriveProfileMetadata(profile(file("missing", { contentSize: value }))),
     ).toMatchObject({ size: { kind: "unavailable" } });
   }
-  expect(
-    deriveProfileMetadata(
-      profile(
-        file("known", { contentSize: 10 }),
-        file(undefined, { contentSize: 20 }),
-        file("conflict", { contentSize: 2 }),
-        file("conflict", { contentSize: 3 }),
-      ),
-    ),
-  ).toMatchObject({
-    size: { kind: "partial", bytes: 10, knownFiles: 1, representedFiles: 3 },
-  });
 });
 
 it("omits an overflowed aggregate instead of rounding or showing a lower total", () => {
@@ -209,15 +217,12 @@ it("keeps partial profiler fields and normalizes keyword strings without guessed
   });
   const nodes = [
     first,
-    first,
     record("b", {
       name: "Same",
       summary: " Summary ",
       keywords: [" one ", null, 42, {}, "", "one", "One", "two"],
     }),
     record("c", { summary: "Summary only", keywords: false }),
-    record("bad", { summary: "Conflict" }),
-    record("bad", { summary: "Other" }),
     record(null, { summary: "No identity" }),
     record("blank", { summary: 4, keywords: { value: "bad" } }),
   ];
@@ -235,33 +240,4 @@ it("keeps partial profiler fields and normalizes keyword strings without guessed
   expect(
     deriveProfileMetadata(profile(...nodes.toReversed())).profiling,
   ).toEqual(result.toReversed());
-});
-
-it("rejects IDs shared by conflicting node kinds and keeps valid file coverage partial", () => {
-  const result = deriveProfileMetadata(
-    profile(
-      file("collision", {
-        encodingFormat: "application/pdf",
-        contentSize: 100,
-      }),
-      {
-        id: "collision",
-        labels: ["cr:RecordSet"],
-        properties: { summary: "Ambiguous summary", keywords: ["ambiguous"] },
-      },
-      file("valid", { encodingFormat: "application/json", contentSize: 20 }),
-      {
-        id: "record",
-        labels: ["cr:RecordSet"],
-        properties: { summary: "Valid summary" },
-      },
-    ),
-  );
-  expect(result).toEqual({
-    formats: ["JSON"],
-    size: { kind: "partial", bytes: 20, knownFiles: 1, representedFiles: 2 },
-    profiling: [
-      { id: "record", name: undefined, summary: "Valid summary", keywords: [] },
-    ],
-  });
 });

@@ -43,7 +43,7 @@ it("omits missing metadata and invalid dates without leaving a bar", () => {
   expect(container).toBeEmptyDOMElement();
 });
 
-it("preserves real dates and zero, and labels a partial sum honestly", () => {
+it("preserves real dates and zero, and uses File size for a known sum", () => {
   const { rerender } = render(
     <DatasetMetadataBar
       dataset={{
@@ -63,8 +63,9 @@ it("preserves real dates and zero, and labels a partial sum honestly", () => {
     />,
   );
   expect(screen.getByText("1970-01-01")).toBeInTheDocument();
-  expect(screen.getByText("2026-11-10")).toBeInTheDocument();
-  expect(screen.getByText("Profiled file size")).toBeInTheDocument();
+  expect(screen.queryByText("Last updated")).not.toBeInTheDocument();
+  expect(screen.queryByText("2026-11-10")).not.toBeInTheDocument();
+  expect(screen.getByText("File size")).toBeInTheDocument();
   expect(screen.getByText("0.0 B")).toBeInTheDocument();
   rerender(
     <DatasetMetadataBar
@@ -83,7 +84,7 @@ it("preserves real dates and zero, and labels a partial sum honestly", () => {
       }}
     />,
   );
-  expect(screen.getByText("Known profiled file size")).toBeInTheDocument();
+  expect(screen.getByText("File size")).toBeInTheDocument();
   expect(screen.getByText("1.0 KB")).toBeInTheDocument();
   expect(screen.queryByText("1970-01-01")).not.toBeInTheDocument();
 });
