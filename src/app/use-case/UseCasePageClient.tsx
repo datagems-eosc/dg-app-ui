@@ -7,6 +7,7 @@ import CreateCollectionModal from "@/components/CreateCollectionModal";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useDatasetSearch } from "@/hooks/useDatasetSearch";
+import { ApiErrorMessage } from "@/lib/apiErrors";
 import { getNavigationUrl } from "@/lib/utils";
 
 interface UseCasePageClientProps {
@@ -23,7 +24,8 @@ export default function UseCasePageClient({
   withLayout = true,
 }: UseCasePageClientProps) {
   const router = useRouter();
-  const { apiCollections, isLoadingApiCollections } = useCollections();
+  const { apiCollections, isLoadingApiCollections, apiCollectionsFailed } =
+    useCollections();
 
   // The use case lists one built-in collection, found by name among the
   // built-in ones only (a user's own collection may share the name). Nothing
@@ -35,21 +37,19 @@ export default function UseCasePageClient({
         ?.id ?? null
     );
   }, [apiCollections, collectionName]);
-  const isMissingCollection = !collectionId && !isLoadingApiCollections;
+  // Why nothing can be listed, once the collection list has settled.
+  const unavailable =
+    collectionId || isLoadingApiCollections
+      ? null
+      : apiCollectionsFailed
+        ? ApiErrorMessage.FETCH_COLLECTIONS_FAILED
+        : `The ${collectionName} collection could not be found.`;
 
   const search = useDatasetSearch({
-    scope: collectionId
-      ? { kind: "collection", id: String(collectionId) }
-      : null,
+    scope: collectionId ? { kind: "collection", id: collectionId } : null,
   });
-  // A collection that is not there lists nothing and says so.
-  const view = isMissingCollection
-    ? {
-        ...search,
-        datasets: [],
-        isLoading: false,
-        error: `The ${collectionName} collection could not be found.`,
-      }
+  const view = unavailable
+    ? { ...search, datasets: [], isLoading: false, error: unavailable }
     : search;
 
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);

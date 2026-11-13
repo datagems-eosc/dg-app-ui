@@ -24,7 +24,8 @@ export default function FilterModal({
   currentFilters,
   fieldsOfScienceCategories,
   licenses,
-  isLoadingVocabularies = false,
+  isLoadingFieldsOfScience = false,
+  isLoadingLicenses = false,
   accessUnavailableReason,
 }: {
   isVisible: boolean;
@@ -34,7 +35,8 @@ export default function FilterModal({
   /** Loaded once by the caller (`useDatasetVocabularies`), not per opening. */
   fieldsOfScienceCategories: HierarchicalCategory[];
   licenses: { value: string; label: string }[];
-  isLoadingVocabularies?: boolean;
+  isLoadingFieldsOfScience?: boolean;
+  isLoadingLicenses?: boolean;
   /**
    * When set, the caller's data cannot support Access filtering: the section
    * shows this explanation instead of options, and no Access value is applied.
@@ -331,7 +333,7 @@ export default function FilterModal({
                 <h4 className="text-body-16-medium mb-4 text-slate-850">
                   Field of Science
                 </h4>
-                {isLoadingVocabularies ? (
+                {isLoadingFieldsOfScience ? (
                   <div className="flex justify-center items-center h-20">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                   </div>
@@ -353,7 +355,7 @@ export default function FilterModal({
                 <h4 className="text-body-16-medium mb-4 text-slate-850">
                   License
                 </h4>
-                {isLoadingVocabularies ? (
+                {isLoadingLicenses ? (
                   <div className="flex justify-center items-center h-20">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                   </div>

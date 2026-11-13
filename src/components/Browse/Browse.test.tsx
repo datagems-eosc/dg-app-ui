@@ -238,7 +238,8 @@ describe("Browse - Delete Collection Feature", () => {
     // Like the real hook: a new object every render, the same functions.
     const apiMock = baseApiMock();
     mockUseApi.mockImplementation(() => ({ ...apiMock }));
-    const view = (
+    // A new element each time, so React renders Browse again.
+    const view = () => (
       <Browse
         datasets={mockDatasets}
         title="Test Collection"
@@ -248,16 +249,79 @@ describe("Browse - Delete Collection Feature", () => {
         collectionName="Test Collection"
       />
     );
-    const { rerender } = render(view);
+    const { rerender } = render(view());
     await waitFor(() => {
       expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
     });
 
-    rerender(view);
-    rerender(view);
+    rerender(view());
+    rerender(view());
     await act(async () => {});
 
     expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for the grants once across a token refresh", async () => {
+    let apiMock = baseApiMock();
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    // A new element each time, so React renders Browse again.
+    const view = () => (
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId="123"
+        collectionName="Test Collection"
+      />
+    );
+    const { rerender } = render(view());
+    const first = apiMock;
+    await waitFor(() => {
+      expect(first.getCollectionGrants).toHaveBeenCalledTimes(1);
+    });
+
+    // useApi rebuilds its calls when the access token changes.
+    apiMock = baseApiMock();
+    rerender(view());
+    await act(async () => {});
+
+    expect(apiMock.getCollectionGrants).not.toHaveBeenCalled();
+  });
+
+  it("hides Delete Collection while the next collection's grants load", async () => {
+    let resolveSecond: (roles: string[]) => void = () => {};
+    const apiMock = {
+      ...baseApiMock(),
+      getCollectionGrants: vi
+        .fn()
+        .mockResolvedValueOnce(["dg_col-delete"])
+        .mockReturnValueOnce(
+          new Promise<string[]>((resolve) => {
+            resolveSecond = resolve;
+          }),
+        ),
+    };
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    const viewFor = (collectionId: string) => (
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId={collectionId}
+        collectionName="Test Collection"
+      />
+    );
+    const { rerender } = render(viewFor("123"));
+    await act(async () => {});
+    rerender(viewFor("456"));
+    await act(async () => {});
+
+    await userEvent.click(collectionActionsButton());
+
+    expect(screen.queryByText("Delete Collection")).not.toBeInTheDocument();
+    await act(async () => resolveSecond([]));
   });
 
   it("asks for the grants again when the collection changes", async () => {

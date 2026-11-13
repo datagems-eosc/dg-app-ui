@@ -9,64 +9,69 @@ import { logError } from "@/lib/logger";
 
 type LicenseOption = { value: string; label: string };
 type Vocabulary = "fieldsOfScience" | "licenses";
+type Status = "loading" | "loaded" | "failed";
 
 const ALL: Vocabulary[] = ["fieldsOfScience", "licenses"];
 
 /**
  * The fields-of-science and licence vocabularies for the dataset filters,
- * requested once per mount. A vocabulary that fails stays empty until
+ * requested once per sign-in. A vocabulary that fails stays empty until
  * `retryFailed` asks for it again (the filter dialog does on opening).
  */
 export function useDatasetVocabularies() {
-  // `useApi()` is a new object every render; depend on its stable members.
   const { hasToken, getFieldsOfScience, getLicenses } = useApi();
+  // useApi rebuilds its calls whenever the access token is refreshed. Read
+  // the latest ones through a ref so a refresh does not load again.
+  const calls = useRef({ getFieldsOfScience, getLicenses });
+  calls.current = { getFieldsOfScience, getLicenses };
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
     HierarchicalCategory[]
   >([]);
   const [licenses, setLicenses] = useState<LicenseOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const failed = useRef<Vocabulary[]>([]);
-  // Loading lasts until every load started so far has settled.
-  const inFlight = useRef(0);
+  const [status, setStatus] = useState<Record<Vocabulary, Status>>({
+    fieldsOfScience: "loading",
+    licenses: "loading",
+  });
 
-  const load = useCallback(
-    async (vocabularies: Vocabulary[]) => {
-      const requests: Record<Vocabulary, () => Promise<void>> = {
-        fieldsOfScience: () =>
-          getFieldsOfScience().then((data) =>
-            setFieldsOfScienceCategories(processFieldsOfScience(data)),
-          ),
-        licenses: () =>
-          getLicenses().then((data) => setLicenses(processLicenses(data))),
-      };
-      failed.current = failed.current.filter((v) => !vocabularies.includes(v));
-      inFlight.current += 1;
-      setIsLoading(true);
-      const results = await Promise.allSettled(
-        vocabularies.map((v) => requests[v]()),
+  const load = useCallback((vocabularies: Vocabulary[]) => {
+    for (const vocabulary of vocabularies) {
+      const settle = (next: Status) =>
+        setStatus((current) => ({ ...current, [vocabulary]: next }));
+      settle("loading");
+      const request =
+        vocabulary === "fieldsOfScience"
+          ? calls.current
+              .getFieldsOfScience()
+              .then((data) =>
+                setFieldsOfScienceCategories(processFieldsOfScience(data)),
+              )
+          : calls.current
+              .getLicenses()
+              .then((data) => setLicenses(processLicenses(data)));
+      request.then(
+        () => settle("loaded"),
+        (reason: unknown) => {
+          logError(`Failed to fetch ${vocabulary}`, reason);
+          settle("failed");
+        },
       );
-      results.forEach((result, i) => {
-        const vocabulary = vocabularies[i];
-        if (result.status === "fulfilled") return;
-        logError(`Failed to fetch ${vocabulary}`, result.reason);
-        // StrictMode loads twice in development: record each failure once.
-        if (!failed.current.includes(vocabulary)) {
-          failed.current.push(vocabulary);
-        }
-      });
-      inFlight.current -= 1;
-      if (inFlight.current === 0) setIsLoading(false);
-    },
-    [getFieldsOfScience, getLicenses],
-  );
+    }
+  }, []);
 
   useEffect(() => {
-    if (hasToken) void load(ALL);
+    if (hasToken) load(ALL);
   }, [hasToken, load]);
 
   const retryFailed = useCallback(() => {
-    if (hasToken && failed.current.length > 0) void load(failed.current);
-  }, [hasToken, load]);
+    const failed = ALL.filter((vocabulary) => status[vocabulary] === "failed");
+    if (hasToken && failed.length > 0) load(failed);
+  }, [hasToken, status, load]);
 
-  return { fieldsOfScienceCategories, licenses, isLoading, retryFailed };
+  return {
+    fieldsOfScienceCategories,
+    licenses,
+    isLoadingFieldsOfScience: status.fieldsOfScience === "loading",
+    isLoadingLicenses: status.licenses === "loading",
+    retryFailed,
+  };
 }

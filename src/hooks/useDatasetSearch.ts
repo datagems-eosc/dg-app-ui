@@ -199,7 +199,9 @@ interface ListResult {
 
 /**
  * Smart Search. A dataset search is not a chat: discovery runs untracked (no
- * conversation id, no auto-create) so it never shows up in Recent Chats.
+ * conversation id, no auto-create) so it never shows up in Recent Chats. A
+ * failure is reported rather than falling back to a name search, which on a
+ * whole sentence would only show "no results".
  */
 async function loadSmart(
   api: SearchApi,
@@ -214,7 +216,6 @@ async function loadSmart(
       resultCount: 100,
       ...(collectionId ? { collectionIds: [collectionId] } : {}),
     }),
-    // A name search on a whole sentence would only show "no results".
     ApiErrorMessage.SMART_SEARCH_FAILED,
     "Smart search failed",
   );
@@ -370,7 +371,8 @@ export function useDatasetSearch({
       path,
       scopeKey,
       searchRun,
-      path === "smart" ? smartQuery : payload,
+      // A custom collection lists its own datasets whatever the controls say.
+      path === "smart" ? smartQuery : path === "catalogue" ? payload : null,
     ]);
     if (key === lastStarted.current) return;
     lastStarted.current = key;
@@ -420,8 +422,8 @@ export function useDatasetSearch({
       }
     };
     void run();
-    // The handoff helpers and API calls are stable; the inputs below decide
-    // when to search.
+    // The API calls change on a token refresh and are left out: the request
+    // key, not their identity, decides when to search.
   }, [
     hasToken,
     scopeKind,

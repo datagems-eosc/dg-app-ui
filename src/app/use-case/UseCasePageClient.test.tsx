@@ -27,6 +27,7 @@ const collectionsState = {
     return [...this.apiCollections, ...this.extraCollections];
   },
   isLoadingApiCollections: false,
+  apiCollectionsFailed: false,
 };
 vi.mock("@/contexts/CollectionsContext", () => ({
   useCollections: () => collectionsState,
@@ -132,6 +133,7 @@ beforeEach(() => {
   collectionsState.apiCollections = [{ id: "col-math", name: "Math" }];
   collectionsState.extraCollections = [];
   collectionsState.isLoadingApiCollections = false;
+  collectionsState.apiCollectionsFailed = false;
   api.persistConversation.mockResolvedValue({ id: "conv-1" });
   api.searchCrossDataset.mockResolvedValue({ result: [] });
   api.queryDatasets.mockResolvedValue({ items: [] });
@@ -165,6 +167,20 @@ describe("UseCasePageClient – opening", () => {
     await waitFor(() =>
       expect(view.getByTestId("error")).toHaveTextContent(
         "The Math collection could not be found.",
+      ),
+    );
+    expect(api.queryDatasets).not.toHaveBeenCalled();
+    expect(view.getByTestId("shown")).toHaveTextContent("0");
+  });
+
+  it("says the collections failed to load rather than that the collection is missing", async () => {
+    collectionsState.apiCollections = [];
+    collectionsState.apiCollectionsFailed = true;
+    const view = renderMath();
+
+    await waitFor(() =>
+      expect(view.getByTestId("error")).toHaveTextContent(
+        "Failed to fetch collections",
       ),
     );
     expect(api.queryDatasets).not.toHaveBeenCalled();

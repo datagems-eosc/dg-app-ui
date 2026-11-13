@@ -42,8 +42,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  // The collections provider loads the lists; every in-app change refreshes
-  // them, so the layout asks only on request (`forceCollectionsRefresh`).
+  // The collections provider loads the lists, retries a failed one on the
+  // next page, and every in-app change refreshes them; the layout asks only
+  // on request (`forceCollectionsRefresh`).
   const { refreshAllCollections } = useCollections();
   const { data: session } = useSession();
 

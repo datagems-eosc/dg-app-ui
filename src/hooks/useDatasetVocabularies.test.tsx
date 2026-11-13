@@ -24,6 +24,11 @@ const FIELDS = {
 };
 const LICENSES = ["MIT", "CC-BY-4.0"];
 
+const isSettled = (state: {
+  isLoadingFieldsOfScience: boolean;
+  isLoadingLicenses: boolean;
+}) => !state.isLoadingFieldsOfScience && !state.isLoadingLicenses;
+
 describe("useDatasetVocabularies", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,8 +40,8 @@ describe("useDatasetVocabularies", () => {
   it("loads fields of science and licences once, ready for the filters", async () => {
     const { result } = renderHook(() => useDatasetVocabularies());
 
-    expect(result.current.isLoading).toBe(true);
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(isSettled(result.current)).toBe(false);
+    await waitFor(() => expect(isSettled(result.current)).toBe(true));
 
     expect(result.current.licenses.map((l) => l.value)).toEqual(LICENSES);
     expect(result.current.fieldsOfScienceCategories.length).toBeGreaterThan(0);
@@ -46,13 +51,30 @@ describe("useDatasetVocabularies", () => {
 
   it("does not ask again when the caller re-renders", async () => {
     const { result, rerender } = renderHook(() => useDatasetVocabularies());
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(isSettled(result.current)).toBe(true));
 
     rerender();
     rerender();
 
     expect(api.getFieldsOfScience).toHaveBeenCalledTimes(1);
     expect(api.getLicenses).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not ask again when a token refresh renews the API calls", async () => {
+    const { result, rerender } = renderHook(() => useDatasetVocabularies());
+    await waitFor(() => expect(isSettled(result.current)).toBe(true));
+    const firstFields = api.getFieldsOfScience;
+    const firstLicenses = api.getLicenses;
+
+    // useApi rebuilds its calls when the access token changes.
+    api.getFieldsOfScience = vi.fn().mockResolvedValue(FIELDS);
+    api.getLicenses = vi.fn().mockResolvedValue(LICENSES);
+    rerender();
+
+    expect(firstFields).toHaveBeenCalledTimes(1);
+    expect(firstLicenses).toHaveBeenCalledTimes(1);
+    expect(api.getFieldsOfScience).not.toHaveBeenCalled();
+    expect(api.getLicenses).not.toHaveBeenCalled();
   });
 
   it("asks for nothing while signed out", () => {
@@ -69,7 +91,7 @@ describe("useDatasetVocabularies", () => {
 
     const { result } = renderHook(() => useDatasetVocabularies());
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(isSettled(result.current)).toBe(true));
     expect(result.current.fieldsOfScienceCategories).toEqual([]);
     expect(result.current.licenses.map((l) => l.value)).toEqual(LICENSES);
   });
@@ -77,7 +99,7 @@ describe("useDatasetVocabularies", () => {
   it("asks again only for a vocabulary that failed", async () => {
     api.getFieldsOfScience.mockRejectedValueOnce(new Error("down"));
     const { result } = renderHook(() => useDatasetVocabularies());
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(isSettled(result.current)).toBe(true));
 
     act(() => result.current.retryFailed());
 
@@ -90,6 +112,18 @@ describe("useDatasetVocabularies", () => {
     expect(api.getLicenses).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the loaded vocabulary listed while a failed one is retried", async () => {
+    api.getLicenses.mockRejectedValueOnce(new Error("down"));
+    const { result } = renderHook(() => useDatasetVocabularies());
+    await waitFor(() => expect(isSettled(result.current)).toBe(true));
+    api.getLicenses.mockReturnValueOnce(new Promise(() => {}));
+
+    act(() => result.current.retryFailed());
+
+    expect(result.current.isLoadingLicenses).toBe(true);
+    expect(result.current.isLoadingFieldsOfScience).toBe(false);
+  });
+
   it("asks once per failed vocabulary after a StrictMode double mount", async () => {
     api.getLicenses.mockRejectedValueOnce(new Error("down"));
     api.getLicenses.mockRejectedValueOnce(new Error("down"));
@@ -97,7 +131,7 @@ describe("useDatasetVocabularies", () => {
       wrapper: StrictMode,
     });
     await waitFor(() => expect(api.getLicenses).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(isSettled(result.current)).toBe(true));
 
     act(() => result.current.retryFailed());
 
@@ -107,7 +141,7 @@ describe("useDatasetVocabularies", () => {
 
   it("asks for nothing again when every vocabulary loaded", async () => {
     const { result } = renderHook(() => useDatasetVocabularies());
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(isSettled(result.current)).toBe(true));
 
     act(() => result.current.retryFailed());
 

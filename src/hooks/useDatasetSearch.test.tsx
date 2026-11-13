@@ -154,7 +154,7 @@ describe("useDatasetSearch", () => {
       );
     });
 
-    it("keeps keyword search for a custom collection", async () => {
+    it("lists a custom collection once whatever the search controls say", async () => {
       api.queryUserCollections.mockResolvedValue({
         items: [{ id: "mine", datasets: [{ id: "a" }] }],
       });
@@ -164,11 +164,12 @@ describe("useDatasetSearch", () => {
 
       act(() => result.current.onSearchTermChange("rain in Crete"));
       act(() => result.current.onSmartSearchToggle(true));
-      await waitFor(() =>
-        expect(api.queryUserCollections).toHaveBeenCalledTimes(2),
-      );
+      act(() => result.current.onSortByChange("name-desc"));
+      await act(async () => {});
 
+      expect(api.queryUserCollections).toHaveBeenCalledTimes(1);
       expect(api.searchCrossDataset).not.toHaveBeenCalled();
+      expect(result.current.datasets).toHaveLength(1);
     });
   });
 

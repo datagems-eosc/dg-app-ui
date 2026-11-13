@@ -6,8 +6,6 @@ let session: { user: { name: string } } | null = { user: { name: "Test" } };
 
 const collections = {
   refreshAllCollections: vi.fn(),
-  isLoadingApiCollections: false,
-  isLoadingExtraCollections: false,
 };
 
 vi.mock("@/contexts/CollectionsContext", () => ({
@@ -31,36 +29,13 @@ describe("DashboardLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     session = { user: { name: "Test" } };
-    collections.isLoadingApiCollections = false;
-    collections.isLoadingExtraCollections = false;
   });
 
-  it("does not ask for the collection list again while it is loading", () => {
-    collections.isLoadingApiCollections = true;
-    collections.isLoadingExtraCollections = true;
-
-    render(<DashboardLayout>page</DashboardLayout>);
+  it("leaves loading the collection lists to the provider", () => {
+    const { rerender } = render(<DashboardLayout>page</DashboardLayout>);
+    rerender(<DashboardLayout>page</DashboardLayout>);
 
     expect(screen.getByText("page")).toBeInTheDocument();
-    expect(collections.refreshAllCollections).not.toHaveBeenCalled();
-  });
-
-  it("does not ask once the first load finishes", () => {
-    collections.isLoadingApiCollections = true;
-    collections.isLoadingExtraCollections = true;
-    const { rerender } = render(<DashboardLayout>page</DashboardLayout>);
-
-    collections.isLoadingApiCollections = false;
-    collections.isLoadingExtraCollections = false;
-    rerender(<DashboardLayout>page</DashboardLayout>);
-
-    expect(collections.refreshAllCollections).not.toHaveBeenCalled();
-  });
-
-  it("leaves the collection list to the provider when a page opens after it loaded", () => {
-    const { rerender } = render(<DashboardLayout>page</DashboardLayout>);
-    rerender(<DashboardLayout>page</DashboardLayout>);
-
     expect(collections.refreshAllCollections).not.toHaveBeenCalled();
   });
 

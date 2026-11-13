@@ -16,7 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
@@ -260,7 +260,8 @@ export default function Browse({
   const {
     fieldsOfScienceCategories,
     licenses,
-    isLoading: isLoadingVocabularies,
+    isLoadingFieldsOfScience,
+    isLoadingLicenses,
     retryFailed: retryFailedVocabularies,
   } = useDatasetVocabularies();
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
@@ -352,7 +353,6 @@ export default function Browse({
           setAskedForSelection(true);
           return;
         }
-        setAskedForSelection(false);
         onAddToCollection();
       }
     : undefined;
@@ -514,32 +514,25 @@ export default function Browse({
 
   // Check if user can delete collection
   // For custom collections (except Favorites), use context grants.
-  // `useApi()` is a new object every render; depend on its stable members.
-  const { getCollectionGrants, hasToken } = api;
+  // `useApi()` rebuilds its calls when the access token is refreshed; read
+  // the latest through a ref so a refresh does not ask for the grants again.
+  const { hasToken } = api;
+  const getCollectionGrants = useRef(api.getCollectionGrants);
+  getCollectionGrants.current = api.getCollectionGrants;
   // The name arrives after the collection list loads; only this flag matters
   // here, so a late name does not ask for the grants again.
   const isFavorites =
     collectionName === "Favorites" || collectionName === "Favorites Datasets";
   useEffect(() => {
-    if (!isCustomCollection) {
-      setCanDeleteCollection(false);
+    // Fail closed: no Delete until this collection's grants arrive.
+    setCanDeleteCollection(false);
+    // Favorites can never be deleted.
+    if (!isCustomCollection || isFavorites || !collectionId || !hasToken) {
       return;
     }
-
-    // Don't allow deleting Favorites collection
-    if (isFavorites) {
-      setCanDeleteCollection(false);
-      return;
-    }
-
-    if (!collectionId || !hasToken) {
-      setCanDeleteCollection(false);
-      return;
-    }
-
     let cancelled = false;
     (async () => {
-      const roles = await getCollectionGrants(collectionId);
+      const roles = await getCollectionGrants.current(collectionId);
       if (cancelled) return;
       const permissions = mapRolesToPermissions(roles, COLLECTION_ROLE_MAP);
       setCanDeleteCollection(Boolean(permissions.delete));
@@ -548,13 +541,7 @@ export default function Browse({
     return () => {
       cancelled = true;
     };
-  }, [
-    getCollectionGrants,
-    hasToken,
-    collectionId,
-    isFavorites,
-    isCustomCollection,
-  ]);
+  }, [hasToken, collectionId, isFavorites, isCustomCollection]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
@@ -1387,7 +1374,8 @@ export default function Browse({
         currentFilters={filters}
         fieldsOfScienceCategories={fieldsOfScienceCategories}
         licenses={licenses}
-        isLoadingVocabularies={isLoadingVocabularies}
+        isLoadingFieldsOfScience={isLoadingFieldsOfScience}
+        isLoadingLicenses={isLoadingLicenses}
         accessUnavailableReason={ACCESS_FILTER_UNAVAILABLE_MESSAGE}
       />
 

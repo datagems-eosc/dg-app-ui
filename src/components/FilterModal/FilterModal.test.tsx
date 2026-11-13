@@ -80,12 +80,25 @@ describe("FilterModal", () => {
         {...defaultProps}
         fieldsOfScienceCategories={[]}
         licenses={[]}
-        isLoadingVocabularies
+        isLoadingFieldsOfScience
+        isLoadingLicenses
       />,
     );
 
     expect(screen.queryByText("MIT License")).toBeNull();
     expect(screen.queryByPlaceholderText("Search...")).toBeNull();
+  });
+
+  it("lists a loaded vocabulary while the other one is still loading", () => {
+    render(
+      <FilterModal
+        {...defaultProps}
+        fieldsOfScienceCategories={[]}
+        isLoadingFieldsOfScience
+      />,
+    );
+
+    expect(screen.getByText("MIT License")).toBeInTheDocument();
   });
 
   it("should not render when isVisible is false", () => {
