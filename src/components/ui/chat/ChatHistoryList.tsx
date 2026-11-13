@@ -4,6 +4,7 @@ import { MessageCircleMore, SearchX } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/hooks/useApi";
+import { toLikePattern } from "@/lib/likePattern";
 import { NoData } from "../NoData";
 import { Search as SearchInput } from "../Search";
 import { ChatItem } from "./ChatItem";
@@ -20,11 +21,6 @@ interface ApiConversation {
   createdAt?: string;
   messages?: unknown[];
 }
-
-// Gateway `like` is a Postgres ILIKE on the name: escape its wildcards so the
-// user's text is matched literally, then match anywhere in the name.
-const toNameLike = (text: string) =>
-  `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 const toListItems = (items: ApiConversation[]): ConversationListItem[] =>
   items
@@ -208,7 +204,7 @@ export function ChatHistoryList({
     const term = text.trim();
     appliedSearch.current = term;
     setSearchQuery(term);
-    void showFirstPage(term ? toNameLike(term) : null);
+    void showFirstPage(term ? toLikePattern(term) : null);
   };
 
   const clearSearch = () => {

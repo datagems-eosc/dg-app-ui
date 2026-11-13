@@ -5,27 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FilterState } from "@/config/filterOptions";
 import FilterModal from "./FilterModal";
 
-// Hoisted with the `vi.mock` factories below, which reference them.
-const { mockUseApi, mockProcessFieldsOfScience, mockProcessLicenses } =
-  vi.hoisted(() => ({
-    mockUseApi: vi.fn(),
-    mockProcessFieldsOfScience: vi.fn(),
-    mockProcessLicenses: vi.fn(),
-  }));
-
-vi.mock("@/hooks/useApi", () => ({
-  useApi: () => mockUseApi(),
-}));
-
-vi.mock("@/config/filterOptions", async () => {
-  const actual = await vi.importActual("@/config/filterOptions");
-  return {
-    ...actual,
-    processFieldsOfScience: mockProcessFieldsOfScience,
-    processLicenses: mockProcessLicenses,
-  };
-});
-
 const READ_LIMIT = 300;
 
 /**
@@ -83,19 +62,30 @@ describe("FilterModal", () => {
     onClose: vi.fn(),
     onApplyFilters: vi.fn(),
     currentFilters: defaultFilters,
+    fieldsOfScienceCategories: mockFieldsOfScienceCategories,
+    licenses: mockLicenses,
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseApi.mockReturnValue({
-      hasToken: true,
-      getFieldsOfScience: vi.fn().mockResolvedValue([]),
-      getLicenses: vi.fn().mockResolvedValue([]),
-    });
-    mockProcessFieldsOfScience.mockReturnValue(
-      guarded(mockFieldsOfScienceCategories),
+    // A fresh read budget per test.
+    defaultProps.fieldsOfScienceCategories = guarded(
+      mockFieldsOfScienceCategories,
     );
-    mockProcessLicenses.mockReturnValue(mockLicenses);
+  });
+
+  it("shows loading in place of the vocabularies until they arrive", () => {
+    render(
+      <FilterModal
+        {...defaultProps}
+        fieldsOfScienceCategories={[]}
+        licenses={[]}
+        isLoadingVocabularies
+      />,
+    );
+
+    expect(screen.queryByText("MIT License")).toBeNull();
+    expect(screen.queryByPlaceholderText("Search...")).toBeNull();
   });
 
   it("should not render when isVisible is false", () => {

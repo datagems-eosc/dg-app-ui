@@ -25,7 +25,6 @@ type DatasetWithCollections = Dataset & { collections?: Collection[] };
 import { Button } from "@ui/Button";
 import { ConfirmationModal } from "@ui/ConfirmationModal";
 import DatasetCardSkeleton from "@ui/datasets/DatasetCardSkeleton";
-import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import SmartSearch from "@ui/SmartSearch";
 import SmartSearchExamples from "@ui/SmartSearchExamples";
 import Switch from "@ui/Switch";
@@ -45,13 +44,12 @@ import type { Dataset } from "@/data/dataset";
 import { mockDatasets } from "@/data/dataset";
 import { filterPackagesBySearchTerm, mockPackages } from "@/data/package";
 import { useApi } from "@/hooks/useApi";
+import { useDatasetVocabularies } from "@/hooks/useDatasetVocabularies";
 import logger, { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import {
   type FilterState,
   getDefaultFilters,
-  processFieldsOfScience,
-  processLicenses,
   SORTING_OPTIONS,
 } from "../../config/filterOptions";
 import CreateCollectionModal from "../CreateCollectionModal";
@@ -261,12 +259,11 @@ export default function Browse({
   const [datasetsToAdd, setDatasetsToAdd] = useState<DatasetWithCollections[]>(
     [],
   );
-  const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
-    HierarchicalCategory[]
-  >([]);
-  const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
-    [],
-  );
+  const {
+    fieldsOfScienceCategories,
+    licenses,
+    isLoading: isLoadingVocabularies,
+  } = useDatasetVocabularies();
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
@@ -499,7 +496,9 @@ export default function Browse({
   }, [isMounted]);
 
   // Check if user can delete collection
-  // For custom collections (except Favorites), use context grants
+  // For custom collections (except Favorites), use context grants.
+  // `useApi()` is a new object every render; depend on its stable members.
+  const { getCollectionGrants, hasToken } = api;
   useEffect(() => {
     if (!isCustomCollection) {
       setCanDeleteCollection(false);
@@ -515,14 +514,14 @@ export default function Browse({
       return;
     }
 
-    if (!collectionId || !api.hasToken) {
+    if (!collectionId || !hasToken) {
       setCanDeleteCollection(false);
       return;
     }
 
     let cancelled = false;
     (async () => {
-      const roles = await api.getCollectionGrants(collectionId);
+      const roles = await getCollectionGrants(collectionId);
       if (cancelled) return;
       const permissions = mapRolesToPermissions(roles, COLLECTION_ROLE_MAP);
       setCanDeleteCollection(Boolean(permissions.delete));
@@ -531,7 +530,13 @@ export default function Browse({
     return () => {
       cancelled = true;
     };
-  }, [api, collectionId, collectionName, isCustomCollection]);
+  }, [
+    getCollectionGrants,
+    hasToken,
+    collectionId,
+    collectionName,
+    isCustomCollection,
+  ]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
@@ -546,35 +551,6 @@ export default function Browse({
       setFilters(propFilters);
     }
   }, [propFilters]);
-
-  // Fetch fields of science and licenses on component mount
-  useEffect(() => {
-    if (!api.hasToken) return;
-
-    // Fetch fields of science
-    api
-      .getFieldsOfScience()
-      .then((data) => {
-        const categories = processFieldsOfScience(data);
-        setFieldsOfScienceCategories(categories);
-      })
-      .catch((error) => {
-        logger.error({ error }, "Failed to fetch fields of science");
-        setFieldsOfScienceCategories([]);
-      });
-
-    // Fetch licenses
-    api
-      .getLicenses()
-      .then((data) => {
-        const licenseOptions = processLicenses(data);
-        setLicenses(licenseOptions);
-      })
-      .catch((error) => {
-        logger.error({ error }, "Failed to fetch licenses");
-        setLicenses([]);
-      });
-  }, [api.hasToken]);
 
   // Animate SelectedDatasetsPanel on open
   useEffect(() => {
@@ -1421,6 +1397,9 @@ export default function Browse({
         onClose={() => setShowFilterModal(false)}
         onApplyFilters={handleApplyFilters}
         currentFilters={filters}
+        fieldsOfScienceCategories={fieldsOfScienceCategories}
+        licenses={licenses}
+        isLoadingVocabularies={isLoadingVocabularies}
         accessUnavailableReason={ACCESS_FILTER_UNAVAILABLE_MESSAGE}
       />
 

@@ -182,6 +182,58 @@ describe("Browse - Delete Collection Feature", () => {
     });
   });
 
+  it("asks for the grants once when the collection re-renders unchanged", async () => {
+    // Like the real hook: a new object every render, the same functions.
+    const apiMock = baseApiMock();
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    const view = (
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId="123"
+        collectionName="Test Collection"
+      />
+    );
+    const { rerender } = render(view);
+    await waitFor(() => {
+      expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(view);
+    rerender(view);
+    await act(async () => {});
+
+    expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for the grants again when the collection changes", async () => {
+    const apiMock = baseApiMock();
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    const viewFor = (collectionId: string) => (
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId={collectionId}
+        collectionName="Test Collection"
+      />
+    );
+    const { rerender } = render(viewFor("123"));
+    await waitFor(() => {
+      expect(apiMock.getCollectionGrants).toHaveBeenCalledWith("123");
+    });
+
+    rerender(viewFor("456"));
+
+    await waitFor(() => {
+      expect(apiMock.getCollectionGrants).toHaveBeenLastCalledWith("456");
+    });
+    expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(2);
+  });
+
   it("should NOT check grants when isCustomCollection is false", async () => {
     const apiMock = { ...baseApiMock(), ...withDeleteGrant() };
     mockUseApi.mockReturnValue(apiMock);
@@ -754,5 +806,33 @@ describe("Browse – selected datasets actions", () => {
     expect(
       screen.queryByRole("button", { name: "Selected dataset actions" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Browse – filter vocabularies", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setDefaultBrowseMocks();
+  });
+
+  it("loads the vocabularies once and reuses them each time the filters open", async () => {
+    const user = userEvent.setup();
+    const apiMock = {
+      hasToken: true,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+      getLicenses: vi.fn().mockResolvedValue(["MIT"]),
+    };
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
+
+    for (let open = 0; open < 2; open += 1) {
+      await user.click(screen.getByRole("button", { name: /^filter/i }));
+      await screen.findByRole("button", { name: /apply/i });
+      await user.click(screen.getByRole("button", { name: /cancel/i }));
+    }
+
+    expect(apiMock.getFieldsOfScience).toHaveBeenCalledTimes(1);
+    expect(apiMock.getLicenses).toHaveBeenCalledTimes(1);
   });
 });
