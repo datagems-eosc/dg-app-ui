@@ -176,3 +176,36 @@ test("buildFilePreviews classifies pdf/json files with no columns by mime", () =
   assert.equal(previews.find((p) => p.id === "p")?.data.type, "pdf");
   assert.equal(previews.find((p) => p.id === "j")?.data.type, "json");
 });
+
+test("does not invent full row counts from preview sample length", () => {
+  const graph = structuredClone(GRAPH);
+  for (const node of graph.nodes)
+    if ("rowCount" in node.properties)
+      delete (node.properties as Record<string, unknown>).rowCount;
+  const preview = buildFilePreviews(graph).find(
+    (entry) => entry.data.type === "tabular",
+  );
+  assert.ok(preview?.data.type === "tabular");
+  assert.equal(preview.data.totalRows, undefined);
+  assert.equal(preview.data.totalMissingPercentage, undefined);
+});
+
+test("treats non-finite statistics as unknown, preserving finite zero", () => {
+  const graph = structuredClone(GRAPH);
+  for (const node of graph.nodes) {
+    if (node.id === "stat2")
+      Object.assign(node.properties, {
+        mean: Number.NaN,
+        uniqueCount: Number.POSITIVE_INFINITY,
+        missingPercentage: 0,
+      });
+  }
+  const preview = buildFilePreviews(graph).find(
+    (entry) => entry.data.type === "tabular",
+  );
+  assert.ok(preview?.data.type === "tabular");
+  const stat = preview.data.statistics.find((stat) => stat.columnId === "col2");
+  assert.equal(stat?.mean, undefined);
+  assert.equal(stat?.uniqueValues, undefined);
+  assert.equal(stat?.missingPercentage, 0);
+});

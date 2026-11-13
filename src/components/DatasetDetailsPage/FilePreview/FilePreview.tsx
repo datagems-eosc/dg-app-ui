@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type {
   FileColumn,
   FilePreviewData,
@@ -32,6 +32,7 @@ export default function FilePreview({
   fileData,
   onDownload,
 }: FilePreviewProps) {
+  const tabId = useId();
   const [activeTab, setActiveTab] = useState<FilePreviewTab>("preview");
   const [columns, setColumns] = useState<FileColumn[]>([]);
   const [showColumnsModal, setShowColumnsModal] = useState(false);
@@ -55,73 +56,22 @@ export default function FilePreview({
   }
 
   if (fileData.type === "pdf") {
-    const handleDownload = () => {
-      if (onDownload) {
-        onDownload();
-      } else {
-        fetch(fileData.fileUrl)
-          .then((r) => r.blob())
-          .then((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = fileData.filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          });
-      }
-    };
     return (
       <div className={styles.filePreview}>
-        <PdfFilePreview data={fileData} onDownload={handleDownload} />
+        <PdfFilePreview data={fileData} onDownload={onDownload} />
       </div>
     );
   }
 
   if (fileData.type === "json") {
-    const handleJsonDownload = () => {
-      if (onDownload) {
-        onDownload();
-      } else {
-        const blob = new Blob([fileData.content], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileData.filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
-    };
     return (
       <div className={styles.filePreview}>
-        <JsonFilePreview data={fileData} onDownload={handleJsonDownload} />
+        <JsonFilePreview data={fileData} onDownload={onDownload} />
       </div>
     );
   }
 
   const tabularData = fileData as FilePreviewData;
-  const handleDownload = () => {
-    if (onDownload) {
-      onDownload();
-    } else {
-      const blob = new Blob(["Test file content"], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = tabularData.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-  };
-
   const handleSaveColumns = (updatedColumns: FileColumn[]) => {
     setColumns(updatedColumns);
   };
@@ -134,13 +84,22 @@ export default function FilePreview({
         <FilePreviewHeader
           filename={tabularData.filename}
           fileSize={tabularData.fileSize}
-          onDownload={handleDownload}
+          onDownload={onDownload}
           onExtendedView={() => setExtendedViewOpen(true)}
         />
 
-        <FilePreviewTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <FilePreviewTabs
+          idPrefix={tabId}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
-        <div className={styles.filePreview__content}>
+        <div
+          className={styles.filePreview__content}
+          role="tabpanel"
+          id={`${tabId}-panel`}
+          aria-labelledby={`${tabId}-${activeTab}`}
+        >
           {activeTab === "preview" && (
             <>
               <AboutFile description={tabularData.description} />
@@ -186,7 +145,7 @@ export default function FilePreview({
         columns={columns}
         onClose={() => setExtendedViewOpen(false)}
         onTabChange={setActiveTab}
-        onDownload={handleDownload}
+        onDownload={onDownload}
         onSaveColumns={handleSaveColumns}
       />
     </>

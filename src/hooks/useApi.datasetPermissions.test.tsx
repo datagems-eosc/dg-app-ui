@@ -367,3 +367,17 @@ describe("isolation from the existing helpers", () => {
     }
   });
 });
+
+it.each([403, 404, 500])(
+  "preserves HTTP %s for details and byte-preview state classification",
+  async (status) => {
+    createFetch(() => json({}, status));
+    const { result } = renderApi();
+    await expect(
+      result.current.getDatasetById(DATASET_ID),
+    ).rejects.toMatchObject({ status });
+    await expect(
+      result.current.downloadDatasetFile(DATASET_ID, "file-1"),
+    ).rejects.toMatchObject({ status });
+  },
+);

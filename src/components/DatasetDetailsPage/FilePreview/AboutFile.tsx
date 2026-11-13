@@ -14,6 +14,8 @@ const APPROX_MAX_CHARS = 200;
 export default function AboutFile({ description }: AboutFileProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  if (!description.trim()) return null;
+
   // Check if text is long enough to need truncation
   const needsTruncation = description.length > APPROX_MAX_CHARS;
   const displayText =

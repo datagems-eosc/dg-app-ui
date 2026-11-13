@@ -68,19 +68,21 @@ describe("DatasetDetailsPageContent selection controls", () => {
     vi.clearAllMocks();
   });
 
-  it("shows Select and 0 Selected with default settings", () => {
+  it("hides dead selection controls", () => {
     render(<DatasetDetailsPageContent dataset={mockDataset} />);
     expect(
-      screen.getByRole("button", { name: /^select$/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /^select$/i }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /selected/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /selected/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("keeps the existing Edit control", () => {
+  it("hides the unwired Edit control", () => {
     render(<DatasetDetailsPageContent dataset={mockDataset} />);
-    expect(screen.getByRole("button", { name: /^edit$/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^edit$/i }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -161,4 +163,10 @@ describe("DatasetDetailsPageContent – publication and permission forwarding", 
     expect(props.hasDownloadPermission).toBe(true);
     expect(props.hasManagePermission).toBe(false);
   });
+});
+it("shows one no-files state instead of an empty preview", () => {
+  render(<DatasetDetailsPageContent dataset={mockDataset} />);
+  expect(
+    screen.getByText("No files are available to preview for this dataset."),
+  ).toBeInTheDocument();
 });

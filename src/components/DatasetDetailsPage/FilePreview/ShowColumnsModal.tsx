@@ -1,7 +1,8 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useModalFocus } from "@/hooks/useModalFocus";
 import type { FileColumn } from "@/types/filePreview";
 import styles from "./ShowColumnsModal.module.scss";
 
@@ -20,6 +21,13 @@ export default function ShowColumnsModal({
 }: ShowColumnsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [localColumns, setLocalColumns] = useState<FileColumn[]>(columns);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalColumns(columns);
+      setSearchQuery("");
+    }
+  }, [isOpen, columns]);
 
   const filteredColumns = useMemo(() => {
     if (!searchQuery) return localColumns;
@@ -64,6 +72,12 @@ export default function ShowColumnsModal({
     onClose();
   };
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus({
+    active: isOpen,
+    containerRef: dialogRef,
+    onEscape: handleCancel,
+  });
   if (!isOpen) return null;
 
   return (
@@ -72,7 +86,14 @@ export default function ShowColumnsModal({
         className={styles.showColumnsModal__overlay}
         onClick={handleCancel}
       />
-      <div className={styles.showColumnsModal__content}>
+      <div
+        className={styles.showColumnsModal__content}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Show columns"
+        tabIndex={-1}
+      >
         <div className={styles.showColumnsModal__header}>
           <h3 className={styles.showColumnsModal__title}>Show Columns</h3>
           <button
