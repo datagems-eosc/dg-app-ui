@@ -18,11 +18,14 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/hooks/useApi", () => ({ useApi: () => api }));
 
+type TestCollection = { id: string; name: string };
+// Like the real context: `collections` is the built-in list plus the user's.
 const collectionsState = {
-  collections: [{ id: "col-math", name: "Math" }] as {
-    id: string;
-    name: string;
-  }[],
+  apiCollections: [{ id: "col-math", name: "Math" }] as TestCollection[],
+  extraCollections: [] as TestCollection[],
+  get collections() {
+    return [...this.apiCollections, ...this.extraCollections];
+  },
   isLoadingApiCollections: false,
 };
 vi.mock("@/contexts/CollectionsContext", () => ({
@@ -126,7 +129,8 @@ const catalogueCalls = () => api.queryDatasets.mock.calls.map(([p]) => p);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  collectionsState.collections = [{ id: "col-math", name: "Math" }];
+  collectionsState.apiCollections = [{ id: "col-math", name: "Math" }];
+  collectionsState.extraCollections = [];
   collectionsState.isLoadingApiCollections = false;
   api.persistConversation.mockResolvedValue({ id: "conv-1" });
   api.searchCrossDataset.mockResolvedValue({ result: [] });
@@ -135,13 +139,13 @@ beforeEach(() => {
 
 describe("UseCasePageClient – opening", () => {
   it("lists the use case's collection once, after the collection is known", async () => {
-    collectionsState.collections = [];
+    collectionsState.apiCollections = [];
     collectionsState.isLoadingApiCollections = true;
     const view = renderMath();
     await act(async () => {});
     expect(api.queryDatasets).not.toHaveBeenCalled();
 
-    collectionsState.collections = [{ id: "col-math", name: "Math" }];
+    collectionsState.apiCollections = [{ id: "col-math", name: "Math" }];
     collectionsState.isLoadingApiCollections = false;
     view.rerender(
       <UseCasePageClient collectionName="Math" title="Math" subtitle="" />,
@@ -155,7 +159,7 @@ describe("UseCasePageClient – opening", () => {
   });
 
   it("reports an unknown collection and lists nothing", async () => {
-    collectionsState.collections = [{ id: "col-x", name: "Weather" }];
+    collectionsState.apiCollections = [{ id: "col-x", name: "Weather" }];
     const view = renderMath();
 
     await waitFor(() =>
@@ -165,6 +169,19 @@ describe("UseCasePageClient – opening", () => {
     );
     expect(api.queryDatasets).not.toHaveBeenCalled();
     expect(view.getByTestId("shown")).toHaveTextContent("0");
+  });
+
+  it("does not take the user's own collection of the same name for the use case", async () => {
+    collectionsState.apiCollections = [{ id: "col-x", name: "Weather" }];
+    collectionsState.extraCollections = [{ id: "mine", name: "Math" }];
+    const view = renderMath();
+
+    await waitFor(() =>
+      expect(view.getByTestId("error")).toHaveTextContent(
+        "The Math collection could not be found.",
+      ),
+    );
+    expect(api.queryDatasets).not.toHaveBeenCalled();
   });
 
   it("shows each dataset's own access, not one guessed from permissions", async () => {

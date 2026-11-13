@@ -196,11 +196,16 @@ export function useDatasetSearch({
     handoff.startsSmart,
   );
 
-  // Opening another collection starts with an empty box.
-  const [shownScopeId, setShownScopeId] = useState(scopeId);
-  if (shownScopeId !== scopeId) {
-    setShownScopeId(scopeId);
-    if (scopeId) {
+  // Opening another collection starts with an empty box. A scope that only
+  // now became known (a use-case page waiting for its collection) keeps what
+  // was typed meanwhile.
+  const [shownScope, setShownScope] = useState({
+    kind: scopeKind,
+    id: scopeId,
+  });
+  if (shownScope.id !== scopeId || shownScope.kind !== scopeKind) {
+    setShownScope({ kind: scopeKind, id: scopeId });
+    if (scopeId && shownScope.kind !== null) {
       setPendingSearchTerm("");
       setSearchTerm("");
     }
@@ -372,7 +377,7 @@ export function useDatasetSearch({
       resetPaging();
       try {
         if (!hasToken) {
-          setError("No authentication token found. Please log in again.");
+          setError(ApiErrorMessage.NO_AUTH_TOKEN_FOUND);
           return;
         }
         if (path === "smart") {
@@ -384,10 +389,9 @@ export function useDatasetSearch({
         }
       } catch (err: unknown) {
         if (request !== listRequest.current) return;
-        let message: string = ApiErrorMessage.UNEXPECTED_ERROR;
-        if (err instanceof Error) message = err.message;
-        else if (typeof err === "string") message = err;
-        setError(message);
+        // The Gateway's own error text stays in the log, not on the page.
+        logError("Failed to list datasets", err);
+        setError(ApiErrorMessage.FETCH_DATASETS_FAILED);
       } finally {
         if (request === listRequest.current) setIsLoading(false);
       }

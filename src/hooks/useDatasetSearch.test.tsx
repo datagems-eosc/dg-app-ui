@@ -192,6 +192,31 @@ describe("useDatasetSearch", () => {
       expect(lastCatalogue().collectionIds).toEqual(["col-2"]);
     });
 
+    it("keeps a search submitted while the scope was still unknown", async () => {
+      const { result, rerender } = renderSearch(null);
+      act(() => result.current.onSearchTermChange("rain"));
+      act(() => result.current.onSearchTermSubmit());
+
+      rerender({ scope: { kind: "collection", id: "col-1" } });
+
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+      expect(lastCatalogue().like).toBe("%rain%");
+      expect(result.current.pendingSearchTerm).toBe("rain");
+    });
+
+    it("clears the search when a collection opens from all datasets", async () => {
+      const { result, rerender } = renderSearch(ALL);
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+      act(() => result.current.onSearchTermSubmit("rain"));
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
+
+      rerender({ scope: { kind: "collection", id: "col-1" } });
+
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(3));
+      expect(lastCatalogue().like).toBe(undefined);
+      expect(result.current.pendingSearchTerm).toBe("");
+    });
+
     it("asks for nothing while the scope is unknown", async () => {
       const { rerender } = renderSearch(null);
       await act(async () => {});
@@ -200,6 +225,54 @@ describe("useDatasetSearch", () => {
       rerender({ scope: { kind: "collection", id: "col-1" } });
 
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  describe("failures", () => {
+    it("reports a failed list without the Gateway's own text", async () => {
+      api.queryDatasets.mockRejectedValue(
+        new Error("Server error (500): NullReferenceException at Lookup"),
+      );
+      const { result } = renderSearch({ kind: "collection", id: "col-1" });
+
+      await waitFor(() =>
+        expect(result.current.error).toBe("Failed to fetch datasets"),
+      );
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it("ignores a failure that arrives after a newer search succeeded", async () => {
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+      let failRain: (err: Error) => void = () => {};
+      api.queryDatasets.mockImplementationOnce(
+        () => new Promise((_, reject) => (failRain = reject)),
+      );
+      api.queryDatasets.mockResolvedValueOnce({
+        items: [{ id: "snow", name: "Snow" }],
+        count: 1,
+      });
+
+      act(() => result.current.onSearchTermSubmit("rain"));
+      act(() => result.current.onSearchTermSubmit("snow"));
+      await waitFor(() =>
+        expect(result.current.datasets.map((d) => d.id)).toEqual(["snow"]),
+      );
+      await act(async () => failRain(new Error("timeout")));
+
+      expect(result.current.error).toBeNull();
+      expect(result.current.datasets.map((d) => d.id)).toEqual(["snow"]);
+    });
+
+    it("reports a failed custom collection the same way", async () => {
+      api.queryUserCollections.mockRejectedValue(
+        new Error("Server error (500): stack trace"),
+      );
+      const { result } = renderSearch({ kind: "custom", id: "mine" });
+
+      await waitFor(() =>
+        expect(result.current.error).toBe("Failed to fetch datasets"),
+      );
     });
   });
 

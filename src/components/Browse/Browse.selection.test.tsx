@@ -129,4 +129,16 @@ describe("Browse – an action that needs selected datasets", () => {
     );
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
+
+  it("does not ask again after the user selects and then clears the selection", async () => {
+    const { rerenderWith } = renderBrowse([]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add to collection" }),
+    );
+
+    act(() => rerenderWith(["1"]));
+    act(() => rerenderWith([]));
+
+    expect(screen.queryByText(MESSAGE)).toBeNull();
+  });
 });

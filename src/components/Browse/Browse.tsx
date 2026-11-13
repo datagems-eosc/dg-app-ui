@@ -170,15 +170,15 @@ interface BrowseProps {
 
 const defaultFilters: FilterState = getDefaultFilters();
 
+export const SELECT_DATASETS_FIRST_MESSAGE =
+  "Please select some datasets first";
+
 /**
  * Browse's datasets carry no supported publication state: the shared mapper
  * leaves it unknown rather than inferring it from the caller's own Browse
  * permission. Access filtering is therefore unavailable, and a stale Access
  * selection is neither applied nor shown as active.
  */
-export const SELECT_DATASETS_FIRST_MESSAGE =
-  "Please select some datasets first";
-
 export const ACCESS_FILTER_UNAVAILABLE_MESSAGE =
   "Filtering by public or restricted access isn't available yet.";
 
@@ -340,6 +340,9 @@ export default function Browse({
 
   // Asked inline, never by a browser alert; gone once something is selected.
   const [askedForSelection, setAskedForSelection] = useState(false);
+  if (askedForSelection && currentSelectedDatasets.length > 0) {
+    setAskedForSelection(false);
+  }
   const showSelectionMessage =
     askedForSelection && currentSelectedDatasets.length === 0;
   const handleAddSelectedToCollection = onAddToCollection

@@ -23,17 +23,18 @@ export default function UseCasePageClient({
   withLayout = true,
 }: UseCasePageClientProps) {
   const router = useRouter();
-  const { collections, isLoadingApiCollections } = useCollections();
+  const { apiCollections, isLoadingApiCollections } = useCollections();
 
-  // The use case lists one built-in collection, found by name. Nothing is
-  // requested until it is known.
+  // The use case lists one built-in collection, found by name among the
+  // built-in ones only (a user's own collection may share the name). Nothing
+  // is requested until it is known.
   const collectionId = useMemo(() => {
     const normalized = collectionName.toLowerCase().trim();
     return (
-      collections.find((c) => c.name?.toLowerCase().trim() === normalized)
+      apiCollections.find((c) => c.name?.toLowerCase().trim() === normalized)
         ?.id ?? null
     );
-  }, [collections, collectionName]);
+  }, [apiCollections, collectionName]);
   const isMissingCollection = !collectionId && !isLoadingApiCollections;
 
   const search = useDatasetSearch({
