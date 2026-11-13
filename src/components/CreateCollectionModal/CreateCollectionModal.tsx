@@ -246,6 +246,7 @@ export default function CreateCollectionModal({
         <div className="flex items-center justify-between px-6 py-4.25 border-b border-slate-200">
           <h2 className="text-H6-18-semibold text-slate-850">Collections</h2>
           <button
+            aria-label="Close collections"
             onClick={handleClose}
             className="p-2 hover:bg-slate-100 rounded-md transition-colors"
           >
