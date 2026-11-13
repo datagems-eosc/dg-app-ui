@@ -12,3 +12,9 @@
     word-break: break-word;
   }
 }
+
+.subheading {
+  @include font-medium;
+  @include text-base;
+  @include text-primary;
+}

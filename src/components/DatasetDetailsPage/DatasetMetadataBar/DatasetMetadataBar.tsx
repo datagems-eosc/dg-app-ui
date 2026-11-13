@@ -3,46 +3,62 @@
 import { CalendarPlus, FileCheck, HardDrive, RefreshCcw } from "lucide-react";
 import React from "react";
 import type { DatasetPlus } from "@/data/dataset";
-import { formatDate, formatFileSize, getMimeTypeName } from "@/lib/utils";
+import {
+  type DatasetProfileMetadata,
+  deriveProfileMetadata,
+} from "@/lib/datasetProfileMetadata";
+import { formatDate, formatFileSize } from "@/lib/utils";
 import styles from "./DatasetMetadataBar.module.scss";
 
 interface DatasetMetadataBarProps {
   dataset: DatasetPlus;
+  metadata?: DatasetProfileMetadata;
 }
 
 interface MetadataItem {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  value: string | undefined;
 }
 
 export default function DatasetMetadataBar({
   dataset,
+  metadata = deriveProfileMetadata(dataset.profileRaw),
 }: DatasetMetadataBarProps) {
+  const suppliedDate = (value?: string) => {
+    const formatted = formatDate(value);
+    return formatted === "-" ? undefined : formatted;
+  };
   const items: MetadataItem[] = [
     {
       icon: <CalendarPlus className={styles.datasetMetadataBar__icon} />,
       label: "Added",
-      value: formatDate(dataset.datePublished) || "2023-04-01",
+      value: suppliedDate(dataset.datePublished),
     },
     {
       icon: <RefreshCcw className={styles.datasetMetadataBar__icon} />,
       label: "Last updated",
-      value: formatDate(dataset.lastUpdated) || "2023-04-01",
+      value: suppliedDate(dataset.lastUpdated),
     },
     {
       icon: <HardDrive className={styles.datasetMetadataBar__icon} />,
-      label: "File Size",
-      value: dataset.size ? formatFileSize(dataset.size) : "2.4 GB",
+      label:
+        metadata.size.kind === "partial"
+          ? "Known profiled file size"
+          : "Profiled file size",
+      value:
+        metadata.size.kind === "unavailable"
+          ? undefined
+          : formatFileSize(metadata.size.bytes),
     },
     {
       icon: <FileCheck className={styles.datasetMetadataBar__icon} />,
       label: "File Type",
-      value: dataset.mimeType
-        ? getMimeTypeName(dataset.mimeType).toUpperCase()
-        : "CSV, PDF",
+      value: metadata.formats.length ? metadata.formats.join(", ") : undefined,
     },
-  ];
+  ].filter((item) => item.value !== undefined);
+
+  if (!items.length) return null;
 
   return (
     <div className={styles.datasetMetadataBar}>

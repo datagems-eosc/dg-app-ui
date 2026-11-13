@@ -1,5 +1,6 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -22,9 +23,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockGetDatasetById = vi.fn();
 const mockGetCurrentUserContextGrants = vi.fn();
 const mockPush = vi.fn();
+let mockPrincipalId: string | null = "account-a";
+let mockDatasetId = "ds-1";
+let mockHasToken = true;
+beforeEach(() => {
+  mockPrincipalId = "account-a";
+  mockDatasetId = "ds-1";
+  mockHasToken = true;
+});
 
 vi.mock("next/navigation", () => ({
-  useParams: () => ({ id: "ds-1" }),
+  useParams: () => ({ id: mockDatasetId }),
   useRouter: () => ({ push: mockPush, back: vi.fn() }),
   usePathname: () => "/datasets/ds-1",
   useSearchParams: () => new URLSearchParams(),
@@ -32,7 +41,15 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => ({
-    hasToken: true,
+    hasToken: mockHasToken,
+    datasetPermissions: {
+      scope: mockPrincipalId
+        ? {
+            principalId: mockPrincipalId,
+            gatewayOrigin: "https://gateway.example",
+          }
+        : null,
+    },
     getDatasetById: mockGetDatasetById,
     getCurrentUserContextGrants: mockGetCurrentUserContextGrants,
     downloadDatasetFile: vi.fn(),
@@ -364,4 +381,196 @@ describe("dataset details page citation", () => {
     expect(screen.getByText("Gateway citation")).toBeVisible();
     expect(screen.queryByText("Unsupported citation")).not.toBeInTheDocument();
   });
+});
+
+describe("profile metadata composition", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  });
+
+  it("keeps valid PDF and user metadata when graph siblings are malformed", async () => {
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      profileRaw: {
+        nodes: [
+          null,
+          false,
+          [],
+          { id: 12, labels: "cr:FileObject", properties: [] },
+          {
+            id: "pdf",
+            labels: ["cr:FileObject"],
+            properties: {
+              encodingFormat: "application/pdf",
+              contentSize: "140048 B",
+            },
+          },
+        ],
+        edges: [null, false, { from: {}, to: [], labels: "field" }],
+      },
+    });
+    await renderPage();
+    expect(screen.getByText("PDF", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("A dataset")).toBeInTheDocument();
+  });
+});
+
+describe("dataset request owner", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  });
+
+  it("does not retain A's dataset when B is forbidden on the same dataset", async () => {
+    mockGetDatasetById
+      .mockResolvedValueOnce({
+        ...datasetPayload(["browsedataset"]),
+        name: "Account A data",
+      })
+      .mockRejectedValueOnce(new Error("Forbidden"));
+    const { rerender } = render(<DatasetDetailsPage />);
+    await screen.findByRole("heading", { name: "Account A data" });
+    mockPrincipalId = "account-b";
+    rerender(<DatasetDetailsPage />);
+    expect(
+      screen.queryByRole("heading", { name: "Account A data" }),
+    ).not.toBeInTheDocument();
+    await screen.findAllByText("Failed to load dataset");
+    expect(mockGetDatasetById).toHaveBeenCalledTimes(2);
+  });
+});
+
+it.each(["account", "dataset", "sign-out", "missing-principal"])(
+  "rejects late dataset responses after %s changes",
+  async (change) => {
+    vi.clearAllMocks();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+    const pending = Promise.withResolvers<unknown>();
+    mockGetDatasetById
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValueOnce({
+        ...datasetPayload(["browsedataset"]),
+        name: "Current dataset",
+      });
+    const { rerender } = render(<DatasetDetailsPage />);
+    await waitFor(() => expect(mockGetDatasetById).toHaveBeenCalledTimes(1));
+    if (change === "account") mockPrincipalId = "account-b";
+    if (change === "dataset") mockDatasetId = "ds-2";
+    if (change === "sign-out") mockHasToken = false;
+    if (change === "missing-principal") mockPrincipalId = null;
+    rerender(<DatasetDetailsPage />);
+    if (change === "account" || change === "dataset")
+      await screen.findByRole("heading", { name: "Current dataset" });
+    else
+      expect(
+        screen.getByRole("heading", { name: "Authentication required" }),
+      ).toBeInTheDocument();
+    await act(async () =>
+      pending.resolve({
+        ...datasetPayload(["browsedataset"]),
+        name: "Stale dataset",
+      }),
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Stale dataset" }),
+    ).not.toBeInTheDocument();
+  },
+);
+
+it("rejects late context-grant results after the account changes", async () => {
+  vi.clearAllMocks();
+  const pending = Promise.withResolvers<unknown>();
+  mockGetDatasetById.mockResolvedValue({
+    ...datasetPayload(["browsedataset"]),
+    name: "Current dataset",
+  });
+  mockGetCurrentUserContextGrants
+    .mockReturnValueOnce(pending.promise)
+    .mockResolvedValueOnce([]);
+  const { rerender } = render(<DatasetDetailsPage />);
+  await waitFor(() =>
+    expect(mockGetCurrentUserContextGrants).toHaveBeenCalledTimes(1),
+  );
+  mockPrincipalId = "account-b";
+  rerender(<DatasetDetailsPage />);
+  await screen.findByRole("heading", { name: "Current dataset" });
+  await act(async () =>
+    pending.resolve([
+      { targetType: 0, targetId: "ds-1", role: "dg_ds-manage" },
+    ]),
+  );
+  expect(permissions().queryByText("Manage")).not.toBeInTheDocument();
+});
+
+it("requests supported metadata and does not fabricate an updated date", async () => {
+  vi.clearAllMocks();
+  mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+  await renderPage();
+  const fields = mockGetDatasetById.mock.calls[0][1];
+  expect(fields).not.toContain("mimeType");
+  expect(fields).not.toContain("size");
+  expect(fields).toEqual(
+    expect.arrayContaining(["profileRaw", "datePublished", "lastUpdated"]),
+  );
+  expect(screen.queryByText("2024-01-01")).not.toBeInTheDocument();
+  expect(screen.queryByText("Last updated")).not.toBeInTheDocument();
+});
+
+it("does not flash a previous read before effects after signing back in", async () => {
+  vi.clearAllMocks();
+  mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  mockGetDatasetById
+    .mockResolvedValueOnce({
+      ...datasetPayload(["browsedataset"]),
+      name: "Previous authenticated read",
+    })
+    .mockReturnValueOnce(new Promise(() => {}));
+  const committed: string[] = [];
+  function ObserveCommittedPage() {
+    useLayoutEffect(() => {
+      committed.push(document.body.textContent ?? "");
+    });
+    return <DatasetDetailsPage />;
+  }
+  const { rerender } = render(<ObserveCommittedPage />);
+  await screen.findByRole("heading", { name: "Previous authenticated read" });
+  mockHasToken = false;
+  rerender(<ObserveCommittedPage />);
+  mockHasToken = true;
+  rerender(<ObserveCommittedPage />);
+  expect(committed.at(-1)).not.toContain("Previous authenticated read");
+});
+
+it("shows profiler output below author metadata without replacing either source", async () => {
+  vi.clearAllMocks();
+  mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  mockGetDatasetById.mockResolvedValue({
+    ...datasetPayload(["browsedataset"]),
+    keywords: ["Author keyword"],
+    profileRaw: {
+      nodes: [
+        {
+          id: "record",
+          labels: ["cr:RecordSet"],
+          properties: {
+            summary: "Generated nursing overview",
+            keywords: ["Generated keyword"],
+          },
+        },
+      ],
+    },
+  });
+  await renderPage();
+  expect(
+    screen.getByRole("heading", { name: "Profiling summary" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Generated nursing overview")).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Profiling keywords" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Generated keyword")).toBeInTheDocument();
+  expect(screen.getByText("A dataset")).toBeInTheDocument();
+  expect(screen.getByText("Author keyword")).toBeInTheDocument();
 });

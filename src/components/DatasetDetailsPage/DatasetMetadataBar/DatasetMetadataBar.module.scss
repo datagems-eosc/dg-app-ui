@@ -29,7 +29,7 @@
     justify-content: space-between;
     gap: $spacing-sm;
     min-width: 0;
-    white-space: nowrap;
+    flex-wrap: wrap;
   }
 
   &__label {
@@ -42,7 +42,8 @@
   &__value {
     @include text-base;
     @include text-secondary;
-    flex-shrink: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   &__separator {

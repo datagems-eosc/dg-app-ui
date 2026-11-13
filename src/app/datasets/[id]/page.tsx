@@ -17,14 +17,21 @@ import { logApiError, logWarn } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
 
+type DatasetReadState =
+  | { owner: string | null; status: "loading" }
+  | { owner: string; status: "success"; dataset: DatasetPlus }
+  | { owner: string; status: "error"; error: string };
+
 export default function DatasetDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const api = useApi();
-  const [dataset, setDataset] = useState<DatasetPlus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const principalId = api.datasetPermissions.scope?.principalId ?? null;
+  const [read, setRead] = useState<DatasetReadState>({
+    owner: null,
+    status: "loading",
+  });
 
   const datasetId = useMemo(() => {
     if (!params?.id || typeof params.id !== "string") {
@@ -33,24 +40,19 @@ export default function DatasetDetailsPage() {
     return params.id;
   }, [params]);
 
-  useEffect(() => {
-    if (!datasetId) {
-      setIsLoading(false);
-      setError("Dataset ID is required");
-      return;
-    }
+  const owner =
+    datasetId && principalId ? JSON.stringify([datasetId, principalId]) : null;
 
-    if (!api.hasToken) {
-      setIsLoading(false);
-      setError("Authentication required");
+  useEffect(() => {
+    if (!datasetId || !api.hasToken || !principalId || !owner) {
+      setRead({ owner: null, status: "loading" });
       return;
     }
 
     let isCancelled = false;
 
     const fetchDataset = async () => {
-      setIsLoading(true);
-      setError(null);
+      setRead({ owner, status: "loading" });
 
       try {
         const apiDataset = await api.getDatasetById(datasetId, [
@@ -60,12 +62,10 @@ export default function DatasetDetailsPage() {
           "headline",
           "description",
           "license",
-          "mimeType",
           "url",
           "version",
           "fieldOfScience",
           "keywords",
-          "size",
           "datePublished",
           "lastUpdated",
           "collections.id",
@@ -85,8 +85,7 @@ export default function DatasetDetailsPage() {
         if (isCancelled) return;
 
         if (!apiDataset || typeof apiDataset !== "object") {
-          setError("Dataset not found");
-          setIsLoading(false);
+          setRead({ owner, status: "error", error: "Dataset not found" });
           return;
         }
         let mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
@@ -120,13 +119,11 @@ export default function DatasetDetailsPage() {
           }
         }
         if (isCancelled) return;
-        setDataset(mappedDataset);
-        setIsLoading(false);
+        setRead({ owner, status: "success", dataset: mappedDataset });
       } catch (err) {
         if (isCancelled) return;
         logApiError("fetchDataset", err, { datasetId });
-        setError("Failed to load dataset");
-        setIsLoading(false);
+        setRead({ owner, status: "error", error: "Failed to load dataset" });
       }
     };
 
@@ -135,7 +132,26 @@ export default function DatasetDetailsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [datasetId, api.hasToken]);
+  }, [
+    datasetId,
+    principalId,
+    owner,
+    api.hasToken,
+    api.getDatasetById,
+    api.getCurrentUserContextGrants,
+  ]);
+
+  const error = !datasetId
+    ? "Dataset ID is required"
+    : !api.hasToken || !principalId
+      ? "Authentication required"
+      : read.owner === owner && read.status === "error"
+        ? read.error
+        : null;
+  const dataset =
+    read.owner === owner && read.status === "success" ? read.dataset : null;
+  const isLoading =
+    !error && (read.owner !== owner || read.status === "loading");
 
   if (isLoading) {
     return (
@@ -248,18 +264,14 @@ function mapApiDatasetToDatasetPlus(api: unknown): DatasetPlus {
     sharing: SHARING_WITHOUT_EVIDENCE.state,
     headline: typeof obj.headline === "string" ? obj.headline : undefined,
     description: String(obj.description ?? ""),
-    size: obj.size ? String(obj.size) : "N/A",
-    lastUpdated: obj.lastUpdated
-      ? String(obj.lastUpdated)
-      : obj.datePublished
-        ? String(obj.datePublished)
-        : "2024-01-01",
+    size: "",
+    lastUpdated: typeof obj.lastUpdated === "string" ? obj.lastUpdated : "",
     tags: [],
     collections,
     license: obj.license ? String(obj.license) : undefined,
-    mimeType: obj.mimeType ? String(obj.mimeType) : undefined,
     fieldOfScience,
-    datePublished: obj.datePublished ? String(obj.datePublished) : undefined,
+    datePublished:
+      typeof obj.datePublished === "string" ? obj.datePublished : undefined,
     keywords,
     url: obj.url ? String(obj.url) : undefined,
     version: obj.version ? String(obj.version) : undefined,

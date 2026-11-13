@@ -1,0 +1,10 @@
+@use '@/styles' as *;
+
+.section {
+  @include section-base;
+  min-width: 0;
+}
+
+.title {
+  @include section-title;
+}
