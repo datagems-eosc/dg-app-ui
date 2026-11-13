@@ -8,6 +8,8 @@
     padding: $spacing-md $spacing-lg; // py-12px px-16px as per Figma
     @include flex-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
     background: $color-background;
   }
 

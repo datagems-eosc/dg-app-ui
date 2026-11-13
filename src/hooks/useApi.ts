@@ -1256,8 +1256,9 @@ export function useApi() {
         if (errorData && Object.keys(errorData).length > 0) {
           logApiError("getDatasetById", errorData, { id });
         }
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
+        throw Object.assign(
+          new Error(ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED),
+          { status: response.status },
         );
       }
 
@@ -1288,9 +1289,9 @@ export function useApi() {
             fileObjectNodeId,
           });
         }
-        throw new Error(
-          errorData.error || ApiErrorMessage.DOWNLOAD_FILE_FAILED,
-        );
+        throw Object.assign(new Error(ApiErrorMessage.DOWNLOAD_FILE_FAILED), {
+          status: response.status,
+        });
       }
 
       logApiResponse("downloadDatasetFile", { datasetId, fileObjectNodeId });

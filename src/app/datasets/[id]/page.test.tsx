@@ -230,7 +230,7 @@ describe("dataset details page – caller permissions", () => {
     );
     await renderPage();
 
-    expect(screen.getByText("Sharing not verified")).toBeInTheDocument();
+    expect(screen.queryByText("Sharing not verified")).not.toBeInTheDocument();
     expect(screen.queryByText("Open Access")).not.toBeInTheDocument();
     expect(screen.queryByText("Restricted")).not.toBeInTheDocument();
   });
@@ -251,7 +251,7 @@ describe("dataset details page – caller permissions", () => {
       permissions().getByText("Permissions unavailable"),
     ).toBeInTheDocument();
     expect(screen.queryByText("Viewer")).not.toBeInTheDocument();
-    expect(screen.getByText("Sharing not verified")).toBeInTheDocument();
+    expect(screen.queryByText("Sharing not verified")).not.toBeInTheDocument();
   });
 
   it("says permissions are unavailable for a malformed permission payload", async () => {
@@ -276,7 +276,7 @@ describe("dataset details page – caller permissions", () => {
     expect(permissions().getByText("Browse")).toBeInTheDocument();
     expect(permissions().getByText("Edit")).toBeInTheDocument();
     expect(permissions().queryByText("Download")).not.toBeInTheDocument();
-    expect(screen.getByText("Sharing not verified")).toBeInTheDocument();
+    expect(screen.queryByText("Sharing not verified")).not.toBeInTheDocument();
   });
 });
 
@@ -444,7 +444,7 @@ describe("dataset request owner", () => {
     expect(
       screen.queryByRole("heading", { name: "Account A data" }),
     ).not.toBeInTheDocument();
-    await screen.findAllByText("Failed to load dataset");
+    await screen.findAllByText("We couldn't load this dataset.");
     expect(mockGetDatasetById).toHaveBeenCalledTimes(2);
   });
 });
@@ -581,4 +581,20 @@ it("shows profiler output below author metadata without replacing either source"
   expect(screen.getByText("Generated keyword")).toBeInTheDocument();
   expect(screen.getByText("A dataset")).toBeInTheDocument();
   expect(screen.getByText("Author keyword")).toBeInTheDocument();
+});
+
+it.each([
+  [404, "Dataset not found."],
+  [403, "You don't have access to this dataset."],
+  [500, "We couldn't load this dataset."],
+])("distinguishes page HTTP %s once", async (status, message) => {
+  mockGetDatasetById.mockRejectedValueOnce(
+    Object.assign(new Error("private error body"), { status }),
+  );
+  render(<DatasetDetailsPage />);
+  expect(
+    await screen.findByRole("heading", { name: String(message) }),
+  ).toBeInTheDocument();
+  expect(screen.getAllByText(String(message))).toHaveLength(1);
+  expect(screen.queryByText("private error body")).not.toBeInTheDocument();
 });

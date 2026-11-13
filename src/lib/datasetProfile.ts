@@ -158,7 +158,9 @@ function mapColumnStatistics(
   const stat: ColumnStatistics = { columnId };
   if (!props) return stat;
   const num = (key: string) =>
-    typeof props[key] === "number" ? (props[key] as number) : undefined;
+    typeof props[key] === "number" && Number.isFinite(props[key])
+      ? (props[key] as number)
+      : undefined;
 
   if (num("uniqueCount") !== undefined) stat.uniqueValues = num("uniqueCount");
   if (num("missingCount") !== undefined) stat.nullCount = num("missingCount");
@@ -284,15 +286,27 @@ function buildTabular(
 
   const rowCounts = columns
     .map((column) => statsProps(column.id ?? "")?.rowCount)
-    .filter((count): count is number => typeof count === "number");
-  const totalRows = rowCounts.length > 0 ? rowCounts[0] : rows.length;
+    .filter(
+      (count): count is number =>
+        typeof count === "number" && Number.isFinite(count) && count >= 0,
+    );
+  const totalRows =
+    rowCounts.length > 0 && rowCounts.every((count) => count === rowCounts[0])
+      ? rowCounts[0]
+      : undefined;
 
   const missingCounts = columns
     .map((column) => statsProps(column.id ?? "")?.missingCount)
-    .filter((count): count is number => typeof count === "number");
-  const totalCells = totalRows * columns.length;
+    .filter(
+      (count): count is number =>
+        typeof count === "number" && Number.isFinite(count) && count >= 0,
+    );
+  const totalCells =
+    totalRows === undefined ? undefined : totalRows * columns.length;
   const totalMissingPercentage =
-    missingCounts.length > 0 && totalCells > 0
+    missingCounts.length === columns.length &&
+    totalCells !== undefined &&
+    totalCells > 0
       ? (missingCounts.reduce((sum, count) => sum + count, 0) / totalCells) *
         100
       : undefined;

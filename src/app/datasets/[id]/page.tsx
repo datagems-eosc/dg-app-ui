@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@ui/Button";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -23,6 +24,7 @@ type DatasetReadState =
   | { owner: string; status: "error"; error: string };
 
 export default function DatasetDetailsPage() {
+  const [attempt, setAttempt] = useState(0);
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,7 +87,7 @@ export default function DatasetDetailsPage() {
         if (isCancelled) return;
 
         if (!apiDataset || typeof apiDataset !== "object") {
-          setRead({ owner, status: "error", error: "Dataset not found" });
+          setRead({ owner, status: "error", error: "Dataset not found." });
           return;
         }
         let mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
@@ -123,7 +125,20 @@ export default function DatasetDetailsPage() {
       } catch (err) {
         if (isCancelled) return;
         logApiError("fetchDataset", err, { datasetId });
-        setRead({ owner, status: "error", error: "Failed to load dataset" });
+        const status =
+          typeof err === "object" && err !== null && "status" in err
+            ? err.status
+            : undefined;
+        setRead({
+          owner,
+          status: "error",
+          error:
+            status === 404
+              ? "Dataset not found."
+              : status === 403
+                ? "You don't have access to this dataset."
+                : "We couldn't load this dataset.",
+        });
       }
     };
 
@@ -133,6 +148,7 @@ export default function DatasetDetailsPage() {
       isCancelled = true;
     };
   }, [
+    attempt,
     datasetId,
     principalId,
     owner,
@@ -174,16 +190,16 @@ export default function DatasetDetailsPage() {
             <h1 className="text-H2-24-semibold text-gray-900 mb-2">
               {error || "Dataset Not Found"}
             </h1>
-            <p className="text-gray-600 mb-4">
-              {error ||
-                "The dataset you're looking for doesn't exist or has been removed."}
-            </p>
-            <button
+            {error === "We couldn't load this dataset." && (
+              <Button onClick={() => setAttempt((value) => value + 1)}>
+                Try again
+              </Button>
+            )}
+            <Button
               onClick={() => router.push(getNavigationUrl(APP_ROUTES.BROWSE))}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
             >
               Go to Browse
-            </button>
+            </Button>
           </div>
         </div>
       </DashboardLayout>
@@ -195,6 +211,7 @@ export default function DatasetDetailsPage() {
   return (
     <DashboardLayout>
       <DatasetDetailsPageContent
+        key={owner}
         dataset={dataset}
         returnToRoles={returnTo === "settings-roles"}
       />

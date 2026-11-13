@@ -11,6 +11,8 @@ interface DatasetLicenseSectionProps {
 export default function DatasetLicenseSection({
   license,
 }: DatasetLicenseSectionProps) {
+  if (!license?.trim()) return null;
+
   return (
     <div className={styles.datasetSidebarSection}>
       <div className={styles.datasetSidebarSection__header}>
@@ -20,7 +22,7 @@ export default function DatasetLicenseSection({
         </div>
       </div>
       <Chip color="success" variant="regular" size="sm">
-        {license || "Apache License 2.0"}
+        {license}
       </Chip>
     </div>
   );

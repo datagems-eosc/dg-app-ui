@@ -9,7 +9,7 @@ describe("DatasetCollectionSection", () => {
       const onAddClick = vi.fn();
       render(
         <DatasetCollectionSection
-          displayCollection={displayCollection}
+          collectionLabels={displayCollection ? [displayCollection] : []}
           onAddClick={onAddClick}
         />,
       );
@@ -20,4 +20,18 @@ describe("DatasetCollectionSection", () => {
       expect(onAddClick).toHaveBeenCalledTimes(1);
     },
   );
+});
+it("shows all dataset memberships without inventing a badge when empty", () => {
+  const { rerender, container } = render(
+    <DatasetCollectionSection
+      collectionLabels={["First", "Second"]}
+      onAddClick={vi.fn()}
+    />,
+  );
+  expect(screen.getByText("First")).toBeInTheDocument();
+  expect(screen.getByText("Second")).toBeInTheDocument();
+  rerender(
+    <DatasetCollectionSection collectionLabels={[]} onAddClick={vi.fn()} />,
+  );
+  expect(container.textContent).toBe("CollectionAdd");
 });

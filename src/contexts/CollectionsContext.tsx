@@ -18,6 +18,7 @@ interface CollectionsContextType {
   extraCollections: ApiCollection[];
   isLoadingApiCollections: boolean;
   isLoadingExtraCollections: boolean;
+  extraCollectionsError?: string;
   addCollection: (name: string, datasetIds: string[]) => Promise<void>;
   updateCollection: (id: string, updates: any) => Promise<void>;
   removeCollection: (id: string) => Promise<void>;
@@ -96,7 +97,10 @@ export function CollectionsProvider({
     }
   }
 
+  const [extraCollectionsError, setExtraCollectionsError] = useState<string>();
+
   async function fetchExtraCollections() {
+    setExtraCollectionsError(undefined);
     setIsLoadingExtraCollections(true);
     try {
       if (!api.hasToken) {
@@ -141,14 +145,36 @@ export function CollectionsProvider({
         _timestamp: Date.now(),
         _cacheBust: Math.random().toString(36).substring(7),
       };
-      const data = await api.queryUserCollections(extraCollectionsPayload);
-      const items = Array.isArray(data.items) ? data.items : [];
+      const items: ApiCollection[] = [];
+      while (true) {
+        const data = await api.queryUserCollections({
+          ...extraCollectionsPayload,
+          page: { Offset: items.length, Size: 100 },
+        });
+        const page: ApiCollection[] = Array.isArray(data.items)
+          ? data.items
+          : [];
+        if (
+          page.some((item) => items.some((existing) => existing.id === item.id))
+        )
+          throw new Error("Collection page did not advance");
+        items.push(...page);
+        if (
+          typeof data.count === "number"
+            ? items.length >= data.count
+            : page.length < 100
+        )
+          break;
+        if (page.length === 0) throw new Error("Incomplete collection list");
+      }
       setExtraCollections(items);
       logger.debug(
         { count: items.length },
         "Successfully fetched extra collections",
       );
     } catch (err: unknown) {
+      setExtraCollections([]);
+      setExtraCollectionsError("We couldn't load your collections.");
       logApiError("fetchExtraCollections", err);
     } finally {
       setIsLoadingExtraCollections(false);
@@ -179,6 +205,7 @@ export function CollectionsProvider({
         collections: [...apiCollections, ...extraCollections],
         apiCollections,
         extraCollections,
+        extraCollectionsError,
         isLoadingApiCollections,
         isLoadingExtraCollections,
         addCollection: async (_name, _datasetIds) => {},
