@@ -182,6 +182,37 @@ describe("Browse - Delete Collection Feature", () => {
     });
   });
 
+  it("offers only collection actions that do something", async () => {
+    const apiMock = renderCustomCollection();
+
+    await openCollectionActions(apiMock);
+
+    const panel = document.getElementById(
+      String(collectionActionsButton().getAttribute("aria-controls")),
+    ) as HTMLElement;
+    expect(
+      Array.from(panel.querySelectorAll("button")).map((b) => b.textContent),
+    ).toEqual(["Select All", "Rename", "Manage permissions"]);
+  });
+
+  it("offers no permissions entry for a collection without an id", async () => {
+    mockUseApi.mockReturnValue(baseApiMock());
+    render(
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionName="Test Collection"
+      />,
+    );
+
+    await userEvent.click(collectionActionsButton());
+
+    expect(screen.getByText("Rename")).toBeInTheDocument();
+    expect(screen.queryByText("Manage permissions")).toBeNull();
+  });
+
   it("asks for the grants once when the collection re-renders unchanged", async () => {
     // Like the real hook: a new object every render, the same functions.
     const apiMock = baseApiMock();
@@ -798,6 +829,19 @@ describe("Browse – selected datasets actions", () => {
     expect(actionsButton).toHaveAttribute("aria-expanded", "false");
     expect(actionsButton).not.toHaveAttribute("aria-controls");
     expect(document.getElementById(panelId)).not.toBeInTheDocument();
+  });
+
+  it("offers only actions that do something", async () => {
+    renderWithSelection();
+
+    await userEvent.click(selectedActionsButton());
+    const panel = document.getElementById(
+      String(selectedActionsButton().getAttribute("aria-controls")),
+    ) as HTMLElement;
+
+    expect(
+      Array.from(panel.querySelectorAll("button")).map((b) => b.textContent),
+    ).toEqual(["Select All"]);
   });
 
   it("offers no actions button when nothing is selected", () => {

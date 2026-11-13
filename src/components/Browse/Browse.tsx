@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronUp,
   Database,
-  Edit3,
   Filter,
   Grid2X2,
   ListChecks,
@@ -137,10 +136,6 @@ interface BrowseProps {
    * Handler for when the sort value changes (controlled from parent).
    */
   onSortByChange?: (value: string) => void;
-  /**
-   * Handler for when filters are applied in the FilterModal.
-   */
-  onFiltersChange?: (filters: FilterState) => void;
   /**
    * The current filter state (controlled from parent).
    */
@@ -909,37 +904,21 @@ export default function Browse({
                             <Tag className="w-4 h-4 text-icon" />
                             Rename
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setShowTitleActionsDropdown(false);
-                              if (collectionId) {
+                          {collectionId && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowTitleActionsDropdown(false);
                                 setShowCollectionPermissions(true);
-                              }
-                            }}
-                            className={`flex items-center gap-3 w-full px-4 py-2 text-left transition-colors ${
-                              collectionId
-                                ? "text-gray-700 hover:bg-gray-50"
-                                : "text-gray-400 cursor-not-allowed"
-                            }`}
-                          >
-                            <Settings className="w-4 h-4 text-icon" />
-                            Manage permissions
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setShowTitleActionsDropdown(false);
-                            }}
-                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4 text-icon" />
-                            Delete
-                          </button>
+                              }}
+                              className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <Settings className="w-4 h-4 text-icon" />
+                              Manage permissions
+                            </button>
+                          )}
                           {canDeleteCollection && (
                             <button
                               type="button"
@@ -1026,30 +1005,6 @@ export default function Browse({
                         >
                           <ArrowRightLeft className="w-4 h-4 text-icon" />
                           Select All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowActionsDropdown(false);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Edit3 className="w-4 h-4 text-icon" />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowActionsDropdown(false);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Tag className="w-4 h-4 text-icon" />
-                          Rename
                         </button>
                         {onBulkRemoveDatasets && (
                           <button
