@@ -37,3 +37,18 @@ it("does not invent a Celsius unit for numeric columns", () => {
   );
   expect(container.textContent).not.toContain("°C");
 });
+it.each([undefined, Number.NaN, Number.POSITIVE_INFINITY, 0, 12.5])(
+  "distinguishes unknown numeric missing percentages from valid values %j",
+  (value) => {
+    render(
+      <StatisticsTab
+        columns={[{ id: "x", name: "Score", type: "number", visible: true }]}
+        statistics={[{ columnId: "x", missingPercentage: value }]}
+      />,
+    );
+    const metric = screen.getByText("Missing percentage").parentElement;
+    expect(metric?.textContent).toBe(
+      `Missing percentage${value !== undefined && Number.isFinite(value) ? `${value}%` : "Not available"}`,
+    );
+  },
+);

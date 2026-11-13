@@ -44,6 +44,9 @@ it("lists all user collections and restores focus after Escape", () => {
   fireEvent.click(trigger);
   const dialog = screen.getByRole("dialog", { name: "Collections" });
   expect(dialog).toContainElement(document.activeElement as HTMLElement);
+  expect(
+    screen.getByRole("button", { name: "Close collections" }),
+  ).toHaveFocus();
   expect(screen.getByText("Favorites")).toBeInTheDocument();
   expect(screen.getByText("Other")).toBeInTheDocument();
   fireEvent.keyDown(document, { key: "Escape" });

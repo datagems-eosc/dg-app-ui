@@ -247,7 +247,10 @@ export default function StatisticsTab({
                           Missing percentage
                         </span>
                         <span className={styles.statisticsTab__metricValue}>
-                          {stats.missingPercentage}%
+                          {stats.missingPercentage !== undefined &&
+                          Number.isFinite(stats.missingPercentage)
+                            ? `${stats.missingPercentage}%`
+                            : "Not available"}
                         </span>
                       </div>
                     </div>
