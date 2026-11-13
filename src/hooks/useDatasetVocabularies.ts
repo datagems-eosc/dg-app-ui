@@ -1,5 +1,5 @@
 import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   processFieldsOfScience,
   processLicenses,
@@ -8,10 +8,14 @@ import { useApi } from "@/hooks/useApi";
 import { logError } from "@/lib/logger";
 
 type LicenseOption = { value: string; label: string };
+type Vocabulary = "fieldsOfScience" | "licenses";
+
+const ALL: Vocabulary[] = ["fieldsOfScience", "licenses"];
 
 /**
  * The fields-of-science and licence vocabularies for the dataset filters,
- * requested once per mount. A failed vocabulary stays empty.
+ * requested once per mount. A vocabulary that fails stays empty until
+ * `retryFailed` asks for it again (the filter dialog does on opening).
  */
 export function useDatasetVocabularies() {
   // `useApi()` is a new object every render; depend on its stable members.
@@ -20,46 +24,49 @@ export function useDatasetVocabularies() {
     HierarchicalCategory[]
   >([]);
   const [licenses, setLicenses] = useState<LicenseOption[]>([]);
-  const [isLoadingFields, setIsLoadingFields] = useState(true);
-  const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const failed = useRef<Vocabulary[]>([]);
+  // Loading lasts until every load started so far has settled.
+  const inFlight = useRef(0);
+
+  const load = useCallback(
+    async (vocabularies: Vocabulary[]) => {
+      const requests: Record<Vocabulary, () => Promise<void>> = {
+        fieldsOfScience: () =>
+          getFieldsOfScience().then((data) =>
+            setFieldsOfScienceCategories(processFieldsOfScience(data)),
+          ),
+        licenses: () =>
+          getLicenses().then((data) => setLicenses(processLicenses(data))),
+      };
+      failed.current = failed.current.filter((v) => !vocabularies.includes(v));
+      inFlight.current += 1;
+      setIsLoading(true);
+      const results = await Promise.allSettled(
+        vocabularies.map((v) => requests[v]()),
+      );
+      results.forEach((result, i) => {
+        const vocabulary = vocabularies[i];
+        if (result.status === "fulfilled") return;
+        logError(`Failed to fetch ${vocabulary}`, result.reason);
+        // StrictMode loads twice in development: record each failure once.
+        if (!failed.current.includes(vocabulary)) {
+          failed.current.push(vocabulary);
+        }
+      });
+      inFlight.current -= 1;
+      if (inFlight.current === 0) setIsLoading(false);
+    },
+    [getFieldsOfScience, getLicenses],
+  );
 
   useEffect(() => {
-    if (!hasToken) return;
-    let cancelled = false;
+    if (hasToken) void load(ALL);
+  }, [hasToken, load]);
 
-    getFieldsOfScience()
-      .then((data) => {
-        if (!cancelled)
-          setFieldsOfScienceCategories(processFieldsOfScience(data));
-      })
-      .catch((error) => {
-        logError("Failed to fetch fields of science", error);
-        if (!cancelled) setFieldsOfScienceCategories([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingFields(false);
-      });
+  const retryFailed = useCallback(() => {
+    if (hasToken && failed.current.length > 0) void load(failed.current);
+  }, [hasToken, load]);
 
-    getLicenses()
-      .then((data) => {
-        if (!cancelled) setLicenses(processLicenses(data));
-      })
-      .catch((error) => {
-        logError("Failed to fetch licenses", error);
-        if (!cancelled) setLicenses([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingLicenses(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasToken, getFieldsOfScience, getLicenses]);
-
-  return {
-    fieldsOfScienceCategories,
-    licenses,
-    isLoading: isLoadingFields || isLoadingLicenses,
-  };
+  return { fieldsOfScienceCategories, licenses, isLoading, retryFailed };
 }

@@ -12,8 +12,10 @@ import {
 } from "@/hooks/useCataloguePaging";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import {
+  asRecord,
   mapApiDatasetToDataset,
   mapDiscoveryResults,
+  uniqueById,
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
 import { logError } from "@/lib/logger";
@@ -31,14 +33,12 @@ export interface DatasetSearchHandoff {
   initialText: string;
   startsSmart: boolean;
   smartQueryFor: (term: string) => string;
-  isRepeatedStart: (term: string, inputs: unknown[]) => boolean;
 }
 
 const NO_HANDOFF: DatasetSearchHandoff = {
   initialText: "",
   startsSmart: false,
   smartQueryFor: (term) => term,
-  isRepeatedStart: () => false,
 };
 
 const DATASET_FIELDS = [
@@ -145,20 +145,128 @@ function cataloguePayload(
 
 const idsOf = (datasets: unknown): string[] =>
   (Array.isArray(datasets) ? datasets : [])
-    .map((d) =>
-      typeof d === "object" && d !== null
-        ? (d as Record<string, unknown>).id
-        : null,
-    )
+    .map((d) => asRecord(d)?.id)
     .filter((id): id is string => typeof id === "string");
 
-const uniqueById = <T extends { id: string }>(items: T[]) => {
-  const byId = new Map<string, T>();
-  for (const item of items) {
-    if (item.id && !byId.has(item.id)) byId.set(item.id, item);
+/**
+ * Dev discovery ignores `collectionIds` and also returns datasets outside the
+ * collection (known bug), so Smart results keep only the collection's own.
+ * Delete once the Gateway honours the limit.
+ */
+const keepCollection = <T extends DatasetPlus>(found: T[], id: string) =>
+  found.filter((d) => d.collections?.some((c) => c.id === id));
+
+type SearchApi = Pick<
+  ReturnType<typeof useApi>,
+  "queryDatasets" | "queryUserCollections" | "searchCrossDataset"
+>;
+
+/** A list request that failed, with the message the page shows for it. */
+class ListFailure extends Error {
+  readonly shown: ApiErrorMessage;
+  readonly logAs?: string;
+  readonly reason?: unknown;
+
+  constructor(shown: ApiErrorMessage, logAs?: string, reason?: unknown) {
+    super(shown);
+    this.shown = shown;
+    this.logAs = logAs;
+    this.reason = reason;
   }
-  return Array.from(byId.values());
-};
+}
+
+async function orFail<T>(
+  call: Promise<T>,
+  shown: ApiErrorMessage,
+  logAs: string,
+): Promise<T> {
+  try {
+    return await call;
+  } catch (err) {
+    throw new ListFailure(shown, logAs, err);
+  }
+}
+
+interface ListResult {
+  datasets: DatasetPlus[];
+  /** Present for the catalogue, which pages with "Load more". */
+  page?: {
+    payload: Record<string, unknown>;
+    itemCount: number;
+    count: unknown;
+  };
+}
+
+/**
+ * Smart Search. A dataset search is not a chat: discovery runs untracked (no
+ * conversation id, no auto-create) so it never shows up in Recent Chats.
+ */
+async function loadSmart(
+  api: SearchApi,
+  query: string,
+  collectionId: string | null,
+): Promise<ListResult> {
+  const data = await orFail(
+    api.searchCrossDataset({
+      conversationOptions: { autoCreateConversation: false },
+      project: { fields: SMART_FIELDS },
+      query,
+      resultCount: 100,
+      ...(collectionId ? { collectionIds: [collectionId] } : {}),
+    }),
+    // A name search on a whole sentence would only show "no results".
+    ApiErrorMessage.SMART_SEARCH_FAILED,
+    "Smart search failed",
+  );
+  const found = mapDiscoveryResults(
+    Array.isArray(data.result) ? data.result : [],
+  );
+  return {
+    datasets: collectionId ? keepCollection(found, collectionId) : found,
+  };
+}
+
+/** One of the user's collections: its dataset ids, then their details. */
+async function loadCustom(
+  api: SearchApi,
+  collectionId: string,
+): Promise<ListResult> {
+  const data = await api.queryUserCollections({
+    ...USER_COLLECTION_PAYLOAD,
+    ids: [collectionId],
+  });
+  const items = Array.isArray(data.items) ? data.items : [];
+  const datasetIds = idsOf(items[0]?.datasets);
+  if (datasetIds.length === 0) return { datasets: [] };
+  const details = await orFail(
+    api.queryDatasets({
+      ...CATALOGUE_PAYLOAD,
+      ids: datasetIds,
+      page: { Offset: 0, Size: 100 },
+    }),
+    ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
+    "Failed to fetch dataset details",
+  );
+  const found = Array.isArray(details.items) ? details.items : [];
+  return { datasets: uniqueById(found.map(mapApiDatasetToDataset)) };
+}
+
+/** The first catalogue page for the search, sort and filters. */
+async function loadCatalogue(
+  api: SearchApi,
+  payload: Record<string, unknown>,
+  sort: string,
+): Promise<ListResult> {
+  const data = await api.queryDatasets(payload);
+  const items = Array.isArray(data.items) ? data.items : [];
+  return {
+    datasets: sortDatasetsWithSecondaryRules(
+      items.map(mapApiDatasetToDataset),
+      sort,
+    ),
+    page: { payload, itemCount: items.length, count: data.count },
+  };
+}
 
 interface DatasetSearchOptions {
   /** `null` while the scope is unknown: nothing is requested until it is. */
@@ -170,7 +278,7 @@ interface DatasetSearchOptions {
  * Search state and requests for a dataset list (Datasets, use-case pages):
  * the text in the box and the submitted search, sort, filters, Smart mode,
  * "Load more" paging, loading and errors. Only the latest request may update
- * the list.
+ * the list, and a failed request leaves an empty list behind its message.
  */
 export function useDatasetSearch({
   scope,
@@ -180,6 +288,8 @@ export function useDatasetSearch({
     useApi();
   const scopeKind = scope?.kind ?? null;
   const scopeId = scope && scope.kind !== "all" ? scope.id : null;
+  const builtInCollectionId = scope?.kind === "collection" ? scope.id : null;
+  const scopeKey = scope ? `${scope.kind}:${scopeId ?? ""}` : null;
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -198,14 +308,11 @@ export function useDatasetSearch({
 
   // Opening another collection starts with an empty box. A scope that only
   // now became known (a use-case page waiting for its collection) keeps what
-  // was typed meanwhile.
-  const [shownScope, setShownScope] = useState({
-    kind: scopeKind,
-    id: scopeId,
-  });
-  if (shownScope.id !== scopeId || shownScope.kind !== scopeKind) {
-    setShownScope({ kind: scopeKind, id: scopeId });
-    if (scopeId && shownScope.kind !== null) {
+  // was typed meanwhile. Tracks the last known scope.
+  const [shownScopeKey, setShownScopeKey] = useState(scopeKey);
+  if (scopeKey !== null && scopeKey !== shownScopeKey) {
+    setShownScopeKey(scopeKey);
+    if (scopeId && shownScopeKey !== null) {
       setPendingSearchTerm("");
       setSearchTerm("");
     }
@@ -214,12 +321,13 @@ export function useDatasetSearch({
   // Only the latest list request (new search/sort/filter or load more) may
   // update the list.
   const listRequest = useRef(0);
-  // The catalogue request behind the list on screen, and whether the next
-  // search comes only from switching Smart search.
-  const shownCatalogue = useRef<string | null>(null);
-  const toggled = useRef(false);
+  // The last list request started. A re-run with the same inputs (switching
+  // Smart search with nothing to search, a StrictMode re-run of the Home
+  // handoff) does not ask again; a failure clears it so the next try does.
+  const lastStarted = useRef<string | null>(null);
   const appendCataloguePage = useCallback((items: unknown[], sort: string) => {
     const next: DatasetPlus[] = items.map(mapApiDatasetToDataset);
+    // Everything already listed stays; only rows listed before are skipped.
     setDatasets((prev) => {
       const seen = new Set(prev.map((d) => d.id));
       return sortDatasetsWithSecondaryRules(
@@ -237,92 +345,10 @@ export function useDatasetSearch({
 
   useEffect(() => {
     if (!scopeKind) return;
-    if (
-      searchRun === 0 &&
-      isSmartSearchEnabled &&
-      hasToken &&
-      handoff.isRepeatedStart(searchTerm, [
-        searchTerm,
-        sortBy,
-        filters,
-        scopeKind,
-        scopeId,
-      ])
-    ) {
-      return;
-    }
     // A Home handoff shows the user's text but discovers with the
     // classifier's retrieval query, unless that is too short to search.
     const retrieval = handoff.smartQueryFor(searchTerm);
     const smartQuery = retrieval.trim().length >= 3 ? retrieval : searchTerm;
-
-    const listSmart = async (request: number) => {
-      try {
-        // A dataset search is not a chat: run discovery untracked (no
-        // conversation id, no auto-create) so it never shows up in Recent
-        // Chats.
-        const collectionId =
-          scopeKind === "collection" && scopeId ? scopeId : null;
-        const data = await searchCrossDataset({
-          conversationOptions: { autoCreateConversation: false },
-          project: { fields: SMART_FIELDS },
-          query: smartQuery,
-          resultCount: 100,
-          // A built-in collection limits discovery to its datasets.
-          ...(collectionId ? { collectionIds: [collectionId] } : {}),
-        });
-        if (request !== listRequest.current) return;
-        const found = mapDiscoveryResults(
-          Array.isArray(data.result) ? data.result : [],
-        );
-        // Dev discovery also returns datasets outside the requested
-        // collection (known bug), so keep only the collection's own.
-        setDatasets(
-          collectionId
-            ? found.filter((d) =>
-                d.collections?.some((c) => c.id === collectionId),
-              )
-            : found,
-        );
-      } catch (smartErr) {
-        if (request !== listRequest.current) return;
-        // A name search on a whole sentence would only show "no results".
-        logError("Smart search failed", smartErr);
-        setError(ApiErrorMessage.SMART_SEARCH_FAILED);
-      }
-    };
-
-    const listCustom = async (request: number, collectionId: string) => {
-      const data = await queryUserCollections({
-        ...USER_COLLECTION_PAYLOAD,
-        ids: [collectionId],
-      });
-      if (request !== listRequest.current) return;
-      const items = Array.isArray(data.items) ? data.items : [];
-      const datasetIds = idsOf(items[0]?.datasets);
-      if (datasetIds.length === 0) {
-        setDatasets([]);
-        return;
-      }
-      try {
-        const details = await queryDatasets({
-          project: { fields: DATASET_FIELDS },
-          ids: datasetIds,
-          page: { Offset: 0, Size: 100 },
-          Order: { Items: ["+code"] },
-          Metadata: { CountAll: true },
-        });
-        if (request !== listRequest.current) return;
-        const found = Array.isArray(details.items) ? details.items : [];
-        setDatasets(uniqueById(found.map(mapApiDatasetToDataset)));
-      } catch (detailsErr) {
-        if (request !== listRequest.current) return;
-        logError("Failed to fetch dataset details", detailsErr);
-        setError(ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED);
-        setDatasets([]);
-      }
-    };
-
     // Smart search hides sort and filters, so the catalogue it lists must
     // not be sorted or filtered by them either.
     const listSort = isSmartSearchEnabled ? DEFAULT_SORT : sortBy;
@@ -330,70 +356,67 @@ export function useDatasetSearch({
       searchTerm,
       listSort,
       isSmartSearchEnabled ? null : filters,
-      scopeKind === "collection" ? scopeId : null,
+      builtInCollectionId,
     );
-    const catalogueKey = JSON.stringify([scopeKind, scopeId, payload]);
-
-    const listCatalogue = async (request: number) => {
-      const data = await queryDatasets(payload);
-      if (request !== listRequest.current) return;
-      const items = Array.isArray(data.items) ? data.items : [];
-      setDatasets(
-        sortDatasetsWithSecondaryRules(
-          items.map(mapApiDatasetToDataset),
-          listSort,
-        ),
-      );
-      startPaging(payload, listSort, items.length, data.count);
-      shownCatalogue.current = catalogueKey;
-    };
-
     const path =
-      scopeKind !== "custom" &&
-      isSmartSearchEnabled &&
-      smartQuery.trim().length >= 3
-        ? "smart"
-        : scopeKind === "custom" && scopeId
-          ? "custom"
+      scopeKind === "custom" && scopeId
+        ? "custom"
+        : isSmartSearchEnabled && smartQuery.trim().length >= 3
+          ? "smart"
           : "catalogue";
 
-    // Switching Smart search alone must not ask again for the catalogue list
-    // already on screen.
-    const onlyToggled = toggled.current;
-    toggled.current = false;
-    if (
-      onlyToggled &&
-      path === "catalogue" &&
-      shownCatalogue.current === catalogueKey
-    ) {
-      return;
-    }
+    const key = JSON.stringify([
+      hasToken,
+      path,
+      scopeKey,
+      searchRun,
+      path === "smart" ? smartQuery : payload,
+    ]);
+    if (key === lastStarted.current) return;
+    lastStarted.current = key;
+
+    const api = { queryDatasets, queryUserCollections, searchCrossDataset };
+    const request = ++listRequest.current;
+    const isLatest = () => request === listRequest.current;
+    setIsLoading(true);
+    setError(null);
+    resetPaging();
 
     const run = async () => {
-      const request = ++listRequest.current;
-      shownCatalogue.current = null;
-      setIsLoading(true);
-      setError(null);
-      resetPaging();
       try {
         if (!hasToken) {
-          setError(ApiErrorMessage.NO_AUTH_TOKEN_FOUND);
-          return;
+          throw new ListFailure(ApiErrorMessage.NO_AUTH_TOKEN_FOUND);
         }
-        if (path === "smart") {
-          await listSmart(request);
-        } else if (path === "custom" && scopeId) {
-          await listCustom(request, scopeId);
-        } else {
-          await listCatalogue(request);
+        const result =
+          path === "smart"
+            ? await loadSmart(api, smartQuery, builtInCollectionId)
+            : path === "custom" && scopeId
+              ? await loadCustom(api, scopeId)
+              : await loadCatalogue(api, payload, listSort);
+        if (!isLatest()) return;
+        setDatasets(result.datasets);
+        if (result.page) {
+          const { itemCount, count } = result.page;
+          startPaging(payload, listSort, itemCount, count);
         }
       } catch (err: unknown) {
-        if (request !== listRequest.current) return;
+        if (!isLatest()) return;
+        lastStarted.current = null;
         // The Gateway's own error text stays in the log, not on the page.
-        logError("Failed to list datasets", err);
-        setError(ApiErrorMessage.FETCH_DATASETS_FAILED);
+        const failure =
+          err instanceof ListFailure
+            ? err
+            : new ListFailure(
+                ApiErrorMessage.FETCH_DATASETS_FAILED,
+                "Failed to list datasets",
+                err,
+              );
+        if (failure.logAs) logError(failure.logAs, failure.reason);
+        setError(failure.shown);
+        // Nothing stays listed (or selectable) behind the message.
+        setDatasets([]);
       } finally {
-        if (request === listRequest.current) setIsLoading(false);
+        if (isLatest()) setIsLoading(false);
       }
     };
     void run();
@@ -426,9 +449,7 @@ export function useDatasetSearch({
   // Switching the mode searches the text the user sees in the box.
   const handleSmartSearchToggle = useCallback(
     (enabled: boolean) => {
-      toggled.current = true;
       setSearchTerm(pendingSearchTerm.trim());
-      setSearchRun((run) => run + 1);
       setIsSmartSearchEnabled(enabled);
     },
     [pendingSearchTerm],
@@ -438,7 +459,8 @@ export function useDatasetSearch({
     datasets,
     isLoading,
     error,
-    pendingSearchTerm,
+    /** The text in the search box (submitted or not). */
+    searchTerm: pendingSearchTerm,
     onSearchTermChange: setPendingSearchTerm,
     onSearchTermSubmit: handleSearchTermSubmit,
     /** Under 3 characters nothing is searched. */

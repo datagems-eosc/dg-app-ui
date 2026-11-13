@@ -57,9 +57,17 @@ describe("DashboardLayout", () => {
     expect(collections.refreshAllCollections).not.toHaveBeenCalled();
   });
 
-  it("refreshes the collection list once when a page opens after it loaded", () => {
+  it("leaves the collection list to the provider when a page opens after it loaded", () => {
     const { rerender } = render(<DashboardLayout>page</DashboardLayout>);
     rerender(<DashboardLayout>page</DashboardLayout>);
+
+    expect(collections.refreshAllCollections).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the collection list when asked to", () => {
+    render(<DashboardLayout>page</DashboardLayout>);
+
+    window.dispatchEvent(new Event("forceCollectionsRefresh"));
 
     expect(collections.refreshAllCollections).toHaveBeenCalledTimes(1);
   });

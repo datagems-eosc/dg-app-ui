@@ -1,4 +1,5 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useDatasetVocabularies } from "./useDatasetVocabularies";
 
@@ -71,5 +72,46 @@ describe("useDatasetVocabularies", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.fieldsOfScienceCategories).toEqual([]);
     expect(result.current.licenses.map((l) => l.value)).toEqual(LICENSES);
+  });
+
+  it("asks again only for a vocabulary that failed", async () => {
+    api.getFieldsOfScience.mockRejectedValueOnce(new Error("down"));
+    const { result } = renderHook(() => useDatasetVocabularies());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.retryFailed());
+
+    await waitFor(() =>
+      expect(result.current.fieldsOfScienceCategories.length).toBeGreaterThan(
+        0,
+      ),
+    );
+    expect(api.getFieldsOfScience).toHaveBeenCalledTimes(2);
+    expect(api.getLicenses).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks once per failed vocabulary after a StrictMode double mount", async () => {
+    api.getLicenses.mockRejectedValueOnce(new Error("down"));
+    api.getLicenses.mockRejectedValueOnce(new Error("down"));
+    const { result } = renderHook(() => useDatasetVocabularies(), {
+      wrapper: StrictMode,
+    });
+    await waitFor(() => expect(api.getLicenses).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.retryFailed());
+
+    await waitFor(() => expect(result.current.licenses.length).toBe(2));
+    expect(api.getLicenses).toHaveBeenCalledTimes(3);
+  });
+
+  it("asks for nothing again when every vocabulary loaded", async () => {
+    const { result } = renderHook(() => useDatasetVocabularies());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.retryFailed());
+
+    expect(api.getFieldsOfScience).toHaveBeenCalledTimes(1);
+    expect(api.getLicenses).toHaveBeenCalledTimes(1);
   });
 });

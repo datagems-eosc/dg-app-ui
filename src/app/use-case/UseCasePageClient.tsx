@@ -42,6 +42,15 @@ export default function UseCasePageClient({
       ? { kind: "collection", id: String(collectionId) }
       : null,
   });
+  // A collection that is not there lists nothing and says so.
+  const view = isMissingCollection
+    ? {
+        ...search,
+        datasets: [],
+        isLoading: false,
+        error: `The ${collectionName} collection could not be found.`,
+      }
+    : search;
 
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
   const [showSelectedPanel, setShowSelectedPanel] = useState(false);
@@ -68,26 +77,11 @@ export default function UseCasePageClient({
   const content = (
     <div className="relative p-6">
       <Browse
-        datasets={isMissingCollection ? [] : search.datasets}
+        {...view}
         title={title}
         subtitle={subtitle}
         showSelectAll={true}
         showSearchAndFilters={true}
-        searchTerm={search.pendingSearchTerm}
-        onSearchTermChange={search.onSearchTermChange}
-        onSearchTermSubmit={search.onSearchTermSubmit}
-        appliedSearchTerm={search.appliedSearchTerm}
-        isSmartSearchEnabled={search.isSmartSearchEnabled}
-        onSmartSearchToggle={search.onSmartSearchToggle}
-        sortBy={search.sortBy}
-        onSortByChange={search.onSortByChange}
-        filters={search.filters}
-        onApplyFilters={search.onApplyFilters}
-        totalCount={search.totalCount}
-        hasMore={search.hasMore}
-        isLoadingMore={search.isLoadingMore}
-        onLoadMore={() => void search.onLoadMore()}
-        loadMoreError={search.loadMoreError}
         selectedDatasets={selectedDatasets}
         onSelectedDatasetsChange={setSelectedDatasets}
         showSelectedPanel={showSelectedPanel}
@@ -95,12 +89,6 @@ export default function UseCasePageClient({
         onReopenSidebar={() => setShowSelectedPanel(true)}
         onChatWithData={handleChatWithData}
         onAddToCollection={handleAddToCollection}
-        isLoading={!isMissingCollection && search.isLoading}
-        error={
-          isMissingCollection
-            ? `The ${collectionName} collection could not be found.`
-            : search.error
-        }
       />
 
       <CreateCollectionModal

@@ -130,7 +130,7 @@ export default function BrowseClient() {
     <DashboardLayout>
       <div className="relative">
         <Browse
-          datasets={search.datasets}
+          {...search}
           title={
             selectedCollection
               ? collectionTitle || "Browse Datasets"
@@ -146,23 +146,6 @@ export default function BrowseClient() {
           showSelectAll={true}
           showAddButton={true}
           showSearchAndFilters={!selectedCollection}
-          searchTerm={search.pendingSearchTerm}
-          onSearchTermChange={search.onSearchTermChange}
-          onSearchTermSubmit={search.onSearchTermSubmit}
-          appliedSearchTerm={search.appliedSearchTerm}
-          isLoading={search.isLoading}
-          totalCount={search.totalCount}
-          hasMore={search.hasMore}
-          isLoadingMore={search.isLoadingMore}
-          onLoadMore={() => void search.onLoadMore()}
-          loadMoreError={search.loadMoreError}
-          error={search.error}
-          sortBy={search.sortBy}
-          onSortByChange={search.onSortByChange}
-          filters={search.filters}
-          onApplyFilters={search.onApplyFilters}
-          isSmartSearchEnabled={search.isSmartSearchEnabled}
-          onSmartSearchToggle={search.onSmartSearchToggle}
           selectedDatasets={selectedDatasets}
           onSelectedDatasetsChange={setSelectedDatasets}
           selectedPackageIds={selectedPackageIds}

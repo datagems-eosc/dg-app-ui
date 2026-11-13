@@ -106,10 +106,19 @@ export type DiscoveredDataset = MappedDataset & {
   hits: Passage[];
 };
 
-const asRecord = (value: unknown): Record<string, unknown> | null =>
+export const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === "object" && value !== null
     ? (value as Record<string, unknown>)
     : null;
+
+/** Drops items without an id and every later item with an id already seen. */
+export const uniqueById = <T extends { id: string }>(items: T[]): T[] => {
+  const byId = new Map<string, T>();
+  for (const item of items) {
+    if (item.id && !byId.has(item.id)) byId.set(item.id, item);
+  }
+  return Array.from(byId.values());
+};
 
 function toPassage(hit: unknown, index: number): Passage {
   const h = asRecord(hit);
@@ -133,21 +142,22 @@ function toPassage(hit: unknown, index: number): Passage {
  * top three passages. A dataset found twice keeps its first, best-ranked entry.
  */
 export function mapDiscoveryResults(results: unknown[]): DiscoveredDataset[] {
-  const byId = new Map<string, DiscoveredDataset>();
-  for (const item of results) {
-    const result = asRecord(item);
-    const dataset = mapApiDatasetToDataset(result?.dataset);
-    if (!result || !dataset.id || byId.has(dataset.id)) continue;
-    byId.set(dataset.id, {
-      ...dataset,
-      maxSimilarity:
-        typeof result.maxSimilarity === "number"
-          ? result.maxSimilarity
-          : undefined,
-      hits: (Array.isArray(result.hits) ? result.hits : [])
-        .slice(0, 3)
-        .map(toPassage),
-    });
-  }
-  return Array.from(byId.values());
+  return uniqueById(
+    results.flatMap((item) => {
+      const result = asRecord(item);
+      if (!result) return [];
+      return [
+        {
+          ...mapApiDatasetToDataset(result.dataset),
+          maxSimilarity:
+            typeof result.maxSimilarity === "number"
+              ? result.maxSimilarity
+              : undefined,
+          hits: (Array.isArray(result.hits) ? result.hits : [])
+            .slice(0, 3)
+            .map(toPassage),
+        },
+      ];
+    }),
+  );
 }

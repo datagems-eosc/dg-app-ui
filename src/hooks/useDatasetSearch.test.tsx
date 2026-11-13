@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiErrorMessage } from "@/lib/apiErrors";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -186,7 +187,7 @@ describe("useDatasetSearch", () => {
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(3));
       await act(async () => {});
       expect(api.queryDatasets).toHaveBeenCalledTimes(3);
-      expect(result.current.pendingSearchTerm).toBe("");
+      expect(result.current.searchTerm).toBe("");
       expect(result.current.appliedSearchTerm).toBe("");
       expect(lastCatalogue().like).toBe(undefined);
       expect(lastCatalogue().collectionIds).toEqual(["col-2"]);
@@ -201,7 +202,7 @@ describe("useDatasetSearch", () => {
 
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
       expect(lastCatalogue().like).toBe("%rain%");
-      expect(result.current.pendingSearchTerm).toBe("rain");
+      expect(result.current.searchTerm).toBe("rain");
     });
 
     it("clears the search when a collection opens from all datasets", async () => {
@@ -214,7 +215,7 @@ describe("useDatasetSearch", () => {
 
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(3));
       expect(lastCatalogue().like).toBe(undefined);
-      expect(result.current.pendingSearchTerm).toBe("");
+      expect(result.current.searchTerm).toBe("");
     });
 
     it("asks for nothing while the scope is unknown", async () => {
@@ -239,6 +240,45 @@ describe("useDatasetSearch", () => {
         expect(result.current.error).toBe("Failed to fetch datasets"),
       );
       expect(result.current.isLoading).toBe(false);
+    });
+
+    it("clears the earlier list when a new search fails", async () => {
+      api.queryDatasets.mockResolvedValueOnce({
+        items: [{ id: "old", name: "Old" }],
+        count: 1,
+      });
+      const { result } = renderSearch();
+      await waitFor(() =>
+        expect(result.current.datasets.map((d) => d.id)).toEqual(["old"]),
+      );
+      api.queryDatasets.mockRejectedValueOnce(new Error("500"));
+
+      act(() => result.current.onSearchTermSubmit("rain"));
+
+      await waitFor(() =>
+        expect(result.current.error).toBe("Failed to fetch datasets"),
+      );
+      expect(result.current.datasets).toEqual([]);
+    });
+
+    it("clears the earlier list when Smart search fails", async () => {
+      api.queryDatasets.mockResolvedValueOnce({
+        items: [{ id: "old", name: "Old" }],
+        count: 1,
+      });
+      api.searchCrossDataset.mockRejectedValueOnce(new Error("503"));
+      const { result } = renderSearch();
+      await waitFor(() =>
+        expect(result.current.datasets.map((d) => d.id)).toEqual(["old"]),
+      );
+
+      act(() => result.current.onSearchTermChange("rain in Crete"));
+      act(() => result.current.onSmartSearchToggle(true));
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(ApiErrorMessage.SMART_SEARCH_FAILED),
+      );
+      expect(result.current.datasets).toEqual([]);
     });
 
     it("ignores a failure that arrives after a newer search succeeded", async () => {
@@ -273,6 +313,67 @@ describe("useDatasetSearch", () => {
       await waitFor(() =>
         expect(result.current.error).toBe("Failed to fetch datasets"),
       );
+    });
+
+    it("says which step failed when a custom collection's details fail", async () => {
+      api.queryUserCollections.mockResolvedValue({
+        items: [{ id: "mine", datasets: [{ id: "a" }] }],
+      });
+      api.queryDatasets.mockRejectedValue(new Error("500"));
+      const { result } = renderSearch({ kind: "custom", id: "mine" });
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(
+          ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
+        ),
+      );
+      expect(result.current.datasets).toEqual([]);
+    });
+
+    it("asks the user to sign in again without a token and requests nothing", async () => {
+      api.hasToken = false;
+      const { result } = renderSearch();
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(ApiErrorMessage.NO_AUTH_TOKEN_FOUND),
+      );
+      expect(api.queryDatasets).not.toHaveBeenCalled();
+    });
+
+    it("tries again after a failure even when nothing else changed", async () => {
+      api.queryDatasets.mockRejectedValueOnce(new Error("500"));
+      const { result } = renderSearch();
+      await waitFor(() =>
+        expect(result.current.error).toBe("Failed to fetch datasets"),
+      );
+
+      // An empty box: the Smart toggle leaves the catalogue request as it was.
+      act(() => result.current.onSmartSearchToggle(true));
+
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(result.current.error).toBeNull());
+    });
+  });
+
+  describe("load more", () => {
+    it("keeps every dataset already listed", async () => {
+      api.queryDatasets.mockResolvedValueOnce({
+        items: [{ name: "No id" }],
+        count: 2,
+      });
+      api.queryDatasets.mockResolvedValueOnce({
+        items: [{ id: "b", name: "B" }],
+        count: 2,
+      });
+      const { result } = renderSearch();
+      await waitFor(() => expect(result.current.hasMore).toBe(true));
+
+      await act(async () => result.current.onLoadMore());
+
+      expect(result.current.datasets.map((d) => d.title)).toEqual([
+        "B",
+        "No id",
+      ]);
     });
   });
 

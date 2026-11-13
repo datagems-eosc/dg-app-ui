@@ -261,6 +261,7 @@ export default function Browse({
     fieldsOfScienceCategories,
     licenses,
     isLoading: isLoadingVocabularies,
+    retryFailed: retryFailedVocabularies,
   } = useDatasetVocabularies();
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
@@ -853,95 +854,94 @@ export default function Browse({
             {!isEditingName && (
               <div className="flex items-center gap-3">
                 {/* Actions dropdown button - only show on custom collection pages, not on Favorites */}
-                {isCustomCollection &&
-                  collectionName !== "Favorites Datasets" && (
-                    <div className="relative" data-title-actions-dropdown>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label="Collection actions"
-                        aria-expanded={showTitleActionsDropdown}
-                        aria-controls={
-                          showTitleActionsDropdown
-                            ? titleActionsPanelId
-                            : undefined
-                        }
-                        onClick={() =>
-                          setShowTitleActionsDropdown(!showTitleActionsDropdown)
-                        }
-                        className="p-2 min-w-0 w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-50"
-                      >
-                        <MoreHorizontal className="w-4 h-4 text-icon" />
-                      </Button>
+                {isCustomCollection && !isFavorites && (
+                  <div className="relative" data-title-actions-dropdown>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label="Collection actions"
+                      aria-expanded={showTitleActionsDropdown}
+                      aria-controls={
+                        showTitleActionsDropdown
+                          ? titleActionsPanelId
+                          : undefined
+                      }
+                      onClick={() =>
+                        setShowTitleActionsDropdown(!showTitleActionsDropdown)
+                      }
+                      className="p-2 min-w-0 w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-50"
+                    >
+                      <MoreHorizontal className="w-4 h-4 text-icon" />
+                    </Button>
 
-                      {/* Actions dropdown menu */}
-                      {showTitleActionsDropdown && (
-                        <div
-                          id={titleActionsPanelId}
-                          data-title-actions-dropdown
-                          className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+                    {/* Actions dropdown menu */}
+                    {showTitleActionsDropdown && (
+                      <div
+                        id={titleActionsPanelId}
+                        data-title-actions-dropdown
+                        className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowTitleActionsDropdown(false);
+                            selectAll();
+                            handleOpenPanel();
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                         >
+                          <ArrowRightLeft className="w-4 h-4 text-icon" />
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowTitleActionsDropdown(false);
+                            handleStartEditName();
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Tag className="w-4 h-4 text-icon" />
+                          Rename
+                        </button>
+                        {collectionId && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               setShowTitleActionsDropdown(false);
-                              selectAll();
-                              handleOpenPanel();
+                              setShowCollectionPermissions(true);
                             }}
                             className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                           >
-                            <ArrowRightLeft className="w-4 h-4 text-icon" />
-                            Select All
+                            <Settings className="w-4 h-4 text-icon" />
+                            Manage permissions
                           </button>
+                        )}
+                        {canDeleteCollection && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               setShowTitleActionsDropdown(false);
-                              handleStartEditName();
+                              setShowDeleteModal(true);
                             }}
-                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
                           >
-                            <Tag className="w-4 h-4 text-icon" />
-                            Rename
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                            Delete Collection
                           </button>
-                          {collectionId && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setShowTitleActionsDropdown(false);
-                                setShowCollectionPermissions(true);
-                              }}
-                              className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                              <Settings className="w-4 h-4 text-icon" />
-                              Manage permissions
-                            </button>
-                          )}
-                          {canDeleteCollection && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setShowTitleActionsDropdown(false);
-                                setShowDeleteModal(true);
-                              }}
-                              className="flex items-center gap-3 w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                              Delete Collection
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Custom Action Buttons */}
                 {customActionButtons?.map((button, index) => (
                   <Button
@@ -1095,7 +1095,10 @@ export default function Browse({
                 <Button
                   variant="outline"
                   className="flex items-center gap-1.5"
-                  onClick={() => setShowFilterModal(true)}
+                  onClick={() => {
+                    retryFailedVocabularies();
+                    setShowFilterModal(true);
+                  }}
                 >
                   <Filter className="w-4 h-4 text-icon" />
                   Filter

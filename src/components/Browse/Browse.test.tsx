@@ -106,6 +106,27 @@ describe("Browse - Delete Collection Feature", () => {
   const collectionActionsButton = () =>
     screen.getByRole("button", { name: "Collection actions" });
 
+  it.each(["Favorites", "Favorites Datasets"])(
+    "offers no collection actions on Favorites (%s)",
+    (name) => {
+      mockUseApi.mockReturnValue(baseApiMock());
+      render(
+        <Browse
+          datasets={mockDatasets}
+          title={name}
+          subtitle=""
+          isCustomCollection={true}
+          collectionId="fav"
+          collectionName={name}
+        />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: "Collection actions" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   // Waits until every grant lookup has resolved, so the panel reflects the
   // grants, then opens it.
   const openCollectionActions = async (
@@ -903,5 +924,26 @@ describe("Browse – filter vocabularies", () => {
 
     expect(apiMock.getFieldsOfScience).toHaveBeenCalledTimes(1);
     expect(apiMock.getLicenses).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks again for a vocabulary that failed when the filters open", async () => {
+    const user = userEvent.setup();
+    const apiMock = {
+      hasToken: true,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+      getLicenses: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("down"))
+        .mockResolvedValue(["MIT"]),
+    };
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
+    await waitFor(() => expect(apiMock.getLicenses).toHaveBeenCalledTimes(1));
+
+    await user.click(screen.getByRole("button", { name: /^filter/i }));
+
+    await waitFor(() => expect(apiMock.getLicenses).toHaveBeenCalledTimes(2));
+    expect(apiMock.getFieldsOfScience).toHaveBeenCalledTimes(1);
   });
 });
