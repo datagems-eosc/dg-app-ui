@@ -106,6 +106,27 @@ describe("Browse - Delete Collection Feature", () => {
   const collectionActionsButton = () =>
     screen.getByRole("button", { name: "Collection actions" });
 
+  it.each(["Favorites", "Favorites Datasets"])(
+    "offers no collection actions on Favorites (%s)",
+    (name) => {
+      mockUseApi.mockReturnValue(baseApiMock());
+      render(
+        <Browse
+          datasets={mockDatasets}
+          title={name}
+          subtitle=""
+          isCustomCollection={true}
+          collectionId="fav"
+          collectionName={name}
+        />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: "Collection actions" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   // Waits until every grant lookup has resolved, so the panel reflects the
   // grants, then opens it.
   const openCollectionActions = async (
@@ -180,6 +201,178 @@ describe("Browse - Delete Collection Feature", () => {
     await waitFor(() => {
       expect(screen.queryByText("Delete Collection")).not.toBeInTheDocument();
     });
+  });
+
+  it("offers only collection actions that do something", async () => {
+    const apiMock = renderCustomCollection();
+
+    await openCollectionActions(apiMock);
+
+    const panel = document.getElementById(
+      String(collectionActionsButton().getAttribute("aria-controls")),
+    ) as HTMLElement;
+    expect(
+      Array.from(panel.querySelectorAll("button")).map((b) => b.textContent),
+    ).toEqual(["Select All", "Rename", "Manage permissions"]);
+  });
+
+  it("offers no permissions entry for a collection without an id", async () => {
+    mockUseApi.mockReturnValue(baseApiMock());
+    render(
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionName="Test Collection"
+      />,
+    );
+
+    await userEvent.click(collectionActionsButton());
+
+    expect(screen.getByText("Rename")).toBeInTheDocument();
+    expect(screen.queryByText("Manage permissions")).toBeNull();
+  });
+
+  it("asks for the grants once when the collection re-renders unchanged", async () => {
+    // Like the real hook: a new object every render, the same functions.
+    const apiMock = baseApiMock();
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    // A new element each time, so React renders Browse again.
+    const view = () => (
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId="123"
+        collectionName="Test Collection"
+      />
+    );
+    const { rerender } = render(view());
+    await waitFor(() => {
+      expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(view());
+    rerender(view());
+    await act(async () => {});
+
+    expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for the grants once across a token refresh", async () => {
+    let apiMock = baseApiMock();
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    // A new element each time, so React renders Browse again.
+    const view = () => (
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId="123"
+        collectionName="Test Collection"
+      />
+    );
+    const { rerender } = render(view());
+    const first = apiMock;
+    await waitFor(() => {
+      expect(first.getCollectionGrants).toHaveBeenCalledTimes(1);
+    });
+
+    // useApi rebuilds its calls when the access token changes.
+    apiMock = baseApiMock();
+    rerender(view());
+    await act(async () => {});
+
+    expect(apiMock.getCollectionGrants).not.toHaveBeenCalled();
+  });
+
+  it("hides Delete Collection while the next collection's grants load", async () => {
+    let resolveSecond: (roles: string[]) => void = () => {};
+    const apiMock = {
+      ...baseApiMock(),
+      getCollectionGrants: vi
+        .fn()
+        .mockResolvedValueOnce(["dg_col-delete"])
+        .mockReturnValueOnce(
+          new Promise<string[]>((resolve) => {
+            resolveSecond = resolve;
+          }),
+        ),
+    };
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    const viewFor = (collectionId: string) => (
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId={collectionId}
+        collectionName="Test Collection"
+      />
+    );
+    const { rerender } = render(viewFor("123"));
+    await act(async () => {});
+    rerender(viewFor("456"));
+    await act(async () => {});
+
+    await userEvent.click(collectionActionsButton());
+
+    expect(screen.queryByText("Delete Collection")).not.toBeInTheDocument();
+    await act(async () => resolveSecond([]));
+  });
+
+  it("asks for the grants again when the collection changes", async () => {
+    const apiMock = baseApiMock();
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    const viewFor = (collectionId: string) => (
+      <Browse
+        datasets={mockDatasets}
+        title="Test Collection"
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId={collectionId}
+        collectionName="Test Collection"
+      />
+    );
+    const { rerender } = render(viewFor("123"));
+    await waitFor(() => {
+      expect(apiMock.getCollectionGrants).toHaveBeenCalledWith("123");
+    });
+
+    rerender(viewFor("456"));
+
+    await waitFor(() => {
+      expect(apiMock.getCollectionGrants).toHaveBeenLastCalledWith("456");
+    });
+    expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks for the grants once when the collection's name arrives later", async () => {
+    // The page names the collection only after the collection list loads.
+    const apiMock = baseApiMock();
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    const viewNamed = (collectionName: string) => (
+      <Browse
+        datasets={mockDatasets}
+        title={collectionName}
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId="123"
+        collectionName={collectionName}
+      />
+    );
+    const { rerender } = render(viewNamed("Browse Datasets"));
+    await waitFor(() => {
+      expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(viewNamed("Custom Datasets"));
+    await act(async () => {});
+
+    expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
   });
 
   it("should NOT check grants when isCustomCollection is false", async () => {
@@ -748,11 +941,73 @@ describe("Browse – selected datasets actions", () => {
     expect(document.getElementById(panelId)).not.toBeInTheDocument();
   });
 
+  it("offers only actions that do something", async () => {
+    renderWithSelection();
+
+    await userEvent.click(selectedActionsButton());
+    const panel = document.getElementById(
+      String(selectedActionsButton().getAttribute("aria-controls")),
+    ) as HTMLElement;
+
+    expect(
+      Array.from(panel.querySelectorAll("button")).map((b) => b.textContent),
+    ).toEqual(["Select All"]);
+  });
+
   it("offers no actions button when nothing is selected", () => {
     render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
 
     expect(
       screen.queryByRole("button", { name: "Selected dataset actions" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Browse – filter vocabularies", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setDefaultBrowseMocks();
+  });
+
+  it("loads the vocabularies once and reuses them each time the filters open", async () => {
+    const user = userEvent.setup();
+    const apiMock = {
+      hasToken: true,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+      getLicenses: vi.fn().mockResolvedValue(["MIT"]),
+    };
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
+
+    for (let open = 0; open < 2; open += 1) {
+      await user.click(screen.getByRole("button", { name: /^filter/i }));
+      await screen.findByRole("button", { name: /apply/i });
+      await user.click(screen.getByRole("button", { name: /cancel/i }));
+    }
+
+    expect(apiMock.getFieldsOfScience).toHaveBeenCalledTimes(1);
+    expect(apiMock.getLicenses).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks again for a vocabulary that failed when the filters open", async () => {
+    const user = userEvent.setup();
+    const apiMock = {
+      hasToken: true,
+      getCollectionGrants: vi.fn().mockResolvedValue([]),
+      getFieldsOfScience: vi.fn().mockResolvedValue([]),
+      getLicenses: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("down"))
+        .mockResolvedValue(["MIT"]),
+    };
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    render(<Browse datasets={mockDatasets} title="Browse" subtitle="" />);
+    await waitFor(() => expect(apiMock.getLicenses).toHaveBeenCalledTimes(1));
+
+    await user.click(screen.getByRole("button", { name: /^filter/i }));
+
+    await waitFor(() => expect(apiMock.getLicenses).toHaveBeenCalledTimes(2));
+    expect(apiMock.getFieldsOfScience).toHaveBeenCalledTimes(1);
   });
 });

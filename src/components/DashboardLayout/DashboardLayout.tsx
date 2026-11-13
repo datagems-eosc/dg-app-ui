@@ -9,7 +9,7 @@ import { Trash } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useApi } from "@/hooks/useApi";
 import { logError } from "@/lib/logger";
@@ -23,7 +23,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const api = useApi();
   const router = useRouter();
   const pathname = usePathname();
-  const hasLoadedCollections = useRef(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -43,6 +42,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
 
+  // The collections provider loads the lists, retries a failed one on the
+  // next page, and every in-app change refreshes them; the layout asks only
+  // on request (`forceCollectionsRefresh`).
   const { refreshAllCollections } = useCollections();
   const { data: session } = useSession();
 
@@ -50,14 +52,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const currentConversationId = pathname?.startsWith("/chat/")
     ? pathname.split("/")[2]
     : undefined;
-
-  // Refresh collections only once when component mounts and session is available
-  useEffect(() => {
-    if (session && !hasLoadedCollections.current) {
-      hasLoadedCollections.current = true;
-      refreshAllCollections();
-    }
-  }, [session, refreshAllCollections]);
 
   // Function to manually refresh collections when needed (e.g., after creating a collection)
   const _handleManualRefresh = () => {

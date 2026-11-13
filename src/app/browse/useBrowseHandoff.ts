@@ -25,9 +25,6 @@ export function useBrowseHandoff(
         }
       : null,
   );
-  // Inputs the handoff search already started with.
-  const startedWith = useRef<string | null>(null);
-
   useEffect(() => {
     if (!handoffId) return;
     handoffStore.consume(handoffId);
@@ -47,22 +44,9 @@ export function useBrowseHandoff(
     return term;
   }, []);
 
-  /**
-   * StrictMode re-runs mount effects: true when the handoff search already
-   * started with these inputs, so it must not search again.
-   */
-  const isRepeatedStart = useCallback((term: string, inputs: unknown[]) => {
-    if (term !== override.current?.display) return false;
-    const key = JSON.stringify(inputs);
-    if (startedWith.current === key) return true;
-    startedWith.current = key;
-    return false;
-  }, []);
-
   return {
     initialText: handoff?.originalQuery ?? "",
     startsSmart: handoff !== null,
     smartQueryFor,
-    isRepeatedStart,
   };
 }

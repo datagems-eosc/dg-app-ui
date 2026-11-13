@@ -10,14 +10,10 @@ import { Radio } from "@ui/Radio";
 import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useApi } from "@/hooks/useApi";
-import { logError } from "@/lib/logger";
 import {
   ACCESS_OPTIONS,
   type FilterState,
   GATEWAY_FILTER_SUPPORT,
-  processFieldsOfScience,
-  processLicenses,
   VALIDATION_CONFIG,
 } from "../../config/filterOptions";
 
@@ -26,30 +22,30 @@ export default function FilterModal({
   onClose,
   onApplyFilters,
   currentFilters,
+  fieldsOfScienceCategories,
+  licenses,
+  isLoadingFieldsOfScience = false,
+  isLoadingLicenses = false,
   accessUnavailableReason,
 }: {
   isVisible: boolean;
   onClose: () => void;
   onApplyFilters: (filters: FilterState) => void;
   currentFilters: FilterState;
+  /** Loaded once by the caller (`useDatasetVocabularies`), not per opening. */
+  fieldsOfScienceCategories: HierarchicalCategory[];
+  licenses: { value: string; label: string }[];
+  isLoadingFieldsOfScience?: boolean;
+  isLoadingLicenses?: boolean;
   /**
    * When set, the caller's data cannot support Access filtering: the section
    * shows this explanation instead of options, and no Access value is applied.
    */
   accessUnavailableReason?: string;
 }) {
-  const api = useApi();
   const [filters, setFilters] = useState<FilterState>(currentFilters);
   const [yearErrors, setYearErrors] = useState({ start: "", end: "" });
   const [sizeErrors, setSizeErrors] = useState({ start: "", end: "" });
-  const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
-    HierarchicalCategory[]
-  >([]);
-  const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
-    [],
-  );
-  const [isLoadingFields, setIsLoadingFields] = useState(true);
-  const [isLoadingLicenses, setIsLoadingLicenses] = useState(true);
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -73,43 +69,6 @@ export default function FilterModal({
   useEffect(() => {
     setFilters(currentFilters);
   }, [currentFilters]);
-
-  // Fetch fields of science and licenses when modal becomes visible
-  useEffect(() => {
-    if (isVisible && api.hasToken) {
-      // Fetch fields of science
-      setIsLoadingFields(true);
-      api
-        .getFieldsOfScience()
-        .then((data) => {
-          const categories = processFieldsOfScience(data);
-          setFieldsOfScienceCategories(categories);
-        })
-        .catch((error) => {
-          logError("Error fetching fields of science", error);
-          setFieldsOfScienceCategories([]);
-        })
-        .finally(() => {
-          setIsLoadingFields(false);
-        });
-
-      // Fetch licenses
-      setIsLoadingLicenses(true);
-      api
-        .getLicenses()
-        .then((data) => {
-          const licenseOptions = processLicenses(data);
-          setLicenses(licenseOptions);
-        })
-        .catch((error) => {
-          logError("Error fetching licenses", error);
-          setLicenses([]);
-        })
-        .finally(() => {
-          setIsLoadingLicenses(false);
-        });
-    }
-  }, [isVisible, api.hasToken]);
 
   if (!isVisible) {
     return null;
@@ -374,7 +333,7 @@ export default function FilterModal({
                 <h4 className="text-body-16-medium mb-4 text-slate-850">
                   Field of Science
                 </h4>
-                {isLoadingFields ? (
+                {isLoadingFieldsOfScience ? (
                   <div className="flex justify-center items-center h-20">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                   </div>

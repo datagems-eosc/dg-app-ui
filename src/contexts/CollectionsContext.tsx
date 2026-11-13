@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import type React from "react";
 import {
   createContext,
@@ -18,6 +19,8 @@ interface CollectionsContextType {
   extraCollections: ApiCollection[];
   isLoadingApiCollections: boolean;
   isLoadingExtraCollections: boolean;
+  /** The built-in collection list could not be loaded (not just empty). */
+  apiCollectionsFailed: boolean;
   addCollection: (name: string, datasetIds: string[]) => Promise<void>;
   updateCollection: (id: string, updates: any) => Promise<void>;
   removeCollection: (id: string) => Promise<void>;
@@ -67,6 +70,9 @@ export function CollectionsProvider({
   const [isLoadingApiCollections, setIsLoadingApiCollections] = useState(true);
   const [isLoadingExtraCollections, setIsLoadingExtraCollections] =
     useState(true);
+  // Which list failed its last load; opening another page asks again.
+  const [failed, setFailed] = useState({ api: false, extra: false });
+  const pathname = usePathname();
 
   useEffect(() => {
     if (api.hasToken) {
@@ -74,6 +80,15 @@ export function CollectionsProvider({
       fetchExtraCollections();
     }
   }, [api.hasToken]);
+
+  // A page change (including a tab inside a use-case workspace, whose layout
+  // stays mounted) asks again only for a list whose last load failed. Only
+  // the page decides; a failure does not trigger its own retry.
+  useEffect(() => {
+    if (!api.hasToken) return;
+    if (failed.api) fetchApiCollections();
+    if (failed.extra) fetchExtraCollections();
+  }, [pathname]);
 
   async function fetchApiCollections() {
     setIsLoadingApiCollections(true);
@@ -85,12 +100,14 @@ export function CollectionsProvider({
       const data = await api.queryCollections(COLLECTIONS_API_PAYLOAD);
       const items = Array.isArray(data.items) ? data.items : [];
       setApiCollections(items);
+      setFailed((current) => ({ ...current, api: false }));
       logger.debug(
         { count: items.length },
         "Successfully fetched API collections",
       );
     } catch (err: unknown) {
       logApiError("fetchApiCollections", err);
+      setFailed((current) => ({ ...current, api: true }));
     } finally {
       setIsLoadingApiCollections(false);
     }
@@ -144,12 +161,14 @@ export function CollectionsProvider({
       const data = await api.queryUserCollections(extraCollectionsPayload);
       const items = Array.isArray(data.items) ? data.items : [];
       setExtraCollections(items);
+      setFailed((current) => ({ ...current, extra: false }));
       logger.debug(
         { count: items.length },
         "Successfully fetched extra collections",
       );
     } catch (err: unknown) {
       logApiError("fetchExtraCollections", err);
+      setFailed((current) => ({ ...current, extra: true }));
     } finally {
       setIsLoadingExtraCollections(false);
     }
@@ -181,6 +200,7 @@ export function CollectionsProvider({
         extraCollections,
         isLoadingApiCollections,
         isLoadingExtraCollections,
+        apiCollectionsFailed: failed.api,
         addCollection: async (_name, _datasetIds) => {},
         updateCollection: async (_id, _updates) => {},
         removeCollection: async (_id) => {},

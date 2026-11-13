@@ -51,6 +51,7 @@ export function Input({
         )}
         <input
           id={name}
+          name={name}
           disabled={disabled}
           className={cn(
             "w-full px-3 border rounded-4xl text-sm font-normal transition-colors",

@@ -44,11 +44,8 @@ export default function FavoritesPage() {
     setShowSelectedPanel(false);
   };
 
+  // Browse asks for a selection first.
   const handleAddToCollection = () => {
-    if (selectedDatasets.length === 0) {
-      alert("Please select some datasets first");
-      return;
-    }
     setShowCreateCollectionModal(true);
   };
 
