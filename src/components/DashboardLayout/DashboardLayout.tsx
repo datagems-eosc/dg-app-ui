@@ -43,21 +43,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  const { refreshAllCollections } = useCollections();
+  const {
+    refreshAllCollections,
+    isLoadingApiCollections,
+    isLoadingExtraCollections,
+  } = useCollections();
   const { data: session } = useSession();
+  const isLoadingCollections =
+    isLoadingApiCollections || isLoadingExtraCollections;
 
   // Extract conversation ID from pathname if we're on a chat page
   const currentConversationId = pathname?.startsWith("/chat/")
     ? pathname.split("/")[2]
     : undefined;
 
-  // Refresh collections only once when component mounts and session is available
+  // Refresh collections once per page. On a full page load the provider is
+  // still loading them, so asking again would only repeat its request.
   useEffect(() => {
     if (session && !hasLoadedCollections.current) {
       hasLoadedCollections.current = true;
-      refreshAllCollections();
+      if (!isLoadingCollections) refreshAllCollections();
     }
-  }, [session, refreshAllCollections]);
+  }, [session, isLoadingCollections, refreshAllCollections]);
 
   // Function to manually refresh collections when needed (e.g., after creating a collection)
   const _handleManualRefresh = () => {

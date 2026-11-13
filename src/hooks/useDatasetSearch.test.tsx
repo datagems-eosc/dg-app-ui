@@ -32,14 +32,16 @@ describe("useDatasetSearch", () => {
   });
 
   describe("name search", () => {
-    it("matches an underscore literally", async () => {
+    it("sends the typed text unescaped", async () => {
+      // The dataset `like` on dev does not honour backslash escapes: an
+      // escaped "test_Best" finds nothing (known bug).
       const { result } = renderSearch();
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
 
       act(() => result.current.onSearchTermSubmit("air_quality"));
 
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
-      expect(lastCatalogue().like).toBe("%air\\_quality%");
+      expect(lastCatalogue().like).toBe("%air_quality%");
     });
 
     it("sends ordinary text as before", async () => {
@@ -79,6 +81,62 @@ describe("useDatasetSearch", () => {
       expect(payload.query).toBe("rain in Crete");
       await waitFor(() =>
         expect(result.current.datasets.map((d) => d.id)).toEqual(["s1"]),
+      );
+    });
+
+    it("drops Smart results from outside the collection", async () => {
+      // Dev discovery does not always honour collectionIds.
+      api.searchCrossDataset.mockResolvedValue({
+        result: [
+          {
+            dataset: {
+              id: "in",
+              name: "Wiki",
+              collections: [{ id: "col-1", name: "Language" }],
+            },
+          },
+          { dataset: { id: "none", name: "Books", collections: [] } },
+          {
+            dataset: {
+              id: "other",
+              name: "Rain",
+              collections: [{ id: "col-2", name: "Weather" }],
+            },
+          },
+        ],
+      });
+      const { result } = renderSearch({ kind: "collection", id: "col-1" });
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+      act(() => result.current.onSearchTermChange("wikipedia text"));
+      act(() => result.current.onSmartSearchToggle(true));
+
+      await waitFor(() =>
+        expect(result.current.datasets.map((d) => d.id)).toEqual(["in"]),
+      );
+    });
+
+    it("keeps every Smart result for the whole catalogue", async () => {
+      api.searchCrossDataset.mockResolvedValue({
+        result: [
+          { dataset: { id: "a", name: "A", collections: [] } },
+          {
+            dataset: {
+              id: "b",
+              name: "B",
+              collections: [{ id: "col-2", name: "Weather" }],
+            },
+          },
+        ],
+      });
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+      act(() => result.current.onSearchTermChange("rain in Crete"));
+      act(() => result.current.onSmartSearchToggle(true));
+
+      await waitFor(() =>
+        expect(result.current.datasets.map((d) => d.id)).toEqual(["a", "b"]),
       );
     });
 

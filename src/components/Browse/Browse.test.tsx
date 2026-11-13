@@ -265,6 +265,31 @@ describe("Browse - Delete Collection Feature", () => {
     expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(2);
   });
 
+  it("asks for the grants once when the collection's name arrives later", async () => {
+    // The page names the collection only after the collection list loads.
+    const apiMock = baseApiMock();
+    mockUseApi.mockImplementation(() => ({ ...apiMock }));
+    const viewNamed = (collectionName: string) => (
+      <Browse
+        datasets={mockDatasets}
+        title={collectionName}
+        subtitle="Test subtitle"
+        isCustomCollection={true}
+        collectionId="123"
+        collectionName={collectionName}
+      />
+    );
+    const { rerender } = render(viewNamed("Browse Datasets"));
+    await waitFor(() => {
+      expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(viewNamed("Custom Datasets"));
+    await act(async () => {});
+
+    expect(apiMock.getCollectionGrants).toHaveBeenCalledTimes(1);
+  });
+
   it("should NOT check grants when isCustomCollection is false", async () => {
     const apiMock = { ...baseApiMock(), ...withDeleteGrant() };
     mockUseApi.mockReturnValue(apiMock);

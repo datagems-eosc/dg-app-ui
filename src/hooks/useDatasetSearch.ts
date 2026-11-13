@@ -16,7 +16,6 @@ import {
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
-import { toLikePattern } from "@/lib/likePattern";
 import { logError } from "@/lib/logger";
 
 export const DEFAULT_SORT = "name-asc";
@@ -111,8 +110,9 @@ function cataloguePayload(
     ...CATALOGUE_PAYLOAD,
     Order: orderFor(sort),
   };
-  // The typed `%`, `_` and `\` match literally.
-  if (searchTerm.length >= 3) payload.like = toLikePattern(searchTerm);
+  // Sent unescaped: the dataset `like` on dev ignores backslash escapes, so
+  // `%` and `_` stay wildcards (known bug).
+  if (searchTerm.length >= 3) payload.like = `%${searchTerm}%`;
   // A built-in collection is filtered by the Gateway, so its count and paging
   // cover the whole collection, not one catalogue page.
   if (collectionId) payload.collectionIds = [collectionId];
@@ -256,19 +256,28 @@ export function useDatasetSearch({
         // A dataset search is not a chat: run discovery untracked (no
         // conversation id, no auto-create) so it never shows up in Recent
         // Chats.
+        const collectionId =
+          scopeKind === "collection" && scopeId ? scopeId : null;
         const data = await searchCrossDataset({
           conversationOptions: { autoCreateConversation: false },
           project: { fields: SMART_FIELDS },
           query: smartQuery,
           resultCount: 100,
           // A built-in collection limits discovery to its datasets.
-          ...(scopeKind === "collection" && scopeId
-            ? { collectionIds: [scopeId] }
-            : {}),
+          ...(collectionId ? { collectionIds: [collectionId] } : {}),
         });
         if (request !== listRequest.current) return;
+        const found = mapDiscoveryResults(
+          Array.isArray(data.result) ? data.result : [],
+        );
+        // Dev discovery also returns datasets outside the requested
+        // collection (known bug), so keep only the collection's own.
         setDatasets(
-          mapDiscoveryResults(Array.isArray(data.result) ? data.result : []),
+          collectionId
+            ? found.filter((d) =>
+                d.collections?.some((c) => c.id === collectionId),
+              )
+            : found,
         );
       } catch (smartErr) {
         if (request !== listRequest.current) return;

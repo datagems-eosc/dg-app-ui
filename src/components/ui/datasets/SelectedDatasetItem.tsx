@@ -71,14 +71,10 @@ export default function SelectedDatasetItem({
     ? getDisplayCollectionLabel(dataset.collections)
     : "";
 
-  const permissions =
-    "permissions" in dataset ? dataset.permissions : undefined;
+  // Access comes from the dataset record only; the caller's permissions say
+  // nothing about the dataset's own access.
   const displayAccess =
-    "access" in dataset && dataset.access
-      ? dataset.access
-      : Array.isArray(permissions) && permissions.includes("browsedataset")
-        ? "Open Access"
-        : "Restricted";
+    "access" in dataset && dataset.access ? dataset.access : undefined;
 
   const sourceUrl =
     "url" in dataset && typeof dataset.url === "string"

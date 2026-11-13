@@ -512,6 +512,10 @@ export default function Browse({
   // For custom collections (except Favorites), use context grants.
   // `useApi()` is a new object every render; depend on its stable members.
   const { getCollectionGrants, hasToken } = api;
+  // The name arrives after the collection list loads; only this flag matters
+  // here, so a late name does not ask for the grants again.
+  const isFavorites =
+    collectionName === "Favorites" || collectionName === "Favorites Datasets";
   useEffect(() => {
     if (!isCustomCollection) {
       setCanDeleteCollection(false);
@@ -519,10 +523,7 @@ export default function Browse({
     }
 
     // Don't allow deleting Favorites collection
-    if (
-      collectionName === "Favorites" ||
-      collectionName === "Favorites Datasets"
-    ) {
+    if (isFavorites) {
       setCanDeleteCollection(false);
       return;
     }
@@ -547,7 +548,7 @@ export default function Browse({
     getCollectionGrants,
     hasToken,
     collectionId,
-    collectionName,
+    isFavorites,
     isCustomCollection,
   ]);
 
