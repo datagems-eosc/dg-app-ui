@@ -354,13 +354,10 @@ export default function UseCasePageClient({
     router.push(getNavigationUrl("/chat"));
   }, [router, selectedDatasets]);
 
+  // Browse asks for a selection first.
   const handleAddToCollection = useCallback(() => {
-    if (selectedDatasets.length === 0) {
-      alert("Please select some datasets first");
-      return;
-    }
     setShowCreateCollectionModal(true);
-  }, [selectedDatasets]);
+  }, []);
 
   const content = (
     <div className="relative p-6">

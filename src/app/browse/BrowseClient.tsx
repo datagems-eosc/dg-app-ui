@@ -16,7 +16,10 @@ import type { Collection, Dataset, DatasetPlus } from "@/data/dataset";
 import { mockPackages } from "@/data/package";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
-import { mapApiDatasetToDataset } from "@/lib/datasetMapping";
+import {
+  mapApiDatasetToDataset,
+  mapDiscoveryResults,
+} from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
 import { logDebug, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
@@ -351,136 +354,7 @@ export default function BrowseClient() {
             if (request !== listRequest.current) return;
 
             const results = Array.isArray(data.result) ? data.result : [];
-
-            const byId = new Map<string, DatasetPlus>();
-            for (const item of results) {
-              const ds = (item as any)?.dataset || {};
-              if (!ds || typeof ds !== "object") continue;
-              const id = String(ds.id ?? "");
-              const maxSimilarity =
-                typeof item.maxSimilarity === "number"
-                  ? item.maxSimilarity
-                  : undefined;
-
-              const rawHits = Array.isArray((item as any).hits)
-                ? (item as any).hits
-                : [];
-              const topHits = rawHits.slice(0, 3);
-              const hits = topHits.map((h: any, idx: number) => {
-                const text =
-                  h && typeof h === "object" && ("content" in h || "text" in h)
-                    ? String(h.content ?? h.text ?? "")
-                    : String(h ?? "");
-                const similarity =
-                  h && typeof h === "object" && typeof h.similarity === "number"
-                    ? h.similarity
-                    : typeof h === "object" &&
-                        typeof h.maxSimilarity === "number"
-                      ? h.maxSimilarity
-                      : 0;
-                const number =
-                  h && typeof h === "object" && typeof h.number === "number"
-                    ? h.number
-                    : idx;
-                return { number, text, similarity };
-              });
-
-              if (!id || byId.has(id)) continue;
-
-              let category:
-                | "Weather"
-                | "Math"
-                | "Lifelong Learning"
-                | "Language" = "Math";
-              const fields = Array.isArray(ds.fieldOfScience)
-                ? ds.fieldOfScience.map((f: any) => String(f).toLowerCase())
-                : [];
-              if (
-                fields.some(
-                  (f: any) =>
-                    f.includes("meteorology") ||
-                    f.includes("climate") ||
-                    f.includes("weather"),
-                )
-              ) {
-                category = "Weather";
-              } else if (
-                fields.some(
-                  (f: any) =>
-                    f.includes("language") || f.includes("linguistics"),
-                )
-              ) {
-                category = "Language";
-              } else if (
-                fields.some(
-                  (f: any) => f.includes("education") || f.includes("learning"),
-                )
-              ) {
-                category = "Lifelong Learning";
-              } else if (
-                fields.some(
-                  (f: any) =>
-                    f.includes("mathematics") || f.includes("statistics"),
-                )
-              ) {
-                category = "Math";
-              }
-
-              const collections = Array.isArray(ds.collections)
-                ? ds.collections
-                    .map((c: any) =>
-                      c && typeof c === "object" && ("name" in c || "id" in c)
-                        ? {
-                            id: String(c.id ?? ""),
-                            name: String(c.name ?? ""),
-                            code: String(c.code ?? ""),
-                          }
-                        : null,
-                    )
-                    .filter((c: any) => c !== null)
-                : [];
-
-              const permissions = Array.isArray(ds.permissions)
-                ? ds.permissions
-                : [];
-              const access = permissions.includes("browsedataset")
-                ? "Open Access"
-                : "Restricted";
-
-              const mapped: DatasetPlus = {
-                id,
-                title: String(ds.name ?? ds.code ?? "Untitled"),
-                category,
-                access,
-                maxSimilarity,
-                hits,
-                description: String(ds.description ?? ""),
-                size: ds.size ? String(ds.size) : "N/A",
-                lastUpdated: ds.datePublished
-                  ? String(ds.datePublished)
-                  : "2024-01-01",
-                tags: Array.isArray(ds.keywords)
-                  ? ds.keywords.map((k: any) => String(k))
-                  : [],
-                collections,
-                license: ds.license ? String(ds.license) : undefined,
-                mimeType: ds.mimeType ? String(ds.mimeType) : undefined,
-                fieldOfScience: Array.isArray(ds.fieldOfScience)
-                  ? ds.fieldOfScience.map((f: any) => String(f))
-                  : undefined,
-                datePublished: ds.datePublished
-                  ? String(ds.datePublished)
-                  : undefined,
-                keywords: Array.isArray(ds.keywords)
-                  ? ds.keywords.map((k: any) => String(k))
-                  : undefined,
-                url: ds.url ? String(ds.url) : undefined,
-                version: ds.version ? String(ds.version) : undefined,
-              };
-              byId.set(id, mapped);
-            }
-
-            setAllDatasets(Array.from(byId.values()));
+            setAllDatasets(mapDiscoveryResults(results));
             setIsLoading(false);
             return;
           } catch (smartErr: any) {
@@ -569,90 +443,12 @@ export default function BrowseClient() {
                   : [];
 
                 const byId = new Map<string, DatasetPlus>();
-
-                datasets.forEach((apiDataset: any) => {
-                  const id = String(apiDataset.id ?? "");
-
-                  if (!id || byId.has(id)) {
-                    return;
+                for (const dataset of datasets.map(mapApiDatasetToDataset)) {
+                  if (dataset.id && !byId.has(dataset.id)) {
+                    byId.set(dataset.id, dataset);
                   }
-
-                  let category:
-                    | "Weather"
-                    | "Math"
-                    | "Lifelong Learning"
-                    | "Language" = "Math";
-                  if (
-                    apiDataset.fieldOfScience &&
-                    Array.isArray(apiDataset.fieldOfScience)
-                  ) {
-                    const fields = apiDataset.fieldOfScience.map((f: any) =>
-                      String(f).toLowerCase(),
-                    );
-                    if (
-                      fields.some(
-                        (field: any) =>
-                          field.includes("meteorology") ||
-                          field.includes("climate") ||
-                          field.includes("weather"),
-                      )
-                    ) {
-                      category = "Weather";
-                    } else if (
-                      fields.some(
-                        (field: any) =>
-                          field.includes("language") ||
-                          field.includes("linguistics"),
-                      )
-                    ) {
-                      category = "Language";
-                    } else if (
-                      fields.some(
-                        (field: any) =>
-                          field.includes("education") ||
-                          field.includes("learning"),
-                      )
-                    ) {
-                      category = "Lifelong Learning";
-                    } else if (
-                      fields.some(
-                        (field: any) =>
-                          field.includes("mathematics") ||
-                          field.includes("statistics"),
-                      )
-                    ) {
-                      category = "Math";
-                    }
-                  }
-
-                  byId.set(id, {
-                    id,
-                    title: String(apiDataset.name ?? "Untitled"),
-                    category,
-                    access: "Open Access", // Custom collections always show Open Access
-                    description: String(apiDataset.description ?? ""),
-                    size: String(apiDataset.size ?? "N/A"),
-                    lastUpdated: apiDataset.datePublished
-                      ? String(apiDataset.datePublished)
-                      : "2024-01-01",
-                    tags: Array.isArray(apiDataset.keywords)
-                      ? apiDataset.keywords
-                      : [],
-                    keywords: Array.isArray(apiDataset.keywords)
-                      ? apiDataset.keywords
-                      : undefined,
-                    license: apiDataset.license,
-                    mimeType: apiDataset.mimeType,
-                    datePublished: apiDataset.datePublished,
-                    fieldOfScience: Array.isArray(apiDataset.fieldOfScience)
-                      ? apiDataset.fieldOfScience
-                      : undefined,
-                    url: apiDataset.url,
-                  });
-                });
-
-                const uniqueDatasets = Array.from(byId.values());
-                setAllDatasets(uniqueDatasets);
+                }
+                setAllDatasets(Array.from(byId.values()));
               } catch (error) {
                 if (request !== listRequest.current) return;
                 logError("Failed to fetch dataset details", error);
@@ -916,13 +712,10 @@ export default function BrowseClient() {
     router.push(getNavigationUrl(APP_ROUTES.CHAT));
   }, [router, isMounted, selectedDatasets]);
 
+  // Browse asks for a selection first.
   const handleAddToCollection = useCallback(() => {
-    if (selectedDatasets.length === 0) {
-      alert("Please select some datasets first");
-      return;
-    }
     setShowCreateCollectionModal(true);
-  }, [selectedDatasets]);
+  }, []);
 
   return (
     <DashboardLayout>

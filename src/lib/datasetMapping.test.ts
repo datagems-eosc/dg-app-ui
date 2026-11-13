@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapApiDatasetToDataset } from "./datasetMapping";
+import { mapApiDatasetToDataset, mapDiscoveryResults } from "./datasetMapping";
 
 /**
  * PM-01 finding F2.
@@ -106,5 +106,65 @@ describe("everything else the mapper is responsible for is unchanged", () => {
     expect(mapApiDatasetToDataset(payload({ name: undefined })).title).toBe(
       "Untitled",
     );
+  });
+});
+
+describe("mapDiscoveryResults", () => {
+  const result = (overrides: Record<string, unknown> = {}) => ({
+    dataset: payload({ permissions: ["browsedataset"] }),
+    maxSimilarity: 0.82,
+    hits: [
+      { content: "first passage", similarity: 0.82 },
+      { content: "second passage", similarity: 0.7 },
+      { content: "third passage", similarity: 0.6 },
+      { content: "fourth passage", similarity: 0.5 },
+    ],
+    ...overrides,
+  });
+
+  it("claims no access from the caller's browse permission", () => {
+    const [mapped] = mapDiscoveryResults([result()]);
+
+    expect(mapped.access).toBe(undefined);
+  });
+
+  it("maps the dataset like the catalogue and adds relevance and the top passages", () => {
+    const [mapped] = mapDiscoveryResults([result()]);
+
+    expect(mapped).toMatchObject({
+      ...mapApiDatasetToDataset(payload()),
+      maxSimilarity: 0.82,
+      hits: [
+        { number: 0, text: "first passage", similarity: 0.82 },
+        { number: 1, text: "second passage", similarity: 0.7 },
+        { number: 2, text: "third passage", similarity: 0.6 },
+      ],
+    });
+  });
+
+  it("keeps the first result for a dataset found twice, in ranked order", () => {
+    const other = payload({ id: "other", name: "Other" });
+    const mapped = mapDiscoveryResults([
+      result(),
+      result({ dataset: other, maxSimilarity: 0.6 }),
+      result({ maxSimilarity: 0.1 }),
+    ]);
+
+    expect(mapped.map((d) => [d.id, d.maxSimilarity])).toEqual([
+      ["0f0e0d0c-0b0a-4908-8706-050403020100", 0.82],
+      ["other", 0.6],
+    ]);
+  });
+
+  it("skips results without a dataset id and tolerates missing hits", () => {
+    const mapped = mapDiscoveryResults([
+      { maxSimilarity: 0.9 },
+      null,
+      result({ hits: undefined, maxSimilarity: "high" }),
+    ]);
+
+    expect(mapped).toHaveLength(1);
+    expect(mapped[0].hits).toEqual([]);
+    expect(mapped[0].maxSimilarity).toBe(undefined);
   });
 });

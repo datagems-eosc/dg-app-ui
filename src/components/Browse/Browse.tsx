@@ -181,6 +181,9 @@ const defaultFilters: FilterState = getDefaultFilters();
  * permission. Access filtering is therefore unavailable, and a stale Access
  * selection is neither applied nor shown as active.
  */
+export const SELECT_DATASETS_FIRST_MESSAGE =
+  "Please select some datasets first";
+
 export const ACCESS_FILTER_UNAVAILABLE_MESSAGE =
   "Filtering by public or restricted access isn't available yet.";
 
@@ -339,6 +342,21 @@ export default function Browse({
     : localSelectedDatasets;
   const setCurrentSelectedDatasets =
     onSelectedDatasetsChange || setLocalSelectedDatasets;
+
+  // Asked inline, never by a browser alert; gone once something is selected.
+  const [askedForSelection, setAskedForSelection] = useState(false);
+  const showSelectionMessage =
+    askedForSelection && currentSelectedDatasets.length === 0;
+  const handleAddSelectedToCollection = onAddToCollection
+    ? () => {
+        if (currentSelectedDatasets.length === 0) {
+          setAskedForSelection(true);
+          return;
+        }
+        setAskedForSelection(false);
+        onAddToCollection();
+      }
+    : undefined;
 
   const handleDeleteCollection = async () => {
     if (!isCustomCollection || !collectionName || !collectionId) {
@@ -1211,6 +1229,14 @@ export default function Browse({
               {ACCESS_FILTER_UNAVAILABLE_MESSAGE}
             </p>
           )}
+          {showSelectionMessage && (
+            <p
+              role="alert"
+              className="mb-4 px-4 text-body-14-regular text-red-600 sm:px-6"
+            >
+              {SELECT_DATASETS_FIRST_MESSAGE}
+            </p>
+          )}
           {/* Results count and sorting */}
           {showSearchAndFilters !== false && (
             <div className="flex items-center justify-between mb-4 px-4 sm:px-6">
@@ -1467,7 +1493,7 @@ export default function Browse({
               onRemoveDataset={(id: string) => handleDatasetSelect(id, false)}
               onChatWithData={onChatWithData}
               onClose={handleClosePanel}
-              onAddToCollection={onAddToCollection}
+              onAddToCollection={handleAddSelectedToCollection}
               onDeselectAll={
                 onDeselectAll ?? (() => setCurrentSelectedDatasets([]))
               }

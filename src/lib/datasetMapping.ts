@@ -98,3 +98,56 @@ export function mapApiDatasetToDataset(api: unknown): MappedDataset {
     url: obj.url ? String(obj.url) : undefined,
   };
 }
+
+type Passage = { number: number; text: string; similarity: number };
+
+export type DiscoveredDataset = MappedDataset & {
+  maxSimilarity?: number;
+  hits: Passage[];
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+
+function toPassage(hit: unknown, index: number): Passage {
+  const h = asRecord(hit);
+  if (!h) return { number: index, text: String(hit ?? ""), similarity: 0 };
+  const similarity =
+    typeof h.similarity === "number"
+      ? h.similarity
+      : typeof h.maxSimilarity === "number"
+        ? h.maxSimilarity
+        : 0;
+  return {
+    number: typeof h.number === "number" ? h.number : index,
+    text: String(h.content ?? h.text ?? ""),
+    similarity,
+  };
+}
+
+/**
+ * Maps cross-dataset discovery results in ranked order: each dataset through
+ * the catalogue mapper (so no access is guessed), plus its best similarity and
+ * top three passages. A dataset found twice keeps its first, best-ranked entry.
+ */
+export function mapDiscoveryResults(results: unknown[]): DiscoveredDataset[] {
+  const byId = new Map<string, DiscoveredDataset>();
+  for (const item of results) {
+    const result = asRecord(item);
+    const dataset = mapApiDatasetToDataset(result?.dataset);
+    if (!result || !dataset.id || byId.has(dataset.id)) continue;
+    byId.set(dataset.id, {
+      ...dataset,
+      maxSimilarity:
+        typeof result.maxSimilarity === "number"
+          ? result.maxSimilarity
+          : undefined,
+      hits: (Array.isArray(result.hits) ? result.hits : [])
+        .slice(0, 3)
+        .map(toPassage),
+    });
+  }
+  return Array.from(byId.values());
+}
