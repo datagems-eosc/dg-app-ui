@@ -47,7 +47,7 @@ export interface FilePreviewData {
   description: string;
   columns: FileColumn[];
   rows: FileRow[];
-  totalRows: number;
+  totalRows?: number;
   totalMissingPercentage?: number;
   statistics: ColumnStatistics[];
   dataQuality: DataQualityMetric[];

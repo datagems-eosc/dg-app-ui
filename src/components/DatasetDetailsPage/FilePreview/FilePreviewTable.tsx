@@ -13,7 +13,7 @@ import MiniHistogram from "./MiniHistogram";
 interface FilePreviewTableProps {
   columns: FileColumn[];
   rows: FileRow[];
-  totalRows: number;
+  totalRows?: number;
   statistics: ColumnStatistics[];
   onShowColumnsClick: () => void;
 }
@@ -76,7 +76,12 @@ export default function FilePreviewTable({
   return (
     <div className={styles.filePreviewTable}>
       <div className={styles.filePreviewTable__header}>
-        <div /> {/* Spacer */}
+        <span className="text-sm text-slate-600">
+          {rows.length.toLocaleString("en-US")} example rows
+          {totalRows !== undefined && Number.isFinite(totalRows)
+            ? ` of ${totalRows.toLocaleString("en-US")}`
+            : ". Total rows not available."}
+        </span>
         <button
           type="button"
           onClick={onShowColumnsClick}
@@ -98,11 +103,21 @@ export default function FilePreviewTable({
                 <th
                   key={column.id}
                   className={styles.filePreviewTable__th}
-                  onClick={() => handleSort(column.id)}
+                  aria-sort={
+                    sortColumn === column.id
+                      ? sortDirection === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
                 >
                   <div className={styles.filePreviewTable__thContent}>
                     {/* Line 1: Column name + sort icon */}
-                    <div className={styles.filePreviewTable__colName}>
+                    <button
+                      type="button"
+                      onClick={() => handleSort(column.id)}
+                      className={styles.filePreviewTable__colName}
+                    >
                       {column.name}
                       {sortColumn === column.id && (
                         <div className={styles.filePreviewTable__sortIcons}>
@@ -117,7 +132,7 @@ export default function FilePreviewTable({
                           )}
                         </div>
                       )}
-                    </div>
+                    </button>
                     {/* Line 2: Column description */}
                     <div className={styles.filePreviewTable__colDescription}>
                       {column.description || ""}
@@ -147,7 +162,7 @@ export default function FilePreviewTable({
                         className={styles.filePreviewTable__firstColumnStats}
                       >
                         <div className={styles.filePreviewTable__largeNumber}>
-                          {stats.uniqueValues || totalRows}
+                          {stats.uniqueValues ?? "Not available"}
                         </div>
                         <div className={styles.filePreviewTable__description}>
                           Unique values
@@ -172,8 +187,8 @@ export default function FilePreviewTable({
                               ? stats.max
                               : Number.parseFloat(String(stats.max))
                           }
-                          minLabel={`${stats.min}°C`}
-                          maxLabel={`${stats.max}°C`}
+                          minLabel={`${stats.min}`}
+                          maxLabel={`${stats.max}`}
                         />
                       </div>
                     ) : null}

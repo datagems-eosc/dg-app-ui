@@ -7,12 +7,13 @@ import { Toast } from "@ui/Toast";
 import { FileText, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateBrowseUrl } from "@/config/appUrls";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { useModalFocus } from "@/hooks/useModalFocus";
 import { logError } from "@/lib/logger";
 
 interface CreateCollectionModalProps {
@@ -70,6 +71,8 @@ export default function CreateCollectionModal({
 
   const {
     extraCollections,
+    extraCollectionsError,
+    isLoadingExtraCollections,
     refreshExtraCollections,
     notifyCollectionModified,
   } = useCollections();
@@ -80,10 +83,7 @@ export default function CreateCollectionModal({
     selectedDatasets.includes(dataset.id),
   );
 
-  // Use API-fetched custom collections (same as sidebar), excluding Favorites
-  const customCollections = (extraCollections || []).filter(
-    (collection) => collection.name !== "Favorites",
-  );
+  const customCollections = extraCollections ?? [];
 
   // Refresh collections when modal opens or token is available to ensure fresh data
   useEffect(() => {
@@ -202,6 +202,13 @@ export default function CreateCollectionModal({
     onClose();
   };
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus({
+    active: isVisible,
+    containerRef: dialogRef,
+    onEscape: handleClose,
+  });
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -229,6 +236,11 @@ export default function CreateCollectionModal({
       <div
         className="bg-white rounded-lg w-full max-w-[95%] md:max-w-[550px] shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Collections"
+        tabIndex={-1}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4.25 border-b border-slate-200">
@@ -306,11 +318,15 @@ export default function CreateCollectionModal({
                   Select Collections
                 </h3>
 
-                {customCollections.length === 0 ? (
+                {isLoadingExtraCollections ? (
+                  <p role="status">Loading collections...</p>
+                ) : extraCollectionsError ? (
+                  <p role="alert">{extraCollectionsError}</p>
+                ) : customCollections.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <FileText className="w-8 h-8 mx-auto mb-2 text-icon" />
                     <p className="text-descriptions-12-regular">
-                      No custom collections found.
+                      No collections available.
                     </p>
                     <p className="text-descriptions-12-regular mt-1">
                       Create a collection first to add datasets.

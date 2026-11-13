@@ -1,7 +1,8 @@
 "use client";
 
 import { Download, X } from "lucide-react";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
+import { useModalFocus } from "@/hooks/useModalFocus";
 import type {
   FileColumn,
   FilePreviewData,
@@ -22,7 +23,7 @@ interface ExtendedFilePreviewModalProps {
   columns: FileColumn[];
   onClose: () => void;
   onTabChange: (tab: FilePreviewTab) => void;
-  onDownload: () => void;
+  onDownload?: () => void;
   onSaveColumns: (columns: FileColumn[]) => void;
 }
 
@@ -36,8 +37,11 @@ export default function ExtendedFilePreviewModal({
   onDownload,
   onSaveColumns,
 }: ExtendedFilePreviewModalProps) {
+  const tabId = useId();
   const [showColumnsModal, setShowColumnsModal] = useState(false);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus({ active: isOpen, containerRef: dialogRef, onEscape: onClose });
   if (!isOpen) return null;
 
   const visibleRows = fileData.rows;
@@ -46,7 +50,14 @@ export default function ExtendedFilePreviewModal({
     <>
       <div className={styles.extendedModal}>
         <div className={styles.extendedModal__overlay} onClick={onClose} />
-        <div className={styles.extendedModal__content}>
+        <div
+          className={styles.extendedModal__content}
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Extended view"
+          tabIndex={-1}
+        >
           <div className={styles.extendedModal__header}>
             <div className={styles.extendedModal__headerInfo}>
               <h3 className={styles.extendedModal__filename}>
@@ -57,14 +68,16 @@ export default function ExtendedFilePreviewModal({
               </span>
             </div>
             <div className={styles.extendedModal__headerActions}>
-              <button
-                type="button"
-                onClick={onDownload}
-                className={styles.extendedModal__iconButton}
-                aria-label="Download file"
-              >
-                <Download className={styles.extendedModal__icon} />
-              </button>
+              {onDownload && (
+                <button
+                  type="button"
+                  onClick={onDownload}
+                  className={styles.extendedModal__iconButton}
+                  aria-label="Download file"
+                >
+                  <Download className={styles.extendedModal__icon} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onClose}
@@ -76,9 +89,18 @@ export default function ExtendedFilePreviewModal({
             </div>
           </div>
 
-          <FilePreviewTabs activeTab={activeTab} onTabChange={onTabChange} />
+          <FilePreviewTabs
+            idPrefix={tabId}
+            activeTab={activeTab}
+            onTabChange={onTabChange}
+          />
 
-          <div className={styles.extendedModal__body}>
+          <div
+            className={styles.extendedModal__body}
+            role="tabpanel"
+            id={`${tabId}-panel`}
+            aria-labelledby={`${tabId}-${activeTab}`}
+          >
             {activeTab === "preview" && (
               <>
                 <AboutFile description={fileData.description} />
@@ -96,6 +118,8 @@ export default function ExtendedFilePreviewModal({
               <StatisticsTab
                 statistics={fileData.statistics}
                 columns={columns}
+                totalRows={fileData.totalRows}
+                totalMissingPercentage={fileData.totalMissingPercentage}
               />
             )}
 

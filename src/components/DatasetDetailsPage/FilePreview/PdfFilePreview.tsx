@@ -16,7 +16,7 @@ const PREVIEW_PAGE_LIMIT = 3;
 
 interface PdfFilePreviewProps {
   data: PdfFilePreviewData;
-  onDownload: () => void;
+  onDownload?: () => void;
 }
 
 export default function PdfFilePreview({
@@ -89,15 +89,17 @@ export default function PdfFilePreview({
             <p className={styles.pdfFilePreview__remainingText}>
               + {remainingPages} more page{remainingPages !== 1 ? "s" : ""}
             </p>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={onDownload}
-              className={styles.pdfFilePreview__downloadBtn}
-            >
-              <Download className={styles.pdfFilePreview__downloadIcon} />
-              Download
-            </Button>
+            {onDownload && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onDownload}
+                className={styles.pdfFilePreview__downloadBtn}
+              >
+                <Download className={styles.pdfFilePreview__downloadIcon} />
+                Download
+              </Button>
+            )}
           </div>
         )}
       </div>

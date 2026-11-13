@@ -12,11 +12,9 @@ import DatasetLicenseSection from "./DatasetLicenseSection";
 import DatasetPermissionsSection from "./DatasetPermissionsSection";
 import styles from "./DatasetSidebar.module.scss";
 import DatasetSourceUrlSection from "./DatasetSourceUrlSection";
-import DatasetVisibilitySection from "./DatasetVisibilitySection";
 
 interface DatasetSidebarProps {
   dataset: DatasetPlus;
-  displayCollection: string;
   sharing: DatasetSharingState;
   /** `undefined` means the permission evidence could not be read. */
   permissions: string[] | undefined;
@@ -28,8 +26,6 @@ interface DatasetSidebarProps {
 
 export default function DatasetSidebar({
   dataset,
-  displayCollection,
-  sharing,
   permissions,
   hasBrowsePermission,
   hasEditPermission,
@@ -42,7 +38,9 @@ export default function DatasetSidebar({
   return (
     <div className={styles.datasetSidebar}>
       <DatasetCollectionSection
-        displayCollection={displayCollection}
+        collectionLabels={(dataset.collections ?? []).map(
+          (collection) => collection.name,
+        )}
         onAddClick={() => setShowCreateCollectionModal(true)}
       />
 
@@ -55,8 +53,6 @@ export default function DatasetSidebar({
         hasManagePermission={hasManagePermission}
         permissions={permissions}
       />
-
-      <DatasetVisibilitySection sharing={sharing} />
 
       <DatasetLicenseSection license={dataset.license} />
 
