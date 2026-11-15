@@ -1,7 +1,7 @@
 /**
  * Home example queries — curated pool.
  *
- * Source: the partner's question pool of 13 November (23 questions tied to
+ * Source: the partner's question pool of 13 November (questions tied to
  * public datasets, used as one pool). Every entry was classified again on dev
  * on 15 November and `intent` is the classifier's result (confidence ≥ 0.95);
  * each target dataset was visible to a regular dev account that day. Re-run
