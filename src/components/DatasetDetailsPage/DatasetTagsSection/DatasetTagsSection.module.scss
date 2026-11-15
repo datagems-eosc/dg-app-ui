@@ -13,3 +13,9 @@
     gap: $spacing-sm;
   }
 }
+
+.subheading {
+  @include font-medium;
+  @include text-base;
+  @include text-primary;
+}

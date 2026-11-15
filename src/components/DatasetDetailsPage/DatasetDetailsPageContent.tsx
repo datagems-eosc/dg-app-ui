@@ -14,6 +14,7 @@ import {
   buildFileTree,
   type ProfileTreeNode,
 } from "@/lib/datasetProfile";
+import { deriveProfileMetadata } from "@/lib/datasetProfileMetadata";
 import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { FilePreviewDataUnion } from "@/types/filePreview";
@@ -23,6 +24,7 @@ import type { FileNode } from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetHeader from "./DatasetHeader/DatasetHeader";
 import DatasetMetadataBar from "./DatasetMetadataBar/DatasetMetadataBar";
+import DatasetProfilingSections from "./DatasetProfilingSections/DatasetProfilingSections";
 import DatasetRecommendationsSection from "./DatasetRecommendationsSection/DatasetRecommendationsSection";
 import DatasetSidebar from "./DatasetSidebar/DatasetSidebar";
 import DatasetTagsSection from "./DatasetTagsSection/DatasetTagsSection";
@@ -69,6 +71,10 @@ export default function DatasetDetailsPageContent({
   const router = useRouter();
   const { downloadDatasetFile } = useApi();
 
+  const metadata = useMemo(
+    () => deriveProfileMetadata(dataset.profileRaw),
+    [dataset.profileRaw],
+  );
   const previewEntries = useMemo(
     () => buildFilePreviews(dataset.profileRaw),
     [dataset.profileRaw],
@@ -211,7 +217,7 @@ export default function DatasetDetailsPageContent({
             <DatasetHeader dataset={dataset} />
           </div>
 
-          <DatasetMetadataBar dataset={dataset} />
+          <DatasetMetadataBar dataset={dataset} metadata={metadata} />
 
           {/* Row 1: Dataset Details (Description sections) + Metadata Sidebar */}
           <div className={styles.datasetDetailsPageContent__row}>
@@ -236,6 +242,7 @@ export default function DatasetDetailsPageContent({
                     items={dataset.keywords}
                   />
                 )}
+                <DatasetProfilingSections entries={metadata.profiling} />
               </div>
             </div>
 
