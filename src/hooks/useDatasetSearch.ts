@@ -41,6 +41,10 @@ const NO_HANDOFF: DatasetSearchHandoff = {
   smartQueryFor: (term) => term,
 };
 
+/**
+ * The fields `mapApiDatasetToDataset` reads, and no more: each unread nested
+ * field costs the Gateway extra lookups.
+ */
 const DATASET_FIELDS = [
   "id",
   "code",
@@ -49,7 +53,6 @@ const DATASET_FIELDS = [
   "license",
   "mimeType",
   "url",
-  "version",
   "fieldOfScience",
   "keywords",
   "size",
@@ -57,8 +60,6 @@ const DATASET_FIELDS = [
   "collections.id",
   "collections.code",
   "collections.name",
-  "permissions.browseDataset",
-  "permissions.editDataset",
 ];
 
 const CATALOGUE_PAYLOAD = {
@@ -75,17 +76,11 @@ const USER_COLLECTION_PAYLOAD = {
   Metadata: { CountAll: true },
 };
 
+/** The fields `mapDiscoveryResults` reads. */
 const SMART_FIELDS = [
-  "content",
-  "useCase",
   ...DATASET_FIELDS.map((field) => `dataset.${field}`),
   "hits.content",
-  "hits.objectId",
   "hits.similarity",
-  "sourceId",
-  "chunkId",
-  "language",
-  "distance",
   "maxSimilarity",
 ];
 

@@ -55,13 +55,20 @@ describe("useDatasetSearch", () => {
       expect(lastCatalogue().like).toBe("%wiki%");
     });
 
-    it("does not ask for the collection sizes nothing shows", async () => {
+    it("does not ask for fields the list does not show", async () => {
       renderSearch();
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
 
       const { fields } = lastCatalogue().project;
       expect(fields).toContain("collections.name");
-      expect(fields).not.toContain("collections.datasetCount");
+      for (const unread of [
+        "collections.datasetCount",
+        "permissions.browseDataset",
+        "permissions.editDataset",
+        "version",
+      ]) {
+        expect(fields).not.toContain(unread);
+      }
     });
   });
 
@@ -173,10 +180,26 @@ describe("useDatasetSearch", () => {
       await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
       const { fields } = api.searchCrossDataset.mock.calls[0][0].project;
       expect(fields).toContain("dataset.name");
+      expect(fields).toContain("hits.content");
+      expect(fields).toContain("maxSimilarity");
       // Each unread nested field costs the Gateway extra lookups.
-      expect(fields).not.toContain("dataset.profileRaw");
-      expect(fields).not.toContain("conversationId");
-      expect(fields).not.toContain("dataset.collections.datasetCount");
+      for (const unread of [
+        "dataset.profileRaw",
+        "dataset.version",
+        "dataset.permissions.browseDataset",
+        "dataset.permissions.editDataset",
+        "dataset.collections.datasetCount",
+        "conversationId",
+        "content",
+        "useCase",
+        "sourceId",
+        "chunkId",
+        "language",
+        "distance",
+        "hits.objectId",
+      ]) {
+        expect(fields).not.toContain(unread);
+      }
     });
 
     it("lists a custom collection once whatever the search controls say", async () => {
