@@ -10,6 +10,8 @@ interface DatasetLanguageSectionProps {
 export default function DatasetLanguageSection({
   language,
 }: DatasetLanguageSectionProps) {
+  if (!language?.trim()) return null;
+
   return (
     <div className={styles.datasetSidebarSection}>
       <div className={styles.datasetSidebarSection__header}>
@@ -20,7 +22,7 @@ export default function DatasetLanguageSection({
       </div>
       <div className={styles.datasetSidebarSection__badge}>
         <span className={styles.datasetSidebarSection__badgeText}>
-          {(language || "EN").toUpperCase()}
+          {language.toUpperCase()}
         </span>
       </div>
     </div>

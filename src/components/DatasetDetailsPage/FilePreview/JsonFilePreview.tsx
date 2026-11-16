@@ -82,15 +82,17 @@ export default function JsonFilePreview({
           <h3 className={styles.jsonFilePreview__filename}>{filename}</h3>
           <span className={styles.jsonFilePreview__filesize}>({fileSize})</span>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onDownload?.()}
-          className={styles.jsonFilePreview__downloadBtn}
-        >
-          <Download className={styles.jsonFilePreview__downloadIcon} />
-          Download
-        </Button>
+        {onDownload && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDownload?.()}
+            className={styles.jsonFilePreview__downloadBtn}
+          >
+            <Download className={styles.jsonFilePreview__downloadIcon} />
+            Download
+          </Button>
+        )}
       </div>
 
       <FilePreviewMetadata description={description} keywords={keywords} />

@@ -6,12 +6,12 @@ import { Box, Plus } from "lucide-react";
 import styles from "./DatasetSidebarSection.module.scss";
 
 interface DatasetCollectionSectionProps {
-  displayCollection: string;
+  collectionLabels: string[];
   onAddClick: () => void;
 }
 
 export default function DatasetCollectionSection({
-  displayCollection,
+  collectionLabels,
   onAddClick,
 }: DatasetCollectionSectionProps) {
   return (
@@ -31,11 +31,16 @@ export default function DatasetCollectionSection({
           Add
         </Button>
       </div>
-      {displayCollection && (
-        <Chip color="grey" variant="regular" size="sm">
-          {displayCollection}
+      {collectionLabels.map((label, index) => (
+        <Chip
+          key={`${label}-${index}`}
+          color="grey"
+          variant="regular"
+          size="sm"
+        >
+          {label}
         </Chip>
-      )}
+      ))}
     </div>
   );
 }

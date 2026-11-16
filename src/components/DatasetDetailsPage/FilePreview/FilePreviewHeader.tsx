@@ -6,7 +6,7 @@ import styles from "./FilePreviewHeader.module.scss";
 interface FilePreviewHeaderProps {
   filename: string;
   fileSize: string;
-  onDownload: () => void;
+  onDownload?: () => void;
   onExtendedView: () => void;
 }
 
@@ -23,14 +23,16 @@ export default function FilePreviewHeader({
         <span className={styles.filePreviewHeader__filesize}>({fileSize})</span>
       </div>
       <div className={styles.filePreviewHeader__actions}>
-        <button
-          type="button"
-          onClick={onDownload}
-          className={styles.filePreviewHeader__iconButton}
-          aria-label="Download file"
-        >
-          <Download className={styles.filePreviewHeader__icon} />
-        </button>
+        {onDownload && (
+          <button
+            type="button"
+            onClick={onDownload}
+            className={styles.filePreviewHeader__iconButton}
+            aria-label="Download file"
+          >
+            <Download className={styles.filePreviewHeader__icon} />
+          </button>
+        )}
         <button
           type="button"
           onClick={onExtendedView}

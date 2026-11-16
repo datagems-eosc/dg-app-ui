@@ -72,6 +72,26 @@
     }
   }
 
+  &__statusText {
+    @include section-content;
+  }
+
+  &__previewState {
+    @include flex-column;
+    gap: $spacing-md;
+    padding: $spacing-lg;
+  }
+
+  &__previewTitle {
+    @include section-title;
+    overflow-wrap: anywhere;
+  }
+
+  &__previewMeta {
+    @include text-xs;
+    @include text-secondary;
+  }
+
   &__sectionTitle {
     @include text-2xl;
     @include text-primary;

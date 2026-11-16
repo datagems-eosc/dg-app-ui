@@ -7,12 +7,14 @@ import { Toast } from "@ui/Toast";
 import { FileText, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { generateBrowseUrl } from "@/config/appUrls";
 import { TOAST_MESSAGES } from "@/constants/toastMessages.mjs";
 import { useCollections } from "@/contexts/CollectionsContext";
 import type { Dataset } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
+import { useCollectionPicker } from "@/hooks/useCollectionPicker";
+import { useModalFocus } from "@/hooks/useModalFocus";
 import { logError } from "@/lib/logger";
 
 interface CreateCollectionModalProps {
@@ -68,11 +70,8 @@ export default function CreateCollectionModal({
     }
   };
 
-  const {
-    extraCollections,
-    refreshExtraCollections,
-    notifyCollectionModified,
-  } = useCollections();
+  const { refreshExtraCollections, notifyCollectionModified } =
+    useCollections();
   const api = useApi();
   const router = useRouter();
 
@@ -80,27 +79,21 @@ export default function CreateCollectionModal({
     selectedDatasets.includes(dataset.id),
   );
 
-  // Use API-fetched custom collections (same as sidebar), excluding Favorites
-  const customCollections = (extraCollections || []).filter(
-    (collection) => collection.name !== "Favorites",
-  );
-
-  // Refresh collections when modal opens or token is available to ensure fresh data
+  const picker = useCollectionPicker({
+    enabled: isVisible && activeTab === "add",
+    scopeKey: JSON.stringify([...selectedDatasets].sort()),
+  });
+  const customCollections = picker.items;
+  const canAdd =
+    picker.status === "ready" &&
+    selectedCollectionIds.length > 0 &&
+    selectedCollectionIds.every((id) =>
+      customCollections.some((collection) => collection.id === id),
+    );
   useEffect(() => {
-    if (isVisible && api.hasToken) {
-      // Always refresh collections when modal opens or token is available to ensure fresh data
-      refreshExtraCollections();
-    }
-  }, [isVisible, api.hasToken, refreshExtraCollections]);
-
-  // Handle tab switching with collection refresh
-  const handleTabSwitch = (tab: TabType) => {
-    setActiveTab(tab);
-    // If switching to "Add to existing" tab, refresh collections to ensure fresh data
-    if (tab === "add" && api.hasToken) {
-      refreshExtraCollections();
-    }
-  };
+    setSelectedCollectionIds([]);
+  }, [picker.owner, picker.status]);
+  const handleTabSwitch = (tab: TabType) => setActiveTab(tab);
 
   const handleCreate = async () => {
     if (!collectionName.trim()) return;
@@ -153,7 +146,7 @@ export default function CreateCollectionModal({
   };
 
   const handleAddToCollections = async () => {
-    if (selectedCollectionIds.length === 0) return;
+    if (!canAdd) return;
 
     if (!api.hasToken) {
       alert("Please log in to add datasets to collections");
@@ -202,6 +195,13 @@ export default function CreateCollectionModal({
     onClose();
   };
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus({
+    active: isVisible,
+    containerRef: dialogRef,
+    onEscape: handleClose,
+  });
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -229,11 +229,17 @@ export default function CreateCollectionModal({
       <div
         className="bg-white rounded-lg w-full max-w-[95%] md:max-w-[550px] shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Collections"
+        tabIndex={-1}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4.25 border-b border-slate-200">
           <h2 className="text-H6-18-semibold text-slate-850">Collections</h2>
           <button
+            aria-label="Close collections"
             onClick={handleClose}
             className="p-2 hover:bg-slate-100 rounded-md transition-colors"
           >
@@ -306,11 +312,38 @@ export default function CreateCollectionModal({
                   Select Collections
                 </h3>
 
-                {customCollections.length === 0 ? (
+                {picker.status === "loading" || picker.status === "idle" ? (
+                  <div className="text-center py-8 text-gray-500" role="status">
+                    <Loader2
+                      className="w-8 h-8 mx-auto mb-2 text-icon animate-spin"
+                      aria-hidden="true"
+                    />
+                    <p className="text-descriptions-12-regular">
+                      Loading collections...
+                    </p>
+                  </div>
+                ) : picker.status === "error" ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText
+                      className="w-8 h-8 mx-auto mb-2 text-icon"
+                      aria-hidden="true"
+                    />
+                    <p role="alert" className="text-descriptions-12-regular">
+                      {"We couldn't load your collections."}
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="mt-3"
+                      onClick={picker.retry}
+                    >
+                      Try again
+                    </Button>
+                  </div>
+                ) : customCollections.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <FileText className="w-8 h-8 mx-auto mb-2 text-icon" />
                     <p className="text-descriptions-12-regular">
-                      No custom collections found.
+                      No collections available.
                     </p>
                     <p className="text-descriptions-12-regular mt-1">
                       Create a collection first to add datasets.
@@ -323,10 +356,6 @@ export default function CreateCollectionModal({
                         const isSelected = selectedCollectionIds.includes(
                           collection.id,
                         );
-                        const itemCount =
-                          (collection as any)?.datasetCount ??
-                          (collection as any)?.datasets?.length ??
-                          0;
                         return (
                           <div
                             key={collection.id}
@@ -351,7 +380,6 @@ export default function CreateCollectionModal({
                               >
                                 {collection.name}
                               </div>
-                              <div className="text-descriptions-12-regular text-icon">{`${itemCount} ${itemCount === 1 ? "item" : "items"}`}</div>
                             </div>
                           </div>
                         );
@@ -388,11 +416,7 @@ export default function CreateCollectionModal({
             <Button
               variant="primary"
               onClick={handleAddToCollections}
-              disabled={
-                selectedCollectionIds.length === 0 ||
-                customCollections.length === 0 ||
-                isAdding
-              }
+              disabled={!canAdd || isAdding}
             >
               {isAdding ? "Adding..." : "Add to Collection"}
             </Button>

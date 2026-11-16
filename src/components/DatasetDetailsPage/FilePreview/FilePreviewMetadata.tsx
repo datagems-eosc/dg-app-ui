@@ -101,16 +101,20 @@ export default function FilePreviewMetadata({
   const keywordsNeedsTruncation =
     hasKeywords && keywords.length > KEYWORDS_VISIBLE_WHEN_TRUNCATED;
 
+  if (!description.trim() && !hasKeywords) return null;
+
   return (
     <div className={styles.filePreviewMetadata}>
-      <TruncatableSection
-        title="About this file"
-        needsTruncation={descNeedsTruncation}
-        lineClampClass={styles["filePreviewMetadata__description--truncated"]}
-        contentClass={styles.filePreviewMetadata__description}
-      >
-        <p>{description}</p>
-      </TruncatableSection>
+      {description.trim() && (
+        <TruncatableSection
+          title="About this file"
+          needsTruncation={descNeedsTruncation}
+          lineClampClass={styles["filePreviewMetadata__description--truncated"]}
+          contentClass={styles.filePreviewMetadata__description}
+        >
+          <p>{description}</p>
+        </TruncatableSection>
+      )}
 
       {hasKeywords && (
         <KeywordsSection

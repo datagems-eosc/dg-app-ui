@@ -116,8 +116,8 @@ function LargeHistogram({
 export default function StatisticsTab({
   statistics,
   columns,
-  totalRows = 0,
-  totalMissingPercentage = 0,
+  totalRows,
+  totalMissingPercentage,
 }: StatisticsTabProps) {
   const visibleColumns = columns.filter((col) => col.visible);
 
@@ -132,7 +132,9 @@ export default function StatisticsTab({
               Total rows
             </span>
             <span className={styles.statisticsTab__summaryValue}>
-              {totalRows.toLocaleString()}
+              {totalRows !== undefined && Number.isFinite(totalRows)
+                ? totalRows.toLocaleString()
+                : "Not available"}
             </span>
           </div>
           <div className={styles.statisticsTab__summaryItem}>
@@ -140,7 +142,10 @@ export default function StatisticsTab({
               Missing values
             </span>
             <span className={styles.statisticsTab__summaryValue}>
-              {Math.round(totalMissingPercentage)}%
+              {totalMissingPercentage !== undefined &&
+              Number.isFinite(totalMissingPercentage)
+                ? `${Math.round(totalMissingPercentage)}%`
+                : "Not available"}
             </span>
           </div>
         </div>
@@ -242,7 +247,10 @@ export default function StatisticsTab({
                           Missing percentage
                         </span>
                         <span className={styles.statisticsTab__metricValue}>
-                          {stats.missingPercentage}%
+                          {stats.missingPercentage !== undefined &&
+                          Number.isFinite(stats.missingPercentage)
+                            ? `${stats.missingPercentage}%`
+                            : "Not available"}
                         </span>
                       </div>
                     </div>
@@ -313,7 +321,10 @@ export default function StatisticsTab({
                           Missing percentage
                         </span>
                         <span className={styles.statisticsTab__metricValue}>
-                          {stats.missingPercentage ?? 0}%
+                          {stats.missingPercentage !== undefined &&
+                          Number.isFinite(stats.missingPercentage)
+                            ? `${stats.missingPercentage}%`
+                            : "Not available"}
                         </span>
                       </div>
                     </div>
@@ -339,8 +350,8 @@ export default function StatisticsTab({
                         ? stats.max
                         : Number.parseFloat(String(stats.max))
                     }
-                    minLabel={`${stats.min}°C`}
-                    maxLabel={`${stats.max}°C`}
+                    minLabel={`${stats.min}`}
+                    maxLabel={`${stats.max}`}
                   />
                 ) : (
                   <div className={styles.statisticsTab__largeNumber}>
@@ -348,7 +359,7 @@ export default function StatisticsTab({
                       Unique values in this column
                     </span>
                     <span className={styles.statisticsTab__largeNumberValue}>
-                      {stats.uniqueValues || 0}
+                      {stats.uniqueValues ?? "Not available"}
                     </span>
                   </div>
                 )}

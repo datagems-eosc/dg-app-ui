@@ -3,7 +3,8 @@
 .showColumnsModal {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  // This sibling dialog must sit above Extended view (z-index: 2000).
+  z-index: 2001;
   @include flex-center;
 
   &__overlay {

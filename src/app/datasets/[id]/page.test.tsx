@@ -22,6 +22,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetDatasetById = vi.fn();
 const mockGetCurrentUserContextGrants = vi.fn();
+const mockReadGlobalPermissions = vi.fn();
 const mockPush = vi.fn();
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -38,6 +39,10 @@ beforeEach(() => {
   mockPrincipalId = "account-a";
   mockDatasetId = "ds-1";
   mockHasToken = true;
+  mockGetDatasetById.mockReset();
+  mockReadGlobalPermissions.mockReset().mockResolvedValue({
+    evidence: { kind: "read", names: [], coverage: { kind: "exhaustive" } },
+  });
 });
 
 vi.mock("next/navigation", () => ({
@@ -51,6 +56,7 @@ vi.mock("@/hooks/useApi", () => ({
   useApi: () => ({
     hasToken: mockHasToken,
     datasetPermissions: {
+      gateway: { readGlobalPermissions: mockReadGlobalPermissions },
       scope: mockPrincipalId
         ? {
             principalId: mockPrincipalId,
@@ -230,7 +236,7 @@ describe("dataset details page – caller permissions", () => {
     );
     await renderPage();
 
-    expect(screen.getByText("Sharing not verified")).toBeInTheDocument();
+    expect(screen.queryByText("Sharing not verified")).not.toBeInTheDocument();
     expect(screen.queryByText("Open Access")).not.toBeInTheDocument();
     expect(screen.queryByText("Restricted")).not.toBeInTheDocument();
   });
@@ -251,7 +257,7 @@ describe("dataset details page – caller permissions", () => {
       permissions().getByText("Permissions unavailable"),
     ).toBeInTheDocument();
     expect(screen.queryByText("Viewer")).not.toBeInTheDocument();
-    expect(screen.getByText("Sharing not verified")).toBeInTheDocument();
+    expect(screen.queryByText("Sharing not verified")).not.toBeInTheDocument();
   });
 
   it("says permissions are unavailable for a malformed permission payload", async () => {
@@ -276,7 +282,7 @@ describe("dataset details page – caller permissions", () => {
     expect(permissions().getByText("Browse")).toBeInTheDocument();
     expect(permissions().getByText("Edit")).toBeInTheDocument();
     expect(permissions().queryByText("Download")).not.toBeInTheDocument();
-    expect(screen.getByText("Sharing not verified")).toBeInTheDocument();
+    expect(screen.queryByText("Sharing not verified")).not.toBeInTheDocument();
   });
 });
 
@@ -285,51 +291,33 @@ describe("dataset details page – existing management entry", () => {
     vi.clearAllMocks();
   });
 
-  /**
-   * The role-based Manage fallback is unchanged in this batch: it remains the
-   * only signal the page has, and replacing it needs the supported capability
-   * contract that PM-05 has not established. This test pins the existing
-   * behaviour so the display correction cannot silently remove the entry.
-   */
-  it("keeps the Manage entry that the self context-grant role provides", async () => {
-    mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
-    mockGetCurrentUserContextGrants.mockResolvedValue([
-      { targetType: 0, targetId: "ds-1", role: "dg_ds-manage" },
-    ]);
-    await renderPage();
-
-    expect(
-      await screen.findByRole("button", { name: /manage/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("does not offer management when no grant evidence supports it", async () => {
-    mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
-    mockGetCurrentUserContextGrants.mockResolvedValue([
-      { targetType: 0, targetId: "another-dataset", role: "dg_ds-manage" },
-    ]);
-    await renderPage();
-
-    await waitFor(() =>
-      expect(mockGetCurrentUserContextGrants).toHaveBeenCalled(),
-    );
-    expect(
-      screen.queryByRole("button", { name: /manage/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not offer management when the grant lookup fails", async () => {
-    mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
-    mockGetCurrentUserContextGrants.mockRejectedValue(new Error("denied"));
-    await renderPage();
-
-    await waitFor(() =>
-      expect(mockGetCurrentUserContextGrants).toHaveBeenCalled(),
-    );
-    expect(
-      screen.queryByRole("button", { name: /manage/i }),
-    ).not.toBeInTheDocument();
-  });
+  it.each([
+    ["grant manager", ["addusertocontextgrantgroup"], [], true],
+    ["revoke manager", ["removeuserfromcontextgrantgroup"], [], true],
+    ["global administrator", [], ["AddUserToContextGrantGroup"], true],
+    ["browser", ["browsedataset"], [], false],
+    ["unknown", undefined, [], false],
+    ["legacy label", ["managedataset"], [], false],
+  ])(
+    "uses actual permission evidence for %s",
+    async (_name, granted, global, canManage) => {
+      mockGetDatasetById.mockResolvedValue(datasetPayload(granted));
+      mockReadGlobalPermissions.mockResolvedValue({
+        evidence: {
+          kind: "read",
+          names: global,
+          coverage: { kind: "exhaustive" },
+        },
+      });
+      await renderPage();
+      expect(Boolean(screen.queryByRole("button", { name: /^manage$/i }))).toBe(
+        canManage,
+      );
+      expect(mockGetCurrentUserContextGrants).not.toHaveBeenCalled();
+      expect(mockReadGlobalPermissions).toHaveBeenCalledTimes(1);
+      expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 describe("dataset details page citation", () => {
@@ -444,7 +432,7 @@ describe("dataset request owner", () => {
     expect(
       screen.queryByRole("heading", { name: "Account A data" }),
     ).not.toBeInTheDocument();
-    await screen.findAllByText("Failed to load dataset");
+    await screen.findAllByText("We couldn't load this dataset.");
     expect(mockGetDatasetById).toHaveBeenCalledTimes(2);
   });
 });
@@ -486,31 +474,6 @@ it.each(["account", "dataset", "sign-out", "missing-principal"])(
   },
 );
 
-it("rejects late context-grant results after the account changes", async () => {
-  vi.clearAllMocks();
-  const pending = deferred<unknown>();
-  mockGetDatasetById.mockResolvedValue({
-    ...datasetPayload(["browsedataset"]),
-    name: "Current dataset",
-  });
-  mockGetCurrentUserContextGrants
-    .mockReturnValueOnce(pending.promise)
-    .mockResolvedValueOnce([]);
-  const { rerender } = render(<DatasetDetailsPage />);
-  await waitFor(() =>
-    expect(mockGetCurrentUserContextGrants).toHaveBeenCalledTimes(1),
-  );
-  mockPrincipalId = "account-b";
-  rerender(<DatasetDetailsPage />);
-  await screen.findByRole("heading", { name: "Current dataset" });
-  await act(async () =>
-    pending.resolve([
-      { targetType: 0, targetId: "ds-1", role: "dg_ds-manage" },
-    ]),
-  );
-  expect(permissions().queryByText("Manage")).not.toBeInTheDocument();
-});
-
 it("requests supported metadata and does not fabricate an updated date", async () => {
   vi.clearAllMocks();
   mockGetCurrentUserContextGrants.mockResolvedValue([]);
@@ -520,6 +483,7 @@ it("requests supported metadata and does not fabricate an updated date", async (
   expect(fields).not.toContain("mimeType");
   expect(fields).not.toContain("size");
   expect(fields).not.toContain("lastUpdated");
+  expect(fields).not.toContain("collections.datasetCount");
   expect(fields).toEqual(
     expect.arrayContaining(["profileRaw", "datePublished"]),
   );
@@ -582,4 +546,114 @@ it("shows profiler output below author metadata without replacing either source"
   expect(screen.getByText("Generated keyword")).toBeInTheDocument();
   expect(screen.getByText("A dataset")).toBeInTheDocument();
   expect(screen.getByText("Author keyword")).toBeInTheDocument();
+});
+
+it.each([
+  [404, "Dataset not found."],
+  [403, "You don't have access to this dataset."],
+  [500, "We couldn't load this dataset."],
+])("distinguishes page HTTP %s once", async (status, message) => {
+  mockGetDatasetById.mockRejectedValueOnce(
+    Object.assign(new Error("private error body"), { status }),
+  );
+  render(<DatasetDetailsPage />);
+  expect(
+    await screen.findByRole("heading", { name: String(message) }),
+  ).toBeInTheDocument();
+  expect(screen.getAllByText(String(message))).toHaveLength(1);
+  expect(screen.queryByText("private error body")).not.toBeInTheDocument();
+});
+it("offers retry only for a failed request and recovers the dataset", async () => {
+  mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  mockGetDatasetById
+    .mockRejectedValueOnce(Object.assign(new Error("offline"), { status: 500 }))
+    .mockResolvedValueOnce(datasetPayload(["browsedataset"]));
+  render(<DatasetDetailsPage />);
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Try again" }),
+  );
+  expect(
+    await screen.findByRole("heading", { name: "Sea surface temperature" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Try again" }),
+  ).not.toBeInTheDocument();
+});
+
+it("requests browse, search, download and management in the single dataset read", async () => {
+  mockGetDatasetById.mockResolvedValue(
+    datasetPayload(["browsedataset", "searchdataset", "downloaddatasetfile"]),
+  );
+  await renderPage();
+  expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
+  expect(mockGetDatasetById.mock.calls[0][1]).toEqual(
+    expect.arrayContaining([
+      "permissions.browseDataset",
+      "permissions.searchDataset",
+      "permissions.downloadDatasetFile",
+      "permissions.addUserToContextGrantGroup",
+      "permissions.removeUserFromContextGrantGroup",
+    ]),
+  );
+  expect(permissions().getByText("Browse")).toBeInTheDocument();
+  expect(permissions().getByText("Search")).toBeInTheDocument();
+  expect(permissions().getByText("Download")).toBeInTheDocument();
+  expect(mockReadGlobalPermissions).toHaveBeenCalledTimes(1);
+  expect(mockGetCurrentUserContextGrants).not.toHaveBeenCalled();
+});
+
+it.each([false, true])(
+  "keeps metadata and uses context evidence when global read fails (manager=%s)",
+  async (manager) => {
+    mockGetDatasetById.mockResolvedValue(
+      datasetPayload(
+        manager ? ["addusertocontextgrantgroup"] : ["browsedataset"],
+      ),
+    );
+    mockReadGlobalPermissions.mockRejectedValue(new Error("offline"));
+    await renderPage();
+    expect(Boolean(screen.queryByRole("button", { name: /^manage$/i }))).toBe(
+      manager,
+    );
+    expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each([{ kind: "failed" }, { kind: "not-read" }])(
+  "hides management without positive evidence when global evidence is %j",
+  async (evidence) => {
+    mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+    mockReadGlobalPermissions.mockResolvedValue({ evidence });
+    await renderPage();
+    expect(
+      screen.queryByRole("button", { name: /^manage$/i }),
+    ).not.toBeInTheDocument();
+  },
+);
+
+it("ignores a late global manager response after the account changes", async () => {
+  const oldGlobal = deferred<unknown>();
+  mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+  mockReadGlobalPermissions.mockReturnValueOnce(oldGlobal.promise);
+  const { rerender } = render(<DatasetDetailsPage />);
+  await waitFor(() =>
+    expect(mockReadGlobalPermissions).toHaveBeenCalledTimes(1),
+  );
+  const oldSignal = mockReadGlobalPermissions.mock.calls[0][0] as AbortSignal;
+  mockPrincipalId = "account-b";
+  rerender(<DatasetDetailsPage />);
+  await screen.findByText("Your permissions");
+  expect(oldSignal.aborted).toBe(true);
+  await act(async () =>
+    oldGlobal.resolve({
+      evidence: {
+        kind: "read",
+        names: ["AddUserToContextGrantGroup"],
+        coverage: { kind: "exhaustive" },
+      },
+    }),
+  );
+  expect(
+    screen.queryByRole("button", { name: /^manage$/i }),
+  ).not.toBeInTheDocument();
 });
