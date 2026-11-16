@@ -19,6 +19,15 @@ describe("FeatureFlagsManager", () => {
     window.__env = { DEPLOYMENT_ENV: "playground" };
   });
 
+  it.each(["playground", "staging", "production"])(
+    "does not offer the retired hide-chat setting in %s",
+    (environment) => {
+      window.__env = { DEPLOYMENT_ENV: environment };
+      renderManager();
+      expect(screen.queryByText("Hide general chat")).not.toBeInTheDocument();
+    },
+  );
+
   it("renders a row for every registered feature flag", () => {
     renderManager();
     expect(

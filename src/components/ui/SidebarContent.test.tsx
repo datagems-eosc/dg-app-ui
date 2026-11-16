@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { FEATURE_FLAG_IDS } from "@/config/featureFlags";
 import { FeatureFlagsProvider } from "@/contexts/FeatureFlagsContext";
 import { SidebarContent } from "./SidebarContent";
 
@@ -59,18 +60,27 @@ describe("SidebarContent – Home entry", () => {
   });
 });
 
-describe("SidebarContent – generalChat flag (Hide general chat)", () => {
+describe("SidebarContent chat availability", () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  it("hides Chat when flag is ON (true)", () => {
+  it("keeps Chat available when all feature overrides are enabled", () => {
     window.__env = { DEPLOYMENT_ENV: "playground" };
+    window.localStorage.setItem(
+      "datagemsFeatureFlags",
+      JSON.stringify(
+        Object.fromEntries(FEATURE_FLAG_IDS.map((id) => [id, true])),
+      ),
+    );
     renderSidebar();
-    expect(screen.queryByRole("link", { name: "Chat" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Chat" })).toHaveAttribute(
+      "href",
+      "/chat",
+    );
   });
 
-  it("shows Chat when flag is OFF (false)", () => {
+  it("shows Chat with default settings", () => {
     window.__env = { DEPLOYMENT_ENV: "staging" };
     renderSidebar();
     expect(screen.getByRole("link", { name: "Chat" })).toBeInTheDocument();

@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Collection } from "@/types/collection";
 import { ChatInput } from "../ChatInput";
 
+const mockUseFeatureFlag = vi.fn().mockReturnValue(false);
+
 vi.mock("@/contexts/FeatureFlagsContext", () => ({
-  useFeatureFlag: () => false,
+  useFeatureFlag: (id: string) => mockUseFeatureFlag(id),
 }));
 
 const mockCollections = {
@@ -26,6 +28,69 @@ describe("ChatInput", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(false);
+  });
+
+  it("keeps collection controls available with feature overrides enabled", async () => {
+    mockUseFeatureFlag.mockReturnValue(true);
+    const onAddDatasets = vi.fn();
+    render(<ChatInput {...defaultProps} onAddDatasets={onAddDatasets} />);
+    await userEvent.click(screen.getByRole("button", { name: /Collections/ }));
+    expect(onAddDatasets).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides collection controls while sending and restores them afterward", () => {
+    const { rerender } = render(<ChatInput {...defaultProps} isLoading />);
+    expect(screen.getByText("Sending...")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Collections/ }),
+    ).not.toBeInTheDocument();
+    rerender(<ChatInput {...defaultProps} />);
+    expect(
+      screen.getByRole("button", { name: /Collections/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("honours a caller that disables the fallback collection control", () => {
+    render(<ChatInput {...defaultProps} showCollectionsButton={false} />);
+    expect(
+      screen.queryByRole("button", { name: /Collections/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses the collection picker before the fallback and keeps its selection callback", async () => {
+    const collection: Collection = { id: "chosen", name: "Climate Collection" };
+    const onSelectCollection = vi.fn();
+    render(
+      <ChatInput
+        {...defaultProps}
+        collections={{ ...mockCollections, apiCollections: [collection] }}
+        selectedCollection={collection}
+        onSelectCollection={onSelectCollection}
+        showCollectionsButton={false}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Climate" }));
+    await userEvent.click(screen.getByText("No collection"));
+    expect(onSelectCollection).toHaveBeenCalledWith(null);
+    expect(defaultProps.onAddDatasets).not.toHaveBeenCalled();
+  });
+
+  it("keeps the collection picker disabled when the input is disabled", async () => {
+    const onSelectCollection = vi.fn();
+    render(
+      <ChatInput
+        {...defaultProps}
+        collections={mockCollections}
+        onSelectCollection={onSelectCollection}
+        disabled
+      />,
+    );
+    const picker = screen.getByRole("button", { name: /Collections/ });
+    expect(picker).toBeDisabled();
+    await userEvent.click(picker);
+    expect(screen.queryByText("No collection")).not.toBeInTheDocument();
+    expect(onSelectCollection).not.toHaveBeenCalled();
   });
 
   it("should render textarea with placeholder", () => {
