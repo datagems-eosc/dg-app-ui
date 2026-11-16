@@ -108,6 +108,7 @@ vi.mock("@/components/Browse", () => ({
 }));
 
 import UseCasePageClient from "./UseCasePageClient";
+import WeatherDatasetsPage from "./weather/datasets/page";
 
 const mathItem = (id: string) => ({
   id,
@@ -171,6 +172,14 @@ describe("UseCasePageClient – opening", () => {
     );
     expect(api.queryDatasets).not.toHaveBeenCalled();
     expect(view.getByTestId("shown")).toHaveTextContent("0");
+  });
+
+  it("lists the Weather pilot's collection, named Meteo on the Gateway", async () => {
+    collectionsState.apiCollections = [{ id: "col-meteo", name: "Meteo" }];
+    render(<WeatherDatasetsPage />);
+
+    await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+    expect(catalogueCalls()[0].collectionIds).toEqual(["col-meteo"]);
   });
 
   it("says the collections failed to load rather than that the collection is missing", async () => {
