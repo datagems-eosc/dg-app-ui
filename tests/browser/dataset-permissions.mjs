@@ -1696,6 +1696,92 @@ async function grantOnlyFeedback() {
 
 // ---------------------------------------------------------------------------
 
+async function nestedPreviewColumns() {
+  const profileRaw = {
+    nodes: [
+      {
+        id: "file",
+        labels: ["cr:FileObject"],
+        properties: {
+          name: "measurements.csv",
+          encodingFormat: "text/csv",
+          contentSize: "512 B",
+        },
+      },
+      {
+        id: "records",
+        labels: ["cr:RecordSet"],
+        properties: { examples: JSON.stringify({ Temperature: [12, 14, 13] }) },
+      },
+      {
+        id: "column",
+        labels: ["cr:Field"],
+        properties: { name: "Temperature", dataType: "sc:Integer" },
+      },
+    ],
+    edges: [
+      { from: "records", to: "column", labels: ["field"] },
+      { from: "column", to: "file", labels: ["source/fileObject"] },
+    ],
+  };
+  for (const viewport of [DESKTOP, NARROW]) {
+    const w = world({ datasetPermissions: ["browsedataset"] });
+    const { context, page } = await openContext(browser, w, {
+      baseUrl,
+      viewport,
+    });
+    await context.route(`**/dataset/${DATASET.id}?**`, (route) =>
+      route.fulfill({
+        json: { ...DATASET, permissions: ["browsedataset"], profileRaw },
+      }),
+    );
+    await openDetails(page);
+    await page
+      .getByRole("button", { name: "Extended view", exact: true })
+      .click();
+    const parent = page.getByRole("dialog", {
+      name: "Extended view",
+      exact: true,
+    });
+    const launcher = parent.getByRole("button", { name: /Showing:/ });
+    await launcher.click();
+    const child = page.getByRole("dialog", {
+      name: "Show columns",
+      exact: true,
+    });
+    const tag = `nested preview ${viewport.width}`;
+    check(`${tag}: child takes focus`, await focusInside(child));
+    step(`${tag}: click column through the real CSS layers`);
+    const column = child.getByRole("checkbox", {
+      name: "Temperature",
+      exact: true,
+    });
+    await column.click({ timeout: 3000 });
+    check(`${tag}: click changes selection`, !(await column.isChecked()));
+    const stay = await focusStaysInside(page, child, "Tab", 8);
+    check(`${tag}: focus stays in child`, stay.ok, stay.detail);
+    await shot(page, `nested-preview-columns-${viewport.width}`);
+    await page.keyboard.press("Escape");
+    await child.waitFor({ state: "detached" });
+    check(`${tag}: Escape keeps parent open`, await parent.isVisible());
+    check(
+      `${tag}: focus returns to Show columns launcher`,
+      await launcher.evaluate((el) => el === document.activeElement),
+    );
+    await launcher.click();
+    check(
+      `${tag}: Escape discards selection`,
+      await child
+        .getByRole("checkbox", { name: "Temperature", exact: true })
+        .isChecked(),
+    );
+    await child.getByRole("button", { name: "Cancel", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await parent.waitFor({ state: "detached" });
+    await context.close();
+  }
+}
+
 async function main() {
   if (baseUrl) {
     baseUrl = loopbackOrigin(baseUrl);
@@ -1717,6 +1803,7 @@ async function main() {
   });
 
   const scenarios = [
+    ["nested preview columns", nestedPreviewColumns],
     ["sidebar evidence states", sidebarStates],
     ["details full editor", fullEditorJourney],
     ["lost response and account switch", lostResponseAndAccounts],

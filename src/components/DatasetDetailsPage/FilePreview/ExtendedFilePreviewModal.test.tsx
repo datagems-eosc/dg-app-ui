@@ -41,6 +41,17 @@ it("keeps nested Show columns Escape from closing Extended view", () => {
   columns.focus();
   fireEvent.click(columns);
   expect(screen.getAllByRole("dialog")).toHaveLength(2);
+  const child = screen.getByRole("dialog", { name: "Show columns" });
+  expect(child).toContainElement(document.activeElement as HTMLElement);
+  const save = within(child).getByRole("button", { name: "Save" });
+  const close = within(child).getByRole("button", {
+    name: "Close",
+  });
+  save.focus();
+  fireEvent.keyDown(document, { key: "Tab" });
+  expect(close).toHaveFocus();
+  fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+  expect(save).toHaveFocus();
   fireEvent.keyDown(document, { key: "Escape" });
   expect(screen.getAllByRole("dialog")).toHaveLength(1);
   expect(columns).toHaveFocus();

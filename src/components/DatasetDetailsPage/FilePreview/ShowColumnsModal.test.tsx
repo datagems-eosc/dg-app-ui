@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import type { FileColumn } from "@/types/filePreview";
 import ShowColumnsModal from "./ShowColumnsModal";
 
 function Harness() {
@@ -29,21 +30,37 @@ it("names the dialog, contains focus and restores the trigger after Escape", () 
   expect(trigger).toHaveFocus();
 });
 it("opens with current columns after they arrive and cancels without saving", () => {
+  const onSave = vi.fn();
+  const onClose = vi.fn();
+  const columns: FileColumn[] = [
+    { id: "a", name: "A", type: "number", visible: true },
+  ];
   const { rerender } = render(
     <ShowColumnsModal
       isOpen={false}
       columns={[]}
-      onClose={() => {}}
-      onSave={() => {}}
+      onClose={onClose}
+      onSave={onSave}
     />,
   );
-  rerender(
+  const show = (isOpen: boolean) => (
     <ShowColumnsModal
-      isOpen={true}
-      columns={[{ id: "a", name: "A", type: "number", visible: true }]}
-      onClose={() => {}}
-      onSave={() => {}}
-    />,
+      isOpen={isOpen}
+      columns={columns}
+      onClose={onClose}
+      onSave={onSave}
+    />
   );
-  expect(screen.getByText("A")).toBeInTheDocument();
+  rerender(show(true));
+  const checkbox = screen.getByRole("checkbox", { name: "A" });
+  expect(checkbox).toBeChecked();
+  fireEvent.click(checkbox);
+  expect(checkbox).not.toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(onClose).toHaveBeenCalledOnce();
+  expect(onSave).not.toHaveBeenCalled();
+  rerender(show(false));
+  rerender(show(true));
+  expect(screen.getByRole("checkbox", { name: "A" })).toBeChecked();
+  expect(onSave).not.toHaveBeenCalled();
 });
