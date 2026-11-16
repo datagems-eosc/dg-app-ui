@@ -57,7 +57,6 @@ const DATASET_FIELDS = [
   "collections.id",
   "collections.code",
   "collections.name",
-  "collections.datasetCount",
   "permissions.browseDataset",
   "permissions.editDataset",
 ];
@@ -77,11 +76,9 @@ const USER_COLLECTION_PAYLOAD = {
 };
 
 const SMART_FIELDS = [
-  "conversationId",
   "content",
   "useCase",
   ...DATASET_FIELDS.map((field) => `dataset.${field}`),
-  "dataset.profileRaw",
   "hits.content",
   "hits.objectId",
   "hits.similarity",

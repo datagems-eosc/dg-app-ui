@@ -54,6 +54,15 @@ describe("useDatasetSearch", () => {
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
       expect(lastCatalogue().like).toBe("%wiki%");
     });
+
+    it("does not ask for the collection sizes nothing shows", async () => {
+      renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+      const { fields } = lastCatalogue().project;
+      expect(fields).toContain("collections.name");
+      expect(fields).not.toContain("collections.datasetCount");
+    });
   });
 
   describe("Smart search in a collection", () => {
@@ -152,6 +161,22 @@ describe("useDatasetSearch", () => {
       expect(api.searchCrossDataset.mock.calls[0][0].collectionIds).toBe(
         undefined,
       );
+    });
+
+    it("asks discovery only for what the list shows", async () => {
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+      act(() => result.current.onSearchTermChange("rain in Crete"));
+      act(() => result.current.onSmartSearchToggle(true));
+
+      await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
+      const { fields } = api.searchCrossDataset.mock.calls[0][0].project;
+      expect(fields).toContain("dataset.name");
+      // Each unread nested field costs the Gateway extra lookups.
+      expect(fields).not.toContain("dataset.profileRaw");
+      expect(fields).not.toContain("conversationId");
+      expect(fields).not.toContain("dataset.collections.datasetCount");
     });
 
     it("lists a custom collection once whatever the search controls say", async () => {
