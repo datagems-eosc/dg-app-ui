@@ -53,11 +53,16 @@ it.each(["pdf", "csv", "json", "bin"])(
       "file",
       expect.any(AbortSignal),
     );
-    const saved = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsText(create.mock.calls[0][0]);
-    });
+    const blob = create.mock.calls[0][0];
+    // Node's Response and jsdom's FileReader can use different Blob implementations.
+    const saved =
+      typeof blob.text === "function"
+        ? await blob.text()
+        : await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.readAsText(blob);
+          });
     expect(saved).toBe("complete original, not preview");
     expect((click.mock.instances[0] as HTMLAnchorElement).download).toBe(
       `gateway.hash.${extension}`,
