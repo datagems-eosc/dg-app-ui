@@ -12,7 +12,7 @@ import { decodeCallerPermissions } from "@/lib/datasetPermissions/decode";
 import {
   datasetPermissionEvidence,
   decideAction,
-  PERMISSIONS_NOT_READ,
+  PERMISSIONS_FAILED,
   permissionLabelsForDisplay,
   SHARING_WITHOUT_EVIDENCE,
 } from "@/lib/datasetPermissions/model";
@@ -46,6 +46,7 @@ export default function DatasetDetailsPage() {
   const searchParams = useSearchParams();
   const api = useApi();
   const principalId = api.datasetPermissions.scope?.principalId ?? null;
+  const { readGlobalPermissions } = api.datasetPermissions.gateway;
   const [read, setRead] = useState<DatasetReadState>({
     owner: null,
     status: "loading",
@@ -68,37 +69,43 @@ export default function DatasetDetailsPage() {
     }
 
     let isCancelled = false;
+    const controller = new AbortController();
 
     const fetchDataset = async () => {
       setRead({ owner, status: "loading" });
 
       try {
-        const apiDataset = await api.getDatasetById(datasetId, [
-          "id",
-          "code",
-          "name",
-          "headline",
-          "description",
-          "license",
-          "url",
-          "version",
-          "fieldOfScience",
-          "keywords",
-          "datePublished",
-          "collections.id",
-          "collections.code",
-          "collections.name",
-          "permissions.browseDataset",
-          "permissions.searchDataset",
-          "permissions.editDataset",
-          "permissions.downloadDatasetFile",
-          ...MANAGEMENT_PERMISSIONS.map(
-            (name) => `permissions.${name[0].toLowerCase()}${name.slice(1)}`,
-          ),
-          "language",
-          "country",
-          "citeAs",
-          "profileRaw",
+        const [apiDataset, global] = await Promise.all([
+          api.getDatasetById(datasetId, [
+            "id",
+            "code",
+            "name",
+            "headline",
+            "description",
+            "license",
+            "url",
+            "version",
+            "fieldOfScience",
+            "keywords",
+            "datePublished",
+            "collections.id",
+            "collections.code",
+            "collections.name",
+            "permissions.browseDataset",
+            "permissions.searchDataset",
+            "permissions.editDataset",
+            "permissions.downloadDatasetFile",
+            ...MANAGEMENT_PERMISSIONS.map(
+              (name) => `permissions.${name[0].toLowerCase()}${name.slice(1)}`,
+            ),
+            "language",
+            "country",
+            "citeAs",
+            "profileRaw",
+          ]),
+          readGlobalPermissions(controller.signal).catch(() => ({
+            evidence: PERMISSIONS_FAILED,
+          })),
         ]);
 
         if (isCancelled) return;
@@ -108,7 +115,7 @@ export default function DatasetDetailsPage() {
           return;
         }
         const evidence = {
-          global: PERMISSIONS_NOT_READ,
+          global: global.evidence,
           datasetContext: datasetPermissionEvidence(
             decodeCallerPermissions(apiDataset.permissions),
             MANAGEMENT_PERMISSIONS,
@@ -152,6 +159,7 @@ export default function DatasetDetailsPage() {
 
     return () => {
       isCancelled = true;
+      controller.abort();
     };
   }, [
     attempt,
@@ -160,6 +168,7 @@ export default function DatasetDetailsPage() {
     owner,
     api.hasToken,
     api.getDatasetById,
+    readGlobalPermissions,
   ]);
 
   const errorKind: DatasetErrorKind | null = !datasetId

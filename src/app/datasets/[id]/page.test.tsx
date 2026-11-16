@@ -294,12 +294,7 @@ describe("dataset details page – existing management entry", () => {
   it.each([
     ["grant manager", ["addusertocontextgrantgroup"], [], true],
     ["revoke manager", ["removeuserfromcontextgrantgroup"], [], true],
-    [
-      "global rights are not queried",
-      [],
-      ["AddUserToContextGrantGroup"],
-      false,
-    ],
+    ["global administrator", [], ["AddUserToContextGrantGroup"], true],
     ["browser", ["browsedataset"], [], false],
     ["unknown", undefined, [], false],
     ["legacy label", ["managedataset"], [], false],
@@ -319,7 +314,7 @@ describe("dataset details page – existing management entry", () => {
         canManage,
       );
       expect(mockGetCurrentUserContextGrants).not.toHaveBeenCalled();
-      expect(mockReadGlobalPermissions).not.toHaveBeenCalled();
+      expect(mockReadGlobalPermissions).toHaveBeenCalledTimes(1);
       expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
     },
   );
@@ -603,6 +598,62 @@ it("requests browse, search, download and management in the single dataset read"
   expect(permissions().getByText("Browse")).toBeInTheDocument();
   expect(permissions().getByText("Search")).toBeInTheDocument();
   expect(permissions().getByText("Download")).toBeInTheDocument();
-  expect(mockReadGlobalPermissions).not.toHaveBeenCalled();
+  expect(mockReadGlobalPermissions).toHaveBeenCalledTimes(1);
   expect(mockGetCurrentUserContextGrants).not.toHaveBeenCalled();
+});
+
+it.each([false, true])(
+  "keeps metadata and uses context evidence when global read fails (manager=%s)",
+  async (manager) => {
+    mockGetDatasetById.mockResolvedValue(
+      datasetPayload(
+        manager ? ["addusertocontextgrantgroup"] : ["browsedataset"],
+      ),
+    );
+    mockReadGlobalPermissions.mockRejectedValue(new Error("offline"));
+    await renderPage();
+    expect(Boolean(screen.queryByRole("button", { name: /^manage$/i }))).toBe(
+      manager,
+    );
+    expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each([{ kind: "failed" }, { kind: "not-read" }])(
+  "hides management without positive evidence when global evidence is %j",
+  async (evidence) => {
+    mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+    mockReadGlobalPermissions.mockResolvedValue({ evidence });
+    await renderPage();
+    expect(
+      screen.queryByRole("button", { name: /^manage$/i }),
+    ).not.toBeInTheDocument();
+  },
+);
+
+it("ignores a late global manager response after the account changes", async () => {
+  const oldGlobal = deferred<unknown>();
+  mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+  mockReadGlobalPermissions.mockReturnValueOnce(oldGlobal.promise);
+  const { rerender } = render(<DatasetDetailsPage />);
+  await waitFor(() =>
+    expect(mockReadGlobalPermissions).toHaveBeenCalledTimes(1),
+  );
+  const oldSignal = mockReadGlobalPermissions.mock.calls[0][0] as AbortSignal;
+  mockPrincipalId = "account-b";
+  rerender(<DatasetDetailsPage />);
+  await screen.findByText("Your permissions");
+  expect(oldSignal.aborted).toBe(true);
+  await act(async () =>
+    oldGlobal.resolve({
+      evidence: {
+        kind: "read",
+        names: ["AddUserToContextGrantGroup"],
+        coverage: { kind: "exhaustive" },
+      },
+    }),
+  );
+  expect(
+    screen.queryByRole("button", { name: /^manage$/i }),
+  ).not.toBeInTheDocument();
 });

@@ -1143,9 +1143,9 @@ async function flagOff() {
     (await settingsLauncher(page).count()) === 0,
   );
   check(
-    "legacy entry does not request global permissions",
+    "legacy entry reads global permissions once",
     w.ledger.filter((entry) => entry.path === "/principal/me?f=permissions")
-      .length === 0,
+      .length === 1,
   );
   const newFlow = w.ledger.filter(
     (entry) =>
@@ -1696,6 +1696,34 @@ async function grantOnlyFeedback() {
 
 // ---------------------------------------------------------------------------
 
+async function globalManagerEntry() {
+  for (const global of [FULL_EDITOR, []]) {
+    const w = world({
+      globalPermissions: global,
+      datasetActionPermissions: [],
+      datasetPermissions: ["browsedataset"],
+    });
+    const { context, page } = await openContext(browser, w, {
+      baseUrl,
+      viewport: DESKTOP,
+    });
+    await openDetails(page);
+    await page
+      .getByRole("heading", { name: "Your permissions", exact: true })
+      .waitFor(SLOW);
+    check(
+      `global manager entry ${global.length > 0}`,
+      (await detailsLauncher(page).count()) > 0 === global.length > 0,
+    );
+    check(
+      "one global permissions read",
+      w.ledger.filter((e) => e.path === "/principal/me?f=permissions")
+        .length === 1,
+    );
+    await context.close();
+  }
+}
+
 async function nestedPreviewColumns() {
   const profileRaw = {
     nodes: [
@@ -1803,6 +1831,7 @@ async function main() {
   });
 
   const scenarios = [
+    ["global manager entry", globalManagerEntry],
     ["nested preview columns", nestedPreviewColumns],
     ["sidebar evidence states", sidebarStates],
     ["details full editor", fullEditorJourney],
