@@ -288,7 +288,8 @@ async function answerGateway(route, world, datasetId, pathname) {
   if (
     method === "GET" &&
     pathname.startsWith(`/dataset/${datasetId}?`) &&
-    pathname.includes("f=permissions.addUserToContextGrantGroup")
+    pathname.includes("f=permissions.addUserToContextGrantGroup") &&
+    !pathname.includes("f=name")
   ) {
     // Dataset-context capability projection: the names the caller holds
     // through an affiliated role on this dataset (none unless a world says so).
@@ -305,7 +306,14 @@ async function answerGateway(route, world, datasetId, pathname) {
         description: "Synthetic dataset for a local interface check.",
         ...(world.datasetPermissions === undefined
           ? {}
-          : { permissions: world.datasetPermissions }),
+          : {
+              permissions: Array.isArray(world.datasetPermissions)
+                ? [
+                    ...world.datasetPermissions,
+                    ...world.datasetActionPermissions,
+                  ]
+                : world.datasetPermissions,
+            }),
       }),
     );
   }

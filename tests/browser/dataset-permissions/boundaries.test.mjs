@@ -128,3 +128,26 @@ describe("loopback base", () => {
     });
   }
 });
+
+it("returns dataset metadata when the details projection includes action permissions", async () => {
+  const world = createWorld({
+    account: ACCOUNT_A,
+    datasetId: DATASET.id,
+    datasetName: DATASET.name,
+    datasetPermissions: ["browsedataset"],
+    datasetActionPermissions: ["AddUserToContextGrantGroup"],
+  });
+  const route = fakeRoute(
+    `${GATEWAY}/gw/api/dataset/${DATASET.id}?f=name&f=permissions.addUserToContextGrantGroup`,
+  );
+  let body;
+  route.fulfill = async (response) => {
+    body = JSON.parse(response.body);
+  };
+  await createRouteHandler(world, APP)(route);
+  assert.equal(body.name, DATASET.name);
+  assert.deepEqual(body.permissions, [
+    "browsedataset",
+    "AddUserToContextGrantGroup",
+  ]);
+});

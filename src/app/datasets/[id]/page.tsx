@@ -6,22 +6,38 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DatasetDetailsPageContent from "@/components/DatasetDetailsPage/DatasetDetailsPageContent";
 import { APP_ROUTES } from "@/config/appUrls";
-import { DATASET_ROLE_MAP } from "@/config/contextGrantRoles";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { decodeCallerPermissions } from "@/lib/datasetPermissions/decode";
 import {
+  datasetPermissionEvidence,
+  decideAction,
+  PERMISSIONS_NOT_READ,
   permissionLabelsForDisplay,
   SHARING_WITHOUT_EVIDENCE,
 } from "@/lib/datasetPermissions/model";
-import { logApiError, logWarn } from "@/lib/logger";
+import { ACCESS_ACTION_NAMES } from "@/lib/datasetPermissions/types";
+import { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
-import type { ContextGrant } from "@/types/contextGrants";
+
+const DATASET_ERROR_MESSAGES = {
+  "not-found": "Dataset not found.",
+  "no-access": "You don't have access to this dataset.",
+  "request-failed": "We couldn't load this dataset.",
+  "missing-id": "Dataset ID is required",
+  "authentication-required": "Authentication required",
+};
+const MANAGEMENT_PERMISSIONS = [
+  ACCESS_ACTION_NAMES.grant,
+  ACCESS_ACTION_NAMES.revoke,
+];
+
+type DatasetErrorKind = keyof typeof DATASET_ERROR_MESSAGES;
 
 type DatasetReadState =
   | { owner: string | null; status: "loading" }
   | { owner: string; status: "success"; dataset: DatasetPlus }
-  | { owner: string; status: "error"; error: string };
+  | { owner: string; status: "error"; kind: DatasetErrorKind };
 
 export default function DatasetDetailsPage() {
   const [attempt, setAttempt] = useState(0);
@@ -72,11 +88,13 @@ export default function DatasetDetailsPage() {
           "collections.id",
           "collections.code",
           "collections.name",
-          "collections.datasetCount",
           "permissions.browseDataset",
+          "permissions.searchDataset",
           "permissions.editDataset",
           "permissions.downloadDatasetFile",
-          "permissions.manageDataset",
+          ...MANAGEMENT_PERMISSIONS.map(
+            (name) => `permissions.${name[0].toLowerCase()}${name.slice(1)}`,
+          ),
           "language",
           "country",
           "citeAs",
@@ -86,39 +104,28 @@ export default function DatasetDetailsPage() {
         if (isCancelled) return;
 
         if (!apiDataset || typeof apiDataset !== "object") {
-          setRead({ owner, status: "error", error: "Dataset not found." });
+          setRead({ owner, status: "error", kind: "not-found" });
           return;
         }
-        let mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
-        const hasManageFromDataset = mappedDataset.permissions?.some(
-          (p) => p.toLowerCase() === "manage",
+        const evidence = {
+          global: PERMISSIONS_NOT_READ,
+          datasetContext: datasetPermissionEvidence(
+            decodeCallerPermissions(apiDataset.permissions),
+            MANAGEMENT_PERMISSIONS,
+          ),
+        };
+        const mayManage =
+          decideAction("grant", evidence) === "allowed" ||
+          decideAction("revoke", evidence) === "allowed";
+        const mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
+        mappedDataset.permissions = mappedDataset.permissions?.filter(
+          (name) => name !== "Manage",
         );
-        if (!hasManageFromDataset) {
-          try {
-            const grants: ContextGrant[] =
-              await api.getCurrentUserContextGrants();
-            if (isCancelled) return;
-            const hasManageFromGrants = grants.some(
-              (g) =>
-                g.targetType === 0 &&
-                g.targetId === datasetId &&
-                g.role
-                  ?.toLowerCase()
-                  .includes(DATASET_ROLE_MAP.manage.toLowerCase()),
-            );
-            if (hasManageFromGrants) {
-              mappedDataset = {
-                ...mappedDataset,
-                permissions: [...(mappedDataset.permissions ?? []), "Manage"],
-              };
-            }
-          } catch (grantsErr) {
-            logWarn("Failed to fetch context grants for dataset permissions", {
-              datasetId,
-              error: grantsErr,
-            });
-          }
-        }
+        if (mayManage)
+          mappedDataset.permissions = [
+            ...(mappedDataset.permissions ?? []),
+            "Manage",
+          ];
         if (isCancelled) return;
         setRead({ owner, status: "success", dataset: mappedDataset });
       } catch (err) {
@@ -131,12 +138,12 @@ export default function DatasetDetailsPage() {
         setRead({
           owner,
           status: "error",
-          error:
+          kind:
             status === 404
-              ? "Dataset not found."
+              ? "not-found"
               : status === 403
-                ? "You don't have access to this dataset."
-                : "We couldn't load this dataset.",
+                ? "no-access"
+                : "request-failed",
         });
       }
     };
@@ -153,16 +160,16 @@ export default function DatasetDetailsPage() {
     owner,
     api.hasToken,
     api.getDatasetById,
-    api.getCurrentUserContextGrants,
   ]);
 
-  const error = !datasetId
-    ? "Dataset ID is required"
+  const errorKind: DatasetErrorKind | null = !datasetId
+    ? "missing-id"
     : !api.hasToken || !principalId
-      ? "Authentication required"
+      ? "authentication-required"
       : read.owner === owner && read.status === "error"
-        ? read.error
+        ? read.kind
         : null;
+  const error = errorKind ? DATASET_ERROR_MESSAGES[errorKind] : null;
   const dataset =
     read.owner === owner && read.status === "success" ? read.dataset : null;
   const isLoading =
@@ -189,7 +196,7 @@ export default function DatasetDetailsPage() {
             <h1 className="text-H2-24-semibold text-gray-900 mb-2">
               {error || "Dataset Not Found"}
             </h1>
-            {error === "We couldn't load this dataset." && (
+            {errorKind === "request-failed" && (
               <Button onClick={() => setAttempt((value) => value + 1)}>
                 Try again
               </Button>

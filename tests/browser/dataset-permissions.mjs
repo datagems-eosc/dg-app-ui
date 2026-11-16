@@ -80,6 +80,7 @@ const world = (options) => {
     datasetName: DATASET.name,
     groups: STANDARD_GROUPS,
     globalPermissions: FULL_EDITOR,
+    datasetActionPermissions: DATASET_MANAGER_ACTIONS,
     datasetPermissions: DETAILS_PERMISSIONS.known,
     selfGrants: selfManageGrant(ACCOUNT_A),
     ...options,
@@ -140,8 +141,13 @@ async function sidebarStates() {
       ["unavailable", DETAILS_PERMISSIONS.missing, "Permissions unavailable"],
     ]) {
       step(`${state} at ${viewport.width}`);
-      // No self context grant: the page would otherwise add its role label.
-      const w = world({ datasetPermissions: permissions, selfGrants: [] });
+      // Isolate dataset display evidence from global management capabilities.
+      const w = world({
+        datasetPermissions: permissions,
+        globalPermissions: [],
+        datasetActionPermissions: [],
+        selfGrants: [],
+      });
       const { context, page } = await openContext(browser, w, {
         baseUrl,
         viewport,
@@ -837,7 +843,11 @@ async function datasetManagerEditor(viewport) {
 }
 
 async function grantOnlyEveryone() {
-  const w = world({ globalPermissions: GRANT_ONLY, recipientReadStatus: 403 });
+  const w = world({
+    globalPermissions: GRANT_ONLY,
+    datasetActionPermissions: GRANT_ONLY,
+    recipientReadStatus: 403,
+  });
   const { context, page } = await openContext(browser, w, {
     baseUrl,
     viewport: DESKTOP,
@@ -952,6 +962,7 @@ async function ambiguousEveryone() {
   w = world({
     groups: AMBIGUOUS_GROUPS,
     globalPermissions: GRANT_ONLY,
+    datasetActionPermissions: GRANT_ONLY,
     recipientReadStatus: 403,
   });
   ({ context, page } = await openContext(browser, w, {
@@ -987,6 +998,7 @@ async function readOnlyAndUnavailable() {
       name: "read-only",
       options: {
         globalPermissions: READ_ONLY,
+        datasetActionPermissions: [],
         grants: { [RESEARCH.id]: ["dg_ds-browse"] },
       },
       ready: (page) => roleSwitch(page, RESEARCH, "Browse"),
@@ -1001,7 +1013,11 @@ async function readOnlyAndUnavailable() {
     },
     {
       name: "no grant capability",
-      options: { globalPermissions: [], recipientReadStatus: 403 },
+      options: {
+        globalPermissions: [],
+        datasetActionPermissions: [],
+        recipientReadStatus: 403,
+      },
       ready: (page) =>
         mainDialog(page).getByText(
           "Access settings aren't available for your account.",
@@ -1017,7 +1033,17 @@ async function readOnlyAndUnavailable() {
       viewport: DESKTOP,
     });
     await openDetails(page);
-    await openAccessByKeyboard(page);
+    if (name === "recipient read fails") {
+      await openAccessByKeyboard(page);
+    } else {
+      check(
+        `${name}: details management entry hidden`,
+        (await detailsLauncher(page).count()) === 0,
+      );
+      await page.goto(`${baseUrl}/settings?tab=roles`);
+      await settingsLauncher(page).click();
+      await mainDialog(page).waitFor(SLOW);
+    }
     await ready(page).waitFor(SLOW);
     await page.waitForTimeout(600);
     const dialog = mainDialog(page);
@@ -1116,15 +1142,21 @@ async function flagOff() {
     "no settings access launcher",
     (await settingsLauncher(page).count()) === 0,
   );
+  check(
+    "legacy entry does not request global permissions",
+    w.ledger.filter((entry) => entry.path === "/principal/me?f=permissions")
+      .length === 0,
+  );
   const newFlow = w.ledger.filter(
     (entry) =>
-      entry.kind === "capability-read" ||
+      (entry.kind === "capability-read" &&
+        entry.path !== "/principal/me?f=permissions") ||
       entry.kind === "recipient-read" ||
       entry.kind === "mutation" ||
       (entry.kind === "groups" && entry.body.includes("semantics")),
   );
   check(
-    "no new-flow capability, group-semantics, recipient or mutation requests",
+    "no sharing-dialog capability, group-semantics, recipient or mutation requests",
     newFlow.length === 0,
     newFlow.map((entry) => entry.path).join(", "),
   );
@@ -1180,7 +1212,11 @@ async function narrowLayout() {
   await context.close();
 
   step("grant-only at 390");
-  w = world({ globalPermissions: GRANT_ONLY, recipientReadStatus: 403 });
+  w = world({
+    globalPermissions: GRANT_ONLY,
+    datasetActionPermissions: GRANT_ONLY,
+    recipientReadStatus: 403,
+  });
   ({ context, page } = await openContext(browser, w, {
     baseUrl,
     viewport: NARROW,
@@ -1595,6 +1631,7 @@ async function grantOnlyFeedback() {
   step("grant-only held and acknowledged result at 390");
   const w = world({
     globalPermissions: GRANT_ONLY,
+    datasetActionPermissions: GRANT_ONLY,
     mutation: "hold",
     recipientReadStatus: 403,
   });

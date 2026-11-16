@@ -37,18 +37,26 @@ it("does not invent a Celsius unit for numeric columns", () => {
   );
   expect(container.textContent).not.toContain("°C");
 });
-it.each([undefined, Number.NaN, Number.POSITIVE_INFINITY, 0, 12.5])(
+it.each([
+  [undefined, "Not available"],
+  [Number.NaN, "Not available"],
+  [Number.POSITIVE_INFINITY, "Not available"],
+  [0, "0%"],
+  [12.5, "12.5%"],
+] as const)(
   "distinguishes unknown numeric missing percentages from valid values %j",
-  (value) => {
+  (value, expected) => {
     render(
       <StatisticsTab
         columns={[{ id: "x", name: "Score", type: "number", visible: true }]}
-        statistics={[{ columnId: "x", missingPercentage: value }]}
+        statistics={[
+          { columnId: "x", missingPercentage: value, uniqueValues: 7 },
+        ]}
+        totalRows={10}
+        totalMissingPercentage={50}
       />,
     );
-    const metric = screen.getByText("Missing percentage").parentElement;
-    expect(metric?.textContent).toBe(
-      `Missing percentage${value !== undefined && Number.isFinite(value) ? `${value}%` : "Not available"}`,
-    );
+    expect(screen.getByText("Missing percentage")).toBeInTheDocument();
+    expect(screen.getByText(expected)).toBeInTheDocument();
   },
 );

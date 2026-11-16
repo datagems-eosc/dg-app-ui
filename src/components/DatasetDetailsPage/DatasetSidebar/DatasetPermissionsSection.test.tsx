@@ -232,7 +232,7 @@ describe("DatasetPermissionsSection — dataset group access entry", () => {
   });
 
   it("opens the shared destination in place instead of navigating to settings", () => {
-    render(<DatasetPermissionsSection {...defaultProps} />);
+    render(<DatasetPermissionsSection {...defaultProps} hasManagePermission />);
 
     expect(screen.queryByTestId("access-modal")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /manage access/i }));
@@ -243,32 +243,36 @@ describe("DatasetPermissionsSection — dataset group access entry", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("offers the entry without the manageDataset projection or a role label", () => {
-    // `hasManagePermission` is derived from `permissions.manageDataset` and a
-    // context-grant role, neither of which authorizes granting. The new flow
-    // reads effective capabilities itself and explains what they allow, so the
-    // entry is not hidden on that basis.
-    render(
-      <DatasetPermissionsSection
-        {...defaultProps}
-        hasManagePermission={false}
-        permissions={[]}
-      />,
-    );
-
-    expect(
-      screen.getByRole("button", { name: /manage access/i }),
-    ).toBeEnabled();
-  });
+  it.each([[], ["Browse"], undefined])(
+    "hides management without a verified capability: %j",
+    (permissions) => {
+      render(
+        <DatasetPermissionsSection
+          {...defaultProps}
+          permissions={permissions}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /manage access/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("access-modal")).not.toBeInTheDocument();
+    },
+  );
 
   it("closes the shared destination again", () => {
-    render(<DatasetPermissionsSection {...defaultProps} />);
+    render(<DatasetPermissionsSection {...defaultProps} hasManagePermission />);
     fireEvent.click(screen.getByRole("button", { name: /manage access/i }));
     expect(screen.getByTestId("access-modal")).toBeInTheDocument();
   });
 
   it("offers no entry for a dataset with no id", () => {
-    render(<DatasetPermissionsSection {...defaultProps} datasetId="" />);
+    render(
+      <DatasetPermissionsSection
+        {...defaultProps}
+        hasManagePermission
+        datasetId=""
+      />,
+    );
     expect(
       screen.getByRole("button", { name: /manage access/i }),
     ).toBeDisabled();

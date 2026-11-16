@@ -184,24 +184,43 @@ export default function DatasetDetailsPageContent({
                 File Preview
               </h2>
               {fileNodes.length === 0 ? (
-                <p>No files are available to preview for this dataset.</p>
+                <p className={styles.datasetDetailsPageContent__statusText}>
+                  No files are available to preview for this dataset.
+                </p>
               ) : !selectedEntry ? (
-                <p>No preview for this file.</p>
+                <p className={styles.datasetDetailsPageContent__statusText}>
+                  No preview for this file.
+                </p>
               ) : preview.status === "loading" ? (
                 <div
                   role="status"
                   aria-busy="true"
                   className="h-96 w-full animate-pulse rounded-lg bg-slate-100"
                 >
-                  Loading preview...
+                  <p className={styles.datasetDetailsPageContent__statusText}>
+                    Loading preview...
+                  </p>
                 </div>
               ) : preview.status === "error" ? (
-                <div role="status">
-                  <h3>{selectedEntry.data.filename}</h3>
+                <div
+                  role="status"
+                  className={styles.datasetDetailsPageContent__previewState}
+                >
+                  <h3
+                    className={styles.datasetDetailsPageContent__previewTitle}
+                  >
+                    {selectedEntry.data.filename}
+                  </h3>
                   {selectedEntry.data.fileSize && (
-                    <p>{selectedEntry.data.fileSize}</p>
+                    <p
+                      className={styles.datasetDetailsPageContent__previewMeta}
+                    >
+                      {selectedEntry.data.fileSize}
+                    </p>
                   )}
-                  <p>{preview.message}</p>
+                  <p className={styles.datasetDetailsPageContent__statusText}>
+                    {preview.message}
+                  </p>
                   <Button onClick={preview.retry}>Try again</Button>
                 </div>
               ) : (

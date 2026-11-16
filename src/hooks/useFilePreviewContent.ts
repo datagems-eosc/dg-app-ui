@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { buildFilePreviews } from "@/lib/datasetProfile";
 import type { FilePreviewDataUnion } from "@/types/filePreview";
 
@@ -15,6 +15,10 @@ export function useFilePreviewContent(
   entry: Entry | undefined,
   download: (datasetId: string, fileId: string) => Promise<Response>,
 ) {
+  const downloadRef = useRef(download);
+  useEffect(() => {
+    downloadRef.current = download;
+  }, [download]);
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{
     datasetId: string;
@@ -29,7 +33,7 @@ export function useFilePreviewContent(
     const { id, data } = entry;
     const load = async () => {
       try {
-        const response = await download(datasetId, id);
+        const response = await downloadRef.current(datasetId, id);
         let content: FilePreviewDataUnion;
         if (data.type === "json") {
           const text = await response.text();
@@ -73,12 +77,15 @@ export function useFilePreviewContent(
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [datasetId, entry, download, attempt]);
+  }, [datasetId, entry, attempt]);
   const state: PreviewState =
     entry?.data.type === "tabular"
       ? { status: "ready", data: entry.data }
       : result?.datasetId === datasetId && result.entry === entry
         ? result.state
         : { status: "loading" };
-  return { ...state, retry: () => setAttempt((value) => value + 1) };
+  return {
+    ...state,
+    retry: () => setAttempt((value) => value + 1),
+  };
 }

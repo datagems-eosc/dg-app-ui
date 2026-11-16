@@ -116,3 +116,103 @@ it("releases PDF blob URLs when selection changes", async () => {
     vi.unstubAllGlobals();
   }
 });
+it("keeps the preview on transport refresh and uses the latest transport for retry", async () => {
+  const initial = vi
+    .fn()
+    .mockImplementation(async () => new Response("original content"));
+  const refreshed = vi
+    .fn()
+    .mockImplementation(async () => new Response("refreshed content"));
+  const { result, rerender } = renderHook(
+    ({ download }) => useFilePreviewContent("dataset", entry, download),
+    { initialProps: { download: initial } },
+  );
+  await waitFor(() =>
+    expect(result.current).toMatchObject({
+      status: "ready",
+      data: { content: "original content" },
+    }),
+  );
+  rerender({ download: refreshed });
+  expect(result.current).toMatchObject({
+    status: "ready",
+    data: { content: "original content" },
+  });
+  expect(refreshed).not.toHaveBeenCalled();
+  act(() => result.current.retry());
+  await waitFor(() =>
+    expect(result.current).toMatchObject({
+      status: "ready",
+      data: { content: "refreshed content" },
+    }),
+  );
+  expect(refreshed).toHaveBeenCalledTimes(1);
+});
+it("keeps an in-flight preview when the transport refreshes", async () => {
+  let resolve!: (response: Response) => void;
+  const initial = vi.fn().mockReturnValue(
+    new Promise<Response>((done) => {
+      resolve = done;
+    }),
+  );
+  const refreshed = vi
+    .fn()
+    .mockImplementation(async () => new Response("replacement"));
+  const { result, rerender } = renderHook(
+    ({ download }) => useFilePreviewContent("dataset", entry, download),
+    { initialProps: { download: initial } },
+  );
+  rerender({ download: refreshed });
+  expect(refreshed).not.toHaveBeenCalled();
+  await act(async () => resolve(new Response("pending content")));
+  expect(result.current).toMatchObject({
+    status: "ready",
+    data: { content: "pending content" },
+  });
+  expect(initial).toHaveBeenCalledTimes(1);
+});
+it("does not create a PDF URL when unmounted while its blob is pending", async () => {
+  const create = vi.fn((_blob: Blob) => "blob:late");
+  const revoke = vi.fn();
+  vi.stubGlobal(
+    "URL",
+    class extends URL {
+      static createObjectURL = create;
+      static revokeObjectURL = revoke;
+    },
+  );
+  try {
+    let resolve!: (value: Blob) => void;
+    const pending = new Promise<Blob>((done) => {
+      resolve = done;
+    });
+    const response = new Response("PDF");
+    const readBlob = vi.spyOn(response, "blob").mockReturnValue(pending);
+    const pdf = {
+      id: "pdf",
+      name: "original.pdf",
+      data: {
+        type: "pdf" as const,
+        filename: "original.pdf",
+        fileSize: "1 KB",
+        description: "",
+        keywords: [],
+        fileUrl: "",
+        totalPages: 0,
+      },
+    };
+    const download = vi.fn().mockResolvedValue(response);
+    const { unmount } = renderHook(() =>
+      useFilePreviewContent("dataset", pdf, download),
+    );
+    await waitFor(() => expect(readBlob).toHaveBeenCalledTimes(1));
+    unmount();
+    await act(async () => {
+      resolve(await new Response("PDF").blob());
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(revoke).not.toHaveBeenCalled();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
