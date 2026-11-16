@@ -120,19 +120,14 @@ export const uniqueById = <T extends { id: string }>(items: T[]): T[] => {
   return Array.from(byId.values());
 };
 
+/** Reads only the hit fields Smart Search asks for (`hits.content`, `hits.similarity`). */
 function toPassage(hit: unknown, index: number): Passage {
   const h = asRecord(hit);
   if (!h) return { number: index, text: String(hit ?? ""), similarity: 0 };
-  const similarity =
-    typeof h.similarity === "number"
-      ? h.similarity
-      : typeof h.maxSimilarity === "number"
-        ? h.maxSimilarity
-        : 0;
   return {
-    number: typeof h.number === "number" ? h.number : index,
-    text: String(h.content ?? h.text ?? ""),
-    similarity,
+    number: index,
+    text: String(h.content ?? ""),
+    similarity: typeof h.similarity === "number" ? h.similarity : 0,
   };
 }
 

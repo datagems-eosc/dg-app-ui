@@ -1,6 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import {
+  mapApiDatasetToDataset,
+  mapDiscoveryResults,
+} from "@/lib/datasetMapping";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -15,6 +19,52 @@ vi.mock("@/hooks/useApi", () => ({ useApi: () => ({ ...api }) }));
 vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 
 const ALL: DatasetSearchScope = { kind: "all" };
+
+/**
+ * The field paths (`collections.id`) a mapper reads from the given payloads,
+ * fallbacks included when a payload leaves the main field out.
+ */
+function fieldsRead(map: (payload: unknown) => unknown, payloads: unknown[]) {
+  const read = new Set<string>();
+  const watch = (value: unknown, path: string): unknown => {
+    if (typeof value !== "object" || value === null) return value;
+    if (Array.isArray(value)) return value.map((item) => watch(item, path));
+    const note = (key: string) => {
+      const field = path ? `${path}.${key}` : key;
+      read.add(field);
+      return field;
+    };
+    return new Proxy(value as Record<string | symbol, unknown>, {
+      get: (target, key) =>
+        typeof key === "string" ? watch(target[key], note(key)) : target[key],
+      has: (target, key) => {
+        if (typeof key === "string") note(key);
+        return key in target;
+      },
+    });
+  };
+  for (const payload of payloads) map(watch(payload, ""));
+  // "collections" is only read on the way to "collections.id".
+  const all = [...read];
+  return all.filter((f) => !all.some((g) => g.startsWith(`${f}.`))).sort();
+}
+
+const FULL_DATASET = {
+  id: "d1",
+  code: "d1-code",
+  name: "Rain",
+  description: "Daily rain",
+  license: "MIT",
+  mimeType: "text/csv",
+  url: "https://example.org/rain.csv",
+  fieldOfScience: ["1.5"],
+  keywords: ["rain"],
+  size: 10,
+  datePublished: "2024-01-01",
+  collections: [{ id: "c1", code: "meteo", name: "Meteo" }],
+};
+// Leaves the main fields out so that every fallback is read too.
+const BARE_DATASET = { id: "d2" };
 
 const catalogueCalls = () => api.queryDatasets.mock.calls.map(([p]) => p);
 const lastCatalogue = () => catalogueCalls().at(-1);
@@ -55,20 +105,14 @@ describe("useDatasetSearch", () => {
       expect(lastCatalogue().like).toBe("%wiki%");
     });
 
-    it("does not ask for fields the list does not show", async () => {
+    it("asks for exactly the fields the list reads", async () => {
+      // Each unread nested field costs the Gateway extra lookups.
       renderSearch();
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
 
-      const { fields } = lastCatalogue().project;
-      expect(fields).toContain("collections.name");
-      for (const unread of [
-        "collections.datasetCount",
-        "permissions.browseDataset",
-        "permissions.editDataset",
-        "version",
-      ]) {
-        expect(fields).not.toContain(unread);
-      }
+      expect([...lastCatalogue().project.fields].sort()).toEqual(
+        fieldsRead(mapApiDatasetToDataset, [FULL_DATASET, BARE_DATASET]),
+      );
     });
   });
 
@@ -170,7 +214,8 @@ describe("useDatasetSearch", () => {
       );
     });
 
-    it("asks discovery only for what the list shows", async () => {
+    it("asks discovery for exactly the fields the list reads", async () => {
+      // Each unread nested field costs the Gateway extra lookups.
       const { result } = renderSearch();
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
 
@@ -179,27 +224,19 @@ describe("useDatasetSearch", () => {
 
       await waitFor(() => expect(api.searchCrossDataset).toHaveBeenCalled());
       const { fields } = api.searchCrossDataset.mock.calls[0][0].project;
-      expect(fields).toContain("dataset.name");
-      expect(fields).toContain("hits.content");
-      expect(fields).toContain("maxSimilarity");
-      // Each unread nested field costs the Gateway extra lookups.
-      for (const unread of [
-        "dataset.profileRaw",
-        "dataset.version",
-        "dataset.permissions.browseDataset",
-        "dataset.permissions.editDataset",
-        "dataset.collections.datasetCount",
-        "conversationId",
-        "content",
-        "useCase",
-        "sourceId",
-        "chunkId",
-        "language",
-        "distance",
-        "hits.objectId",
-      ]) {
-        expect(fields).not.toContain(unread);
-      }
+      expect([...fields].sort()).toEqual(
+        fieldsRead(
+          (result) => mapDiscoveryResults([result]),
+          [
+            {
+              dataset: FULL_DATASET,
+              maxSimilarity: 0.9,
+              hits: [{ content: "Rain fell", similarity: 0.9 }],
+            },
+            { dataset: BARE_DATASET, hits: [{}] },
+          ],
+        ),
+      );
     });
 
     it("lists a custom collection once whatever the search controls say", async () => {
