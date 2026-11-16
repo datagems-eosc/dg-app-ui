@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sidebarProps = vi.fn();
+const download = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
@@ -10,7 +11,10 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/hooks/useApi", () => ({
-  useApi: () => ({ downloadDatasetFile: vi.fn() }),
+  useApi: () => ({
+    downloadDatasetFile: download,
+    datasetPermissions: { scope: { principalId: "user" } },
+  }),
 }));
 
 vi.mock("./DatasetDescriptionSection/DatasetDescriptionSection", () => ({
@@ -169,4 +173,88 @@ it("shows one no-files state instead of an empty preview", () => {
   expect(
     screen.getByText("No files are available to preview for this dataset."),
   ).toBeInTheDocument();
+});
+
+const downloadableDataset = {
+  ...mockDataset,
+  permissions: ["Download"],
+  profileRaw: {
+    nodes: [
+      {
+        id: "original-file",
+        labels: ["cr:FileObject"],
+        properties: {
+          name: "original.hash.bin",
+          encodingFormat: "application/octet-stream",
+        },
+      },
+    ],
+    edges: [],
+  },
+} as DatasetPlus;
+
+it("offers a real download even when the selected file has no preview", async () => {
+  download.mockRejectedValueOnce(new Error("offline"));
+  render(<DatasetDetailsPageContent dataset={downloadableDataset} />);
+  fireEvent.click(screen.getByRole("button", { name: "Download file" }));
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Download failed. Try again.",
+    ),
+  );
+  expect(download).toHaveBeenCalledWith(
+    "ds-1",
+    "original-file",
+    expect.any(AbortSignal),
+  );
+  expect(screen.getByText("No preview for this file.")).toBeInTheDocument();
+});
+
+it.each([undefined, [], ["Browse"], ["Manage"]])(
+  "hides Download without a positive dataset permission: %j",
+  (permissions) => {
+    render(
+      <DatasetDetailsPageContent
+        dataset={{ ...downloadableDataset, permissions } as DatasetPlus}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /download/i }),
+    ).not.toBeInTheDocument();
+  },
+);
+
+it("does not use a RecordSet as a downloadable FileObject", () => {
+  render(
+    <DatasetDetailsPageContent
+      dataset={
+        {
+          ...downloadableDataset,
+          profileRaw: {
+            nodes: [
+              {
+                id: "table",
+                labels: ["cr:RecordSet"],
+                properties: { name: "table" },
+              },
+            ],
+            edges: [],
+          },
+        } as DatasetPlus
+      }
+    />,
+  );
+  expect(
+    screen.queryByRole("button", { name: /download/i }),
+  ).not.toBeInTheDocument();
+});
+
+it("disables Download and announces its pending state", async () => {
+  download.mockReturnValue(new Promise(() => {}));
+  render(<DatasetDetailsPageContent dataset={downloadableDataset} />);
+  fireEvent.click(screen.getByRole("button", { name: "Download file" }));
+  expect(
+    screen.getByRole("button", { name: "Downloading file" }),
+  ).toBeDisabled();
+  expect(screen.getByText("Downloading...")).toBeInTheDocument();
 });

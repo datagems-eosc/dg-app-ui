@@ -8,6 +8,7 @@ import { APP_ROUTES } from "@/config/appUrls";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { useFilePreviewContent } from "@/hooks/useFilePreviewContent";
+import { useOriginalFileDownload } from "@/hooks/useOriginalFileDownload";
 import { sharingStateFromLegacyAccess } from "@/lib/datasetPermissions/model";
 import {
   buildFilePreviews,
@@ -65,7 +66,7 @@ export default function DatasetDetailsPageContent({
   returnToRoles = false,
 }: DatasetDetailsPageContentProps) {
   const router = useRouter();
-  const { downloadDatasetFile } = useApi();
+  const { downloadDatasetFile, datasetPermissions } = useApi();
 
   const metadata = useMemo(
     () => deriveProfileMetadata(dataset.profileRaw),
@@ -111,6 +112,23 @@ export default function DatasetDetailsPageContent({
   const hasEditPermission = permissions?.includes("Edit") ?? false;
   const hasDownloadPermission = permissions?.includes("Download") ?? false;
   const hasManagePermission = permissions?.includes("Manage") ?? false;
+  const selectedDownloadId =
+    selectedFileId ?? selectedEntry?.id ?? fileNodes[0]?.id;
+  const downloadFile = fileNodes.find(
+    (node) => node.type === "file" && node.id === selectedDownloadId,
+  );
+  const principalId = datasetPermissions?.scope?.principalId ?? null;
+  const canDownload = hasDownloadPermission && !!downloadFile && !!principalId;
+  const originalDownload = useOriginalFileDownload(
+    {
+      datasetId: dataset.id,
+      fileId: downloadFile?.id,
+      filename: downloadFile?.name ?? "download",
+      principalId,
+      allowed: canDownload,
+    },
+    downloadDatasetFile,
+  );
 
   return (
     <div className={styles.datasetDetailsPageContent}>
@@ -180,9 +198,36 @@ export default function DatasetDetailsPageContent({
           {/* Row 2: File Preview + Dataset Files Tree */}
           <div className={styles.datasetDetailsPageContent__row}>
             <div className={styles.datasetDetailsPageContent__rowLeft}>
-              <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
-                File Preview
-              </h2>
+              <div className="flex items-start gap-4">
+                <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
+                  File Preview
+                </h2>
+                {canDownload && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label={
+                      originalDownload.status === "pending"
+                        ? "Downloading file"
+                        : "Download file"
+                    }
+                    disabled={originalDownload.status === "pending"}
+                    onClick={() => void originalDownload.start()}
+                  >
+                    {originalDownload.status === "pending"
+                      ? "Downloading..."
+                      : "Download"}
+                  </Button>
+                )}
+              </div>
+              {originalDownload.status === "error" && (
+                <p
+                  role="alert"
+                  className={styles.datasetDetailsPageContent__downloadError}
+                >
+                  Download failed. Try again.
+                </p>
+              )}
               {fileNodes.length === 0 ? (
                 <p className={styles.datasetDetailsPageContent__statusText}>
                   No files are available to preview for this dataset.

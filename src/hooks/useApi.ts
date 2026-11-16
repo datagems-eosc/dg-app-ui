@@ -1270,7 +1270,11 @@ export function useApi() {
   );
 
   const downloadDatasetFile = useCallback(
-    async (datasetId: string, fileObjectNodeId: string): Promise<Response> => {
+    async (
+      datasetId: string,
+      fileObjectNodeId: string,
+      signal?: AbortSignal,
+    ): Promise<Response> => {
       logApiRequest("downloadDatasetFile", { datasetId, fileObjectNodeId });
 
       const response = await makeRequest(
@@ -1278,7 +1282,11 @@ export function useApi() {
         {
           method: "GET",
           headers: { "X-Request-Type": "downloadDatasetFile" },
+          signal,
         },
+        principalId === null
+          ? { retryOn401: false }
+          : { expectedPrincipalId: principalId },
       );
 
       if (!response.ok) {
@@ -1297,7 +1305,7 @@ export function useApi() {
       logApiResponse("downloadDatasetFile", { datasetId, fileObjectNodeId });
       return response;
     },
-    [makeRequest],
+    [makeRequest, principalId],
   );
 
   const getDatasetRecommendations = useCallback(
