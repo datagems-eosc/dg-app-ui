@@ -1,11 +1,12 @@
 /**
  * Home example queries — curated pool.
  *
- * Placeholder content until the partner's pool of questions tied to public
- * datasets arrives (6 November UI call). Every entry was classified on dev on
- * 6 November with the expected intent (confidence ≥ 0.95); re-run the
- * classifier evaluation before replacing or extending the list, and keep only
- * queries that route straight to Browse or Chat.
+ * Source: the partner's question pool of 13 November (questions tied to
+ * public datasets, used as one pool). Every entry was classified again on dev
+ * on 15 November and `intent` is the classifier's result (confidence ≥ 0.95);
+ * each target dataset was visible to a regular dev account that day. Re-run
+ * the classifier evaluation before replacing or extending the list, and keep
+ * only queries that route straight to Datasets or Chat.
  */
 import type { DestinationIntent } from "@/lib/intentRouting/types";
 
@@ -21,45 +22,95 @@ export const DATASETS_EXAMPLE_COUNT = 4;
 
 export const EXAMPLE_POOL: readonly ExampleQuery[] = [
   {
-    text: "datasets about air temperature in Greece",
-    intent: "dataset_search",
-  },
-  { text: "find datasets on rainfall in Crete", intent: "dataset_search" },
-  { text: "Greek language corpora", intent: "dataset_search" },
-  {
-    text: "datasets of lifelong learning course enrolments",
+    text: "datasets of 18th century French encyclopedia entries",
     intent: "dataset_search",
   },
   {
-    text: "open educational resources about algebra",
+    text: "transcriptions of the Encyclopaedia Britannica",
     intent: "dataset_search",
   },
   {
-    text: "find a corpus of Greek parliamentary speeches",
+    text: "Wikipedia articles linked to historical encyclopedia entries",
     intent: "dataset_search",
   },
   {
-    text: "What was the average air temperature in Athens in July 2024?",
+    text: "database of an online mathematics learning platform",
+    intent: "dataset_search",
+  },
+  {
+    text: "real-time weather measurements from the National Observatory of Athens",
+    intent: "dataset_search",
+  },
+  {
+    text: "hospital readmission records of diabetic patients",
+    intent: "dataset_search",
+  },
+  {
+    text: "datasets on school enrolment and literacy worldwide",
+    intent: "dataset_search",
+  },
+  {
+    text: "datasets of monthly surface temperature by country",
+    intent: "dataset_search",
+  },
+  {
+    text: "datasets about forest fires in Portugal",
+    intent: "dataset_search",
+  },
+  {
+    text: "datasets of solar photovoltaic production in Europe",
+    intent: "dataset_search",
+  },
+  {
+    text: "find datasets on unemployment in the European Union",
+    intent: "dataset_search",
+  },
+  {
+    text: "datasets of global energy statistics",
+    intent: "dataset_search",
+  },
+  {
+    text: "How does Diderot's Encyclopédie define the word 'liberté'?",
     intent: "question",
   },
   {
-    text: "Which month had the highest rainfall in Crete in 2023?",
+    text: "What does the 9th edition of the Encyclopaedia Britannica say about the steam engine?",
     intent: "question",
   },
   {
-    text: "How many adults participated in lifelong learning in Greece in 2022?",
+    text: "What does Wikipedia say about the history of Dresden?",
     intent: "question",
   },
   {
-    text: "What are the most frequent words in Greek parliamentary speeches from 2020?",
+    text: "What skills does a data scientist need according to the skill model?",
     intent: "question",
   },
   {
-    text: "Compare average temperatures in Athens and Thessaloniki in summer 2023",
+    text: "How has the gender gap in education changed in low-income countries?",
     intent: "question",
   },
   {
-    text: "What was the wettest day in Athens in 2023 and how much rain fell?",
+    text: "What is the average wind speed across NOA weather stations?",
+    intent: "question",
+  },
+  {
+    text: "How much has the average surface temperature in Greece risen since 1940?",
+    intent: "question",
+  },
+  {
+    text: "Which month has the largest burned area in the Portuguese forest fires data?",
+    intent: "question",
+  },
+  {
+    text: "Which European country has the highest average photovoltaic capacity factor?",
+    intent: "question",
+  },
+  {
+    text: "What was the youth unemployment rate in Greece in 2013?",
+    intent: "question",
+  },
+  {
+    text: "How does age relate to early readmission of diabetic patients?",
     intent: "question",
   },
 ];
