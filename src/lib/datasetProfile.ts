@@ -78,10 +78,45 @@ export function parseProfileRaw(raw: unknown): ProfileGraph | null {
       return null;
     }
   }
-  if (isObject(value) && Array.isArray((value as ProfileGraph).nodes)) {
-    return value as ProfileGraph;
-  }
-  return null;
+  if (!isObject(value) || !Array.isArray(value.nodes)) return null;
+  // Keep identifiable nodes even when individual properties are unavailable.
+  // Metadata aggregation must still know that their file coverage is partial.
+  const nodes: GraphNode[] = value.nodes.flatMap((node: unknown) => {
+    if (!isObject(node)) return [];
+    return [
+      {
+        id: typeof node.id === "string" ? node.id : undefined,
+        labels: Array.isArray(node.labels)
+          ? node.labels.filter(
+              (label): label is string => typeof label === "string",
+            )
+          : [],
+        properties: isObject(node.properties) ? node.properties : undefined,
+      },
+    ];
+  });
+  const edges: GraphEdge[] = Array.isArray(value.edges)
+    ? value.edges.flatMap((edge: unknown) => {
+        if (
+          !isObject(edge) ||
+          typeof edge.from !== "string" ||
+          typeof edge.to !== "string"
+        )
+          return [];
+        return [
+          {
+            from: edge.from,
+            to: edge.to,
+            labels: Array.isArray(edge.labels)
+              ? edge.labels.filter(
+                  (label): label is string => typeof label === "string",
+                )
+              : [],
+          },
+        ];
+      })
+    : [];
+  return { nodes, edges };
 }
 
 function hasLabel(node: GraphNode, label: string): boolean {

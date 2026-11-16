@@ -10,6 +10,8 @@ interface DatasetSourceUrlSectionProps {
 export default function DatasetSourceUrlSection({
   url,
 }: DatasetSourceUrlSectionProps) {
+  if (!url?.trim()) return null;
+
   return (
     <div className={styles.datasetSidebarSection}>
       <div className={styles.datasetSidebarSection__header}>
@@ -19,12 +21,12 @@ export default function DatasetSourceUrlSection({
         </div>
       </div>
       <a
-        href={url || "https://example.com/datasets/very-long-url-here"}
+        href={url}
         target="_blank"
         rel="noopener noreferrer"
         className={styles.datasetSidebarSection__link}
       >
-        {url || "https://example.com/datasets/very-long-url-here"}
+        {url}
       </a>
     </div>
   );

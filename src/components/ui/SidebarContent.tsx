@@ -134,9 +134,12 @@ export function SidebarContent({
 }: SidebarContentProps) {
   const { flags } = useFeatureFlags();
   const visibleUseCaseItems = useCaseItems.filter((item) => flags[item.flag]);
-  const visibleMenuItems = flags.generalChat
-    ? menuItems
-    : [menuItems[0], menuItems[1], askAQuestionItem, menuItems[2]];
+  const visibleMenuItems = [
+    menuItems[0],
+    menuItems[1],
+    askAQuestionItem,
+    menuItems[2],
+  ];
 
   return (
     <div

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
 import { getDisplayCollectionLabel } from "@/config/collectionConstants";
-import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { sharingStateFromLegacyAccess } from "@/lib/datasetPermissions/model";
@@ -15,6 +14,7 @@ import {
   buildFileTree,
   type ProfileTreeNode,
 } from "@/lib/datasetProfile";
+import { deriveProfileMetadata } from "@/lib/datasetProfileMetadata";
 import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import type { FilePreviewDataUnion } from "@/types/filePreview";
@@ -24,6 +24,7 @@ import type { FileNode } from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetHeader from "./DatasetHeader/DatasetHeader";
 import DatasetMetadataBar from "./DatasetMetadataBar/DatasetMetadataBar";
+import DatasetProfilingSections from "./DatasetProfilingSections/DatasetProfilingSections";
 import DatasetRecommendationsSection from "./DatasetRecommendationsSection/DatasetRecommendationsSection";
 import DatasetSidebar from "./DatasetSidebar/DatasetSidebar";
 import DatasetTagsSection from "./DatasetTagsSection/DatasetTagsSection";
@@ -69,8 +70,11 @@ export default function DatasetDetailsPageContent({
 }: DatasetDetailsPageContentProps) {
   const router = useRouter();
   const { downloadDatasetFile } = useApi();
-  const hideGeneralChat = useFeatureFlag("generalChat");
 
+  const metadata = useMemo(
+    () => deriveProfileMetadata(dataset.profileRaw),
+    [dataset.profileRaw],
+  );
   const previewEntries = useMemo(
     () => buildFilePreviews(dataset.profileRaw),
     [dataset.profileRaw],
@@ -202,22 +206,18 @@ export default function DatasetDetailsPageContent({
                 <Button variant="outline" size="sm">
                   Edit
                 </Button>
-                {!hideGeneralChat && (
-                  <>
-                    <Button variant="outline" size="sm">
-                      Select
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      0 Selected
-                    </Button>
-                  </>
-                )}
+                <Button variant="outline" size="sm">
+                  Select
+                </Button>
+                <Button variant="outline" size="sm">
+                  0 Selected
+                </Button>
               </div>
             </div>
             <DatasetHeader dataset={dataset} />
           </div>
 
-          <DatasetMetadataBar dataset={dataset} />
+          <DatasetMetadataBar dataset={dataset} metadata={metadata} />
 
           {/* Row 1: Dataset Details (Description sections) + Metadata Sidebar */}
           <div className={styles.datasetDetailsPageContent__row}>
@@ -242,6 +242,7 @@ export default function DatasetDetailsPageContent({
                     items={dataset.keywords}
                   />
                 )}
+                <DatasetProfilingSections entries={metadata.profiling} />
               </div>
             </div>
 
