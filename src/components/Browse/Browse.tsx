@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronUp,
   Database,
-  Edit3,
   Filter,
   Grid2X2,
   ListChecks,
@@ -17,7 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 type Collection = { id: string; name: string };
 type DatasetWithCollections = Dataset & { collections?: Collection[] };
@@ -25,7 +24,6 @@ type DatasetWithCollections = Dataset & { collections?: Collection[] };
 import { Button } from "@ui/Button";
 import { ConfirmationModal } from "@ui/ConfirmationModal";
 import DatasetCardSkeleton from "@ui/datasets/DatasetCardSkeleton";
-import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import SmartSearch from "@ui/SmartSearch";
 import SmartSearchExamples from "@ui/SmartSearchExamples";
 import Switch from "@ui/Switch";
@@ -45,13 +43,12 @@ import type { Dataset } from "@/data/dataset";
 import { mockDatasets } from "@/data/dataset";
 import { filterPackagesBySearchTerm, mockPackages } from "@/data/package";
 import { useApi } from "@/hooks/useApi";
+import { useDatasetVocabularies } from "@/hooks/useDatasetVocabularies";
 import logger, { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import {
   type FilterState,
   getDefaultFilters,
-  processFieldsOfScience,
-  processLicenses,
   SORTING_OPTIONS,
 } from "../../config/filterOptions";
 import CreateCollectionModal from "../CreateCollectionModal";
@@ -140,10 +137,6 @@ interface BrowseProps {
    */
   onSortByChange?: (value: string) => void;
   /**
-   * Handler for when filters are applied in the FilterModal.
-   */
-  onFiltersChange?: (filters: FilterState) => void;
-  /**
    * The current filter state (controlled from parent).
    */
   filters?: FilterState;
@@ -176,6 +169,9 @@ interface BrowseProps {
 }
 
 const defaultFilters: FilterState = getDefaultFilters();
+
+export const SELECT_DATASETS_FIRST_MESSAGE =
+  "Please select some datasets first";
 
 /**
  * Browse's datasets carry no supported publication state: the shared mapper
@@ -261,12 +257,13 @@ export default function Browse({
   const [datasetsToAdd, setDatasetsToAdd] = useState<DatasetWithCollections[]>(
     [],
   );
-  const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
-    HierarchicalCategory[]
-  >([]);
-  const [licenses, setLicenses] = useState<{ value: string; label: string }[]>(
-    [],
-  );
+  const {
+    fieldsOfScienceCategories,
+    licenses,
+    isLoadingFieldsOfScience,
+    isLoadingLicenses,
+    retryFailed: retryFailedVocabularies,
+  } = useDatasetVocabularies();
   const [isPanelAnimating, setIsPanelAnimating] = useState(false);
   const [isPanelClosing, setIsPanelClosing] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
@@ -342,6 +339,23 @@ export default function Browse({
     : localSelectedDatasets;
   const setCurrentSelectedDatasets =
     onSelectedDatasetsChange || setLocalSelectedDatasets;
+
+  // Asked inline, never by a browser alert; gone once something is selected.
+  const [askedForSelection, setAskedForSelection] = useState(false);
+  if (askedForSelection && currentSelectedDatasets.length > 0) {
+    setAskedForSelection(false);
+  }
+  const showSelectionMessage =
+    askedForSelection && currentSelectedDatasets.length === 0;
+  const handleAddSelectedToCollection = onAddToCollection
+    ? () => {
+        if (currentSelectedDatasets.length === 0) {
+          setAskedForSelection(true);
+          return;
+        }
+        onAddToCollection();
+      }
+    : undefined;
 
   const handleDeleteCollection = async () => {
     if (!isCustomCollection || !collectionName || !collectionId) {
@@ -499,30 +513,26 @@ export default function Browse({
   }, [isMounted]);
 
   // Check if user can delete collection
-  // For custom collections (except Favorites), use context grants
+  // For custom collections (except Favorites), use context grants.
+  // `useApi()` rebuilds its calls when the access token is refreshed; read
+  // the latest through a ref so a refresh does not ask for the grants again.
+  const { hasToken } = api;
+  const getCollectionGrants = useRef(api.getCollectionGrants);
+  getCollectionGrants.current = api.getCollectionGrants;
+  // The name arrives after the collection list loads; only this flag matters
+  // here, so a late name does not ask for the grants again.
+  const isFavorites =
+    collectionName === "Favorites" || collectionName === "Favorites Datasets";
   useEffect(() => {
-    if (!isCustomCollection) {
-      setCanDeleteCollection(false);
+    // Fail closed: no Delete until this collection's grants arrive.
+    setCanDeleteCollection(false);
+    // Favorites can never be deleted.
+    if (!isCustomCollection || isFavorites || !collectionId || !hasToken) {
       return;
     }
-
-    // Don't allow deleting Favorites collection
-    if (
-      collectionName === "Favorites" ||
-      collectionName === "Favorites Datasets"
-    ) {
-      setCanDeleteCollection(false);
-      return;
-    }
-
-    if (!collectionId || !api.hasToken) {
-      setCanDeleteCollection(false);
-      return;
-    }
-
     let cancelled = false;
     (async () => {
-      const roles = await api.getCollectionGrants(collectionId);
+      const roles = await getCollectionGrants.current(collectionId);
       if (cancelled) return;
       const permissions = mapRolesToPermissions(roles, COLLECTION_ROLE_MAP);
       setCanDeleteCollection(Boolean(permissions.delete));
@@ -531,7 +541,7 @@ export default function Browse({
     return () => {
       cancelled = true;
     };
-  }, [api, collectionId, collectionName, isCustomCollection]);
+  }, [hasToken, collectionId, isFavorites, isCustomCollection]);
 
   // Save viewMode to localStorage whenever it changes (only when mounted)
   useEffect(() => {
@@ -546,35 +556,6 @@ export default function Browse({
       setFilters(propFilters);
     }
   }, [propFilters]);
-
-  // Fetch fields of science and licenses on component mount
-  useEffect(() => {
-    if (!api.hasToken) return;
-
-    // Fetch fields of science
-    api
-      .getFieldsOfScience()
-      .then((data) => {
-        const categories = processFieldsOfScience(data);
-        setFieldsOfScienceCategories(categories);
-      })
-      .catch((error) => {
-        logger.error({ error }, "Failed to fetch fields of science");
-        setFieldsOfScienceCategories([]);
-      });
-
-    // Fetch licenses
-    api
-      .getLicenses()
-      .then((data) => {
-        const licenseOptions = processLicenses(data);
-        setLicenses(licenseOptions);
-      })
-      .catch((error) => {
-        logger.error({ error }, "Failed to fetch licenses");
-        setLicenses([]);
-      });
-  }, [api.hasToken]);
 
   // Animate SelectedDatasetsPanel on open
   useEffect(() => {
@@ -860,111 +841,94 @@ export default function Browse({
             {!isEditingName && (
               <div className="flex items-center gap-3">
                 {/* Actions dropdown button - only show on custom collection pages, not on Favorites */}
-                {isCustomCollection &&
-                  collectionName !== "Favorites Datasets" && (
-                    <div className="relative" data-title-actions-dropdown>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label="Collection actions"
-                        aria-expanded={showTitleActionsDropdown}
-                        aria-controls={
-                          showTitleActionsDropdown
-                            ? titleActionsPanelId
-                            : undefined
-                        }
-                        onClick={() =>
-                          setShowTitleActionsDropdown(!showTitleActionsDropdown)
-                        }
-                        className="p-2 min-w-0 w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-50"
-                      >
-                        <MoreHorizontal className="w-4 h-4 text-icon" />
-                      </Button>
+                {isCustomCollection && !isFavorites && (
+                  <div className="relative" data-title-actions-dropdown>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label="Collection actions"
+                      aria-expanded={showTitleActionsDropdown}
+                      aria-controls={
+                        showTitleActionsDropdown
+                          ? titleActionsPanelId
+                          : undefined
+                      }
+                      onClick={() =>
+                        setShowTitleActionsDropdown(!showTitleActionsDropdown)
+                      }
+                      className="p-2 min-w-0 w-10 h-10 rounded-full border border-gray-300 hover:bg-gray-50"
+                    >
+                      <MoreHorizontal className="w-4 h-4 text-icon" />
+                    </Button>
 
-                      {/* Actions dropdown menu */}
-                      {showTitleActionsDropdown && (
-                        <div
-                          id={titleActionsPanelId}
-                          data-title-actions-dropdown
-                          className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+                    {/* Actions dropdown menu */}
+                    {showTitleActionsDropdown && (
+                      <div
+                        id={titleActionsPanelId}
+                        data-title-actions-dropdown
+                        className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowTitleActionsDropdown(false);
+                            selectAll();
+                            handleOpenPanel();
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
                         >
+                          <ArrowRightLeft className="w-4 h-4 text-icon" />
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowTitleActionsDropdown(false);
+                            handleStartEditName();
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Tag className="w-4 h-4 text-icon" />
+                          Rename
+                        </button>
+                        {collectionId && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               setShowTitleActionsDropdown(false);
-                              selectAll();
-                              handleOpenPanel();
+                              setShowCollectionPermissions(true);
                             }}
                             className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
-                            <ArrowRightLeft className="w-4 h-4 text-icon" />
-                            Select All
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setShowTitleActionsDropdown(false);
-                              handleStartEditName();
-                            }}
-                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
-                            <Tag className="w-4 h-4 text-icon" />
-                            Rename
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setShowTitleActionsDropdown(false);
-                              if (collectionId) {
-                                setShowCollectionPermissions(true);
-                              }
-                            }}
-                            className={`flex items-center gap-3 w-full px-4 py-2 text-left transition-colors ${
-                              collectionId
-                                ? "text-gray-700 hover:bg-gray-50"
-                                : "text-gray-400 cursor-not-allowed"
-                            }`}
                           >
                             <Settings className="w-4 h-4 text-icon" />
                             Manage permissions
                           </button>
+                        )}
+                        {canDeleteCollection && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               setShowTitleActionsDropdown(false);
+                              setShowDeleteModal(true);
                             }}
-                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+                            className="flex items-center gap-3 w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
                           >
-                            <Trash2 className="w-4 h-4 text-icon" />
-                            Delete
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                            Delete Collection
                           </button>
-                          {canDeleteCollection && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setShowTitleActionsDropdown(false);
-                                setShowDeleteModal(true);
-                              }}
-                              className="flex items-center gap-3 w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                              Delete Collection
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Custom Action Buttons */}
                 {customActionButtons?.map((button, index) => (
                   <Button
@@ -1032,30 +996,6 @@ export default function Browse({
                         >
                           <ArrowRightLeft className="w-4 h-4 text-icon" />
                           Select All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowActionsDropdown(false);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Edit3 className="w-4 h-4 text-icon" />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowActionsDropdown(false);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Tag className="w-4 h-4 text-icon" />
-                          Rename
                         </button>
                         {onBulkRemoveDatasets && (
                           <button
@@ -1142,7 +1082,10 @@ export default function Browse({
                 <Button
                   variant="outline"
                   className="flex items-center gap-1.5"
-                  onClick={() => setShowFilterModal(true)}
+                  onClick={() => {
+                    retryFailedVocabularies();
+                    setShowFilterModal(true);
+                  }}
                 >
                   <Filter className="w-4 h-4 text-icon" />
                   Filter
@@ -1233,6 +1176,14 @@ export default function Browse({
               className="mb-4 px-4 text-body-14-regular text-gray-650 sm:px-6"
             >
               {ACCESS_FILTER_UNAVAILABLE_MESSAGE}
+            </p>
+          )}
+          {showSelectionMessage && (
+            <p
+              role="alert"
+              className="mb-4 px-4 text-body-14-regular text-red-600 sm:px-6"
+            >
+              {SELECT_DATASETS_FIRST_MESSAGE}
             </p>
           )}
           {/* Results count and sorting */}
@@ -1421,6 +1372,10 @@ export default function Browse({
         onClose={() => setShowFilterModal(false)}
         onApplyFilters={handleApplyFilters}
         currentFilters={filters}
+        fieldsOfScienceCategories={fieldsOfScienceCategories}
+        licenses={licenses}
+        isLoadingFieldsOfScience={isLoadingFieldsOfScience}
+        isLoadingLicenses={isLoadingLicenses}
         accessUnavailableReason={ACCESS_FILTER_UNAVAILABLE_MESSAGE}
       />
 
@@ -1488,7 +1443,7 @@ export default function Browse({
               onRemoveDataset={(id: string) => handleDatasetSelect(id, false)}
               onChatWithData={onChatWithData}
               onClose={handleClosePanel}
-              onAddToCollection={onAddToCollection}
+              onAddToCollection={handleAddSelectedToCollection}
               onDeselectAll={
                 onDeselectAll ?? (() => setCurrentSelectedDatasets([]))
               }

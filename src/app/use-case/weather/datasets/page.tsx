@@ -5,7 +5,7 @@ import UseCasePageClient from "../../UseCasePageClient";
 export default function WeatherDatasetsPage() {
   return (
     <UseCasePageClient
-      collectionName="Weather"
+      collectionName="Meteo"
       title="Weather Datasets"
       subtitle="Weather dataset collection"
       withLayout={false}

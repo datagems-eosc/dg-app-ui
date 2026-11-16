@@ -92,6 +92,11 @@ vi.mock("@/components/Browse", () => ({
         Sort newest
       </button>
       <span data-testid="shown">{props.datasets.length}</span>
+      <span data-testid="access">
+        {(props.datasets as { access?: string }[])
+          .map((d) => d.access ?? "none")
+          .join(",")}
+      </span>
       <span data-testid="total">{String(props.totalCount)}</span>
       {props.hasMore && (
         <button type="button" onClick={() => props.onLoadMore?.()}>
@@ -518,6 +523,43 @@ describe("BrowseClient – Home handoff", () => {
     });
 
     expect(screen.getByTestId("shown")).toHaveTextContent("2");
+  });
+
+  it("claims no access for a Smart result the user can browse", async () => {
+    handOff();
+    api.searchCrossDataset.mockResolvedValue({
+      result: [
+        {
+          dataset: { id: "s1", name: "Rain", permissions: ["browsedataset"] },
+          maxSimilarity: 0.9,
+        },
+      ],
+    });
+    render(<BrowseClient />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("shown")).toHaveTextContent("1"),
+    );
+    expect(screen.getByTestId("access")).toHaveTextContent("none");
+  });
+
+  it("takes a custom collection's access from the dataset, not Open Access for all", async () => {
+    api.queryUserCollections.mockResolvedValue({
+      items: [{ id: "A", datasets: [{ id: "a1" }, { id: "a2" }] }],
+    });
+    api.queryDatasets.mockResolvedValue({
+      items: [
+        { id: "a1", name: "One", permissions: ["browsedataset"] },
+        { id: "a2", name: "Two" },
+      ],
+    });
+    params = new URLSearchParams({ collection: "A", isCustom: "true" });
+    render(<BrowseClient />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("shown")).toHaveTextContent("2"),
+    );
+    expect(screen.getByTestId("access")).toHaveTextContent("none,none");
   });
 
   it("runs Smart search with the user's text when the retrieval query is too short", async () => {
