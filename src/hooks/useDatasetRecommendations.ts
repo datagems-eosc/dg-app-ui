@@ -4,11 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/hooks/useApi";
 import type { DatasetRecommendationsResult } from "@/lib/datasetRecommendations";
 
-type Request = ReturnType<typeof useApi>["getDatasetRecommendations"];
+type Api = ReturnType<typeof useApi>;
+type Request = Api["getDatasetRecommendations"];
 
 /**
  * The recommendations for a dataset, or null while they load (including
  * while the session has no token yet).
+ *
+ * The dataset's feature status is read first: when it says the recommender
+ * does not know the dataset, the recommender is not asked. Any other status,
+ * or none (refused, failed, missing), leads to the request as before.
  *
  * A refreshed session token is no reason to ask again, with one exception: an
  * expired token is refused like a dataset the user cannot open, so after a
@@ -17,12 +22,14 @@ type Request = ReturnType<typeof useApi>["getDatasetRecommendations"];
 export function useDatasetRecommendations(
   datasetId: string,
 ): DatasetRecommendationsResult | null {
-  const { getDatasetRecommendations, hasToken } = useApi();
-  // The adapter changes with every session token; keep the latest without
-  // making it a request dependency.
+  const { getDatasetRecommendations, getDatasetFeatures, hasToken } = useApi();
+  // The adapters change with every session token; keep the latest without
+  // making them request dependencies.
   const requestRef = useRef(getDatasetRecommendations);
+  const featuresRef = useRef<Api["getDatasetFeatures"]>(getDatasetFeatures);
   useEffect(() => {
     requestRef.current = getDatasetRecommendations;
+    featuresRef.current = getDatasetFeatures;
   });
   // Kept with the dataset it answers, so an answer never shows on another
   // dataset's page, and with the adapter (token) that got it.
@@ -43,9 +50,16 @@ export function useDatasetRecommendations(
   useEffect(() => {
     if (!datasetId || !hasToken || !needsRequest) return;
     const send = requestRef.current;
+    const readFeatures = featuresRef.current;
     let cancelled = false;
-    send(datasetId).then((result) => {
-      if (!cancelled) setAnswer({ datasetId, result, via: send });
+    const ask = async (): Promise<DatasetRecommendationsResult | null> => {
+      const features = await readFeatures(datasetId);
+      if (cancelled) return null;
+      if (features?.recommendation === false) return { status: "notKnown" };
+      return send(datasetId);
+    };
+    ask().then((result) => {
+      if (result && !cancelled) setAnswer({ datasetId, result, via: send });
     });
     return () => {
       cancelled = true;

@@ -12,19 +12,22 @@ import type { DatasetRecommendationsResult } from "@/lib/datasetRecommendations"
 
 const mocks = vi.hoisted(() => {
   const getDatasetRecommendations = vi.fn();
+  const getDatasetFeatures = vi.fn();
   // What useApi hands out now; a new session token gives a new function.
   return {
     getDatasetRecommendations,
+    getDatasetFeatures,
     current: getDatasetRecommendations,
     hasToken: true,
   };
 });
-const { getDatasetRecommendations } = mocks;
+const { getDatasetRecommendations, getDatasetFeatures } = mocks;
 const mockPush = vi.fn();
 
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => ({
     getDatasetRecommendations: mocks.current,
+    getDatasetFeatures: mocks.getDatasetFeatures,
     hasToken: mocks.hasToken,
   }),
 }));
@@ -56,6 +59,8 @@ const announced = () =>
 
 beforeEach(() => {
   getDatasetRecommendations.mockReset();
+  // Feature status unknown unless a test says otherwise: ask as before.
+  getDatasetFeatures.mockReset().mockResolvedValue(null);
   mocks.current = getDatasetRecommendations;
   mocks.hasToken = true;
   mockPush.mockReset();
@@ -116,6 +121,85 @@ describe("DatasetRecommendationsSection — notes", () => {
   );
 });
 
+describe("DatasetRecommendationsSection — feature status", () => {
+  const notKnownNote =
+    "Recommendations are not available for this dataset yet.";
+
+  it("does not ask the recommender about a dataset it does not know", async () => {
+    getDatasetFeatures.mockResolvedValue({ recommendation: false });
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+
+    expect(await screen.findByText(notKnownNote)).toBeInTheDocument();
+    expect(getDatasetFeatures).toHaveBeenCalledWith("d1");
+    expect(getDatasetRecommendations).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", { name: "Recommended datasets" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-placeholder")).toBeNull();
+    expect(announced()).toEqual([notKnownNote]);
+  });
+
+  it.each<[string, unknown]>([
+    ["says the recommender knows it", { recommendation: true }],
+    ["has no recommendation flag", { profiled: true, packaged: false }],
+    ["cannot be read (refused, failed, no session)", null],
+  ])("asks the recommender when the feature status %s", async (_, features) => {
+    getDatasetFeatures.mockResolvedValue(features);
+    getDatasetRecommendations.mockResolvedValue(
+      datasets({ id: "r1", name: "Alpha Dataset" }),
+    );
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+
+    expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
+    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1");
+    expect(screen.queryByText(notKnownNote)).toBeNull();
+  });
+
+  it("keeps loading, without a note, while the feature status is read", async () => {
+    getDatasetFeatures.mockReturnValue(new Promise(() => {}));
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+    await act(async () => {});
+
+    expect(screen.getAllByTestId("recommendation-placeholder")).toHaveLength(6);
+    expect(announced()).toContain("Finding similar datasets");
+    expect(screen.queryByText(notKnownNote)).toBeNull();
+    expect(getDatasetRecommendations).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    "ignores the previous dataset's late feature status (recommendation: %s) after a dataset change",
+    async (previous) => {
+      let resolveFirst: (value: unknown) => void = () => {};
+      getDatasetFeatures
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          }),
+        )
+        .mockResolvedValueOnce({ recommendation: true });
+      getDatasetRecommendations.mockResolvedValue(
+        datasets({ id: "r2", name: "Second Answer" }),
+      );
+
+      const { rerender } = render(
+        <DatasetRecommendationsSection datasetId="d1" />,
+      );
+      rerender(<DatasetRecommendationsSection datasetId="d2" />);
+      await act(async () => {
+        resolveFirst({ recommendation: previous });
+      });
+
+      expect(await screen.findByText("Second Answer")).toBeInTheDocument();
+      expect(screen.queryByText(notKnownNote)).toBeNull();
+      expect(getDatasetRecommendations).toHaveBeenCalledTimes(1);
+      expect(getDatasetRecommendations).toHaveBeenCalledWith("d2");
+    },
+  );
+});
+
 describe("DatasetRecommendationsSection — note announcement", () => {
   it("puts the note in a live region that was already on the page", async () => {
     const request = pending();
@@ -148,6 +232,10 @@ describe("DatasetRecommendationsSection — dataset change", () => {
 
     const { rerender } = render(
       <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    // d1's feature status arrives and its recommendations request goes out.
+    await waitFor(() =>
+      expect(getDatasetRecommendations).toHaveBeenCalledWith("d1"),
     );
     rerender(<DatasetRecommendationsSection datasetId="d2" />);
     await act(async () => {
@@ -199,7 +287,7 @@ describe("DatasetRecommendationsSection — session token refresh", () => {
     expect(screen.getByText("Alpha Dataset")).toBeInTheDocument();
 
     rerender(<DatasetRecommendationsSection datasetId="d2" />);
-    expect(refreshed).toHaveBeenCalledWith("d2");
+    await waitFor(() => expect(refreshed).toHaveBeenCalledWith("d2"));
   });
 
   it("waits for a session token before asking", async () => {

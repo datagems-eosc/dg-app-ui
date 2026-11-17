@@ -39,7 +39,10 @@ export type DatasetRecommendationsResult =
   | { status: "datasets"; datasets: MappedDataset[] }
   | { status: "none" }
   | { status: "noAccess" }
-  | { status: "failed" };
+  | { status: "failed" }
+  // Not asked: the dataset's feature status says the recommender does not
+  // know it (`features.recommendation: false`).
+  | { status: "notKnown" };
 
 /**
  * Reads a successful answer: at most RECOMMENDATION_COUNT datasets, mapped for

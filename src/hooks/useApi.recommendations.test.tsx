@@ -211,3 +211,96 @@ describe("useApi().getDatasetRecommendations", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("useApi().getDatasetFeatures", () => {
+  const respond = (status: number, body: unknown) =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(body), { status })),
+    );
+
+  it("asks for the dataset's features with the bearer token and returns the flags", async () => {
+    respond(200, {
+      id: "d 1",
+      features: { profiled: true, packaged: false, recommendation: false },
+    });
+    const { result } = renderHook(() => useApi());
+
+    await expect(result.current.getDatasetFeatures("d 1")).resolves.toEqual({
+      profiled: true,
+      packaged: false,
+      recommendation: false,
+    });
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toBe(
+      `${API_BASE}/gw/api/dataset/d%201?f=id&f=features`,
+    );
+    expect((init?.headers as Record<string, string>).Authorization).toBe(
+      "Bearer token-1",
+    );
+  });
+
+  it("returns null on 401 and does not sign the user out", async () => {
+    respond(401, { code: 101, error: "insufficient rights" });
+    const { result } = renderHook(() => useApi());
+
+    await expect(result.current.getDatasetFeatures("d1")).resolves.toBeNull();
+    // Only the features call: no session refresh, no sign-out round trip.
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([403, 404, 424, 500])("returns null on HTTP %i", async (status) => {
+    respond(status, { code: 104, error: "System error" });
+    const { result } = renderHook(() => useApi());
+
+    await expect(result.current.getDatasetFeatures("d1")).resolves.toBeNull();
+  });
+
+  it("returns null when the answer has no features", async () => {
+    respond(200, { id: "d1" });
+    const { result } = renderHook(() => useApi());
+
+    await expect(result.current.getDatasetFeatures("d1")).resolves.toBeNull();
+  });
+
+  it("returns null when a successful answer is not JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html>", { status: 200 })),
+    );
+    const { result } = renderHook(() => useApi());
+
+    await expect(result.current.getDatasetFeatures("d1")).resolves.toBeNull();
+  });
+
+  it("returns null when the request cannot be sent", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    const { result } = renderHook(() => useApi());
+
+    await expect(result.current.getDatasetFeatures("d1")).resolves.toBeNull();
+  });
+
+  it("returns null without calling the Gateway when the id cannot go in a URL", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    const { result } = renderHook(() => useApi());
+
+    await expect(
+      result.current.getDatasetFeatures("\uD800"),
+    ).resolves.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns null without calling the Gateway when there is no session token", async () => {
+    mockUseSession.mockReturnValue({ status: "unauthenticated", data: null });
+    vi.stubGlobal("fetch", vi.fn());
+    const { result } = renderHook(() => useApi());
+
+    await expect(result.current.getDatasetFeatures("d1")).resolves.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});

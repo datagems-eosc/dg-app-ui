@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { type DatasetFeatures, featuresFromBody } from "@/lib/datasetFeatures";
 import {
   createDatasetAccessReader,
   type DatasetAccessReader,
@@ -124,6 +125,21 @@ const normalizeGatewayEnvironment = (baseUrl: string): string =>
 
 const readablePrincipalId = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null;
+
+/**
+ * Headers for a Gateway read sent with plain fetch (NOT fetchWithAuth): the
+ * answer is never cached, and a 401 is the caller's to explain, never a reason
+ * to sign the user out.
+ */
+const plainGatewayHeaders = (token: string, requestType: string) => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${token}`,
+  oauth2: token,
+  "Cache-Control": "no-cache, no-store, must-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+  "X-Request-Type": requestType,
+});
 
 export function useApi() {
   const { data: session, status: sessionStatus } = useSession();
@@ -1329,15 +1345,7 @@ export function useApi() {
         // The section explains a refusal instead.
         const response = await fetch(url, {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            oauth2: token,
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-            "X-Request-Type": "getDatasetRecommendations",
-          },
+          headers: plainGatewayHeaders(token, "getDatasetRecommendations"),
         });
 
         if (!response.ok) {
@@ -1358,6 +1366,45 @@ export function useApi() {
       } catch (error) {
         logApiError("getDatasetRecommendations", error, { datasetId });
         return { status: "failed" };
+      }
+    },
+    [token, baseUrl],
+  );
+
+  /**
+   * Which DataGEMS services know the dataset (`features`), or null when that
+   * cannot be read (no session, refused, failed, no `features` in the answer).
+   * Asked on its own request: the Gateway asks the recommender for it, and a
+   * recommender error fails the whole request.
+   */
+  const getDatasetFeatures = useCallback(
+    async (datasetId: string): Promise<DatasetFeatures | null> => {
+      if (!token) return null;
+      try {
+        const url = `${baseUrl}/gw/api/dataset/${encodeURIComponent(
+          datasetId,
+        )}?f=id&f=features`;
+        logApiRequest("getDatasetFeatures", { datasetId });
+        // Plain fetch (NOT fetchWithAuth), like the recommend request: a 401
+        // here only means the status is unknown, never a reason to sign out.
+        const response = await fetch(url, {
+          method: "GET",
+          headers: plainGatewayHeaders(token, "getDatasetFeatures"),
+        });
+        if (!response.ok) {
+          logApiError(
+            "getDatasetFeatures",
+            { status: response.status },
+            { datasetId },
+          );
+          return null;
+        }
+        const features = featuresFromBody(await response.json());
+        logApiResponse("getDatasetFeatures", { datasetId, features });
+        return features;
+      } catch (error) {
+        logApiError("getDatasetFeatures", error, { datasetId });
+        return null;
       }
     },
     [token, baseUrl],
@@ -1949,6 +1996,7 @@ export function useApi() {
     getDatasetById,
     downloadDatasetFile,
     getDatasetRecommendations,
+    getDatasetFeatures,
     getUserFavorites,
     addFavoriteDataset,
     removeFavoriteDataset,

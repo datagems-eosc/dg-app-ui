@@ -21,6 +21,7 @@ const NOTES: Record<
   none: "No similar datasets found.",
   noAccess: "Recommendations are shown only for datasets you have access to.",
   failed: "Recommendations are not available for this dataset right now.",
+  notKnown: "Recommendations are not available for this dataset yet.",
 };
 
 interface DatasetRecommendationsSectionProps {
