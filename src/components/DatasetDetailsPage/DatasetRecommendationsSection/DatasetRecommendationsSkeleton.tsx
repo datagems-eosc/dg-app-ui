@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkingStatus } from "@ui/WorkingStatus";
 import styles from "./DatasetRecommendationsSection.module.scss";
 
 export default function DatasetRecommendationsSkeleton() {
@@ -10,10 +11,13 @@ export default function DatasetRecommendationsSkeleton() {
       >
         Recommended datasets
       </h3>
+      {/* The first answer can take about 40 seconds; no time limit. */}
+      <WorkingStatus messages={["Finding similar datasets"]} />
       <div className={styles.datasetRecommendationsSection__grid}>
         {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}
+            data-testid="recommendation-placeholder"
             className={`${styles.datasetRecommendationsSection__card} ${styles.datasetRecommendationsSection__skeletonCard}`}
           >
             <div className={styles.datasetRecommendationsSection__cardContent}>

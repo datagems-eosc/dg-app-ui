@@ -2,16 +2,27 @@
 
 import { Chip } from "@ui/Chip";
 import FormattedText from "@ui/FormattedText";
+import { Notice } from "@ui/Notice";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getDisplayCollectionLabel } from "@/config/collectionConstants";
 import type { DatasetPlus } from "@/data/dataset";
 import { useApi } from "@/hooks/useApi";
 import { mapApiDatasetToDataset } from "@/lib/datasetMapping";
-import { logError } from "@/lib/logger";
+import type { DatasetRecommendationsResult } from "@/lib/datasetRecommendations";
 import { getNavigationUrl } from "@/lib/utils";
 import styles from "./DatasetRecommendationsSection.module.scss";
 import DatasetRecommendationsSkeleton from "./DatasetRecommendationsSkeleton";
+
+// Proposed wording; accepted in the PR.
+const NOTES: Record<
+  Exclude<DatasetRecommendationsResult["status"], "datasets">,
+  string
+> = {
+  none: "No similar datasets found.",
+  noAccess: "Recommendations are shown only for datasets you have access to.",
+  failed: "Recommendations are not available for this dataset right now.",
+};
 
 interface DatasetRecommendationsSectionProps {
   datasetId: string;
@@ -22,26 +33,19 @@ export default function DatasetRecommendationsSection({
 }: DatasetRecommendationsSectionProps) {
   const router = useRouter();
   const { getDatasetRecommendations } = useApi();
-  const [recommendations, setRecommendations] = useState<DatasetPlus[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Kept with the dataset it answers, so an answer never shows on another
+  // dataset's page.
+  const [answer, setAnswer] = useState<{
+    datasetId: string;
+    result: DatasetRecommendationsResult;
+  } | null>(null);
 
   useEffect(() => {
     if (!datasetId) return;
     let cancelled = false;
-    setIsLoading(true);
-    (async () => {
-      try {
-        const result = await getDatasetRecommendations(datasetId);
-        if (!cancelled) setRecommendations(result.map(mapApiDatasetToDataset));
-      } catch (error) {
-        logError("Failed to load dataset recommendations", error, {
-          datasetId,
-        });
-        if (!cancelled) setRecommendations([]);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
+    getDatasetRecommendations(datasetId).then((result) => {
+      if (!cancelled) setAnswer({ datasetId, result });
+    });
     return () => {
       cancelled = true;
     };
@@ -51,93 +55,89 @@ export default function DatasetRecommendationsSection({
     router.push(getNavigationUrl(`/datasets/${dataset.id}`));
   };
 
-  if (isLoading) return <DatasetRecommendationsSkeleton />;
-  if (recommendations.length === 0) return null;
+  const result = answer?.datasetId === datasetId ? answer.result : null;
+  if (result === null) return <DatasetRecommendationsSkeleton />;
 
   return (
     <div className={styles.datasetRecommendationsSection}>
       <h3 className={styles.datasetRecommendationsSection__title}>
         Recommended datasets
       </h3>
-      <div className={styles.datasetRecommendationsSection__grid}>
-        {recommendations.map((dataset) => {
-          const collectionLabel = getDisplayCollectionLabel(
-            dataset.collections,
-          );
-          return (
-            <div
-              key={dataset.id}
-              className={styles.datasetRecommendationsSection__card}
-              onClick={() => handleCardClick(dataset)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleCardClick(dataset);
-                }
-              }}
-              aria-label={`View details for ${dataset.title}`}
-            >
-              <div
-                className={styles.datasetRecommendationsSection__cardContent}
-              >
+      {result.status === "datasets" ? (
+        <RecommendationGrid
+          recommendations={result.datasets.map(mapApiDatasetToDataset)}
+          onOpen={handleCardClick}
+        />
+      ) : (
+        <Notice tone="neutral" title={NOTES[result.status]} />
+      )}
+    </div>
+  );
+}
+
+function RecommendationGrid({
+  recommendations,
+  onOpen,
+}: {
+  recommendations: DatasetPlus[];
+  onOpen: (dataset: DatasetPlus) => void;
+}) {
+  return (
+    <div className={styles.datasetRecommendationsSection__grid}>
+      {recommendations.map((dataset) => {
+        const collectionLabel = getDisplayCollectionLabel(dataset.collections);
+        return (
+          <div
+            key={dataset.id}
+            className={styles.datasetRecommendationsSection__card}
+            onClick={() => onOpen(dataset)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen(dataset);
+              }
+            }}
+            aria-label={`View details for ${dataset.title}`}
+          >
+            <div className={styles.datasetRecommendationsSection__cardContent}>
+              <div className={styles.datasetRecommendationsSection__cardHeader}>
+                <h4 className={styles.datasetRecommendationsSection__cardTitle}>
+                  {dataset.title}
+                </h4>
+                {/*
+                  Always rendered, so descriptions in one row start at the same
+                  height. No access chip: recommendations carry no publication
+                  evidence (PM-01 F1).
+                */}
                 <div
-                  className={styles.datasetRecommendationsSection__cardHeader}
+                  data-testid="recommendation-chips"
+                  className={styles.datasetRecommendationsSection__cardChips}
                 >
-                  <h4
-                    className={styles.datasetRecommendationsSection__cardTitle}
-                  >
-                    {dataset.title}
-                  </h4>
-                  {(collectionLabel || dataset.access !== undefined) && (
-                    <div
-                      className={
-                        styles.datasetRecommendationsSection__cardChips
-                      }
-                    >
-                      {collectionLabel && (
-                        <Chip color="info" variant="outline" size="sm">
-                          {collectionLabel}
-                        </Chip>
-                      )}
-                      {/*
-                        PM-01 finding F1. `Dataset.access` is optional, and this
-                        chip used to render it unguarded: a dataset with no
-                        publication evidence produced an empty chip coloured as a
-                        warning, which reads as "Restricted" without ever saying
-                        so. Recommendations carry no publication evidence at all
-                        now that the mapper no longer infers it from the caller's
-                        Browse permission, so the honest rendering is no badge —
-                        the card still shows what it does know.
-                      */}
-                      {dataset.access !== undefined && (
-                        <Chip
-                          color={
-                            dataset.access === "Open Access"
-                              ? "success"
-                              : "warning"
-                          }
-                          size="sm"
-                        >
-                          {dataset.access}
-                        </Chip>
-                      )}
-                    </div>
+                  {collectionLabel && (
+                    <Chip color="grey" size="sm" className="min-w-0">
+                      <span className="truncate">{collectionLabel}</span>
+                    </Chip>
+                  )}
+                  {dataset.license && (
+                    <Chip color="success" size="sm" className="min-w-0">
+                      <span className="truncate">{dataset.license}</span>
+                    </Chip>
                   )}
                 </div>
-                <FormattedText
-                  as="p"
-                  className={
-                    styles.datasetRecommendationsSection__cardDescription
-                  }
-                  text={dataset.description || ""}
-                />
               </div>
+              <FormattedText
+                as="p"
+                className={
+                  styles.datasetRecommendationsSection__cardDescription
+                }
+                text={dataset.description || ""}
+              />
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

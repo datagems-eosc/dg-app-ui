@@ -17,6 +17,11 @@ import {
   type DatasetPermissionsGateway,
   type DatasetPermissionsTransport,
 } from "@/lib/datasetPermissions/gateway";
+import {
+  type DatasetRecommendationsResult,
+  recommendationsFromBody,
+  recommendationsFromStatus,
+} from "@/lib/datasetRecommendations";
 import { publicEnv } from "@/lib/env";
 import type { UserFavorite } from "@/lib/favorites";
 import { classifyIntent as classifyIntentRequest } from "@/lib/intentRouting/gateway";
@@ -1319,8 +1324,8 @@ export function useApi() {
         "collections.code",
         "permissions",
       ],
-    ): Promise<any[]> => {
-      if (!token) return [];
+    ): Promise<DatasetRecommendationsResult> => {
+      if (!token) return { status: "failed" };
 
       const params = fields.map((f) => `f=${encodeURIComponent(f)}`);
       params.push(`n=${n}`);
@@ -1334,7 +1339,7 @@ export function useApi() {
         // Plain fetch (NOT fetchWithAuth): the recommend endpoint returns
         // 401 "insufficient rights" for datasets the user can't access, and
         // fetchWithAuth would treat that as an auth failure and force a logout.
-        // Recommendations are a non-critical footer, so degrade to empty.
+        // The section explains a refusal instead.
         const response = await fetch(url, {
           method: "GET",
           headers: {
@@ -1354,19 +1359,18 @@ export function useApi() {
             { status: response.status },
             { datasetId },
           );
-          return [];
+          return recommendationsFromStatus(response.status);
         }
 
-        const result = await response.json();
-        const items = Array.isArray(result) ? result : [];
+        const result = recommendationsFromBody(await response.json());
         logApiResponse("getDatasetRecommendations", {
           datasetId,
-          count: items.length,
+          count: result.status === "datasets" ? result.datasets.length : 0,
         });
-        return items;
+        return result;
       } catch (error) {
         logApiError("getDatasetRecommendations", error, { datasetId });
-        return [];
+        return { status: "failed" };
       }
     },
     [token, baseUrl],

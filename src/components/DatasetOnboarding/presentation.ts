@@ -67,7 +67,9 @@ export type ReadNoticeCode =
   | "read-reference-unavailable"
   | "read-access-unavailable";
 
-export type NoticeTone = "neutral" | "caution" | "problem" | "success";
+import type { NoticeTone } from "@/components/ui/Notice";
+
+export type { NoticeTone };
 
 export interface NoticeCopy {
   readonly tone: NoticeTone;
