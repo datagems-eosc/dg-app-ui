@@ -559,7 +559,8 @@ describe("AddDatasetForm managed submission", () => {
       description: "Hourly readings from the pilot network.",
       license: "cc-by-4.0",
       keywords: ["sensors"],
-      fieldOfScience: ["1.5"],
+      // The vocabulary name the Gateway returns, not its code (`1.5`).
+      fieldOfScience: ["EARTH AND RELATED ENVIRONMENTAL SCIENCES"],
       country: ["US"],
       dataLocations: [{ kind: 0, location: STAGED }],
     });

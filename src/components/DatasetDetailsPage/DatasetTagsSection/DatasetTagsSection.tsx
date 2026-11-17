@@ -35,8 +35,8 @@ export default function DatasetTagsSection({
         {items.map((item, index) => (
           <Chip
             key={index}
-            color="info"
-            variant="outline"
+            color="grey"
+            variant="regular"
             size="sm"
             className="h-auto min-h-8 max-w-full [overflow-wrap:anywhere]"
           >

@@ -1,10 +1,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getDefaultFilters } from "@/config/filterOptions";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import {
   mapApiDatasetToDataset,
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
+import { processFieldsOfScience } from "@/lib/vocabularyService";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -460,6 +462,69 @@ describe("useDatasetSearch", () => {
         "B",
         "No id",
       ]);
+    });
+  });
+
+  describe("field-of-science filter", () => {
+    // Browse loads the vocabulary before a field can be chosen; that load
+    // fills the vocabulary cache the request reads codes from.
+    beforeEach(() => {
+      processFieldsOfScience({
+        hierarchy: [
+          {
+            ordinal: 1,
+            code: "1",
+            name: "NATURAL SCIENCES",
+            children: [
+              { ordinal: 1, code: "1.1", name: "MATHEMATICS" },
+              {
+                ordinal: 2,
+                code: "1.2",
+                name: "COMPUTER AND INFORMATION SCIENCES",
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    const applyFields = async (fieldsOfScience: string[]) => {
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+      act(() =>
+        result.current.onApplyFilters({
+          ...getDefaultFilters(),
+          fieldsOfScience,
+        }),
+      );
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
+      return result;
+    };
+
+    it("sends the selected field's name and its code", async () => {
+      await applyFields(["MATHEMATICS"]);
+
+      expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS", "1.1"]);
+    });
+
+    it("sends two names and two codes for two fields", async () => {
+      await applyFields(["MATHEMATICS", "COMPUTER AND INFORMATION SCIENCES"]);
+
+      expect(lastCatalogue().fieldsOfScience).toEqual([
+        "MATHEMATICS",
+        "1.1",
+        "COMPUTER AND INFORMATION SCIENCES",
+        "1.2",
+      ]);
+    });
+
+    it("sends no field of science once the filter is cleared", async () => {
+      const result = await applyFields(["MATHEMATICS"]);
+
+      act(() => result.current.onApplyFilters(getDefaultFilters()));
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(3));
+
+      expect(lastCatalogue()).not.toHaveProperty("fieldsOfScience");
     });
   });
 

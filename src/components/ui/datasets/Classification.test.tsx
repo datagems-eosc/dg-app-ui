@@ -158,3 +158,84 @@ describe("Classification country requiredness", () => {
     expect(languageInput()).toHaveAttribute("aria-required", "false");
   });
 });
+
+describe("Classification fields of science in the edit view", () => {
+  // `processFieldsOfScience` caches per module and the tests above cache an
+  // empty vocabulary, so each test loads Classification from fresh modules.
+  const loadFresh = async () => {
+    vi.resetModules();
+    return (await import("./Classification")).Classification;
+  };
+
+  const vocabulary = {
+    hierarchy: [
+      {
+        ordinal: 1,
+        code: "1",
+        name: "NATURAL SCIENCES",
+        children: [{ ordinal: 1, code: "1.1", name: "MATHEMATICS" }],
+      },
+      {
+        ordinal: 4,
+        code: "4",
+        name: "AGRICULTURAL SCIENCES",
+        children: [
+          {
+            ordinal: 1,
+            code: "4.1",
+            name: "AGRICULTURE, FORESTRY, AND FISHERIES",
+          },
+        ],
+      },
+    ],
+  };
+
+  const renderPrefilled = async (fieldsOfScience: string[]) => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getFieldsOfScience: vi.fn().mockResolvedValue(vocabulary),
+      getLicenses: vi.fn().mockResolvedValue([]),
+    });
+    const Fresh = await loadFresh();
+    const onChange = vi.fn();
+    render(
+      <Fresh
+        data={{ ...data, fieldsOfScience }}
+        onChange={onChange}
+        errors={{}}
+      />,
+    );
+    const user = userEvent.setup();
+    await waitFor(() => {
+      expect(screen.getByText("Natural sciences")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Natural sciences"));
+    await user.click(screen.getByText("Agricultural sciences"));
+    return { onChange };
+  };
+
+  it("shows a field stored as a code as selected", async () => {
+    const { onChange } = await renderPrefilled(["4.1"]);
+
+    expect(
+      screen.getByLabelText("Agriculture, forestry, and fisheries"),
+    ).toBeChecked();
+    expect(screen.getByLabelText("Mathematics")).not.toBeChecked();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("shows a field stored by name in other casing as selected", async () => {
+    await renderPrefilled(["Mathematics"]);
+
+    expect(screen.getByLabelText("Mathematics")).toBeChecked();
+  });
+
+  it("selects nothing for a stored value the vocabulary does not know", async () => {
+    await renderPrefilled(["dataset-test-A"]);
+
+    expect(screen.getByLabelText("Mathematics")).not.toBeChecked();
+    expect(
+      screen.getByLabelText("Agriculture, forestry, and fisheries"),
+    ).not.toBeChecked();
+  });
+});

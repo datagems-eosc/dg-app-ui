@@ -15,6 +15,7 @@ import {
 } from "@/config/filterOptions";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useApi } from "@/hooks/useApi";
+import { toFieldOfScienceOptionValues } from "@/lib/fieldsOfScience";
 import { logError } from "@/lib/logger";
 import HierarchicalDropdown, {
   type HierarchicalCategory,
@@ -278,7 +279,12 @@ export function Classification({
           </div>
         ) : (
           <HierarchicalDropdown
-            value={data.fieldsOfScience}
+            // A dataset opened for editing may store codes or names in any
+            // casing; select the matching vocabulary fields.
+            value={toFieldOfScienceOptionValues(
+              data.fieldsOfScience,
+              fieldsOfScienceCategories,
+            )}
             onChange={(value) => handleFieldChange("fieldsOfScience", value)}
             categories={fieldsOfScienceCategories}
             placeholder="Search..."

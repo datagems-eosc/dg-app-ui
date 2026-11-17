@@ -32,7 +32,8 @@ function convertToHierarchicalCategories(
       options:
         item.children?.map((childItem) => {
           return {
-            value: childItem.code,
+            // Datasets store and are searched by the vocabulary name.
+            value: childItem.name,
             label:
               childItem.name.charAt(0).toUpperCase() +
               childItem.name.slice(1).toLowerCase(),
@@ -67,6 +68,11 @@ export function processFieldsOfScience(
     // Return empty array as fallback
     return [];
   }
+}
+
+/** The fields-of-science vocabulary once loaded, otherwise `null`. */
+export function cachedFieldsOfScience(): HierarchicalCategory[] | null {
+  return fieldsOfScienceCache;
 }
 
 export function processLicenses(
