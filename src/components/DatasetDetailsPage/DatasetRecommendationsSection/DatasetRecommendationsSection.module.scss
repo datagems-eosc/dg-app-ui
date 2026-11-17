@@ -117,7 +117,6 @@
     background: $color-border;
     border-radius: $border-radius-sm;
     animation: pulse 1.5s ease-in-out infinite;
-    height: 100%;
   }
 
   &__skeletonChip {
@@ -125,9 +124,15 @@
     width: 80px;
   }
 
+  // Two bars fill the description's two lines, so a placeholder card is as
+  // tall as a real one and nothing jumps when the answer arrives.
   &__skeletonDescription {
     @include flex-column;
     gap: $spacing-xs;
+
+    > * {
+      height: calc(1lh - #{$spacing-xs} / 2);
+    }
   }
 }
 
