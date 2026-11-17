@@ -126,21 +126,6 @@ const normalizeGatewayEnvironment = (baseUrl: string): string =>
 const readablePrincipalId = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null;
 
-/**
- * Headers for a Gateway read sent with plain fetch (NOT fetchWithAuth): the
- * answer is never cached, and a 401 is the caller's to explain, never a reason
- * to sign the user out.
- */
-const plainGatewayHeaders = (token: string, requestType: string) => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-  oauth2: token,
-  "Cache-Control": "no-cache, no-store, must-revalidate",
-  Pragma: "no-cache",
-  Expires: "0",
-  "X-Request-Type": requestType,
-});
-
 export function useApi() {
   const { data: session, status: sessionStatus } = useSession();
   const token = (session as any)?.accessToken;
@@ -1330,7 +1315,7 @@ export function useApi() {
       // Everything below answers with a result: building the URL can throw
       // too (a URIError on a malformed id).
       try {
-        const url = `${baseUrl}/gw/api/search/dataset/${encodeURIComponent(
+        const endpoint = `/search/dataset/${encodeURIComponent(
           datasetId,
         )}/recommend?${RECOMMENDATION_QUERY}`;
 
@@ -1339,14 +1324,17 @@ export function useApi() {
           n: RECOMMENDATION_COUNT,
         });
 
-        // Plain fetch (NOT fetchWithAuth): the recommend endpoint returns
+        // No refresh and no sign-out on 401: the recommend endpoint answers
         // 401 "insufficient rights" for datasets the user can't access, and
-        // fetchWithAuth would treat that as an auth failure and force a logout.
-        // The section explains a refusal instead.
-        const response = await fetch(url, {
-          method: "GET",
-          headers: plainGatewayHeaders(token, "getDatasetRecommendations"),
-        });
+        // the section explains that refusal instead.
+        const response = await makeRequest(
+          endpoint,
+          {
+            method: "GET",
+            headers: { "X-Request-Type": "getDatasetRecommendations" },
+          },
+          { retryOn401: false },
+        );
 
         if (!response.ok) {
           logApiError(
@@ -1368,7 +1356,7 @@ export function useApi() {
         return { status: "failed" };
       }
     },
-    [token, baseUrl],
+    [token, makeRequest],
   );
 
   /**
@@ -1381,16 +1369,19 @@ export function useApi() {
     async (datasetId: string): Promise<DatasetFeatures | null> => {
       if (!token) return null;
       try {
-        const url = `${baseUrl}/gw/api/dataset/${encodeURIComponent(
+        const endpoint = `/dataset/${encodeURIComponent(
           datasetId,
         )}?f=id&f=features`;
         logApiRequest("getDatasetFeatures", { datasetId });
-        // Plain fetch (NOT fetchWithAuth), like the recommend request: a 401
-        // here only means the status is unknown, never a reason to sign out.
-        const response = await fetch(url, {
-          method: "GET",
-          headers: plainGatewayHeaders(token, "getDatasetFeatures"),
-        });
+        // A 401 here only means the status is unknown: no refresh, no sign-out.
+        const response = await makeRequest(
+          endpoint,
+          {
+            method: "GET",
+            headers: { "X-Request-Type": "getDatasetFeatures" },
+          },
+          { retryOn401: false },
+        );
         if (!response.ok) {
           logApiError(
             "getDatasetFeatures",
@@ -1407,7 +1398,7 @@ export function useApi() {
         return null;
       }
     },
-    [token, baseUrl],
+    [token, makeRequest],
   );
 
   const getUserFavorites = useCallback(

@@ -52,11 +52,13 @@ export function useDatasetRecommendations(
     const send = requestRef.current;
     const readFeatures = featuresRef.current;
     let cancelled = false;
+    // Backstop only: the adapters never reject. If one did, the section must
+    // not stay loading.
     const ask = async (): Promise<DatasetRecommendationsResult | null> => {
-      const features = await readFeatures(datasetId);
+      const features = await readFeatures(datasetId).catch(() => null);
       if (cancelled) return null;
       if (features?.recommendation === false) return { status: "notKnown" };
-      return send(datasetId);
+      return send(datasetId).catch(() => ({ status: "failed" }) as const);
     };
     ask().then((result) => {
       if (result && !cancelled) setAnswer({ datasetId, result, via: send });
@@ -66,5 +68,7 @@ export function useDatasetRecommendations(
     };
   }, [datasetId, hasToken, needsRequest, current]);
 
+  // A refusal stays up while a newer token is tried: the token rotates every
+  // few minutes, and a refused page must not flash loading each time.
   return current?.result ?? null;
 }

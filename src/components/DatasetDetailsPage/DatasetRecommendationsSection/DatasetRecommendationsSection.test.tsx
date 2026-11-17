@@ -200,6 +200,33 @@ describe("DatasetRecommendationsSection — feature status", () => {
   );
 });
 
+describe("DatasetRecommendationsSection — rejected request", () => {
+  it("asks the recommender when the feature status request rejects", async () => {
+    getDatasetFeatures.mockRejectedValue(new Error("boom"));
+    getDatasetRecommendations.mockResolvedValue(
+      datasets({ id: "r1", name: "Alpha Dataset" }),
+    );
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+
+    expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
+    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1");
+  });
+
+  it("shows the not-available note when the recommendations request rejects", async () => {
+    getDatasetRecommendations.mockRejectedValue(new Error("boom"));
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+
+    expect(
+      await screen.findByText(
+        "Recommendations are not available for this dataset right now.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-placeholder")).toBeNull();
+  });
+});
+
 describe("DatasetRecommendationsSection — note announcement", () => {
   it("puts the note in a live region that was already on the page", async () => {
     const request = pending();
@@ -329,6 +356,26 @@ describe("DatasetRecommendationsSection — session token refresh", () => {
     expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
     expect(refreshed).toHaveBeenCalledTimes(1);
     expect(refreshed).toHaveBeenCalledWith("d1");
+  });
+
+  // The token rotates every few minutes; a refused page must not flash the
+  // loading state and announce the same refusal again each time.
+  it("keeps the no-access note, not loading, while the refreshed token is tried", async () => {
+    const note =
+      "Recommendations are shown only for datasets you have access to.";
+    getDatasetRecommendations.mockResolvedValue({ status: "noAccess" });
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await screen.findByText(note);
+
+    const refreshed = vi.fn().mockReturnValue(pending().promise);
+    mocks.current = refreshed;
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+    await waitFor(() => expect(refreshed).toHaveBeenCalledTimes(1));
+
+    expect(announced()).toEqual([note]);
+    expect(screen.queryByTestId("recommendation-placeholder")).toBeNull();
   });
 
   it("asks once more when the token refreshes while a refused request is out", async () => {
@@ -554,9 +601,13 @@ describe("DatasetRecommendationsSection — card chips", () => {
   });
 
   it("shows no access chip even when the dataset carries an access value", async () => {
-    getDatasetRecommendations.mockResolvedValue(
-      datasets({ id: "r1", name: "Alpha Dataset", access: "Open Access" }),
-    );
+    // Built by hand: the mapper never sets `access`, so it has to be put on
+    // the mapped dataset for this test to be able to fail.
+    const mapped = mapApiDatasetToDataset({ id: "r1", name: "Alpha Dataset" });
+    getDatasetRecommendations.mockResolvedValue({
+      status: "datasets",
+      datasets: [{ ...mapped, access: "Open Access" }],
+    });
 
     render(<DatasetRecommendationsSection datasetId="d1" />);
     await screen.findByText("Alpha Dataset");

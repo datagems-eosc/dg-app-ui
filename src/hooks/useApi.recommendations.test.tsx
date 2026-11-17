@@ -13,6 +13,7 @@ vi.mock("@/lib/logger", async (importOriginal) => {
   return { ...actual, logApiError: vi.fn(), logWarn: vi.fn() };
 });
 
+import { getSession } from "next-auth/react";
 import { logApiError, logWarn } from "@/lib/logger";
 import { useApi } from "./useApi";
 
@@ -131,13 +132,14 @@ describe("useApi().getDatasetRecommendations", () => {
     ).resolves.toEqual({ status: "none" });
   });
 
-  it("returns none when a successful answer is not a list", async () => {
+  // An answer outside the contract is unknown, not "none": fail closed.
+  it("returns failed when a successful answer is not a list", async () => {
     respond(200, { items: [] });
     const { result } = renderHook(() => useApi());
 
     await expect(
       result.current.getDatasetRecommendations("d1"),
-    ).resolves.toEqual({ status: "none" });
+    ).resolves.toEqual({ status: "failed" });
   });
 
   it("returns no access on 401 and does not sign the user out", async () => {
@@ -149,6 +151,7 @@ describe("useApi().getDatasetRecommendations", () => {
     ).resolves.toEqual({ status: "noAccess" });
     // Only the recommend call: no session refresh, no sign-out round trip.
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(getSession).not.toHaveBeenCalled();
   });
 
   it.each([424, 403, 404, 500, 502])(
@@ -247,6 +250,7 @@ describe("useApi().getDatasetFeatures", () => {
     await expect(result.current.getDatasetFeatures("d1")).resolves.toBeNull();
     // Only the features call: no session refresh, no sign-out round trip.
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(getSession).not.toHaveBeenCalled();
   });
 
   it.each([403, 404, 424, 500])("returns null on HTTP %i", async (status) => {
