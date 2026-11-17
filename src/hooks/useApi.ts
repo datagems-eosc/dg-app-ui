@@ -19,6 +19,8 @@ import {
 } from "@/lib/datasetPermissions/gateway";
 import {
   type DatasetRecommendationsResult,
+  RECOMMENDATION_COUNT,
+  RECOMMENDATION_QUERY,
   recommendationsFromBody,
   recommendationsFromStatus,
 } from "@/lib/datasetRecommendations";
@@ -1306,36 +1308,21 @@ export function useApi() {
   );
 
   const getDatasetRecommendations = useCallback(
-    async (
-      datasetId: string,
-      n = 6,
-      fields: string[] = [
-        "id",
-        "name",
-        "description",
-        "keywords",
-        "fieldOfScience",
-        "license",
-        "url",
-        "mimeType",
-        "datePublished",
-        "collections.id",
-        "collections.name",
-        "collections.code",
-        "permissions",
-      ],
-    ): Promise<DatasetRecommendationsResult> => {
+    async (datasetId: string): Promise<DatasetRecommendationsResult> => {
       if (!token) return { status: "failed" };
 
-      const params = fields.map((f) => `f=${encodeURIComponent(f)}`);
-      params.push(`n=${n}`);
-      const url = `${baseUrl}/gw/api/search/dataset/${encodeURIComponent(
-        datasetId,
-      )}/recommend?${params.join("&")}`;
-
-      logApiRequest("getDatasetRecommendations", { datasetId, n });
-
+      // Everything below answers with a result: building the URL can throw
+      // too (a URIError on a malformed id).
       try {
+        const url = `${baseUrl}/gw/api/search/dataset/${encodeURIComponent(
+          datasetId,
+        )}/recommend?${RECOMMENDATION_QUERY}`;
+
+        logApiRequest("getDatasetRecommendations", {
+          datasetId,
+          n: RECOMMENDATION_COUNT,
+        });
+
         // Plain fetch (NOT fetchWithAuth): the recommend endpoint returns
         // 401 "insufficient rights" for datasets the user can't access, and
         // fetchWithAuth would treat that as an auth failure and force a logout.

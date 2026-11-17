@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Button } from "./Button";
-import { Notice } from "./Notice";
+import { InlineNotice, Notice } from "./Notice";
 
 const meta: Meta<typeof Notice> = {
   title: "UI/Notice",
@@ -60,10 +60,40 @@ export const ActiveWithAction: Story = {
     body: "This usually takes a few minutes.",
     active: true,
     emphasis: true,
-    children: (
+    actions: (
       <Button type="button" variant="outline">
         Refresh status
       </Button>
+    ),
+  },
+};
+
+/** Inside a panel: a short line that qualifies the content next to it. */
+export const Inline: Story = {
+  render: () => (
+    <InlineNotice
+      tone="caution"
+      title="Processing steps are unavailable."
+      body="The list below may be incomplete."
+      actions={
+        <Button type="button" variant="outline" size="sm">
+          Reload steps
+        </Button>
+      }
+    />
+  ),
+};
+
+/** Dataset adding: a body with a list, as the upload form uses it. */
+export const ListBody: Story = {
+  args: {
+    tone: "problem",
+    title: "Some files need attention",
+    body: (
+      <ul className="list-disc space-y-1 pl-5">
+        <li>measurements_2024_very_long_file_name_without_breaks.csv</li>
+        <li>stations.json</li>
+      </ul>
     ),
   },
 };

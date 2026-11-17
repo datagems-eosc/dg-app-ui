@@ -81,16 +81,28 @@ describe("useApi().getDatasetRecommendations", () => {
       vi.fn(async () => new Response(JSON.stringify(body), { status })),
     );
 
-  it("returns the datasets when the recommender answers with some", async () => {
-    respond(200, [{ id: "r1", name: "Alpha" }]);
+  it("returns the datasets, mapped for display, when the recommender answers with some", async () => {
+    respond(200, [{ id: "r1", name: "Alpha", license: "MIT" }]);
     const { result } = renderHook(() => useApi());
 
     await expect(
       result.current.getDatasetRecommendations("d1"),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       status: "datasets",
-      datasets: [{ id: "r1", name: "Alpha" }],
+      datasets: [{ id: "r1", title: "Alpha", license: "MIT" }],
     });
+  });
+
+  it("keeps at most six datasets when the answer holds more", async () => {
+    respond(
+      200,
+      Array.from({ length: 7 }, (_, i) => ({ id: `r${i}`, name: `D${i}` })),
+    );
+    const { result } = renderHook(() => useApi());
+
+    const answer = await result.current.getDatasetRecommendations("d1");
+
+    expect(answer.status === "datasets" && answer.datasets).toHaveLength(6);
   });
 
   it("asks for six recommendations of the given dataset with the bearer token", async () => {
@@ -175,6 +187,17 @@ describe("useApi().getDatasetRecommendations", () => {
     await expect(
       result.current.getDatasetRecommendations("d1"),
     ).resolves.toEqual({ status: "failed" });
+  });
+
+  it("returns failed without calling the Gateway when the id cannot go in a URL", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    const { result } = renderHook(() => useApi());
+
+    // A lone surrogate makes encodeURIComponent throw a URIError.
+    await expect(
+      result.current.getDatasetRecommendations("\uD800"),
+    ).resolves.toEqual({ status: "failed" });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("returns failed without calling the Gateway when there is no session token", async () => {

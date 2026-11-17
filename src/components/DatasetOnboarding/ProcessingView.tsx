@@ -26,27 +26,13 @@
  *    anywhere.
  */
 
-import {
-  CircleX,
-  Info,
-  LoaderCircle,
-  RefreshCw,
-  TriangleAlert,
-} from "lucide-react";
-import {
-  type ReactNode,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+// clsx, not cn: tailwind-merge drops the text-body-* typography classes when
+// a text colour is merged in the same call.
+import { clsx } from "clsx";
+import { RefreshCw } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import {
-  NOTICE_TONE_ICON,
-  NOTICE_TONE_TITLE,
-  Notice,
-} from "@/components/ui/Notice";
+import { InlineNotice, Notice } from "@/components/ui/Notice";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { hasNotice } from "@/lib/datasetOnboarding/model";
 import type {
@@ -72,76 +58,6 @@ import {
 import { StageList } from "./StageList";
 
 export const PROCESSING_HEADING_ID = "dataset-processing-heading";
-
-// ---------------------------------------------------------------------------
-// Inline note
-// ---------------------------------------------------------------------------
-
-/**
- * Joins class names without running tailwind-merge.
- *
- * The shared `cn` helper merges through tailwind-merge, which classifies this
- * project's custom typography classes (`text-body-14-regular`,
- * `text-H2-32-semibold`, ...) as `text-*` utilities and therefore drops them
- * whenever a text colour is merged in the same call — verified in this
- * workspace, and the reason a typography class silently disappears from the
- * rendered markup. Typography and colour do not conflict in CSS, so they are
- * concatenated here. The shared helper is protected baseline and is left
- * untouched; the finding is recorded in the handback.
- */
-const classes = (
-  ...values: ReadonlyArray<string | false | undefined>
-): string => values.filter(Boolean).join(" ");
-
-/**
- * A short line inside a panel, for a fact that qualifies the content right
- * next to it (the steps list, the dataset action). A full banner there would
- * turn every qualification into another warning box.
- */
-const InlineNote = ({
-  copy,
-  busy = false,
-  children,
-}: {
-  copy: NoticeCopy;
-  busy?: boolean;
-  children?: ReactNode;
-}) => {
-  const iconClass = classes(
-    "mt-0.5 h-4 w-4 shrink-0",
-    NOTICE_TONE_ICON[copy.tone],
-  );
-  const Icon = busy
-    ? LoaderCircle
-    : copy.tone === "caution"
-      ? TriangleAlert
-      : copy.tone === "problem"
-        ? CircleX
-        : Info;
-  return (
-    <div className="flex items-start gap-2">
-      <Icon
-        className={classes(
-          iconClass,
-          busy && "animate-spin motion-reduce:animate-none",
-        )}
-        aria-hidden="true"
-      />
-      <div className="min-w-0 flex-1">
-        <p
-          className={classes(
-            "break-words text-body-14-regular",
-            NOTICE_TONE_TITLE[copy.tone],
-          )}
-        >
-          {copy.title}
-          {copy.body === undefined ? null : ` ${copy.body}`}
-        </p>
-        {children === undefined ? null : <div className="mt-2">{children}</div>}
-      </div>
-    </div>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // Notice placement
@@ -368,7 +284,7 @@ export function ProcessingView({
           className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm bg-white transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <RefreshCw
-            className={classes(
+            className={clsx(
               "h-5 w-5 text-icon",
               updating && "animate-spin motion-reduce:animate-none",
             )}
@@ -436,13 +352,14 @@ export function ProcessingView({
         // A spinner must not suggest progress we cannot currently observe.
         active={headline.active && !hasConnectionProblem}
         emphasis
-      >
-        {!showStepsPanel && showRefresh ? (
-          <Button type="button" variant="outline" onClick={onCheckAgain}>
-            Refresh status
-          </Button>
-        ) : undefined}
-      </Notice>
+        actions={
+          !showStepsPanel && showRefresh ? (
+            <Button type="button" variant="outline" onClick={onCheckAgain}>
+              Refresh status
+            </Button>
+          ) : undefined
+        }
+      />
 
       {readHealthNotices.length === 0 &&
       (readNotice === null || promoted) ? null : (
@@ -484,7 +401,7 @@ export function ProcessingView({
                 {updateStatusText === "" ? null : (
                   <span
                     id={updateStatusId}
-                    className={classes(
+                    className={clsx(
                       "text-body-14-regular",
                       updateStatus === "retrying" || updateStatus === "stopped"
                         ? "text-amber-800"
@@ -501,18 +418,22 @@ export function ProcessingView({
           {stepNotices.length === 0 ? null : (
             <div className="mt-3 flex flex-col gap-2">
               {stepNotices.map((code) => (
-                <InlineNote key={code} copy={noticeCopyOf(code)}>
-                  {code === "configuration-unavailable" && showReloadSteps ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={onRetryConfiguration}
-                    >
-                      Reload steps
-                    </Button>
-                  ) : undefined}
-                </InlineNote>
+                <InlineNotice
+                  key={code}
+                  {...noticeCopyOf(code)}
+                  actions={
+                    code === "configuration-unavailable" && showReloadSteps ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onRetryConfiguration}
+                      >
+                        Reload steps
+                      </Button>
+                    ) : undefined
+                  }
+                />
               ))}
             </div>
           )}
@@ -551,9 +472,9 @@ export function ProcessingView({
       {availabilityCopy === null && !showViewDataset ? null : (
         <div className="flex flex-col gap-3">
           {availabilityCopy === null ? null : (
-            <InlineNote
-              copy={availabilityCopy}
-              busy={read.checkingAccess === true}
+            <InlineNotice
+              {...availabilityCopy}
+              active={read.checkingAccess === true}
             />
           )}
           {showLocalCheck || showViewDataset ? (

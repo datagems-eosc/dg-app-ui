@@ -7,15 +7,26 @@ import {
   within,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mapApiDatasetToDataset } from "@/lib/datasetMapping";
 import type { DatasetRecommendationsResult } from "@/lib/datasetRecommendations";
 
-const { getDatasetRecommendations } = vi.hoisted(() => ({
-  getDatasetRecommendations: vi.fn(),
-}));
+const mocks = vi.hoisted(() => {
+  const getDatasetRecommendations = vi.fn();
+  // What useApi hands out now; a new session token gives a new function.
+  return {
+    getDatasetRecommendations,
+    current: getDatasetRecommendations,
+    hasToken: true,
+  };
+});
+const { getDatasetRecommendations } = mocks;
 const mockPush = vi.fn();
 
 vi.mock("@/hooks/useApi", () => ({
-  useApi: () => ({ getDatasetRecommendations }),
+  useApi: () => ({
+    getDatasetRecommendations: mocks.current,
+    hasToken: mocks.hasToken,
+  }),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -23,9 +34,13 @@ vi.mock("next/navigation", () => ({
 
 import DatasetRecommendationsSection from "./DatasetRecommendationsSection";
 
+/** The adapter's answer for these Gateway items, mapped as it maps them. */
 const datasets = (
   ...items: Record<string, unknown>[]
-): DatasetRecommendationsResult => ({ status: "datasets", datasets: items });
+): DatasetRecommendationsResult => ({
+  status: "datasets",
+  datasets: items.map(mapApiDatasetToDataset),
+});
 
 const pending = () => {
   let resolve: (value: DatasetRecommendationsResult) => void = () => {};
@@ -35,8 +50,14 @@ const pending = () => {
   return { promise, resolve };
 };
 
+/** What every live region currently holds. */
+const announced = () =>
+  screen.getAllByRole("status").map((element) => element.textContent);
+
 beforeEach(() => {
   getDatasetRecommendations.mockReset();
+  mocks.current = getDatasetRecommendations;
+  mocks.hasToken = true;
   mockPush.mockReset();
 });
 
@@ -48,9 +69,7 @@ describe("DatasetRecommendationsSection — loading", () => {
 
     expect(screen.getByText("Recommended datasets")).toBeInTheDocument();
     expect(screen.getAllByTestId("recommendation-placeholder")).toHaveLength(6);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Finding similar datasets",
-    );
+    expect(announced()).toContain("Finding similar datasets");
   });
 
   it("replaces the placeholders with the recommended datasets", async () => {
@@ -66,7 +85,7 @@ describe("DatasetRecommendationsSection — loading", () => {
       expect(screen.getByText("Alpha Dataset")).toBeInTheDocument(),
     );
     expect(screen.queryByTestId("recommendation-placeholder")).toBeNull();
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(announced()).toEqual([""]);
     expect(getDatasetRecommendations).toHaveBeenCalledWith("d1");
   });
 });
@@ -92,9 +111,31 @@ describe("DatasetRecommendationsSection — notes", () => {
       ).toBeInTheDocument();
       expect(screen.queryByRole("button")).toBeNull();
       expect(screen.queryByTestId("recommendation-placeholder")).toBeNull();
-      expect(screen.queryByRole("status")).toBeNull();
+      expect(announced()).toEqual([note]);
     },
   );
+});
+
+describe("DatasetRecommendationsSection — note announcement", () => {
+  it("puts the note in a live region that was already on the page", async () => {
+    const request = pending();
+    getDatasetRecommendations.mockReturnValue(request.promise);
+
+    render(<DatasetRecommendationsSection datasetId="d1" />);
+    // Screen readers skip a live region that appears with its text in it.
+    const region = screen
+      .getAllByRole("status")
+      .find((element) => element.textContent === "");
+    expect(region).toBeDefined();
+
+    await act(async () => {
+      request.resolve({ status: "none" });
+      await request.promise;
+    });
+
+    expect(region).toHaveTextContent("No similar datasets found.");
+    expect(region).toBeInTheDocument();
+  });
 });
 
 describe("DatasetRecommendationsSection — dataset change", () => {
@@ -136,6 +177,144 @@ describe("DatasetRecommendationsSection — dataset change", () => {
 
     expect(screen.queryByText("Old Answer")).toBeNull();
     expect(screen.getAllByTestId("recommendation-placeholder")).toHaveLength(6);
+  });
+});
+
+describe("DatasetRecommendationsSection — session token refresh", () => {
+  it("keeps the answer and uses the new token only for another dataset", async () => {
+    getDatasetRecommendations.mockResolvedValue(
+      datasets({ id: "r1", name: "Alpha Dataset" }),
+    );
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await screen.findByText("Alpha Dataset");
+
+    const refreshed = vi.fn().mockResolvedValue({ status: "failed" });
+    mocks.current = refreshed;
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+    await act(async () => {});
+
+    expect(refreshed).not.toHaveBeenCalled();
+    expect(screen.getByText("Alpha Dataset")).toBeInTheDocument();
+
+    rerender(<DatasetRecommendationsSection datasetId="d2" />);
+    expect(refreshed).toHaveBeenCalledWith("d2");
+  });
+
+  it("waits for a session token before asking", async () => {
+    mocks.hasToken = false;
+    getDatasetRecommendations.mockResolvedValue(
+      datasets({ id: "r1", name: "Alpha Dataset" }),
+    );
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await act(async () => {});
+
+    expect(getDatasetRecommendations).not.toHaveBeenCalled();
+    expect(screen.getAllByTestId("recommendation-placeholder")).toHaveLength(6);
+
+    mocks.hasToken = true;
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+
+    expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
+    expect(getDatasetRecommendations).toHaveBeenCalledTimes(1);
+  });
+
+  // An expired token also answers 401; the refreshed one may be let in.
+  it("asks once more with a refreshed token after a no-access answer", async () => {
+    getDatasetRecommendations.mockResolvedValue({ status: "noAccess" });
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await screen.findByText(
+      "Recommendations are shown only for datasets you have access to.",
+    );
+
+    const refreshed = vi
+      .fn()
+      .mockResolvedValue(datasets({ id: "r1", name: "Alpha Dataset" }));
+    mocks.current = refreshed;
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+
+    expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
+    expect(refreshed).toHaveBeenCalledTimes(1);
+    expect(refreshed).toHaveBeenCalledWith("d1");
+  });
+
+  it("asks once more when the token refreshes while a refused request is out", async () => {
+    const first = pending();
+    getDatasetRecommendations.mockReturnValue(first.promise);
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+
+    const refreshed = vi
+      .fn()
+      .mockResolvedValue(datasets({ id: "r1", name: "Alpha Dataset" }));
+    mocks.current = refreshed;
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+    await act(async () => {
+      first.resolve({ status: "noAccess" });
+      await first.promise;
+    });
+
+    expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
+    expect(refreshed).toHaveBeenCalledTimes(1);
+    expect(refreshed).toHaveBeenCalledWith("d1");
+  });
+
+  it("tries the newest token when another refresh comes during the retry", async () => {
+    const first = pending();
+    getDatasetRecommendations.mockReturnValue(first.promise);
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+
+    const retry = pending();
+    const second = vi.fn().mockReturnValue(retry.promise);
+    mocks.current = second;
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+    await act(async () => {
+      first.resolve({ status: "noAccess" });
+      await first.promise;
+    });
+    expect(second).toHaveBeenCalledTimes(1);
+
+    const third = vi
+      .fn()
+      .mockResolvedValue(datasets({ id: "r1", name: "Alpha Dataset" }));
+    mocks.current = third;
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+    await act(async () => {
+      retry.resolve({ status: "noAccess" });
+      await retry.promise;
+    });
+
+    expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
+    expect(third).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the no-access note when the refreshed token is refused too", async () => {
+    const note =
+      "Recommendations are shown only for datasets you have access to.";
+    getDatasetRecommendations.mockResolvedValue({ status: "noAccess" });
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await screen.findByText(note);
+
+    const refreshed = vi.fn().mockResolvedValue({ status: "noAccess" });
+    mocks.current = refreshed;
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+    await act(async () => {});
+    rerender(<DatasetRecommendationsSection datasetId="d1" />);
+    await act(async () => {});
+
+    expect(refreshed).toHaveBeenCalledTimes(1);
+    expect(getDatasetRecommendations).toHaveBeenCalledTimes(1);
+    expect(announced()).toEqual([note]);
   });
 });
 
@@ -235,7 +414,7 @@ describe("DatasetRecommendationsSection — card chips", () => {
       "recommendation-chips",
     );
 
-  it("shows the collection as a filled grey chip and the licence as a green chip", async () => {
+  it("shows the collection chip and the licence chip", async () => {
     getDatasetRecommendations.mockResolvedValue(
       datasets({
         id: "r1",
@@ -249,12 +428,9 @@ describe("DatasetRecommendationsSection — card chips", () => {
     await screen.findByText("Alpha Dataset");
 
     const chips = chipsOf("Alpha Dataset");
-    expect(
-      within(chips).getByText("Meteo").closest(".rounded-full"),
-    ).toHaveClass("bg-slate-100");
-    expect(
-      within(chips).getByText("CC BY 4.0").closest(".rounded-full"),
-    ).toHaveClass("bg-emerald-50");
+    expect(chips.children).toHaveLength(2);
+    expect(within(chips).getByText("Meteo")).toBeVisible();
+    expect(within(chips).getByText("CC BY 4.0")).toBeVisible();
   });
 
   it("shows only the licence chip when there is no collection", async () => {

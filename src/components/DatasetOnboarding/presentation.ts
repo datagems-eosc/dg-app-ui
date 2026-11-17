@@ -19,6 +19,7 @@
  * cannot be sure (requests, configuration, raw outcomes) stay in code comments.
  */
 
+import type { NoticeTone } from "@/components/ui/Notice";
 import type {
   DefinitionKind,
   GatewayFailure,
@@ -66,10 +67,6 @@ export type ReadNoticeCode =
   | "read-reference-invalid"
   | "read-reference-unavailable"
   | "read-access-unavailable";
-
-import type { NoticeTone } from "@/components/ui/Notice";
-
-export type { NoticeTone };
 
 export interface NoticeCopy {
   readonly tone: NoticeTone;

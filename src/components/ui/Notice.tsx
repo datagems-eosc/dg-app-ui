@@ -1,103 +1,148 @@
+// clsx, not cn: tailwind-merge drops the text-body-* typography classes when
+// a text colour is merged in the same call.
+import { clsx } from "clsx";
 import {
   CircleCheck,
   CircleX,
   Info,
   LoaderCircle,
+  type LucideIcon,
   TriangleAlert,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type NoticeTone = "neutral" | "caution" | "problem" | "success";
 
+interface ToneStyle {
+  surface: string;
+  title: string;
+  body: string;
+  icon: string;
+  Glyph: LucideIcon;
+}
+
+const TONES: Record<NoticeTone, ToneStyle> = {
+  neutral: {
+    surface: "border-slate-200 bg-slate-75",
+    title: "text-gray-750",
+    body: "text-gray-650",
+    icon: "text-icon",
+    Glyph: Info,
+  },
+  caution: {
+    surface: "border-amber-200 bg-amber-50",
+    title: "text-amber-900",
+    body: "text-amber-800",
+    icon: "text-amber-600",
+    Glyph: TriangleAlert,
+  },
+  problem: {
+    surface: "border-red-200 bg-red-50",
+    title: "text-red-800",
+    body: "text-red-700",
+    icon: "text-red-550",
+    Glyph: CircleX,
+  },
+  success: {
+    surface: "border-emerald-200 bg-emerald-50",
+    title: "text-emerald-800",
+    body: "text-emerald-700",
+    icon: "text-emerald-600",
+    Glyph: CircleCheck,
+  },
+};
+
 /**
- * Joins class names without running tailwind-merge.
- *
- * The shared `cn` helper merges through tailwind-merge, which classifies this
- * project's custom typography classes (`text-body-14-regular`, ...) as `text-*`
- * utilities and drops them whenever a text colour is merged in the same call.
- * Typography and colour do not conflict in CSS, so they are concatenated here.
+ * The tone's icon in the tone's colour, or a spinner while work is running
+ * (reduced motion is respected). The caller sets the size.
  */
-const classes = (
-  ...values: ReadonlyArray<string | false | undefined>
-): string => values.filter(Boolean).join(" ");
-
-const TONE_SURFACE: Record<NoticeTone, string> = {
-  neutral: "border-slate-200 bg-slate-75",
-  caution: "border-amber-200 bg-amber-50",
-  problem: "border-red-200 bg-red-50",
-  success: "border-emerald-200 bg-emerald-50",
-};
-
-export const NOTICE_TONE_TITLE: Record<NoticeTone, string> = {
-  neutral: "text-gray-750",
-  caution: "text-amber-900",
-  problem: "text-red-800",
-  success: "text-emerald-800",
-};
-
-const TONE_BODY: Record<NoticeTone, string> = {
-  neutral: "text-gray-650",
-  caution: "text-amber-800",
-  problem: "text-red-700",
-  success: "text-emerald-700",
-};
-
-export const NOTICE_TONE_ICON: Record<NoticeTone, string> = {
-  neutral: "text-icon",
-  caution: "text-amber-600",
-  problem: "text-red-550",
-  success: "text-emerald-600",
-};
-
-const NoticeIcon = ({
+function NoticeIcon({
   tone,
-  active,
+  active = false,
+  className,
 }: {
   tone: NoticeTone;
-  active: boolean;
-}) => {
-  const className = classes("mt-0.5 h-5 w-5 shrink-0", NOTICE_TONE_ICON[tone]);
-  if (active) {
-    return (
-      <LoaderCircle
-        className={classes(
-          className,
-          "animate-spin motion-reduce:animate-none",
-        )}
-        aria-hidden="true"
-      />
-    );
-  }
-  switch (tone) {
-    case "success":
-      return <CircleCheck className={className} aria-hidden="true" />;
-    case "problem":
-      return <CircleX className={className} aria-hidden="true" />;
-    case "caution":
-      return <TriangleAlert className={className} aria-hidden="true" />;
-    default:
-      return <Info className={className} aria-hidden="true" />;
-  }
-};
+  active?: boolean;
+  className?: string;
+}) {
+  const Icon = active ? LoaderCircle : TONES[tone].Glyph;
+  return (
+    <Icon
+      className={clsx(
+        "mt-0.5 shrink-0",
+        TONES[tone].icon,
+        active && "animate-spin motion-reduce:animate-none",
+        className,
+      )}
+      aria-hidden="true"
+    />
+  );
+}
+
+interface InlineNoticeProps {
+  tone: NoticeTone;
+  title: string;
+  /** Follows the title in the same line. */
+  body?: string;
+  /** Spinner instead of the tone icon. */
+  active?: boolean;
+  /** Actions under the text, such as a button. */
+  actions?: ReactNode;
+}
+
+/**
+ * A short line inside a panel, for a fact that qualifies the content right
+ * next to it. A full notice box there would turn every qualification into
+ * another warning.
+ */
+export function InlineNotice({
+  tone,
+  title,
+  body,
+  active = false,
+  actions,
+}: InlineNoticeProps) {
+  return (
+    <div className="flex items-start gap-2">
+      <NoticeIcon tone={tone} active={active} className="h-4 w-4" />
+      <div className="min-w-0 flex-1">
+        <p
+          className={clsx(
+            "break-words text-body-14-regular",
+            TONES[tone].title,
+          )}
+        >
+          {title}
+          {body === undefined ? null : ` ${body}`}
+        </p>
+        {actions == null ? null : <div className="mt-2">{actions}</div>}
+      </div>
+    </div>
+  );
+}
 
 interface NoticeProps {
   tone: NoticeTone;
   title: string;
-  /** Absent when the title already says everything useful. */
-  body?: string;
-  /** Spinner instead of the tone icon; reduced motion is respected. */
+  /**
+   * Text or markup (paragraphs, a list) under the title. Absent when the
+   * title already says everything useful.
+   */
+  body?: ReactNode;
+  /** Spinner instead of the tone icon. */
   active?: boolean;
   /** Larger title, for the one primary outcome of a view. */
   emphasis?: boolean;
-  /** An action under the text, such as a button. */
-  children?: ReactNode;
+  /** Actions under the text, such as a button. */
+  actions?: ReactNode;
 }
 
 /**
  * A persistent notice box, adapted from the Notifications export: tinted
- * surface, matching border, icon beside a short title and an optional line.
+ * surface, matching border, icon beside a short title and an optional body.
  * Deliberately without the export's dismiss control: a state that can be
- * closed is a state a user can lose.
+ * closed is a state a user can lose. Text and icon carry the state; colour
+ * only reinforces it.
  */
 export function Notice({
   tone,
@@ -105,35 +150,37 @@ export function Notice({
   body,
   active = false,
   emphasis = false,
-  children,
+  actions,
 }: NoticeProps) {
   return (
-    <div className={classes("rounded-xl border p-4", TONE_SURFACE[tone])}>
+    <div
+      className={clsx("rounded-xl border p-4", TONES[tone].surface)}
+      data-testid="notice"
+    >
       <div className="flex items-start gap-3">
-        <NoticeIcon tone={tone} active={active} />
+        <NoticeIcon tone={tone} active={active} className="h-5 w-5" />
         <div className="min-w-0 flex-1">
           <p
-            className={classes(
+            className={clsx(
               "break-words",
               emphasis ? "text-body-16-semibold" : "text-body-14-medium",
-              NOTICE_TONE_TITLE[tone],
+              TONES[tone].title,
             )}
           >
             {title}
           </p>
-          {body === undefined ? null : (
-            <p
-              className={classes(
-                "mt-1 break-words text-body-14-regular",
-                TONE_BODY[tone],
+          {body == null ? null : (
+            // wrap-anywhere: file names and ids have no break points.
+            <div
+              className={clsx(
+                "mt-1 space-y-1 wrap-anywhere text-body-14-regular",
+                TONES[tone].body,
               )}
             >
               {body}
-            </p>
+            </div>
           )}
-          {children === undefined ? null : (
-            <div className="mt-3">{children}</div>
-          )}
+          {actions == null ? null : <div className="mt-3">{actions}</div>}
         </div>
       </div>
     </div>

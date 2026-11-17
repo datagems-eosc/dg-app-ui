@@ -3,18 +3,17 @@
 import { Chip } from "@ui/Chip";
 import FormattedText from "@ui/FormattedText";
 import { Notice } from "@ui/Notice";
+import { WorkingStatus } from "@ui/WorkingStatus";
+import { clsx } from "clsx";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { getDisplayCollectionLabel } from "@/config/collectionConstants";
-import type { DatasetPlus } from "@/data/dataset";
-import { useApi } from "@/hooks/useApi";
-import { mapApiDatasetToDataset } from "@/lib/datasetMapping";
+import { useDatasetRecommendations } from "@/hooks/useDatasetRecommendations";
+import type { MappedDataset } from "@/lib/datasetMapping";
 import type { DatasetRecommendationsResult } from "@/lib/datasetRecommendations";
 import { getNavigationUrl } from "@/lib/utils";
 import styles from "./DatasetRecommendationsSection.module.scss";
 import DatasetRecommendationsSkeleton from "./DatasetRecommendationsSkeleton";
 
-// Proposed wording; accepted in the PR.
 const NOTES: Record<
   Exclude<DatasetRecommendationsResult["status"], "datasets">,
   string
@@ -32,45 +31,54 @@ export default function DatasetRecommendationsSection({
   datasetId,
 }: DatasetRecommendationsSectionProps) {
   const router = useRouter();
-  const { getDatasetRecommendations } = useApi();
-  // Kept with the dataset it answers, so an answer never shows on another
-  // dataset's page.
-  const [answer, setAnswer] = useState<{
-    datasetId: string;
-    result: DatasetRecommendationsResult;
-  } | null>(null);
+  const result = useDatasetRecommendations(datasetId);
 
-  useEffect(() => {
-    if (!datasetId) return;
-    let cancelled = false;
-    getDatasetRecommendations(datasetId).then((result) => {
-      if (!cancelled) setAnswer({ datasetId, result });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [datasetId, getDatasetRecommendations]);
-
-  const handleCardClick = (dataset: DatasetPlus) => {
+  const handleCardClick = (dataset: MappedDataset) => {
     router.push(getNavigationUrl(`/datasets/${dataset.id}`));
   };
 
-  const result = answer?.datasetId === datasetId ? answer.result : null;
-  if (result === null) return <DatasetRecommendationsSkeleton />;
+  const loading = result === null;
+  const datasets = result?.status === "datasets" ? result.datasets : null;
+  const note =
+    result === null || result.status === "datasets"
+      ? null
+      : NOTES[result.status];
 
   return (
     <div className={styles.datasetRecommendationsSection}>
-      <h3 className={styles.datasetRecommendationsSection__title}>
-        Recommended datasets
-      </h3>
-      {result.status === "datasets" ? (
-        <RecommendationGrid
-          recommendations={result.datasets.map(mapApiDatasetToDataset)}
-          onOpen={handleCardClick}
-        />
-      ) : (
-        <Notice tone="neutral" title={NOTES[result.status]} />
-      )}
+      <div className={styles.datasetRecommendationsSection__header}>
+        <h3 className={styles.datasetRecommendationsSection__title}>
+          Recommended datasets
+        </h3>
+        {/* Hidden, not removed, once the answer arrives: the header keeps its
+            height and the grid does not move. The first answer can take
+            about 40 seconds; no time limit. */}
+        <div
+          className={clsx(
+            styles.datasetRecommendationsSection__status,
+            !loading && "invisible",
+          )}
+          aria-hidden={!loading || undefined}
+        >
+          <WorkingStatus messages={["Finding similar datasets"]} />
+        </div>
+      </div>
+      {/* One block, so the section's gap adds no space around the empty
+          live region. */}
+      <div>
+        {loading && <DatasetRecommendationsSkeleton />}
+        {datasets && (
+          <RecommendationGrid
+            recommendations={datasets}
+            onOpen={handleCardClick}
+          />
+        )}
+        {/* On the page from the start: screen readers skip a live region
+            that appears with its text already in it. */}
+        <div role="status">
+          {note && <Notice tone="neutral" title={note} />}
+        </div>
+      </div>
     </div>
   );
 }
@@ -79,8 +87,8 @@ function RecommendationGrid({
   recommendations,
   onOpen,
 }: {
-  recommendations: DatasetPlus[];
-  onOpen: (dataset: DatasetPlus) => void;
+  recommendations: MappedDataset[];
+  onOpen: (dataset: MappedDataset) => void;
 }) {
   return (
     <div className={styles.datasetRecommendationsSection__grid}>

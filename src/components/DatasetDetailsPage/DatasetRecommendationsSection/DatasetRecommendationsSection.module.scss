@@ -1,11 +1,32 @@
 @use '@/styles' as *;
 
+// ui/Chip `sm` height (`h-8`).
+$chip-sm-height: 32px;
+
 .datasetRecommendationsSection {
   @include flex-column;
   gap: $spacing-lg;
   max-width: 1440px;
   width: 100%;
   margin: 0 auto;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    column-gap: $spacing-lg;
+    row-gap: $spacing-xs;
+  }
+
+  // Beside the heading on wide screens; on its own line on narrow ones,
+  // where it would wrap anyway.
+  &__status {
+    min-width: 0;
+
+    @media (max-width: $breakpoint-md - 1px) {
+      flex-basis: 100%;
+    }
+  }
 
   &__title {
     @include font-semibold;
@@ -72,8 +93,8 @@
     white-space: nowrap;
     // block + line-height (not flex centering): text-overflow: ellipsis does
     // not apply to a flex container's anonymous text item.
-    height: 32px;
-    line-height: 32px;
+    height: $chip-sm-height;
+    line-height: $chip-sm-height;
     min-width: 0;
     margin: 0;
   }
@@ -84,7 +105,7 @@
     display: flex;
     gap: $spacing-xs;
     flex-wrap: nowrap;
-    height: 32px;
+    height: $chip-sm-height;
     min-width: 0;
     overflow: hidden;
   }
@@ -100,12 +121,9 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     margin: 0;
-  }
-
-  &__skeletonTitle {
-    height: 34px;
-    display: flex;
-    align-items: center;
+    // Two lines even when empty, like the placeholder.
+    min-height: 3em;
+    min-height: 2lh;
   }
 
   &__skeletonCard {
@@ -120,7 +138,7 @@
   }
 
   &__skeletonChip {
-    height: 32px;
+    height: $chip-sm-height;
     width: 80px;
   }
 
@@ -131,6 +149,8 @@
     gap: $spacing-xs;
 
     > * {
+      // Fallback for browsers without the lh unit (1.5em = one line).
+      height: calc(1.5em - #{$spacing-xs} / 2);
       height: calc(1lh - #{$spacing-xs} / 2);
     }
   }
