@@ -55,6 +55,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/hooks/useApi", () => ({
   useApi: () => ({
     hasToken: mockHasToken,
+    sessionPrincipalId: mockHasToken ? mockPrincipalId : null,
     datasetPermissions: {
       gateway: { readGlobalPermissions: mockReadGlobalPermissions },
       scope: mockPrincipalId

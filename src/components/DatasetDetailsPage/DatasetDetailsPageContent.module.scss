@@ -76,6 +76,11 @@
     @include section-content;
   }
 
+  &__downloadError {
+    @include section-content;
+    color: $color-error;
+  }
+
   &__previewState {
     @include flex-column;
     gap: $spacing-md;
