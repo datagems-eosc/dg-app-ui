@@ -17,21 +17,17 @@ import {
 /** How many similar datasets the page asks for and shows. */
 export const RECOMMENDATION_COUNT = 6;
 
-/** The recommend query: the card fields and the count. */
+/**
+ * The recommend query: only what the card shows (title, description, licence,
+ * collection name) and the id it opens, plus the count.
+ */
 export const RECOMMENDATION_QUERY = [
   "id",
   "name",
   "description",
-  "keywords",
-  "fieldOfScience",
   "license",
-  "url",
-  "mimeType",
-  "datePublished",
   "collections.id",
   "collections.name",
-  "collections.code",
-  "permissions",
 ]
   .map((field) => `f=${field}`)
   .concat(`n=${RECOMMENDATION_COUNT}`)

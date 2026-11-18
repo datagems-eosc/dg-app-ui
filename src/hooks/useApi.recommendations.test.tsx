@@ -123,6 +123,26 @@ describe("useApi().getDatasetRecommendations", () => {
     );
   });
 
+  // Only what the card shows (and the id it opens); new fields are a choice.
+  it("asks only for the fields the card shows", async () => {
+    respond(200, []);
+    const { result } = renderHook(() => useApi());
+
+    await result.current.getDatasetRecommendations("d1");
+
+    const query = new URL(String(vi.mocked(fetch).mock.calls[0][0]))
+      .searchParams;
+    expect(query.getAll("f")).toEqual([
+      "id",
+      "name",
+      "description",
+      "license",
+      "collections.id",
+      "collections.name",
+    ]);
+    expect(query.get("n")).toBe("6");
+  });
+
   it("returns none when the recommender answers with an empty list", async () => {
     respond(200, []);
     const { result } = renderHook(() => useApi());
