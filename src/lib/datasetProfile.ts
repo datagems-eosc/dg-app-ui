@@ -216,7 +216,7 @@ function possibleRowTotals(
   if (missingCount == null && missingPercentage === 0) return [rowCount];
   if (!isCount(missingCount)) return [];
 
-  // The schema describes rowCount as a total; the CSV profiler can count only populated rows.
+  // Older profiles can report a total; the CSV profiler reports only populated rows.
   const candidates = new Set([rowCount, rowCount + missingCount]);
   return [...candidates].filter(
     (total) =>
@@ -411,6 +411,7 @@ function readDataQuality(
       .some((owner) => owner !== recordSetId) ||
     !report ||
     !hasLabel(report, "dg:DataQuality") ||
+    index.reportTargetsOf(reportId, "HAS_DATA_QUALITY").length > 0 ||
     index.reportSourcesOf(reportId, "HAS_ERROR").length > 0 ||
     typeof summary !== "string" ||
     !summary.trim()
@@ -520,8 +521,16 @@ function buildTabular(
         compatible?.filter((total) => totals.includes(total)) ?? totals,
       undefined,
     );
-  const totalRows =
+  const candidateTotal =
     compatibleTotals?.length === 1 ? compatibleTotals[0] : undefined;
+  const totalRows =
+    candidateTotal !== undefined &&
+    inputs.every(
+      ({ props }) =>
+        !isCount(props?.rowCount) || props.rowCount <= candidateTotal,
+    )
+      ? candidateTotal
+      : undefined;
 
   const fields = inputs.map(({ column, props, totals }) => {
     const id = column.id ?? "";

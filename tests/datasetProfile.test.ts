@@ -276,6 +276,28 @@ for (const reversed of ["report", "finding"] as const) {
   });
 }
 
+test("rejects a selected report with a reversed link to a different RecordSet", () => {
+  const graph = {
+    nodes: [
+      ...GRAPH.nodes,
+      { id: "other-rs", labels: ["cr:RecordSet"] },
+      {
+        id: "report",
+        labels: ["dg:DataQuality"],
+        properties: { summary: "Checked" },
+      },
+    ],
+    edges: [
+      ...GRAPH.edges,
+      { from: "rs", to: "report", labels: ["HAS_DATA_QUALITY"] },
+      { from: "report", to: "other-rs", labels: ["HAS_DATA_QUALITY"] },
+    ],
+  };
+  const data = buildFilePreviews(graph)[0]?.data;
+  assert.ok(data?.type === "tabular");
+  assert.deepEqual(data.dataQuality, { status: "invalid" });
+});
+
 test("does not call a report clean when a finding edge has no target", () => {
   const graph = {
     nodes: [
@@ -545,6 +567,28 @@ for (const [
     }
   });
 }
+
+test("does not report a table total below another column's row count", () => {
+  const graph = structuredClone(GRAPH);
+  const first = graph.nodes.find((node) => node.id === "stat1")?.properties;
+  const second = graph.nodes.find((node) => node.id === "stat2")?.properties;
+  assert.ok(first && second);
+  Object.assign(first, {
+    rowCount: 100,
+    missingCount: 0,
+    missingPercentage: 0,
+  });
+  Object.assign(second, {
+    rowCount: 101,
+    missingCount: 50,
+    missingPercentage: 1,
+  });
+
+  const data = buildFilePreviews(graph)[0]?.data;
+  assert.ok(data?.type === "tabular");
+  assert.equal(data.totalRows, undefined);
+  assert.equal(data.totalMissingPercentage, undefined);
+});
 
 test("uses a known table row total when a column omits its own row count", () => {
   const graph = structuredClone(GRAPH);
