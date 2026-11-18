@@ -194,9 +194,42 @@ function parseHistogram(
   }
 }
 
+function matchesMissingPercentage(
+  total: number,
+  missing: number,
+  percentage: unknown,
+): boolean {
+  return (
+    percentage == null ||
+    (typeof percentage === "number" &&
+      percentage >= 0 &&
+      percentage <= 100 &&
+      Math.abs((total === 0 ? 0 : (missing / total) * 100) - percentage) < 1e-8)
+  );
+}
+
+function possibleRowTotals(
+  props: Record<string, unknown> | undefined,
+): number[] {
+  if (!props || !isCount(props.rowCount)) return [];
+  const { rowCount, missingCount, missingPercentage } = props;
+  if (missingCount == null && missingPercentage === 0) return [rowCount];
+  if (!isCount(missingCount)) return [];
+
+  // The schema describes rowCount as a total; the CSV profiler can count only populated rows.
+  const candidates = new Set([rowCount, rowCount + missingCount]);
+  return [...candidates].filter(
+    (total) =>
+      isCount(total) &&
+      missingCount <= total &&
+      matchesMissingPercentage(total, missingCount, missingPercentage),
+  );
+}
+
 function mapColumnStatistics(
   columnId: string,
   props: Record<string, unknown> | undefined,
+  totalRows: number | undefined,
 ): ColumnStatistics {
   const stat: ColumnStatistics = { columnId };
   if (!props) return stat;
@@ -204,18 +237,17 @@ function mapColumnStatistics(
     typeof props[key] === "number" && Number.isFinite(props[key])
       ? (props[key] as number)
       : undefined;
-  const rowCount = props.rowCount;
   const missingCount = props.missingCount;
 
   if (
     isCount(props.uniqueCount) &&
-    (!isCount(rowCount) || props.uniqueCount <= rowCount)
+    (totalRows === undefined || props.uniqueCount <= totalRows)
   ) {
     stat.uniqueValues = props.uniqueCount;
   }
   if (
     isCount(missingCount) &&
-    (!isCount(rowCount) || missingCount <= rowCount)
+    (totalRows === undefined || missingCount <= totalRows)
   ) {
     stat.nullCount = missingCount;
   }
@@ -342,6 +374,9 @@ function readDataQuality(
     return { status: "invalid" };
   }
 
+  if (index.reportSourcesOf(recordSetId, "HAS_DATA_QUALITY").length > 0) {
+    return { status: "invalid" };
+  }
   const reportIds = [
     ...new Set(index.reportTargetsOf(recordSetId, "HAS_DATA_QUALITY")),
   ];
@@ -376,6 +411,7 @@ function readDataQuality(
       .some((owner) => owner !== recordSetId) ||
     !report ||
     !hasLabel(report, "dg:DataQuality") ||
+    index.reportSourcesOf(reportId, "HAS_ERROR").length > 0 ||
     typeof summary !== "string" ||
     !summary.trim()
   ) {
@@ -472,10 +508,25 @@ function buildTabular(
     return statsId ? index.nodeById.get(statsId)?.properties : undefined;
   };
 
-  const fields = columns.map((column) => {
+  const inputs = columns.map((column) => {
+    const props = statsProps(column.id ?? "");
+    return { column, props, totals: possibleRowTotals(props) };
+  });
+  const compatibleTotals = inputs
+    .map(({ totals }) => totals)
+    .filter((totals) => totals.length > 0)
+    .reduce<number[] | undefined>(
+      (compatible, totals) =>
+        compatible?.filter((total) => totals.includes(total)) ?? totals,
+      undefined,
+    );
+  const totalRows =
+    compatibleTotals?.length === 1 ? compatibleTotals[0] : undefined;
+
+  const fields = inputs.map(({ column, props, totals }) => {
     const id = column.id ?? "";
-    const props = statsProps(id);
-    const stats = mapColumnStatistics(id, props);
+    const maxRows = totals.length > 0 ? Math.max(...totals) : undefined;
+    const stats = mapColumnStatistics(id, props, totalRows ?? maxRows);
     const fileColumn: FileColumn = {
       id,
       name: String(column.properties?.name ?? ""),
@@ -483,17 +534,11 @@ function buildTabular(
       visible: true,
       description: (column.properties?.description as string) || undefined,
     };
-    return { fileColumn, stats, rowCount: props?.rowCount };
+    return { fileColumn, stats };
   });
   const statistics = fields.map((field) => field.stats);
 
   const rows = buildRows(recordSet, columns);
-
-  const rowCounts = fields.map((field) => field.rowCount).filter(isCount);
-  const totalRows =
-    rowCounts.length > 0 && rowCounts.every((count) => count === rowCounts[0])
-      ? rowCounts[0]
-      : undefined;
 
   const missingCounts = statistics
     .map((stat) => stat.nullCount)
@@ -502,11 +547,19 @@ function buildTabular(
     totalRows === undefined ? undefined : totalRows * columns.length;
   const totalMissingPercentage =
     totalRows !== undefined &&
-    fields.every(
-      ({ rowCount }) => rowCount == null || rowCount === totalRows,
+    inputs.every(
+      ({ props, totals }) =>
+        props?.rowCount == null || totals.includes(totalRows),
     ) &&
     missingCounts.length === columns.length &&
     missingCounts.every((count) => count <= totalRows) &&
+    missingCounts.every((count, index) =>
+      matchesMissingPercentage(
+        totalRows,
+        count,
+        inputs[index].props?.missingPercentage,
+      ),
+    ) &&
     totalCells !== undefined &&
     totalCells > 0
       ? (missingCounts.reduce((sum, count) => sum + count, 0) / totalCells) *

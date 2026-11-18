@@ -248,6 +248,34 @@ test("does not call a report clean when a finding edge has no source", () => {
   assert.deepEqual(noReport.dataQuality, { status: "unavailable" });
 });
 
+for (const reversed of ["report", "finding"] as const) {
+  test(`treats a reversed ${reversed} link as an unreadable report`, () => {
+    const graph = {
+      nodes: [
+        ...GRAPH.nodes,
+        {
+          id: "report",
+          labels: ["dg:DataQuality"],
+          properties: { summary: "Missing values detected." },
+        },
+        { id: "finding", labels: ["dg:DataQualityError"] },
+      ],
+      edges: [
+        ...GRAPH.edges,
+        reversed === "report"
+          ? { from: "report", to: "rs", labels: ["HAS_DATA_QUALITY"] }
+          : { from: "rs", to: "report", labels: ["HAS_DATA_QUALITY"] },
+        reversed === "finding"
+          ? { from: "finding", to: "report", labels: ["HAS_ERROR"] }
+          : { from: "report", to: "finding", labels: ["HAS_ERROR"] },
+      ],
+    };
+    const data = buildFilePreviews(graph)[0]?.data;
+    assert.ok(data?.type === "tabular");
+    assert.deepEqual(data.dataQuality, { status: "invalid" });
+  });
+}
+
 test("does not call a report clean when a finding edge has no target", () => {
   const graph = {
     nodes: [
@@ -438,13 +466,101 @@ test("keeps a finding when its serialized examples are malformed", () => {
   assert.equal(data.dataQuality.findings[0].category, "unknown_pattern");
 });
 
+test("uses the CSV producer's populated and missing counts to recover the full total", () => {
+  const graph = structuredClone(GRAPH);
+  const first = graph.nodes.find((node) => node.id === "stat1")?.properties;
+  const second = graph.nodes.find((node) => node.id === "stat2")?.properties;
+  assert.ok(first && second);
+  Object.assign(first, {
+    rowCount: 90,
+    missingCount: 10,
+    missingPercentage: 10,
+    uniqueCount: 50,
+  });
+  Object.assign(second, {
+    rowCount: 10,
+    missingCount: 90,
+    missingPercentage: 90,
+    uniqueCount: 8,
+  });
+
+  const data = buildFilePreviews(graph)[0]?.data;
+  assert.ok(data?.type === "tabular");
+  assert.equal(data.totalRows, 100);
+  assert.equal(data.totalMissingPercentage, 50);
+  assert.equal(
+    data.statistics.find((stat) => stat.columnId === "col2")?.nullCount,
+    90,
+  );
+});
+
+for (const [
+  label,
+  firstCount,
+  firstMissing,
+  firstPercentage,
+  secondPercentage,
+  expectedTotal,
+] of [
+  ["agreeing raw populated counts", 90, 10, 10, 10, 100],
+  [
+    "ambiguous counts without percentages",
+    90,
+    10,
+    undefined,
+    undefined,
+    undefined,
+  ],
+  ["an ambiguous column confirmed by its sibling", 90, 10, undefined, 10, 100],
+  ["all values missing from one column", 0, 100, 100, 10, 100],
+] as const) {
+  test(`reconciles table row counts for ${label}`, () => {
+    const graph = structuredClone(GRAPH);
+    const first = graph.nodes.find((node) => node.id === "stat1")?.properties;
+    const second = graph.nodes.find((node) => node.id === "stat2")?.properties;
+    assert.ok(first && second);
+    Object.assign(first, {
+      rowCount: firstCount,
+      missingCount: firstMissing,
+      missingPercentage: firstPercentage,
+      uniqueCount: firstCount,
+    });
+    Object.assign(second, {
+      rowCount: 90,
+      missingCount: 10,
+      missingPercentage: secondPercentage,
+      uniqueCount: 50,
+    });
+
+    const data = buildFilePreviews(graph)[0]?.data;
+    assert.ok(data?.type === "tabular");
+    assert.equal(data.totalRows, expectedTotal);
+    if (expectedTotal === undefined) {
+      assert.equal(data.totalMissingPercentage, undefined);
+    } else {
+      assert.ok(data.totalMissingPercentage !== undefined);
+      assert.ok(
+        Math.abs(data.totalMissingPercentage - (firstMissing + 10) / 2) < 1e-8,
+      );
+    }
+  });
+}
+
 test("uses a known table row total when a column omits its own row count", () => {
   const graph = structuredClone(GRAPH);
   const first = graph.nodes.find((node) => node.id === "stat1")?.properties;
   const second = graph.nodes.find((node) => node.id === "stat2")?.properties;
   assert.ok(first && second);
-  Object.assign(first, { rowCount: 100, missingCount: 1 });
-  Object.assign(second, { rowCount: undefined, missingCount: 2 });
+  Object.assign(first, {
+    rowCount: 100,
+    missingCount: 1,
+    missingPercentage: 1,
+  });
+  Object.assign(second, {
+    rowCount: undefined,
+    missingCount: 2,
+    missingPercentage: 2,
+  });
 
   const data = buildFilePreviews(graph)[0]?.data;
   assert.ok(data?.type === "tabular");
@@ -463,10 +579,14 @@ for (const [reason, secondStats] of [
     const first = graph.nodes.find((node) => node.id === "stat1")?.properties;
     const second = graph.nodes.find((node) => node.id === "stat2")?.properties;
     assert.ok(first && second);
-    Object.assign(first, { rowCount: 100, missingCount: 1 });
+    Object.assign(first, {
+      rowCount: 100,
+      missingCount: 1,
+      missingPercentage: 1,
+    });
     Object.assign(
       second,
-      { rowCount: undefined, missingCount: 2 },
+      { rowCount: undefined, missingCount: 2, missingPercentage: undefined },
       secondStats,
     );
 
