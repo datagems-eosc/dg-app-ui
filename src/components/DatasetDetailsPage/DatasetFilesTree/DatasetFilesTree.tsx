@@ -12,14 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import styles from "./DatasetFilesTree.module.scss";
-
-export interface FileNode {
-  id: string;
-  name: string;
-  type: "file" | "folder" | "database" | "schema" | "table" | "excel-sheet";
-  children?: FileNode[];
-  extension?: string;
-}
+import { type FileNode, findFileTreeNode } from "./fileTree";
 
 interface DatasetFilesTreeProps {
   files?: FileNode[];
@@ -250,23 +243,9 @@ export default function DatasetFilesTree({
     setSelectedNode(nodeId);
 
     if (onFileSelect && (nodeType === "file" || nodeType === "excel-sheet")) {
-      const node = findNodeById(files, nodeId);
+      const node = findFileTreeNode(files, (node) => node.id === nodeId);
       onFileSelect(nodeId, nodeName, node?.extension);
     }
-  };
-
-  const findNodeById = (
-    nodes: FileNode[],
-    id: string,
-  ): FileNode | undefined => {
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      if (node.children) {
-        const found = findNodeById(node.children, id);
-        if (found) return found;
-      }
-    }
-    return undefined;
   };
 
   const renderNode = (node: FileNode, level: number = 0) => {

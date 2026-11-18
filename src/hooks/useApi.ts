@@ -123,6 +123,25 @@ export function useApi() {
   const token = (session as any)?.accessToken;
   const baseUrl = useMemo(() => getApiBaseUrl(), []);
 
+  const sessionError = (session as any)?.error;
+  const principalId = readablePrincipalId((session as any)?.user?.id);
+
+  // Identity resolves only when all four conditions hold. A missing or blank
+  // id is never substituted with an email, a display name or claims decoded
+  // from the bearer token: those are not stable application principals.
+  const authAvailability: OnboardingAuthAvailability =
+    sessionStatus === "loading"
+      ? "loading"
+      : sessionStatus === "unauthenticated"
+        ? "unauthenticated"
+        : sessionError
+          ? "session-error"
+          : !token
+            ? "credentials-unavailable"
+            : principalId === null
+              ? "identity-unavailable"
+              : "available";
+
   const makeRequest = useCallback(
     async (
       endpoint: string,
@@ -186,28 +205,9 @@ export function useApi() {
     [baseUrl],
   );
 
-  const sessionError = (session as any)?.error;
-  const principalId = readablePrincipalId((session as any)?.user?.id);
-
-  // Identity resolves only when all four conditions hold. A missing or blank
-  // id is never substituted with an email, a display name or claims decoded
-  // from the bearer token: those are not stable application principals.
-  const onboardingAuth: OnboardingAuthAvailability =
-    sessionStatus === "loading"
-      ? "loading"
-      : sessionStatus === "unauthenticated"
-        ? "unauthenticated"
-        : sessionError
-          ? "session-error"
-          : !token
-            ? "credentials-unavailable"
-            : principalId === null
-              ? "identity-unavailable"
-              : "available";
-
   const datasetOnboarding = useMemo<DatasetOnboardingBinding>(() => {
     const scope: OnboardingScope | null =
-      onboardingAuth === "available" && principalId !== null
+      authAvailability === "available" && principalId !== null
         ? { principalId, gatewayOrigin }
         : null;
 
@@ -245,14 +245,14 @@ export function useApi() {
     };
 
     return {
-      auth: onboardingAuth,
+      auth: authAvailability,
       scope,
       gateway: createOnboardingGateway(transport),
       // Same `transport` closure as the gateway above — same auth, same prefix,
       // same 401 policy, same refusal when no identity is resolved.
       readDataset: createDatasetAccessReader(transport).readDataset,
     };
-  }, [makeRequest, onboardingAuth, principalId, gatewayOrigin]);
+  }, [makeRequest, authAvailability, principalId, gatewayOrigin]);
 
   // -------------------------------------------------------------------------
   // Dataset group access (UI #321) — the permission feature's only transport
@@ -281,7 +281,7 @@ export function useApi() {
 
   const datasetPermissions = useMemo<DatasetPermissionsBinding>(() => {
     const scope: DatasetPermissionsPrincipalScope | null =
-      onboardingAuth === "available" && principalId !== null
+      authAvailability === "available" && principalId !== null
         ? { principalId, gatewayOrigin }
         : null;
 
@@ -296,7 +296,7 @@ export function useApi() {
     };
 
     return {
-      auth: onboardingAuth,
+      auth: authAvailability,
       scope,
       // The captured principal is what makes a refreshed token usable for reads
       // *only* while it still belongs to the account that started them.
@@ -305,7 +305,7 @@ export function useApi() {
         scope === null ? {} : { expectedPrincipalId: scope.principalId },
       ),
     };
-  }, [makeRequest, onboardingAuth, principalId, gatewayOrigin]);
+  }, [makeRequest, authAvailability, principalId, gatewayOrigin]);
 
   const queryDatasets = useCallback(
     async (payload: any): Promise<any> => {
@@ -1270,7 +1270,11 @@ export function useApi() {
   );
 
   const downloadDatasetFile = useCallback(
-    async (datasetId: string, fileObjectNodeId: string): Promise<Response> => {
+    async (
+      datasetId: string,
+      fileObjectNodeId: string,
+      signal?: AbortSignal,
+    ): Promise<Response> => {
       logApiRequest("downloadDatasetFile", { datasetId, fileObjectNodeId });
 
       const response = await makeRequest(
@@ -1278,7 +1282,11 @@ export function useApi() {
         {
           method: "GET",
           headers: { "X-Request-Type": "downloadDatasetFile" },
+          signal,
         },
+        principalId === null
+          ? { retryOn401: false }
+          : { expectedPrincipalId: principalId },
       );
 
       if (!response.ok) {
@@ -1297,7 +1305,7 @@ export function useApi() {
       logApiResponse("downloadDatasetFile", { datasetId, fileObjectNodeId });
       return response;
     },
-    [makeRequest],
+    [makeRequest, principalId],
   );
 
   const getDatasetRecommendations = useCallback(
@@ -1946,6 +1954,7 @@ export function useApi() {
   return {
     hasToken: !!token,
     token,
+    sessionPrincipalId: authAvailability === "available" ? principalId : null,
     datasetOnboarding,
     datasetPermissions,
     classifyIntent,

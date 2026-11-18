@@ -1,7 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as datasetProfile from "@/lib/datasetProfile";
 
 const sidebarProps = vi.fn();
+const download = vi.hoisted(() => vi.fn());
+const getSessionPrincipalId = vi.hoisted(() => vi.fn<() => string | null>());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
@@ -10,13 +13,18 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/hooks/useApi", () => ({
-  useApi: () => ({ downloadDatasetFile: vi.fn() }),
+  useApi: () => ({
+    downloadDatasetFile: download,
+    sessionPrincipalId: getSessionPrincipalId(),
+    datasetPermissions: { scope: null },
+  }),
 }));
 
+beforeEach(() => {
+  getSessionPrincipalId.mockReturnValue("user");
+});
+
 vi.mock("./DatasetDescriptionSection/DatasetDescriptionSection", () => ({
-  default: () => null,
-}));
-vi.mock("./DatasetFilesTree/DatasetFilesTree", () => ({
   default: () => null,
 }));
 vi.mock("./DatasetHeader/DatasetHeader", () => ({
@@ -169,4 +177,160 @@ it("shows one no-files state instead of an empty preview", () => {
   expect(
     screen.getByText("No files are available to preview for this dataset."),
   ).toBeInTheDocument();
+});
+
+const downloadableDataset = {
+  ...mockDataset,
+  permissions: ["Download"],
+  profileRaw: {
+    nodes: [
+      {
+        id: "original-file",
+        labels: ["cr:FileObject"],
+        properties: {
+          name: "original.hash.bin",
+          encodingFormat: "application/octet-stream",
+        },
+      },
+    ],
+    edges: [],
+  },
+} as DatasetPlus;
+
+it("offers a real download even when the selected file has no preview", async () => {
+  download.mockRejectedValueOnce(new Error("offline"));
+  render(<DatasetDetailsPageContent dataset={downloadableDataset} />);
+  fireEvent.click(screen.getByRole("button", { name: "Download file" }));
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Download failed. Try again.",
+    ),
+  );
+  expect(download).toHaveBeenCalledWith(
+    "ds-1",
+    "original-file",
+    expect.any(AbortSignal),
+  );
+  expect(screen.getByText("No preview for this file.")).toBeInTheDocument();
+});
+
+it("downloads the selected FileObject from a nested folder", async () => {
+  const flatTree = datasetProfile.buildFileTree(downloadableDataset.profileRaw);
+  const tree = vi.spyOn(datasetProfile, "buildFileTree").mockReturnValue([
+    ...flatTree,
+    {
+      id: "outer",
+      name: "Outer folder",
+      kind: "folder",
+      children: [
+        {
+          id: "inner",
+          name: "Inner folder",
+          kind: "folder",
+          children: [{ id: "nested-file", name: "nested.bin", kind: "file" }],
+        },
+      ],
+    },
+  ]);
+  try {
+    download.mockRejectedValueOnce(new Error("offline"));
+    render(<DatasetDetailsPageContent dataset={downloadableDataset} />);
+    fireEvent.click(screen.getByText("Outer folder"));
+    fireEvent.click(screen.getByText("Inner folder"));
+    fireEvent.click(screen.getByText("nested.bin"));
+    fireEvent.click(screen.getByRole("button", { name: "Download file" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Download failed. Try again.",
+    );
+    expect(download).toHaveBeenLastCalledWith(
+      "ds-1",
+      "nested-file",
+      expect.any(AbortSignal),
+    );
+  } finally {
+    tree.mockRestore();
+  }
+});
+
+it("hides Download when the selected file disappears even if another file remains", () => {
+  const remainingDataset = {
+    ...downloadableDataset,
+    profileRaw: {
+      nodes: [
+        {
+          id: "remaining-file",
+          labels: ["cr:FileObject"],
+          properties: { name: "remaining.bin" },
+        },
+      ],
+      edges: [],
+    },
+  } as DatasetPlus;
+  const { rerender } = render(
+    <DatasetDetailsPageContent dataset={downloadableDataset} />,
+  );
+  fireEvent.click(screen.getByText("original.hash.bin"));
+  expect(screen.getByRole("button", { name: "Download file" })).toBeEnabled();
+  rerender(<DatasetDetailsPageContent dataset={remainingDataset} />);
+  expect(screen.getByText("remaining.bin")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Download file" }),
+  ).not.toBeInTheDocument();
+});
+
+it.each([[undefined], [[]], [["Browse"]], [["Manage"]]])(
+  "hides Download without a positive dataset permission (%j)",
+  (permissions) => {
+    render(
+      <DatasetDetailsPageContent
+        dataset={{ ...downloadableDataset, permissions } as DatasetPlus}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /download/i }),
+    ).not.toBeInTheDocument();
+  },
+);
+
+it("hides Download without a session principal even with dataset permission", () => {
+  getSessionPrincipalId.mockReturnValue(null);
+  render(<DatasetDetailsPageContent dataset={downloadableDataset} />);
+  expect(
+    screen.queryByRole("button", { name: "Download file" }),
+  ).not.toBeInTheDocument();
+});
+
+it("does not use a RecordSet as a downloadable FileObject", () => {
+  render(
+    <DatasetDetailsPageContent
+      dataset={
+        {
+          ...downloadableDataset,
+          profileRaw: {
+            nodes: [
+              {
+                id: "table",
+                labels: ["cr:RecordSet"],
+                properties: { name: "table" },
+              },
+            ],
+            edges: [],
+          },
+        } as DatasetPlus
+      }
+    />,
+  );
+  expect(
+    screen.queryByRole("button", { name: /download/i }),
+  ).not.toBeInTheDocument();
+});
+
+it("disables Download and announces its pending state", async () => {
+  download.mockReturnValue(new Promise(() => {}));
+  render(<DatasetDetailsPageContent dataset={downloadableDataset} />);
+  fireEvent.click(screen.getByRole("button", { name: "Download file" }));
+  expect(
+    screen.getByRole("button", { name: "Downloading file" }),
+  ).toBeDisabled();
+  expect(screen.getByText("Downloading...")).toBeInTheDocument();
 });
