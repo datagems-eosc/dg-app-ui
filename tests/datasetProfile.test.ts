@@ -148,6 +148,71 @@ test("buildFilePreviews maps numeric column statistics incl. histogram", () => {
   ]);
 });
 
+test("does not treat a different kind of node as column statistics", () => {
+  const graph = {
+    ...GRAPH,
+    nodes: GRAPH.nodes.map((node) =>
+      node.id === "stat2" ? { ...node, labels: ["cr:RecordSet"] } : node,
+    ),
+  };
+  const [file] = buildFilePreviews(graph);
+  if (file?.data.type !== "tabular") throw new Error("expected tabular");
+  assert.equal(file.data.statistics[0].uniqueValues, 190);
+  assert.equal(file.data.statistics[1].mean, undefined);
+  assert.equal(file.data.statistics[1].distribution, undefined);
+});
+
+test("does not show column statistics or annotations from an arbitrary RecordSet", () => {
+  const graph = {
+    nodes: [
+      ...GRAPH.nodes.map((node) =>
+        node.id === "col1"
+          ? {
+              ...node,
+              properties: { ...node.properties, semanticType: "animal class" },
+            }
+          : node,
+      ),
+      { id: "other-rs", labels: ["cr:RecordSet"] },
+    ],
+    edges: [
+      ...GRAPH.edges,
+      { from: "other-rs", to: "col2", labels: ["field"] },
+    ],
+  };
+  const [file] = buildFilePreviews(graph);
+  if (file?.data.type !== "tabular") throw new Error("expected tabular");
+  assert.deepEqual(file.data.statistics, [
+    { columnId: "col1" },
+    { columnId: "col2" },
+  ]);
+  assert.equal(file.data.totalRows, undefined);
+  assert.equal(file.data.columns[0].inferredSemanticType, undefined);
+});
+
+test("omits semantic placeholders while keeping meaningful profiler annotations", () => {
+  const values = ["", "unknown", "error", null, 0, " identifier "];
+  const file = GRAPH.nodes[1];
+  const columns = values.map((semanticType, index) => ({
+    id: String(index),
+    labels: ["cr:Field"],
+    properties: { semanticType },
+  }));
+  const [preview] = buildFilePreviews({
+    nodes: [file, ...columns],
+    edges: columns.map((column) => ({
+      from: column.id,
+      to: file.id,
+      labels: ["source/fileObject"],
+    })),
+  });
+  if (preview?.data.type !== "tabular") throw new Error("expected tabular");
+  assert.deepEqual(
+    preview.data.columns.map((column) => column.inferredSemanticType),
+    [undefined, undefined, undefined, undefined, undefined, "identifier"],
+  );
+});
+
 test("keeps other statistics when a histogram contains an invalid bin count", () => {
   const graph = structuredClone(GRAPH);
   const properties = graph.nodes.find(

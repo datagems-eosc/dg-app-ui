@@ -138,6 +138,7 @@ function LargeHistogram({
 
 const metricFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 2,
+  signDisplay: "negative",
 });
 
 function formatMetric(value: string | number | undefined): string | undefined {
@@ -151,15 +152,20 @@ function Metric({
   label,
   value,
   suffix = "",
+  inferred = false,
 }: {
   label: string;
   value: string | number | undefined;
   suffix?: string;
+  inferred?: boolean;
 }) {
   const formatted = formatMetric(value);
   return (
     <div className={styles.statisticsTab__metric}>
-      <span className={styles.statisticsTab__metricLabel}>{label}</span>
+      <span className={styles.statisticsTab__metricLabel}>
+        {label}
+        {inferred && formatted !== undefined && " (inferred)"}
+      </span>
       <span className={styles.statisticsTab__metricValue}>
         {formatted === undefined ? "Not available" : `${formatted}${suffix}`}
       </span>
@@ -231,10 +237,12 @@ export default function StatisticsTab({
     ];
     const hasMetric = (values: (string | number | undefined)[]) =>
       values.some((value) => formatMetric(value) !== undefined);
-    return histogram ||
+    const hasMetrics =
+      !!histogram ||
       hasMetric(displayedMetrics) ||
-      (isNumeric && hasMetric(numericMetrics))
-      ? [{ column, stats, isNumeric, histogram, min, max }]
+      (isNumeric && hasMetric(numericMetrics));
+    return hasMetrics || column.inferredSemanticType
+      ? [{ column, stats, isNumeric, histogram, min, max, hasMetrics }]
       : [];
   });
   const hasSummary =
@@ -276,91 +284,114 @@ export default function StatisticsTab({
           No statistics available for this file.
         </p>
       )}
-      {cards.map(({ column, stats, isNumeric, histogram, min, max }) => {
-        const IconComponent = getColumnIcon(column.type);
+      {cards.map(
+        ({ column, stats, isNumeric, histogram, min, max, hasMetrics }) => {
+          const IconComponent = getColumnIcon(column.type);
+          const inferredQuantiles = stats.quantileSource === "profiler";
 
-        return (
-          <div key={column.id} className={styles.statisticsTab__colStats}>
-            {/* Column Header */}
-            <div className={styles.statisticsTab__colHeader}>
-              <div className={styles.statisticsTab__colName}>
-                <IconComponent className={styles.statisticsTab__icon} />
-                <span>{column.name}</span>
-              </div>
-              {column.description && (
-                <div className={styles.statisticsTab__colDescription}>
-                  {column.description}
+          return (
+            <div key={column.id} className={styles.statisticsTab__colStats}>
+              {/* Column Header */}
+              <div className={styles.statisticsTab__colHeader}>
+                <div className={styles.statisticsTab__colName}>
+                  <IconComponent className={styles.statisticsTab__icon} />
+                  <span>{column.name}</span>
                 </div>
-              )}
-            </div>
-
-            {/* Metrics and Chart Container */}
-            <div className={styles.statisticsTab__content}>
-              {/* Left Side: Metrics */}
-              <div className={styles.statisticsTab__metrics}>
-                {isNumeric && (
-                  <>
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <Metric label="Max value" value={max} />
-                      <Metric label="Mean value" value={stats.mean} />
-                    </div>
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <Metric label="Min value" value={min} />
-                      <Metric label="Median value" value={stats.median} />
-                    </div>
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <Metric
-                        label="5th percentile"
-                        value={stats.percentile05}
-                      />
-                      <Metric
-                        label="95th percentile"
-                        value={stats.percentile95}
-                      />
-                    </div>
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <Metric label="Standard deviation" value={stats.stdDev} />
-                      {histogram && (
-                        <Metric
-                          label="Unique values"
-                          value={stats.uniqueValues}
-                        />
-                      )}
-                    </div>
-                  </>
+                {column.inferredSemanticType && (
+                  <p className={styles.statisticsTab__colDescription}>
+                    Inferred semantic type: {column.inferredSemanticType}
+                  </p>
                 )}
-                <div className={styles.statisticsTab__metricsRow}>
-                  <Metric label="Missing rows" value={stats.nullCount} />
-                  <Metric
-                    label="Missing percentage"
-                    value={stats.missingPercentage}
-                    suffix="%"
-                  />
-                </div>
-              </div>
-
-              {/* Right Side: Large Number or Histogram */}
-              <div className={styles.statisticsTab__visual}>
-                {histogram ? (
-                  <LargeHistogram
-                    {...histogram}
-                    label={`Distribution of ${column.name}`}
-                  />
-                ) : (
-                  <div className={styles.statisticsTab__largeNumber}>
-                    <span className={styles.statisticsTab__largeNumberLabel}>
-                      Unique values in this column
-                    </span>
-                    <span className={styles.statisticsTab__largeNumberValue}>
-                      {formatMetric(stats.uniqueValues) ?? "Not available"}
-                    </span>
+                {column.description && (
+                  <div className={styles.statisticsTab__colDescription}>
+                    {column.description}
                   </div>
                 )}
               </div>
+
+              {/* Metrics and Chart Container */}
+              {hasMetrics && (
+                <div className={styles.statisticsTab__content}>
+                  {/* Left Side: Metrics */}
+                  <div className={styles.statisticsTab__metrics}>
+                    {isNumeric && (
+                      <>
+                        <div className={styles.statisticsTab__metricsRow}>
+                          <Metric label="Max value" value={max} />
+                          <Metric label="Mean value" value={stats.mean} />
+                        </div>
+                        <div className={styles.statisticsTab__metricsRow}>
+                          <Metric label="Min value" value={min} />
+                          <Metric
+                            label="Median value"
+                            value={stats.median}
+                            inferred={inferredQuantiles}
+                          />
+                        </div>
+                        <div className={styles.statisticsTab__metricsRow}>
+                          <Metric
+                            label="5th percentile"
+                            value={stats.percentile05}
+                            inferred={inferredQuantiles}
+                          />
+                          <Metric
+                            label="95th percentile"
+                            value={stats.percentile95}
+                            inferred={inferredQuantiles}
+                          />
+                        </div>
+                        <div className={styles.statisticsTab__metricsRow}>
+                          <Metric
+                            label="Standard deviation"
+                            value={stats.stdDev}
+                          />
+                          {histogram && (
+                            <Metric
+                              label="Unique values"
+                              value={stats.uniqueValues}
+                            />
+                          )}
+                        </div>
+                      </>
+                    )}
+                    <div className={styles.statisticsTab__metricsRow}>
+                      <Metric label="Missing rows" value={stats.nullCount} />
+                      <Metric
+                        label="Missing percentage"
+                        value={stats.missingPercentage}
+                        suffix="%"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Side: Large Number or Histogram */}
+                  <div className={styles.statisticsTab__visual}>
+                    {histogram ? (
+                      <LargeHistogram
+                        {...histogram}
+                        label={`Distribution of ${column.name}`}
+                      />
+                    ) : (
+                      <div className={styles.statisticsTab__largeNumber}>
+                        <span
+                          className={styles.statisticsTab__largeNumberLabel}
+                        >
+                          Unique values in this column
+                        </span>
+                        <span
+                          className={styles.statisticsTab__largeNumberValue}
+                        >
+                          {formatMetric(stats.uniqueValues) ?? "Not available"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        );
-      })}
+          );
+        },
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ export interface FileColumn {
   type: "text" | "number" | "date" | "boolean" | "numeric" | "categorical";
   visible: boolean;
   description?: string;
+  inferredSemanticType?: string;
 }
 
 export interface FileRow {
@@ -24,6 +25,7 @@ export interface ColumnStatistics {
   median?: number;
   percentile05?: number;
   percentile95?: number;
+  quantileSource?: "profiler";
   stdDev?: number;
   missingPercentage?: number;
   distribution?: number[];

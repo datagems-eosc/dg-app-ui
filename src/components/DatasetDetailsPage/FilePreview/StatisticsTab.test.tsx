@@ -46,12 +46,39 @@ it("keeps supplied percentiles when an untyped numeric field has no usable mean"
   expect(screen.getByText("52.06")).toBeInTheDocument();
 });
 
-it("shows the profiled 5th and 95th percentiles with their actual labels", () => {
+it("shows the inferred meaning of a column independently of its structural type and metrics", () => {
+  const [entry] = buildFilePreviews({
+    nodes: [
+      { id: "file", labels: ["cr:FileObject"] },
+      {
+        id: "level",
+        labels: ["cr:Field"],
+        properties: {
+          name: "Question Level",
+          dataType: "sc:Text",
+          semanticType: "difficulty level",
+        },
+      },
+    ],
+    edges: [{ from: "level", to: "file", labels: ["source/fileObject"] }],
+  });
+  if (entry?.data.type !== "tabular") throw new Error("Expected tabular data");
+  render(<StatisticsTab {...entry.data} />);
+  expect(screen.getByText("Question Level")).toBeInTheDocument();
+  expect(
+    screen.getByText("Inferred semantic type: difficulty level"),
+  ).toBeInTheDocument();
+  expect(screen.queryByText("Missing rows")).not.toBeInTheDocument();
+});
+
+it("labels available profiler percentiles as inferred", () => {
   renderAirbnbPrice();
-  expect(screen.getByText("5th percentile")).toBeInTheDocument();
+  expect(screen.getByText("5th percentile (inferred)")).toBeInTheDocument();
   expect(screen.getByText("52.06")).toBeInTheDocument();
-  expect(screen.getByText("95th percentile")).toBeInTheDocument();
+  expect(screen.getByText("95th percentile (inferred)")).toBeInTheDocument();
   expect(screen.getByText("385.46")).toBeInTheDocument();
+  expect(screen.getByText("Median value")).toBeInTheDocument();
+  expect(screen.queryByText(/inferred semantic type/i)).not.toBeInTheDocument();
 });
 
 it("scales the histogram to the observed count and aligns bars with that scale", () => {
@@ -136,6 +163,26 @@ it("keeps distinct histogram endpoint labels for a small nonzero range", () => {
   );
   expect(screen.getByText("0.001", { selector: "text" })).toBeInTheDocument();
   expect(screen.getByText("0.003", { selector: "text" })).toBeInTheDocument();
+});
+
+it("rounds a near-zero lower histogram bound to zero without a minus sign", () => {
+  render(
+    <StatisticsTab
+      columns={[
+        { id: "a", name: "Type of Answer", type: "numeric", visible: true },
+      ]}
+      statistics={[
+        { columnId: "a", min: -0.001, max: 1, distribution: [3, 4] },
+      ]}
+    />,
+  );
+  const chart = screen.getByRole("img", {
+    name: "Distribution of Type of Answer",
+  });
+  expect(
+    within(chart).getByText("0", { selector: "text" }),
+  ).toBeInTheDocument();
+  expect(within(chart).queryByText("-0")).not.toBeInTheDocument();
 });
 
 it("validates and rounds numeric bounds sent as strings", () => {

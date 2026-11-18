@@ -54,6 +54,7 @@ export interface ProfileTreeNode {
 const LABEL_FILE = "cr:FileObject";
 const LABEL_FIELD = "cr:Field";
 const LABEL_RECORDSET = "cr:RecordSet";
+const LABEL_STATISTICS = "dg:ColumnStatistics";
 
 const EDGE_FIELD = "field";
 const EDGE_SOURCE = "source/fileObject";
@@ -157,6 +158,14 @@ function isCount(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
+function readSemanticType(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const label = value.trim();
+  // Reserved CTA responses describe the annotation outcome, not a column type.
+  if (!label || label === "unknown" || label === "error") return undefined;
+  return label;
+}
+
 function parseHistogram(
   histogram: unknown,
 ): Pick<ColumnStatistics, "distribution" | "distributionRanges"> {
@@ -255,6 +264,13 @@ function mapColumnStatistics(
   stat.median = num("median");
   stat.percentile05 = num("percentile05");
   stat.percentile95 = num("percentile95");
+  if (
+    stat.median !== undefined ||
+    stat.percentile05 !== undefined ||
+    stat.percentile95 !== undefined
+  ) {
+    stat.quantileSource = "profiler";
+  }
   const standardDeviation = num("standardDeviation");
   const missingPercentage = num("missingPercentage");
   if (standardDeviation !== undefined && standardDeviation >= 0)
@@ -504,14 +520,35 @@ function buildTabular(
   index: GraphIndex,
   matchingRecordSets: GraphNode[],
 ): FilePreviewDataUnion {
-  const statsProps = (columnId: string) => {
-    const statsId = index.targetsOf(columnId, EDGE_STATISTICS)[0];
-    return statsId ? index.nodeById.get(statsId)?.properties : undefined;
-  };
-
+  // File selection alone cannot identify which RecordSet supplied the metrics.
+  const unambiguousContext =
+    matchingRecordSets.length <= 1 &&
+    !index.duplicateNodeIds.has(recordSet?.id ?? "") &&
+    !index.duplicateNodeIds.has(file.id ?? "");
   const inputs = columns.map((column) => {
-    const props = statsProps(column.id ?? "");
-    return { column, props, totals: possibleRowTotals(props) };
+    const columnId = column.id ?? "";
+    const validField = unambiguousContext && isFieldEndpoint(columnId, index);
+    const ids = new Set(
+      validField ? index.targetsOf(columnId, EDGE_STATISTICS) : [],
+    );
+    const id = ids.values().next().value;
+    const statsNode =
+      ids.size === 1 && id && !index.duplicateNodeIds.has(id)
+        ? index.nodeById.get(id)
+        : undefined;
+    const props =
+      statsNode && hasLabel(statsNode, LABEL_STATISTICS)
+        ? statsNode.properties
+        : undefined;
+    const inferredSemanticType = validField
+      ? readSemanticType(column.properties?.semanticType)
+      : undefined;
+    return {
+      column,
+      props,
+      totals: possibleRowTotals(props),
+      inferredSemanticType,
+    };
   });
   const compatibleTotals = inputs
     .map(({ totals }) => totals)
@@ -532,19 +569,22 @@ function buildTabular(
       ? candidateTotal
       : undefined;
 
-  const fields = inputs.map(({ column, props, totals }) => {
-    const id = column.id ?? "";
-    const maxRows = totals.length > 0 ? Math.max(...totals) : undefined;
-    const stats = mapColumnStatistics(id, props, totalRows ?? maxRows);
-    const fileColumn: FileColumn = {
-      id,
-      name: String(column.properties?.name ?? ""),
-      type: mapColumnType(column.properties?.dataType, stats),
-      visible: true,
-      description: (column.properties?.description as string) || undefined,
-    };
-    return { fileColumn, stats };
-  });
+  const fields = inputs.map(
+    ({ column, props, totals, inferredSemanticType }) => {
+      const id = column.id ?? "";
+      const maxRows = totals.length > 0 ? Math.max(...totals) : undefined;
+      const stats = mapColumnStatistics(id, props, totalRows ?? maxRows);
+      const fileColumn: FileColumn = {
+        id,
+        name: String(column.properties?.name ?? ""),
+        type: mapColumnType(column.properties?.dataType, stats),
+        visible: true,
+        description: (column.properties?.description as string) || undefined,
+        inferredSemanticType,
+      };
+      return { fileColumn, stats };
+    },
+  );
   const statistics = fields.map((field) => field.stats);
 
   const rows = buildRows(recordSet, columns);

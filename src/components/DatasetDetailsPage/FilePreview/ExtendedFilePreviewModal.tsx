@@ -91,6 +91,7 @@ export default function ExtendedFilePreviewModal({
 
           <FilePreviewTabs
             idPrefix={tabId}
+            hasQualityReport={fileData.dataQuality.status === "available"}
             activeTab={activeTab}
             onTabChange={onTabChange}
           />

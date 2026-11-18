@@ -19,4 +19,10 @@
     @include text-secondary;
     margin: 0;
   }
+
+  &__provenance {
+    @include text-xs;
+    @include text-secondary;
+    margin: 0;
+  }
 }
