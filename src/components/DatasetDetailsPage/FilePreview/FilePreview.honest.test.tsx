@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
+import type { FilePreviewData } from "@/types/filePreview";
 import FilePreview from "./FilePreview";
 
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
@@ -27,7 +29,7 @@ it.each(["tabular", "json"] as const)(
                 rows: [],
                 totalRows: 0,
                 statistics: [],
-                dataQuality: [],
+                dataQuality: { status: "unavailable" },
               }
         }
       />,
@@ -37,3 +39,44 @@ it.each(["tabular", "json"] as const)(
     ).not.toBeInTheDocument();
   },
 );
+
+it("shows only the current file's metrics and quality report after selection changes", async () => {
+  const user = userEvent.setup();
+  const first: FilePreviewData = {
+    type: "tabular",
+    filename: "first.csv",
+    fileSize: "",
+    description: "",
+    rows: [],
+    columns: [{ id: "price", name: "Price", type: "numeric", visible: true }],
+    statistics: [{ columnId: "price", mean: 91 }],
+    dataQuality: {
+      status: "available",
+      summary: "First file report",
+      findings: [],
+    },
+  };
+  const { rerender } = render(<FilePreview fileData={first} />);
+  await user.click(screen.getByRole("tab", { name: "Statistics" }));
+  expect(screen.getByText("91")).toBeInTheDocument();
+  await user.click(screen.getByRole("tab", { name: /Data Quality/ }));
+  expect(screen.getByText("First file report")).toBeInTheDocument();
+  rerender(
+    <FilePreview
+      fileData={{
+        ...first,
+        filename: "second.csv",
+        statistics: [{ columnId: "price", mean: 52 }],
+        dataQuality: { status: "unavailable" },
+      }}
+    />,
+  );
+  await user.click(screen.getByRole("tab", { name: "Statistics" }));
+  expect(screen.getByText("52")).toBeInTheDocument();
+  expect(screen.queryByText("91")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("tab", { name: /Data Quality/ }));
+  expect(
+    screen.getByText("No data quality report available."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText("First file report")).not.toBeInTheDocument();
+});

@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { expect, it, vi } from "vitest";
+import type { FilePreviewData } from "@/types/filePreview";
 import ExtendedFilePreviewModal from "./ExtendedFilePreviewModal";
 
-const data = {
-  type: "tabular" as const,
+const data: FilePreviewData = {
+  type: "tabular",
   filename: "data.csv",
   fileSize: "",
   description: "",
@@ -12,7 +13,7 @@ const data = {
   rows: [],
   statistics: [],
   totalRows: 0,
-  dataQuality: [],
+  dataQuality: { status: "unavailable" },
 };
 function Harness() {
   const [open, setOpen] = useState(false);

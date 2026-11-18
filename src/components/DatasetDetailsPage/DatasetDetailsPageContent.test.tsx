@@ -86,6 +86,23 @@ describe("DatasetDetailsPageContent selection controls", () => {
   });
 });
 
+it("distinguishes an unreadable file profile from a dataset with no files", () => {
+  const { rerender } = render(
+    <DatasetDetailsPageContent dataset={mockDataset} />,
+  );
+  expect(
+    screen.getByText("No files are available to preview for this dataset."),
+  ).toBeInTheDocument();
+  rerender(
+    <DatasetDetailsPageContent
+      dataset={{ ...mockDataset, profileRaw: "invalid JSON" }}
+    />,
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "The file profile could not be loaded.",
+  );
+});
+
 describe("DatasetDetailsPageContent – publication and permission forwarding", () => {
   beforeEach(() => {
     vi.clearAllMocks();

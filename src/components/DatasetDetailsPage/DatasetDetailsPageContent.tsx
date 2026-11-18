@@ -13,6 +13,7 @@ import {
   buildFilePreviews,
   buildFileTree,
   type ProfileTreeNode,
+  parseProfileRaw,
 } from "@/lib/datasetProfile";
 import { deriveProfileMetadata } from "@/lib/datasetProfileMetadata";
 import { getNavigationUrl } from "@/lib/utils";
@@ -76,10 +77,16 @@ export default function DatasetDetailsPageContent({
     [dataset.profileRaw],
   );
 
-  const fileNodes: FileNode[] = useMemo(
-    () => mapTreeToFileNodes(buildFileTree(dataset.profileRaw)),
-    [dataset.profileRaw],
-  );
+  const { fileNodes, unreadableProfile } = useMemo(() => {
+    const fileNodes = mapTreeToFileNodes(buildFileTree(dataset.profileRaw));
+    return {
+      fileNodes,
+      unreadableProfile:
+        fileNodes.length === 0 &&
+        dataset.profileRaw != null &&
+        !parseProfileRaw(dataset.profileRaw),
+    };
+  }, [dataset.profileRaw]);
 
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const selectedEntry =
@@ -183,7 +190,14 @@ export default function DatasetDetailsPageContent({
               <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
                 File Preview
               </h2>
-              {fileNodes.length === 0 ? (
+              {unreadableProfile ? (
+                <p
+                  role="status"
+                  className={styles.datasetDetailsPageContent__statusText}
+                >
+                  The file profile could not be loaded.
+                </p>
+              ) : fileNodes.length === 0 ? (
                 <p className={styles.datasetDetailsPageContent__statusText}>
                   No files are available to preview for this dataset.
                 </p>
