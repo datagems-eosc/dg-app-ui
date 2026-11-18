@@ -2,6 +2,10 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  clearVocabularyCache,
+  processFieldsOfScience,
+} from "@/lib/vocabularyService";
 
 /**
  * Composition proof for the dataset details route.
@@ -228,6 +232,7 @@ describe("dataset details page headline", () => {
 describe("dataset details page fields of science", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearVocabularyCache();
     mockGetCurrentUserContextGrants.mockResolvedValue([]);
   });
 
@@ -275,6 +280,19 @@ describe("dataset details page fields of science", () => {
         name: "Sea surface temperature",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("uses a vocabulary loaded earlier in the session without asking again", async () => {
+    processFieldsOfScience(FIELDS_OF_SCIENCE);
+    mockGetFieldsOfScience.mockRejectedValue(new Error("503"));
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(fieldChips()).toEqual(["Mathematics"]);
+    expect(mockGetFieldsOfScience).not.toHaveBeenCalled();
   });
 });
 

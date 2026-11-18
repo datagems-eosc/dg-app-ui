@@ -377,4 +377,49 @@ describe("HierarchicalDropdown", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("option ids", () => {
+    // Fields-of-science option values are vocabulary names: they contain
+    // spaces, and the vocabulary lists MATERIALS ENGINEERING under two codes.
+    const namedCategories = (): HierarchicalCategory[] =>
+      guarded([
+        {
+          name: "Engineering and technology",
+          code: "2",
+          options: [
+            {
+              value: "MATERIALS ENGINEERING",
+              label: "Materials engineering",
+              code: "2.5",
+            },
+          ],
+        },
+        {
+          name: "Medical and health sciences",
+          code: "3",
+          options: [
+            {
+              value: "MATERIALS ENGINEERING",
+              label: "Materials engineering",
+              code: "3.5",
+            },
+          ],
+        },
+      ]);
+
+    it("gives each listed option its own checkbox, even for a repeated value", async () => {
+      const user = userEvent.setup();
+      render(<ControlledDropdown categories={namedCategories()} />);
+
+      await user.type(searchBox(), "materials");
+
+      const checkboxes = screen.getAllByLabelText("Materials engineering");
+      const ids = checkboxes.map((checkbox) => checkbox.id);
+      expect(checkboxes).toHaveLength(2);
+      expect(new Set(ids).size).toBe(2);
+      for (const id of ids) {
+        expect(id).not.toMatch(/\s/);
+      }
+    });
+  });
 });

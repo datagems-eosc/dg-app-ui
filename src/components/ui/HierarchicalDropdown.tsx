@@ -187,7 +187,7 @@ export default function HierarchicalDropdown({
               </div>
               {expandedCategories.includes(category.code) && (
                 <div>
-                  {category.options.map((option) => {
+                  {category.options.map((option, optionIndex) => {
                     // Ensure option.value is a valid string for the key
                     const optionKey =
                       typeof option.value === "string"
@@ -204,7 +204,9 @@ export default function HierarchicalDropdown({
                         className="flex items-center pl-3 pr-6 py-2"
                       >
                         <Checkbox
-                          id={`checkbox-${optionKey}`}
+                          // Values can contain spaces and repeat across
+                          // categories, so the id comes from the codes.
+                          id={`checkbox-${category.code}-${option.code ?? optionIndex}`}
                           checked={value.includes(option.value)}
                           onChange={() => handleToggleOption(option.value)}
                           label={optionLabel}

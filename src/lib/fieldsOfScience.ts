@@ -15,29 +15,29 @@ import type {
 
 const normalise = (value: string) => value.trim().toLowerCase();
 
-/** The child field whose code or name (any casing) a stored value matches. */
-export function findFieldOfScience(
+/** A stored value matches an entry by its code, or its name in any casing. */
+const matches = (value: string, code: string | undefined, name: string) =>
+  code === value.trim() || normalise(name) === normalise(value);
+
+/** The child field a stored value matches. */
+function findFieldOfScience(
   value: string,
   categories: readonly HierarchicalCategory[],
 ): HierarchicalOption | undefined {
-  const name = normalise(value);
   for (const category of categories) {
-    const option = category.options.find(
-      (o) => o.code === value.trim() || normalise(o.value) === name,
+    const option = category.options.find((o) =>
+      matches(value, o.code, o.value),
     );
     if (option) return option;
   }
   return undefined;
 }
 
-/** The top-level category whose code or name (any casing) a value matches. */
+/** The top-level category a value matches. */
 const findCategory = (
   value: string,
   categories: readonly HierarchicalCategory[],
-) =>
-  categories.find(
-    (c) => c.code === value.trim() || normalise(c.name) === normalise(value),
-  );
+) => categories.find((c) => matches(value, c.code, c.name));
 
 /**
  * Readable labels for stored values, in stored order: a known field or
@@ -84,9 +84,9 @@ export function fieldOfScienceFilterValues(
 ): string[] {
   const values = selected.flatMap((name) => {
     const codes = categories.flatMap((category) =>
-      category.options
-        .filter((o) => o.value === name && o.code)
-        .map((o) => o.code as string),
+      category.options.flatMap((o) =>
+        o.value === name && o.code ? [o.code] : [],
+      ),
     );
     return [name, ...codes];
   });

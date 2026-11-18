@@ -20,7 +20,10 @@ import { ACCESS_ACTION_NAMES } from "@/lib/datasetPermissions/types";
 import { fieldOfScienceLabels } from "@/lib/fieldsOfScience";
 import { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
-import { processFieldsOfScience } from "@/lib/vocabularyService";
+import {
+  cachedFieldsOfScience,
+  processFieldsOfScience,
+} from "@/lib/vocabularyService";
 
 const DATASET_ERROR_MESSAGES = {
   "not-found": "Dataset not found.",
@@ -108,11 +111,13 @@ export default function DatasetDetailsPage() {
           readGlobalPermissions(controller.signal).catch(() => ({
             evidence: PERMISSIONS_FAILED,
           })),
-          // Without the vocabulary, fields of science are shown as stored.
-          api
-            .getFieldsOfScience()
-            .then(processFieldsOfScience)
-            .catch(() => []),
+          // A vocabulary loaded earlier in the session is reused. Without one,
+          // fields of science are shown as stored.
+          cachedFieldsOfScience() ??
+            api
+              .getFieldsOfScience()
+              .then(processFieldsOfScience)
+              .catch(() => []),
         ]);
 
         if (isCancelled) return;

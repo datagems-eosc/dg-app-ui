@@ -1,12 +1,15 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDefaultFilters } from "@/config/filterOptions";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import {
   mapApiDatasetToDataset,
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
-import { processFieldsOfScience } from "@/lib/vocabularyService";
+import {
+  clearVocabularyCache,
+  processFieldsOfScience,
+} from "@/lib/vocabularyService";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -469,6 +472,7 @@ describe("useDatasetSearch", () => {
     // Browse loads the vocabulary before a field can be chosen; that load
     // fills the vocabulary cache the request reads codes from.
     beforeEach(() => {
+      clearVocabularyCache();
       processFieldsOfScience({
         hierarchy: [
           {
@@ -487,6 +491,8 @@ describe("useDatasetSearch", () => {
         ],
       });
     });
+
+    afterEach(() => clearVocabularyCache());
 
     const applyFields = async (fieldsOfScience: string[]) => {
       const { result } = renderSearch();
@@ -516,6 +522,14 @@ describe("useDatasetSearch", () => {
         "COMPUTER AND INFORMATION SCIENCES",
         "1.2",
       ]);
+    });
+
+    it("sends the names alone while the vocabulary is not loaded", async () => {
+      clearVocabularyCache();
+
+      await applyFields(["MATHEMATICS"]);
+
+      expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS"]);
     });
 
     it("sends no field of science once the filter is cleared", async () => {

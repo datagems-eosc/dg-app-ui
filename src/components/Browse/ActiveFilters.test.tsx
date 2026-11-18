@@ -167,6 +167,40 @@ describe("ActiveFilters", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows fields selected by vocabulary name with their readable labels", () => {
+    // The shape processFieldsOfScience gives the Gateway vocabulary.
+    const vocabulary: HierarchicalCategory[] = [
+      {
+        name: "Natural sciences",
+        code: "1",
+        options: [
+          { value: "MATHEMATICS", label: "Mathematics", code: "1.1" },
+          {
+            value: "COMPUTER AND INFORMATION SCIENCES",
+            label: "Computer and information sciences",
+            code: "1.2",
+          },
+        ],
+      },
+    ];
+    const filters: FilterState = {
+      ...defaultProps.filters,
+      fieldsOfScience: ["MATHEMATICS", "COMPUTER AND INFORMATION SCIENCES"],
+    };
+
+    render(
+      <ActiveFilters
+        {...defaultProps}
+        filters={filters}
+        fieldsOfScienceCategories={vocabulary}
+      />,
+    );
+
+    expect(
+      screen.getByText("Mathematics, Computer and information sciences"),
+    ).toBeInTheDocument();
+  });
+
   it("should render fields of science filter with more than two selections (truncated)", () => {
     const filters: FilterState = {
       ...defaultProps.filters,
