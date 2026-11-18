@@ -298,6 +298,30 @@ test("does not attach a report shared by a RecordSet spanning two files", () => 
   assert.deepEqual(reports, ["invalid", "invalid"]);
 });
 
+test("rejects an explicit file link with no target even when another field identifies the file", () => {
+  const graph = {
+    nodes: [
+      ...GRAPH.nodes,
+      {
+        id: "report",
+        labels: ["dg:DataQuality"],
+        properties: { summary: "Checked" },
+      },
+    ],
+    edges: [
+      ...GRAPH.edges.filter(
+        (edge) =>
+          edge.from !== "col2" || !edge.labels.includes("source/fileObject"),
+      ),
+      { from: "rs", to: "report", labels: ["HAS_DATA_QUALITY"] },
+      { from: "col2", labels: ["source/fileObject"] },
+    ],
+  };
+  const data = buildFilePreviews(graph)[0]?.data;
+  assert.ok(data?.type === "tabular");
+  assert.deepEqual(data.dataQuality, { status: "invalid" });
+});
+
 test("rejects a report node claimed by two separate RecordSets", () => {
   const graph = {
     nodes: [

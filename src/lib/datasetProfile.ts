@@ -349,8 +349,17 @@ function readDataQuality(
   const sourceFiles = new Set<string>();
   for (const id of index.reportTargetsOf(recordSetId, EDGE_FIELD)) {
     if (!id || !isFieldEndpoint(id, index)) return { status: "invalid" };
-    for (const fileId of index.targetsOf(id, EDGE_SOURCE))
+    for (const fileId of index.reportTargetsOf(id, EDGE_SOURCE)) {
+      const file = fileId ? index.nodeById.get(fileId) : undefined;
+      if (
+        !fileId ||
+        !file ||
+        !hasLabel(file, LABEL_FILE) ||
+        index.duplicateNodeIds.has(fileId)
+      )
+        return { status: "invalid" };
       sourceFiles.add(fileId);
+    }
   }
   // A RecordSet report cannot tell which file owns each finding when its fields span files.
   if (sourceFiles.size !== 1) return { status: "invalid" };
