@@ -219,6 +219,35 @@ test("binds the quality report through the selected RecordSet, independent of no
   });
 });
 
+test("does not call a report clean when a finding edge has no source", () => {
+  const graph = {
+    nodes: [
+      ...GRAPH.nodes,
+      {
+        id: "report",
+        labels: ["dg:DataQuality"],
+        properties: { summary: "A value error was found" },
+      },
+      { id: "finding", labels: ["dg:DataQualityError"] },
+    ],
+    edges: [
+      ...GRAPH.edges,
+      { from: "rs", to: "report", labels: ["HAS_DATA_QUALITY"] },
+      { from: null, to: "finding", labels: ["HAS_ERROR"] },
+    ],
+  };
+  const data = buildFilePreviews(graph)[0]?.data;
+  assert.ok(data?.type === "tabular");
+  assert.deepEqual(data.dataQuality, { status: "invalid" });
+  const withoutReport = {
+    ...graph,
+    edges: graph.edges.filter((edge) => edge.to !== "report"),
+  };
+  const noReport = buildFilePreviews(withoutReport)[0]?.data;
+  assert.ok(noReport?.type === "tabular");
+  assert.deepEqual(noReport.dataQuality, { status: "unavailable" });
+});
+
 test("does not call a report clean when a finding edge has no target", () => {
   const graph = {
     nodes: [
@@ -384,6 +413,44 @@ test("keeps a finding when its serialized examples are malformed", () => {
   assert.equal(data.dataQuality.findings[0].examples, null);
   assert.equal(data.dataQuality.findings[0].category, "unknown_pattern");
 });
+
+test("uses a known table row total when a column omits its own row count", () => {
+  const graph = structuredClone(GRAPH);
+  const first = graph.nodes.find((node) => node.id === "stat1")?.properties;
+  const second = graph.nodes.find((node) => node.id === "stat2")?.properties;
+  assert.ok(first && second);
+  Object.assign(first, { rowCount: 100, missingCount: 1 });
+  Object.assign(second, { rowCount: undefined, missingCount: 2 });
+
+  const data = buildFilePreviews(graph)[0]?.data;
+  assert.ok(data?.type === "tabular");
+  assert.equal(data.totalRows, 100);
+  assert.equal(data.totalMissingPercentage, 1.5);
+});
+
+for (const [reason, secondStats] of [
+  ["missing cell count", { missingCount: undefined }],
+  ["count above the known row total", { missingCount: 101 }],
+  ["malformed row total", { rowCount: "100" }],
+  ["conflicting row total", { rowCount: 101 }],
+] as const) {
+  test(`withholds the whole-table percentage for a ${reason}`, () => {
+    const graph = structuredClone(GRAPH);
+    const first = graph.nodes.find((node) => node.id === "stat1")?.properties;
+    const second = graph.nodes.find((node) => node.id === "stat2")?.properties;
+    assert.ok(first && second);
+    Object.assign(first, { rowCount: 100, missingCount: 1 });
+    Object.assign(
+      second,
+      { rowCount: undefined, missingCount: 2 },
+      secondStats,
+    );
+
+    const data = buildFilePreviews(graph)[0]?.data;
+    assert.ok(data?.type === "tabular");
+    assert.equal(data.totalMissingPercentage, undefined);
+  });
+}
 
 test("keeps the row total but omits a missing percentage when a column count exceeds it", () => {
   const graph = structuredClone(GRAPH);

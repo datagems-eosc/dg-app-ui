@@ -62,7 +62,7 @@ export default function DataQualityTab({
           column?.type === "numeric" || column?.type === "number" ? Hash : Type;
         return (
           <details className={styles.dataQualityTab__card} key={finding.id}>
-            <summary className={styles.dataQualityTab__cardHeader}>
+            <summary className={styles.dataQualityTab__cardHeader} tabIndex={0}>
               <span className={styles.dataQualityTab__cardTitle}>
                 {column && (
                   <ColumnIcon

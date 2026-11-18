@@ -100,10 +100,10 @@ export function parseProfileRaw(raw: unknown): ProfileGraph | null {
   });
   const edges: GraphEdge[] = Array.isArray(value.edges)
     ? value.edges.flatMap((edge: unknown) => {
-        if (!isObject(edge) || typeof edge.from !== "string") return [];
+        if (!isObject(edge)) return [];
         return [
           {
-            from: edge.from,
+            from: typeof edge.from === "string" ? edge.from : undefined,
             to: typeof edge.to === "string" ? edge.to : undefined,
             labels: Array.isArray(edge.labels)
               ? edge.labels.filter(
@@ -256,6 +256,7 @@ function normalizeCell(value: unknown): string | number | boolean | null {
 interface GraphIndex {
   nodeById: Map<string, GraphNode>;
   duplicateNodeIds: Set<string>;
+  hasUnassignedFindings: boolean;
   targetsOf: (fromId: string, type: string) => string[];
   reportTargetsOf: (fromId: string, type: string) => (string | undefined)[];
   reportSourcesOf: (toId: string, type: string) => (string | undefined)[];
@@ -273,6 +274,9 @@ function indexGraph(graph: ProfileGraph): GraphIndex {
   return {
     nodeById,
     duplicateNodeIds,
+    hasUnassignedFindings: edges.some(
+      (edge) => !edge.from?.trim() && edge.labels?.includes("HAS_ERROR"),
+    ),
     targetsOf: (fromId, type) =>
       edges
         .filter((e) => e.from === fromId && edgeType(e) === type && e.to)
@@ -401,6 +405,10 @@ function readDataQuality(
       examples: readQualityExamples(examples),
     });
   }
+  // A source-less finding could belong to this report, so empty is inconclusive.
+  if (findings.length === 0 && index.hasUnassignedFindings) {
+    return { status: "invalid" };
+  }
   return { status: "available", summary, findings };
 }
 
@@ -484,8 +492,12 @@ function buildTabular(
   const totalCells =
     totalRows === undefined ? undefined : totalRows * columns.length;
   const totalMissingPercentage =
-    rowCounts.length === columns.length &&
+    totalRows !== undefined &&
+    fields.every(
+      ({ rowCount }) => rowCount == null || rowCount === totalRows,
+    ) &&
     missingCounts.length === columns.length &&
+    missingCounts.every((count) => count <= totalRows) &&
     totalCells !== undefined &&
     totalCells > 0
       ? (missingCounts.reduce((sum, count) => sum + count, 0) / totalCells) *
