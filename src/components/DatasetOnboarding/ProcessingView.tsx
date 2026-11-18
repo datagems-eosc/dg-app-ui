@@ -26,23 +26,13 @@
  *    anywhere.
  */
 
-import {
-  CircleCheck,
-  CircleX,
-  Info,
-  LoaderCircle,
-  RefreshCw,
-  TriangleAlert,
-} from "lucide-react";
-import {
-  type ReactNode,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+// clsx, not cn: tailwind-merge drops the text-body-* typography classes when
+// a text colour is merged in the same call.
+import { clsx } from "clsx";
+import { RefreshCw } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { InlineNotice, Notice } from "@/components/ui/Notice";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { hasNotice } from "@/lib/datasetOnboarding/model";
 import type {
@@ -56,7 +46,6 @@ import {
   type HeadlineCopy,
   headlineOf,
   type NoticeCopy,
-  type NoticeTone,
   noticeCopyOf,
   type ProcessingReadState,
   RECOVERY_NOTICE,
@@ -69,179 +58,6 @@ import {
 import { StageList } from "./StageList";
 
 export const PROCESSING_HEADING_ID = "dataset-processing-heading";
-
-// ---------------------------------------------------------------------------
-// Banner
-// ---------------------------------------------------------------------------
-
-/**
- * Joins class names without running tailwind-merge.
- *
- * The shared `cn` helper merges through tailwind-merge, which classifies this
- * project's custom typography classes (`text-body-14-regular`,
- * `text-H2-32-semibold`, ...) as `text-*` utilities and therefore drops them
- * whenever a text colour is merged in the same call — verified in this
- * workspace, and the reason a typography class silently disappears from the
- * rendered markup. Typography and colour do not conflict in CSS, so they are
- * concatenated here. The shared helper is protected baseline and is left
- * untouched; the finding is recorded in the handback.
- */
-const classes = (
-  ...values: ReadonlyArray<string | false | undefined>
-): string => values.filter(Boolean).join(" ");
-
-const TONE_SURFACE: Record<NoticeTone, string> = {
-  neutral: "border-slate-200 bg-slate-75",
-  caution: "border-amber-200 bg-amber-50",
-  problem: "border-red-200 bg-red-50",
-  success: "border-emerald-200 bg-emerald-50",
-};
-
-const TONE_TITLE: Record<NoticeTone, string> = {
-  neutral: "text-gray-750",
-  caution: "text-amber-900",
-  problem: "text-red-800",
-  success: "text-emerald-800",
-};
-
-const TONE_BODY: Record<NoticeTone, string> = {
-  neutral: "text-gray-650",
-  caution: "text-amber-800",
-  problem: "text-red-700",
-  success: "text-emerald-700",
-};
-
-const TONE_ICON: Record<NoticeTone, string> = {
-  neutral: "text-icon",
-  caution: "text-amber-600",
-  problem: "text-red-550",
-  success: "text-emerald-600",
-};
-
-const BannerIcon = ({
-  tone,
-  active,
-}: {
-  tone: NoticeTone;
-  active: boolean;
-}) => {
-  const className = classes("mt-0.5 h-5 w-5 shrink-0", TONE_ICON[tone]);
-  if (active) {
-    return (
-      <LoaderCircle
-        className={classes(
-          className,
-          "animate-spin motion-reduce:animate-none",
-        )}
-        aria-hidden="true"
-      />
-    );
-  }
-  switch (tone) {
-    case "success":
-      return <CircleCheck className={className} aria-hidden="true" />;
-    case "problem":
-      return <CircleX className={className} aria-hidden="true" />;
-    case "caution":
-      return <TriangleAlert className={className} aria-hidden="true" />;
-    default:
-      return <Info className={className} aria-hidden="true" />;
-  }
-};
-
-/**
- * Adapted from the Notifications export: tinted surface, matching border, icon
- * beside a title and an optional explanatory line. One thing is deliberately
- * missing — the export's dismiss control. A processing outcome that can be
- * closed is an outcome a user can lose, and every state here is meant to
- * persist.
- */
-const Banner = ({
-  copy,
-  active = false,
-  emphasis = false,
-  children,
-}: {
-  copy: NoticeCopy;
-  active?: boolean;
-  emphasis?: boolean;
-  children?: ReactNode;
-}) => (
-  <div className={classes("rounded-xl border p-4", TONE_SURFACE[copy.tone])}>
-    <div className="flex items-start gap-3">
-      <BannerIcon tone={copy.tone} active={active} />
-      <div className="min-w-0 flex-1">
-        <p
-          className={classes(
-            "break-words",
-            emphasis ? "text-body-16-semibold" : "text-body-14-medium",
-            TONE_TITLE[copy.tone],
-          )}
-        >
-          {copy.title}
-        </p>
-        {copy.body === undefined ? null : (
-          <p
-            className={classes(
-              "mt-1 break-words text-body-14-regular",
-              TONE_BODY[copy.tone],
-            )}
-          >
-            {copy.body}
-          </p>
-        )}
-        {children === undefined ? null : <div className="mt-3">{children}</div>}
-      </div>
-    </div>
-  </div>
-);
-
-/**
- * A short line inside a panel, for a fact that qualifies the content right
- * next to it (the steps list, the dataset action). A full banner there would
- * turn every qualification into another warning box.
- */
-const InlineNote = ({
-  copy,
-  busy = false,
-  children,
-}: {
-  copy: NoticeCopy;
-  busy?: boolean;
-  children?: ReactNode;
-}) => {
-  const iconClass = classes("mt-0.5 h-4 w-4 shrink-0", TONE_ICON[copy.tone]);
-  const Icon = busy
-    ? LoaderCircle
-    : copy.tone === "caution"
-      ? TriangleAlert
-      : copy.tone === "problem"
-        ? CircleX
-        : Info;
-  return (
-    <div className="flex items-start gap-2">
-      <Icon
-        className={classes(
-          iconClass,
-          busy && "animate-spin motion-reduce:animate-none",
-        )}
-        aria-hidden="true"
-      />
-      <div className="min-w-0 flex-1">
-        <p
-          className={classes(
-            "break-words text-body-14-regular",
-            TONE_TITLE[copy.tone],
-          )}
-        >
-          {copy.title}
-          {copy.body === undefined ? null : ` ${copy.body}`}
-        </p>
-        {children === undefined ? null : <div className="mt-2">{children}</div>}
-      </div>
-    </div>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // Notice placement
@@ -468,7 +284,7 @@ export function ProcessingView({
           className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm bg-white transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <RefreshCw
-            className={classes(
+            className={clsx(
               "h-5 w-5 text-icon",
               updating && "animate-spin motion-reduce:animate-none",
             )}
@@ -529,18 +345,21 @@ export function ProcessingView({
         {announced}
       </div>
 
-      <Banner
-        copy={headline}
+      <Notice
+        tone={headline.tone}
+        title={headline.title}
+        body={headline.body}
         // A spinner must not suggest progress we cannot currently observe.
         active={headline.active && !hasConnectionProblem}
         emphasis
-      >
-        {!showStepsPanel && showRefresh ? (
-          <Button type="button" variant="outline" onClick={onCheckAgain}>
-            Refresh status
-          </Button>
-        ) : undefined}
-      </Banner>
+        actions={
+          !showStepsPanel && showRefresh ? (
+            <Button type="button" variant="outline" onClick={onCheckAgain}>
+              Refresh status
+            </Button>
+          ) : undefined
+        }
+      />
 
       {readHealthNotices.length === 0 &&
       (readNotice === null || promoted) ? null : (
@@ -548,18 +367,19 @@ export function ProcessingView({
           {readHealthNotices.map((code) => {
             const copy = noticeCopyOf(code);
             return (
-              <Banner
+              <Notice
                 key={code}
-                copy={
+                {...copy}
+                body={
                   code === "connection-stale"
-                    ? { ...copy, body: staleBodyOf(read.phase) }
-                    : copy
+                    ? staleBodyOf(read.phase)
+                    : copy.body
                 }
               />
             );
           })}
           {readNotice === null || promoted ? null : (
-            <Banner copy={readNoticeCopyOf(readNotice)} />
+            <Notice {...readNoticeCopyOf(readNotice)} />
           )}
         </div>
       )}
@@ -581,7 +401,7 @@ export function ProcessingView({
                 {updateStatusText === "" ? null : (
                   <span
                     id={updateStatusId}
-                    className={classes(
+                    className={clsx(
                       "text-body-14-regular",
                       updateStatus === "retrying" || updateStatus === "stopped"
                         ? "text-amber-800"
@@ -598,18 +418,22 @@ export function ProcessingView({
           {stepNotices.length === 0 ? null : (
             <div className="mt-3 flex flex-col gap-2">
               {stepNotices.map((code) => (
-                <InlineNote key={code} copy={noticeCopyOf(code)}>
-                  {code === "configuration-unavailable" && showReloadSteps ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={onRetryConfiguration}
-                    >
-                      Reload steps
-                    </Button>
-                  ) : undefined}
-                </InlineNote>
+                <InlineNotice
+                  key={code}
+                  {...noticeCopyOf(code)}
+                  actions={
+                    code === "configuration-unavailable" && showReloadSteps ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onRetryConfiguration}
+                      >
+                        Reload steps
+                      </Button>
+                    ) : undefined
+                  }
+                />
               ))}
             </div>
           )}
@@ -648,9 +472,9 @@ export function ProcessingView({
       {availabilityCopy === null && !showViewDataset ? null : (
         <div className="flex flex-col gap-3">
           {availabilityCopy === null ? null : (
-            <InlineNote
-              copy={availabilityCopy}
-              busy={read.checkingAccess === true}
+            <InlineNotice
+              {...availabilityCopy}
+              active={read.checkingAccess === true}
             />
           )}
           {showLocalCheck || showViewDataset ? (
@@ -674,7 +498,7 @@ export function ProcessingView({
         </div>
       )}
 
-      {sharingCopy === null ? null : <Banner copy={sharingCopy} />}
+      {sharingCopy === null ? null : <Notice {...sharingCopy} />}
     </section>
   );
 }
