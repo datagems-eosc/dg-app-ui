@@ -2,12 +2,10 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const getSession = vi.hoisted(() => vi.fn());
+const useSession = vi.hoisted(() => vi.fn());
 
 vi.mock("next-auth/react", () => ({
-  useSession: () => ({
-    status: "authenticated",
-    data: { accessToken: "test-token", user: { id: "user" } },
-  }),
+  useSession,
   getSession,
 }));
 
@@ -15,6 +13,10 @@ import { useApi } from "./useApi";
 
 beforeEach(() => {
   getSession.mockReset();
+  useSession.mockReturnValue({
+    status: "authenticated",
+    data: { accessToken: "test-token", user: { id: "user" } },
+  });
   window.__env = {
     ...window.__env,
     DATAGEMS_API_BASE_URL: "https://gateway.test",
@@ -22,6 +24,37 @@ beforeEach(() => {
 });
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("exposes the authenticated session principal and updates it on account change", () => {
+  const { result, rerender } = renderHook(() => useApi());
+  expect(result.current.sessionPrincipalId).toBe("user");
+  useSession.mockReturnValue({
+    status: "authenticated",
+    data: { accessToken: "another-token", user: { id: "another-user" } },
+  });
+  rerender();
+  expect(result.current.sessionPrincipalId).toBe("another-user");
+});
+
+it.each([
+  ["loading", { accessToken: "test-token", user: { id: "user" } }],
+  ["unauthenticated", null],
+  ["authenticated", { user: { id: "user" } }],
+  [
+    "authenticated",
+    { accessToken: "test-token", user: { id: "user" }, error: "RefreshError" },
+  ],
+  ["authenticated", { accessToken: "test-token", user: { id: "  " } }],
+  ["authenticated", { accessToken: "test-token", user: { id: 42 } }],
+  ["authenticated", { accessToken: "test-token", user: { email: "u@test" } }],
+])(
+  "returns no principal for an unavailable session (%s, %j)",
+  (status, data) => {
+    useSession.mockReturnValue({ status, data });
+    const { result } = renderHook(() => useApi());
+    expect(result.current.sessionPrincipalId).toBeNull();
+  },
+);
 
 it("passes download cancellation to the authenticated Gateway request", async () => {
   const fetch = vi.fn().mockResolvedValue(new Response("original"));

@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useOriginalFileDownload } from "./useOriginalFileDownload";
 
@@ -13,6 +13,7 @@ const create = vi.fn((_blob: Blob) => "blob:original");
 const revoke = vi.fn();
 let click: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   create.mockClear();
   revoke.mockClear();
   vi.stubGlobal(
@@ -26,13 +27,15 @@ beforeEach(() => {
     .spyOn(HTMLAnchorElement.prototype, "click")
     .mockImplementation(() => {});
 });
-afterEach(async () => {
-  await waitFor(
-    () => expect(revoke).toHaveBeenCalledTimes(create.mock.calls.length),
-    { timeout: 2000 },
-  );
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
+afterEach(() => {
+  try {
+    vi.advanceTimersByTime(1000);
+    expect(revoke).toHaveBeenCalledTimes(create.mock.calls.length);
+  } finally {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
 });
 
 it.each(["pdf", "csv", "json", "bin"])(
@@ -196,10 +199,10 @@ it("discards a pending blob after unmount", async () => {
     useOriginalFileDownload(target, download),
   );
   let pending!: Promise<void>;
-  act(() => {
+  await act(async () => {
     pending = result.current.start();
   });
-  await waitFor(() => expect(response.blob).toHaveBeenCalled());
+  expect(response.blob).toHaveBeenCalled();
   unmount();
   expect((download.mock.calls[0][2] as AbortSignal).aborted).toBe(true);
   await act(async () => {

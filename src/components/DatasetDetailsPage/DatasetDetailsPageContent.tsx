@@ -19,8 +19,8 @@ import { deriveProfileMetadata } from "@/lib/datasetProfileMetadata";
 import { getNavigationUrl } from "@/lib/utils";
 import DatasetDescriptionSection from "./DatasetDescriptionSection/DatasetDescriptionSection";
 import styles from "./DatasetDetailsPageContent.module.scss";
-import type { FileNode } from "./DatasetFilesTree/DatasetFilesTree";
 import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
+import { type FileNode, findFileTreeNode } from "./DatasetFilesTree/fileTree";
 import DatasetHeader from "./DatasetHeader/DatasetHeader";
 import DatasetMetadataBar from "./DatasetMetadataBar/DatasetMetadataBar";
 import DatasetProfilingSections from "./DatasetProfilingSections/DatasetProfilingSections";
@@ -66,7 +66,7 @@ export default function DatasetDetailsPageContent({
   returnToRoles = false,
 }: DatasetDetailsPageContentProps) {
   const router = useRouter();
-  const { downloadDatasetFile, datasetPermissions } = useApi();
+  const { downloadDatasetFile, sessionPrincipalId } = useApi();
 
   const metadata = useMemo(
     () => deriveProfileMetadata(dataset.profileRaw),
@@ -114,17 +114,18 @@ export default function DatasetDetailsPageContent({
   const hasManagePermission = permissions?.includes("Manage") ?? false;
   const selectedDownloadId =
     selectedFileId ?? selectedEntry?.id ?? fileNodes[0]?.id;
-  const downloadFile = fileNodes.find(
+  const downloadFile = findFileTreeNode(
+    fileNodes,
     (node) => node.type === "file" && node.id === selectedDownloadId,
   );
-  const principalId = datasetPermissions?.scope?.principalId ?? null;
-  const canDownload = hasDownloadPermission && !!downloadFile && !!principalId;
+  const canDownload =
+    hasDownloadPermission && !!downloadFile && !!sessionPrincipalId;
   const originalDownload = useOriginalFileDownload(
     {
       datasetId: dataset.id,
       fileId: downloadFile?.id,
       filename: downloadFile?.name ?? "download",
-      principalId,
+      principalId: sessionPrincipalId,
       allowed: canDownload,
     },
     downloadDatasetFile,
