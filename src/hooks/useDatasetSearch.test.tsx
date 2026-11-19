@@ -6,6 +6,7 @@ import {
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
 import { gatewayErrorFromResponse } from "@/lib/gatewayError";
+import { upstreamFailureBody } from "@/lib/gatewayError.fixtures";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -331,15 +332,10 @@ describe("useDatasetSearch", () => {
 
     it("shows the classified Gateway message for a failed catalogue", async () => {
       api.queryDatasets.mockRejectedValue(
-        gatewayErrorFromResponse(424, {
-          code: 104,
-          error: "error communicating with underpinning service",
-          message: {
-            statusCode: 503,
-            source: "DataManagement",
-            correlationId: "50c7a41b-757f-440d-a4e8-eef5be144cb2",
-          },
-        }),
+        gatewayErrorFromResponse(
+          424,
+          upstreamFailureBody(503, "DataManagement"),
+        ),
       );
       const { result } = renderSearch();
 
@@ -424,15 +420,10 @@ describe("useDatasetSearch", () => {
     });
 
     it("shows the classified Gateway message for a failed step too", async () => {
-      const outage = gatewayErrorFromResponse(424, {
-        code: 104,
-        error: "error communicating with underpinning service",
-        message: {
-          statusCode: 503,
-          source: "DataManagement",
-          correlationId: "50c7a41b-757f-440d-a4e8-eef5be144cb2",
-        },
-      });
+      const outage = gatewayErrorFromResponse(
+        424,
+        upstreamFailureBody(503, "DataManagement"),
+      );
       api.queryUserCollections.mockResolvedValue({
         items: [{ id: "mine", datasets: [{ id: "a" }] }],
       });

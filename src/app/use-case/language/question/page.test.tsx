@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { gatewayErrorFromResponse } from "@/lib/gatewayError";
+import { upstreamFailureBody } from "@/lib/gatewayError.fixtures";
 
 const api = { getLinguisticFeatures: vi.fn(), queryDatasets: vi.fn() };
 
@@ -27,16 +28,7 @@ describe("LanguageQuestionPage failed analysis", () => {
 
   it("shows the unanswerable message and reference, not the Gateway text", async () => {
     api.getLinguisticFeatures.mockRejectedValue(
-      gatewayErrorFromResponse(424, {
-        code: 104,
-        error: "error communicating with underpinning service",
-        message: {
-          statusCode: 422,
-          source: "InDataExploration",
-          correlationId: "50c7a41b-757f-440d-a4e8-eef5be144cb2",
-          payload: null,
-        },
-      }),
+      gatewayErrorFromResponse(424, upstreamFailureBody(422)),
     );
     render(<LanguageQuestionPage />);
 

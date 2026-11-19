@@ -13,6 +13,11 @@ vi.mock("@/lib/logger", async (importOriginal) => {
   return { ...actual, logApiError: vi.fn(), logWarn: vi.fn() };
 });
 
+import {
+  CORRELATION_ID,
+  RAW_GATEWAY_TEXT,
+  upstreamFailureBody,
+} from "@/lib/gatewayError.fixtures";
 import { logApiError } from "@/lib/logger";
 import { useApi } from "./useApi";
 
@@ -22,21 +27,12 @@ import { useApi } from "./useApi";
  * code 104) in the gateway-error-messages assessment.
  */
 const API_BASE = "https://gateway.test/dg";
-const RAW_GATEWAY_TEXT = "error communicating with underpinning service";
-const CORRELATION_ID = "50c7a41b-757f-440d-a4e8-eef5be144cb2";
 
 const upstreamFailure = (statusCode: number | null, payload: unknown = null) =>
   new Response(
-    JSON.stringify({
-      code: 104,
-      error: RAW_GATEWAY_TEXT,
-      message: {
-        statusCode,
-        source: "InDataExploration",
-        correlationId: CORRELATION_ID,
-        payload,
-      },
-    }),
+    JSON.stringify(
+      upstreamFailureBody(statusCode, "InDataExploration", payload),
+    ),
     { status: 424 },
   );
 
@@ -197,15 +193,7 @@ describe("useApi Gateway error messages", () => {
     it("shows classified copy for a failed upload", async () => {
       stubXhr({
         status: 424,
-        body: JSON.stringify({
-          code: 104,
-          error: RAW_GATEWAY_TEXT,
-          message: {
-            statusCode: 503,
-            source: "DataManagement",
-            correlationId: CORRELATION_ID,
-          },
-        }),
+        body: JSON.stringify(upstreamFailureBody(503, "DataManagement")),
       });
       const { result } = renderHook(() => useApi());
 
