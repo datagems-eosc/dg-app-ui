@@ -14,6 +14,7 @@ vi.mock("@/contexts/CollectionsContext", () => ({
   useCollections: () => mockUseCollections(),
 }));
 
+import { clearVocabularyCache } from "@/lib/vocabularyService";
 import { Classification } from "./Classification";
 
 const data = {
@@ -56,6 +57,8 @@ const languageInput = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The fields-of-science vocabulary is cached per module.
+  clearVocabularyCache();
   mockUseApi.mockReturnValue({
     hasToken: true,
     getFieldsOfScience: vi.fn().mockResolvedValue([]),
@@ -160,13 +163,6 @@ describe("Classification country requiredness", () => {
 });
 
 describe("Classification fields of science in the edit view", () => {
-  // `processFieldsOfScience` caches per module and the tests above cache an
-  // empty vocabulary, so each test loads Classification from fresh modules.
-  const loadFresh = async () => {
-    vi.resetModules();
-    return (await import("./Classification")).Classification;
-  };
-
   const vocabulary = {
     hierarchy: [
       {
@@ -196,10 +192,9 @@ describe("Classification fields of science in the edit view", () => {
       getFieldsOfScience: vi.fn().mockResolvedValue(vocabulary),
       getLicenses: vi.fn().mockResolvedValue([]),
     });
-    const Fresh = await loadFresh();
     const onChange = vi.fn();
     render(
-      <Fresh
+      <Classification
         data={{ ...data, fieldsOfScience }}
         onChange={onChange}
         errors={{}}
@@ -265,14 +260,12 @@ describe("Classification field of science selection", () => {
       getFieldsOfScience: vi.fn().mockResolvedValue(vocabulary),
       getLicenses: vi.fn().mockResolvedValue([]),
     });
-    vi.resetModules();
-    const Fresh = (await import("./Classification")).Classification;
     const onChange = vi.fn();
     const Controlled = () => {
       const [value, setValue] =
-        useState<Parameters<typeof Fresh>[0]["data"]>(data);
+        useState<Parameters<typeof Classification>[0]["data"]>(data);
       return (
-        <Fresh
+        <Classification
           data={value}
           onChange={(next) => {
             onChange(next.fieldsOfScience);

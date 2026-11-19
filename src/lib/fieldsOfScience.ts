@@ -17,7 +17,7 @@ import type {
 const normalise = (value: string) => value.trim().toLowerCase();
 
 /** A stored value matches an entry by its code, or its name in any casing. */
-const matches = (value: string, code: string | undefined, name: string) =>
+const matches = (value: string, code: string, name: string) =>
   code === value.trim() || normalise(name) === normalise(value);
 
 /** The child field a stored or selected value matches. */
@@ -63,7 +63,7 @@ export function fieldOfScienceLabels(
  * vocabulary repeats selects its first listed field. Values that match no
  * field, bare categories included, stay unselected.
  */
-export function toFieldOfScienceOptionValues(
+export function fieldOfScienceCodes(
   values: readonly string[],
   categories: readonly HierarchicalCategory[],
 ): string[] {

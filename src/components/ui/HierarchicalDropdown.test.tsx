@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -441,8 +441,13 @@ describe("HierarchicalDropdown", () => {
       expect(changes).toEqual([["2.5"]]);
       expect(engineering).toBeChecked();
       expect(medical).not.toBeChecked();
-      // One category counts one selection; the other shows no count.
-      expect(screen.getAllByText("1")).toHaveLength(1);
+      // Only the ticked row's category counts a selection.
+      const header = (name: string) =>
+        within(screen.getByText(name).parentElement as HTMLElement);
+      expect(header("Engineering and technology").getByText("1")).toBeVisible();
+      expect(
+        header("Medical and health sciences").queryByText("1"),
+      ).not.toBeInTheDocument();
     });
 
     it("deselects only the unticked option", async () => {

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
 import {
+  fieldOfScienceCodes,
   fieldOfScienceFilterValues,
   fieldOfScienceLabels,
   fieldOfScienceNames,
-  toFieldOfScienceOptionValues,
 } from "./fieldsOfScience";
 
 const field = (code: string, name: string) => ({
@@ -94,6 +94,9 @@ describe("fieldOfScienceNames", () => {
   });
 
   it("sends the name of a code whose name the vocabulary repeats, once for both codes", () => {
+    expect(fieldOfScienceNames(["2.5"], categories)).toEqual([
+      "MATERIALS ENGINEERING",
+    ]);
     expect(fieldOfScienceNames(["3.5"], categories)).toEqual([
       "MATERIALS ENGINEERING",
     ]);
@@ -120,26 +123,27 @@ describe("fieldOfScienceNames", () => {
   });
 });
 
-describe("toFieldOfScienceOptionValues", () => {
-  it("turns stored codes and names into the dropdown's option values", () => {
-    expect(
-      toFieldOfScienceOptionValues(["4.1", "Mathematics"], categories),
-    ).toEqual(["4.1", "1.1"]);
+describe("fieldOfScienceCodes", () => {
+  it("turns stored codes and names into the codes the dropdown selects", () => {
+    expect(fieldOfScienceCodes(["4.1", "Mathematics"], categories)).toEqual([
+      "4.1",
+      "1.1",
+    ]);
   });
 
   it("selects one row for a stored code whose name the vocabulary repeats", () => {
-    expect(toFieldOfScienceOptionValues(["3.5"], categories)).toEqual(["3.5"]);
+    expect(fieldOfScienceCodes(["3.5"], categories)).toEqual(["3.5"]);
   });
 
   it("selects the first listed row for a stored name the vocabulary repeats", () => {
-    expect(
-      toFieldOfScienceOptionValues(["MATERIALS ENGINEERING"], categories),
-    ).toEqual(["2.5"]);
+    expect(fieldOfScienceCodes(["MATERIALS ENGINEERING"], categories)).toEqual([
+      "2.5",
+    ]);
   });
 
   it("drops values that match no field, including bare categories, and repeats", () => {
     expect(
-      toFieldOfScienceOptionValues(
+      fieldOfScienceCodes(
         ["dataset-test-A", "NATURAL SCIENCES", "1.1", "mathematics"],
         categories,
       ),
@@ -147,7 +151,7 @@ describe("toFieldOfScienceOptionValues", () => {
   });
 
   it("selects nothing while the vocabulary is not loaded", () => {
-    expect(toFieldOfScienceOptionValues(["1.1"], [])).toEqual([]);
+    expect(fieldOfScienceCodes(["1.1"], [])).toEqual([]);
   });
 });
 

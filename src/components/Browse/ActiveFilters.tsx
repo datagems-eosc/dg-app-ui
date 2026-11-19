@@ -5,6 +5,7 @@ import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import { Tooltip } from "@ui/Tooltip";
 import { useMemo } from "react";
 import type { FilterState } from "@/config/filterOptions";
+import { fieldOfScienceLabels } from "@/lib/fieldsOfScience";
 
 interface ActiveFiltersProps {
   filters: FilterState;
@@ -74,16 +75,11 @@ export default function ActiveFilters({
         return null;
       }
 
-      // Get the exact names of selected fields of science
-      const selectedFieldNames = filters.fieldsOfScience.map((fieldCode) => {
-        for (const category of fieldsOfScienceCategories) {
-          const option = category.options.find((opt) => opt.code === fieldCode);
-          if (option) {
-            return option.label;
-          }
-        }
-        return fieldCode; // fallback to code if not found
-      });
+      // Fields the vocabulary lists under two codes show their name once.
+      const selectedFieldNames = fieldOfScienceLabels(
+        filters.fieldsOfScience,
+        fieldsOfScienceCategories,
+      );
 
       const fullValue = selectedFieldNames.join(", ");
 

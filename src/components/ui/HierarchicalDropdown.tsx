@@ -195,11 +195,6 @@ export default function HierarchicalDropdown({
               {expandedCategories.includes(category.code) && (
                 <div>
                   {category.options.map((option) => {
-                    // Ensure option.code is a valid string for the key
-                    const optionKey =
-                      typeof option.code === "string"
-                        ? option.code
-                        : `option-${Math.random()}`;
                     const optionLabel =
                       typeof option.label === "string"
                         ? option.label
@@ -207,7 +202,7 @@ export default function HierarchicalDropdown({
 
                     return (
                       <div
-                        key={optionKey}
+                        key={option.code}
                         className="flex items-center pl-3 pr-6 py-2"
                       >
                         <Checkbox

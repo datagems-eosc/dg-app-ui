@@ -201,6 +201,47 @@ describe("ActiveFilters", () => {
     ).toBeInTheDocument();
   });
 
+  it("names a field the vocabulary lists twice once when both rows are selected", () => {
+    const vocabulary: HierarchicalCategory[] = [
+      {
+        name: "Engineering and technology",
+        code: "2",
+        options: [
+          {
+            value: "MATERIALS ENGINEERING",
+            label: "Materials engineering",
+            code: "2.5",
+          },
+        ],
+      },
+      {
+        name: "Medical and health sciences",
+        code: "3",
+        options: [
+          {
+            value: "MATERIALS ENGINEERING",
+            label: "Materials engineering",
+            code: "3.5",
+          },
+        ],
+      },
+    ];
+    const filters: FilterState = {
+      ...defaultProps.filters,
+      fieldsOfScience: ["2.5", "3.5"],
+    };
+
+    render(
+      <ActiveFilters
+        {...defaultProps}
+        filters={filters}
+        fieldsOfScienceCategories={vocabulary}
+      />,
+    );
+
+    expect(screen.getByText("Materials engineering")).toBeInTheDocument();
+  });
+
   it("should render fields of science filter with more than two selections (truncated)", () => {
     const filters: FilterState = {
       ...defaultProps.filters,
