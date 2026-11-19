@@ -17,8 +17,10 @@ import {
   SHARING_WITHOUT_EVIDENCE,
 } from "@/lib/datasetPermissions/model";
 import { ACCESS_ACTION_NAMES } from "@/lib/datasetPermissions/types";
+import { fieldOfScienceLabels } from "@/lib/fieldsOfScience";
 import { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
+import { loadFieldsOfScience } from "@/lib/vocabularyService";
 
 const DATASET_ERROR_MESSAGES = {
   "not-found": "Dataset not found.",
@@ -75,7 +77,7 @@ export default function DatasetDetailsPage() {
       setRead({ owner, status: "loading" });
 
       try {
-        const [apiDataset, global] = await Promise.all([
+        const [apiDataset, global, fieldsOfScience] = await Promise.all([
           api.getDatasetById(datasetId, [
             "id",
             "code",
@@ -106,6 +108,8 @@ export default function DatasetDetailsPage() {
           readGlobalPermissions(controller.signal).catch(() => ({
             evidence: PERMISSIONS_FAILED,
           })),
+          // Without the vocabulary, fields of science are shown as stored.
+          loadFieldsOfScience(api.getFieldsOfScience).catch(() => []),
         ]);
 
         if (isCancelled) return;
@@ -125,6 +129,12 @@ export default function DatasetDetailsPage() {
           decideAction("grant", evidence) === "allowed" ||
           decideAction("revoke", evidence) === "allowed";
         const mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
+        if (mappedDataset.fieldOfScience) {
+          mappedDataset.fieldOfScience = fieldOfScienceLabels(
+            mappedDataset.fieldOfScience,
+            fieldsOfScience,
+          );
+        }
         mappedDataset.permissions = mappedDataset.permissions?.filter(
           (name) => name !== "Manage",
         );
@@ -168,6 +178,7 @@ export default function DatasetDetailsPage() {
     owner,
     api.hasToken,
     api.getDatasetById,
+    api.getFieldsOfScience,
     readGlobalPermissions,
   ]);
 

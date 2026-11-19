@@ -18,7 +18,9 @@ import {
   uniqueById,
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
+import { fieldOfScienceFilterValues } from "@/lib/fieldsOfScience";
 import { logError } from "@/lib/logger";
+import { cachedFieldsOfScience } from "@/lib/vocabularyService";
 
 export const DEFAULT_SORT = "name-asc";
 
@@ -114,7 +116,11 @@ function cataloguePayload(
     payload.license = backend.license.join(",");
   }
   if (backend.fieldsOfScience && backend.fieldsOfScience.length > 0) {
-    payload.fieldsOfScience = backend.fieldsOfScience;
+    // Names plus codes: datasets onboarded before names were sent store codes.
+    payload.fieldsOfScience = fieldOfScienceFilterValues(
+      backend.fieldsOfScience,
+      cachedFieldsOfScience() ?? [],
+    );
   }
   if (
     backend.publishedRange &&

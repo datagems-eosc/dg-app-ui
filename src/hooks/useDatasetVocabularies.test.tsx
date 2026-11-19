@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { clearVocabularyCache } from "@/lib/vocabularyService";
 import { useDatasetVocabularies } from "./useDatasetVocabularies";
 
 const api = {
@@ -32,6 +33,8 @@ const isSettled = (state: {
 describe("useDatasetVocabularies", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The fields-of-science vocabulary is loaded once per session.
+    clearVocabularyCache();
     api.hasToken = true;
     api.getFieldsOfScience.mockResolvedValue(FIELDS);
     api.getLicenses.mockResolvedValue(LICENSES);

@@ -1,11 +1,9 @@
-import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  processFieldsOfScience,
-  processLicenses,
-} from "@/config/filterOptions";
+import { processLicenses } from "@/config/filterOptions";
 import { useApi } from "@/hooks/useApi";
+import type { FieldOfScienceCategory } from "@/lib/fieldsOfScience";
 import { logError } from "@/lib/logger";
+import { loadFieldsOfScience } from "@/lib/vocabularyService";
 
 type LicenseOption = { value: string; label: string };
 type Vocabulary = "fieldsOfScience" | "licenses";
@@ -25,7 +23,7 @@ export function useDatasetVocabularies() {
   const calls = useRef({ getFieldsOfScience, getLicenses });
   calls.current = { getFieldsOfScience, getLicenses };
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
-    HierarchicalCategory[]
+    FieldOfScienceCategory[]
   >([]);
   const [licenses, setLicenses] = useState<LicenseOption[]>([]);
   const [status, setStatus] = useState<Record<Vocabulary, Status>>({
@@ -40,11 +38,9 @@ export function useDatasetVocabularies() {
       settle("loading");
       const request =
         vocabulary === "fieldsOfScience"
-          ? calls.current
-              .getFieldsOfScience()
-              .then((data) =>
-                setFieldsOfScienceCategories(processFieldsOfScience(data)),
-              )
+          ? loadFieldsOfScience(() => calls.current.getFieldsOfScience()).then(
+              setFieldsOfScienceCategories,
+            )
           : calls.current
               .getLicenses()
               .then((data) => setLicenses(processLicenses(data)));

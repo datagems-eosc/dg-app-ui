@@ -14,6 +14,7 @@ vi.mock("@/contexts/CollectionsContext", () => ({
   useCollections: () => mockUseCollections(),
 }));
 
+import { clearVocabularyCache } from "@/lib/vocabularyService";
 import { Classification } from "./Classification";
 
 const data = {
@@ -56,6 +57,8 @@ const languageInput = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The fields-of-science vocabulary is cached per module.
+  clearVocabularyCache();
   mockUseApi.mockReturnValue({
     hasToken: true,
     getFieldsOfScience: vi.fn().mockResolvedValue([]),
@@ -156,5 +159,132 @@ describe("Classification country requiredness", () => {
     expect(screen.getByText("Country is required")).toBeInTheDocument();
     expect(screen.getByText("Languages")).toHaveTextContent(/^Languages$/);
     expect(languageInput()).toHaveAttribute("aria-required", "false");
+  });
+});
+
+// The form holds selected fields of science as vocabulary codes; the edit
+// view converts stored values before they reach Classification.
+describe("Classification selected fields of science", () => {
+  const vocabulary = {
+    hierarchy: [
+      {
+        ordinal: 1,
+        code: "1",
+        name: "NATURAL SCIENCES",
+        children: [{ ordinal: 1, code: "1.1", name: "MATHEMATICS" }],
+      },
+      {
+        ordinal: 4,
+        code: "4",
+        name: "AGRICULTURAL SCIENCES",
+        children: [
+          {
+            ordinal: 1,
+            code: "4.1",
+            name: "AGRICULTURE, FORESTRY, AND FISHERIES",
+          },
+        ],
+      },
+    ],
+  };
+
+  const renderPrefilled = async (fieldsOfScience: string[]) => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getFieldsOfScience: vi.fn().mockResolvedValue(vocabulary),
+      getLicenses: vi.fn().mockResolvedValue([]),
+    });
+    const onChange = vi.fn();
+    render(
+      <Classification
+        data={{ ...data, fieldsOfScience }}
+        onChange={onChange}
+        errors={{}}
+      />,
+    );
+    const user = userEvent.setup();
+    await waitFor(() => {
+      expect(screen.getByText("Natural sciences")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Natural sciences"));
+    await user.click(screen.getByText("Agricultural sciences"));
+    return { onChange };
+  };
+
+  it("shows the field with a given code as selected", async () => {
+    const { onChange } = await renderPrefilled(["4.1"]);
+
+    expect(
+      screen.getByLabelText("Agriculture, forestry, and fisheries"),
+    ).toBeChecked();
+    expect(screen.getByLabelText("Mathematics")).not.toBeChecked();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("treats a vocabulary name as no selection", async () => {
+    await renderPrefilled(["MATHEMATICS"]);
+
+    expect(screen.getByLabelText("Mathematics")).not.toBeChecked();
+  });
+});
+
+describe("Classification field of science selection", () => {
+  // The Gateway vocabulary really lists MATERIALS ENGINEERING under two codes.
+  const vocabulary = {
+    hierarchy: [
+      {
+        ordinal: 2,
+        code: "2",
+        name: "ENGINEERING AND TECHNOLOGY",
+        children: [{ ordinal: 5, code: "2.5", name: "MATERIALS ENGINEERING" }],
+      },
+      {
+        ordinal: 3,
+        code: "3",
+        name: "MEDICAL AND HEALTH SCIENCES",
+        children: [{ ordinal: 5, code: "3.5", name: "MATERIALS ENGINEERING" }],
+      },
+    ],
+  };
+
+  it("ticks only the row the user ticked when two rows share a name", async () => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getFieldsOfScience: vi.fn().mockResolvedValue(vocabulary),
+      getLicenses: vi.fn().mockResolvedValue([]),
+    });
+    const onChange = vi.fn();
+    const Controlled = () => {
+      const [value, setValue] =
+        useState<Parameters<typeof Classification>[0]["data"]>(data);
+      return (
+        <Classification
+          data={value}
+          onChange={(next) => {
+            onChange(next.fieldsOfScience);
+            setValue(next);
+          }}
+          errors={{}}
+        />
+      );
+    };
+    render(<Controlled />);
+    const user = userEvent.setup();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Engineering and technology"),
+      ).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Engineering and technology"));
+    await user.click(screen.getByText("Medical and health sciences"));
+
+    const [engineering, medical] = screen.getAllByLabelText(
+      "Materials engineering",
+    );
+    await user.click(engineering as HTMLElement);
+
+    expect(onChange).toHaveBeenLastCalledWith(["2.5"]);
+    expect(engineering).toBeChecked();
+    expect(medical).not.toBeChecked();
   });
 });

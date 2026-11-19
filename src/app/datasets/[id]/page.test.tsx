@@ -2,6 +2,10 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  clearVocabularyCache,
+  loadFieldsOfScience,
+} from "@/lib/vocabularyService";
 
 /**
  * Composition proof for the dataset details route.
@@ -21,7 +25,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const mockGetDatasetById = vi.fn();
+const mockGetFieldsOfScience = vi.fn();
 const mockGetCurrentUserContextGrants = vi.fn();
+// The vocabulary is processed and cached once per module, so every test that
+// loads it loads the same one.
+const FIELDS_OF_SCIENCE = {
+  hierarchy: [
+    {
+      ordinal: 1,
+      code: "1",
+      name: "NATURAL SCIENCES",
+      children: [
+        { ordinal: 1, code: "1.1", name: "MATHEMATICS" },
+        {
+          ordinal: 5,
+          code: "1.5",
+          name: "EARTH AND RELATED ENVIRONMENTAL SCIENCES",
+        },
+      ],
+    },
+  ],
+};
 const mockReadGlobalPermissions = vi.fn();
 const mockPush = vi.fn();
 const deferred = <T,>() => {
@@ -40,6 +64,7 @@ beforeEach(() => {
   mockDatasetId = "ds-1";
   mockHasToken = true;
   mockGetDatasetById.mockReset();
+  mockGetFieldsOfScience.mockReset().mockResolvedValue(FIELDS_OF_SCIENCE);
   mockReadGlobalPermissions.mockReset().mockResolvedValue({
     evidence: { kind: "read", names: [], coverage: { kind: "exhaustive" } },
   });
@@ -66,6 +91,7 @@ vi.mock("@/hooks/useApi", () => ({
         : null,
     },
     getDatasetById: mockGetDatasetById,
+    getFieldsOfScience: mockGetFieldsOfScience,
     getCurrentUserContextGrants: mockGetCurrentUserContextGrants,
     downloadDatasetFile: vi.fn(),
   }),
@@ -202,6 +228,73 @@ describe("dataset details page headline", () => {
       expect(screen.getAllByText("No description available.")).toHaveLength(1);
     },
   );
+});
+
+describe("dataset details page fields of science", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearVocabularyCache();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  });
+
+  const fieldChips = () => {
+    const heading = screen.getByRole("heading", {
+      level: 3,
+      name: "Fields of Science",
+    });
+    return Array.from(
+      heading.parentElement?.querySelectorAll("span") ?? [],
+    ).map((chip) => chip.textContent);
+  };
+
+  it("shows stored codes and names by readable name, once each", async () => {
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: [
+        "1.1",
+        "MATHEMATICS",
+        "EARTH AND RELATED ENVIRONMENTAL SCIENCES",
+        "dataset-test-A",
+      ],
+    });
+    await renderPage();
+
+    expect(fieldChips()).toEqual([
+      "Mathematics",
+      "Earth and related environmental sciences",
+      "dataset-test-A",
+    ]);
+  });
+
+  it("shows stored values as stored when the vocabulary cannot be loaded", async () => {
+    mockGetFieldsOfScience.mockRejectedValue(new Error("503"));
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(fieldChips()).toEqual(["1.1"]);
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Sea surface temperature",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("uses a vocabulary loaded earlier in the session without asking again", async () => {
+    await loadFieldsOfScience(async () => FIELDS_OF_SCIENCE);
+    mockGetFieldsOfScience.mockRejectedValue(new Error("503"));
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(fieldChips()).toEqual(["Mathematics"]);
+    expect(mockGetFieldsOfScience).not.toHaveBeenCalled();
+  });
 });
 
 describe("dataset details page – caller permissions", () => {

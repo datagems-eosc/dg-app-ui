@@ -9,22 +9,20 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  processFieldsOfScience,
-  processLicenses,
-} from "@/config/filterOptions";
+import { processLicenses } from "@/config/filterOptions";
 import { useCollections } from "@/contexts/CollectionsContext";
 import { useApi } from "@/hooks/useApi";
+import type { FieldOfScienceCategory } from "@/lib/fieldsOfScience";
 import { logError } from "@/lib/logger";
-import HierarchicalDropdown, {
-  type HierarchicalCategory,
-} from "../HierarchicalDropdown";
+import { loadFieldsOfScience } from "@/lib/vocabularyService";
+import HierarchicalDropdown from "../HierarchicalDropdown";
 import { Input } from "../Input";
 import { Select } from "../Select";
 import { KeywordInput } from "./KeywordInput";
 import { LicenseCard } from "./LicenseCard";
 
 interface ClassificationData {
+  /** Selected fields of science as vocabulary codes. */
   fieldsOfScience: string[];
   collection: string;
   license: string;
@@ -115,7 +113,7 @@ export function Classification({
   const api = useApi();
   const { apiCollections, isLoadingApiCollections } = useCollections();
   const [fieldsOfScienceCategories, setFieldsOfScienceCategories] = useState<
-    HierarchicalCategory[]
+    FieldOfScienceCategory[]
   >([]);
   const [licenses, setLicenses] = useState<
     { value: string; label: string; description?: string; urls?: string[] }[]
@@ -131,12 +129,8 @@ export function Classification({
 
     // Fetch fields of science
     setIsLoadingFields(true);
-    api
-      .getFieldsOfScience()
-      .then((data) => {
-        const categories = processFieldsOfScience(data);
-        setFieldsOfScienceCategories(categories);
-      })
+    loadFieldsOfScience(api.getFieldsOfScience)
+      .then(setFieldsOfScienceCategories)
       .catch((error) => {
         logError("Error fetching fields of science", error);
         setFieldsOfScienceCategories([]);
@@ -278,8 +272,10 @@ export function Classification({
           </div>
         ) : (
           <HierarchicalDropdown
-            value={data.fieldsOfScience}
-            onChange={(value) => handleFieldChange("fieldsOfScience", value)}
+            selectedCodes={data.fieldsOfScience}
+            onSelectedCodesChange={(codes) =>
+              handleFieldChange("fieldsOfScience", codes)
+            }
             categories={fieldsOfScienceCategories}
             placeholder="Search..."
             searchPlaceholder="Search..."
