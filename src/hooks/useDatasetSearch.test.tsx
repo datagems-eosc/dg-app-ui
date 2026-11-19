@@ -8,7 +8,7 @@ import {
 } from "@/lib/datasetMapping";
 import {
   clearVocabularyCache,
-  processFieldsOfScience,
+  loadFieldsOfScience,
 } from "@/lib/vocabularyService";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
@@ -469,11 +469,12 @@ describe("useDatasetSearch", () => {
   });
 
   describe("field-of-science filter", () => {
-    // Browse loads the vocabulary before a field can be chosen; that load
-    // fills the vocabulary cache the request reads codes from.
-    beforeEach(() => {
+    // Browse loads the vocabulary before a field can be chosen; the request
+    // reads that loaded vocabulary. Which values a selection sends is unit
+    // tested with `fieldOfScienceFilterValues`; these tests cover the wiring.
+    beforeEach(async () => {
       clearVocabularyCache();
-      processFieldsOfScience({
+      await loadFieldsOfScience(async () => ({
         hierarchy: [
           {
             ordinal: 1,
@@ -489,7 +490,7 @@ describe("useDatasetSearch", () => {
             ],
           },
         ],
-      });
+      }));
     });
 
     afterEach(() => clearVocabularyCache());
@@ -511,17 +512,6 @@ describe("useDatasetSearch", () => {
       await applyFields(["1.1"]);
 
       expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS", "1.1"]);
-    });
-
-    it("sends two names and two codes for two fields", async () => {
-      await applyFields(["1.1", "1.2"]);
-
-      expect(lastCatalogue().fieldsOfScience).toEqual([
-        "MATHEMATICS",
-        "1.1",
-        "COMPUTER AND INFORMATION SCIENCES",
-        "1.2",
-      ]);
     });
 
     it("sends the selected values as they are while the vocabulary is not loaded", async () => {

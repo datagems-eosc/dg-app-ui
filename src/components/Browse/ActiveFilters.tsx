@@ -1,15 +1,17 @@
 "use client";
 
 import { Chip } from "@ui/Chip";
-import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import { Tooltip } from "@ui/Tooltip";
 import { useMemo } from "react";
 import type { FilterState } from "@/config/filterOptions";
-import { fieldOfScienceLabels } from "@/lib/fieldsOfScience";
+import {
+  type FieldOfScienceCategory,
+  fieldOfScienceLabels,
+} from "@/lib/fieldsOfScience";
 
 interface ActiveFiltersProps {
   filters: FilterState;
-  fieldsOfScienceCategories: HierarchicalCategory[];
+  fieldsOfScienceCategories: FieldOfScienceCategory[];
   licenses: { value: string; label: string }[];
   onRemoveFilter: (filterKey: keyof FilterState) => void;
   showSearchAndFilters?: boolean;

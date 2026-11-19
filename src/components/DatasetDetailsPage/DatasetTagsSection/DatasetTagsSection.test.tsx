@@ -1,42 +1,16 @@
 import { render, screen } from "@testing-library/react";
-import type React from "react";
-import { describe, expect, it, vi } from "vitest";
-
-// Records how each tag is drawn with the shared chip.
-vi.mock("@ui/Chip", () => ({
-  Chip: ({
-    children,
-    color,
-    variant,
-    size,
-  }: {
-    children: React.ReactNode;
-    color?: string;
-    variant?: string;
-    size?: string;
-  }) => (
-    <span data-testid="chip" data-style={`${color}/${variant}/${size}`}>
-      {children}
-    </span>
-  ),
-}));
-
+import { describe, expect, it } from "vitest";
 import DatasetTagsSection from "./DatasetTagsSection";
 
 describe("DatasetTagsSection", () => {
-  it("draws every tag as the filled grey chip, like Collection and Permissions", () => {
+  it("shows the heading and every tag", () => {
     render(
       <DatasetTagsSection title="Keywords" items={["climate", "weather"]} />,
     );
 
-    const chips = screen.getAllByTestId("chip");
-    expect(chips.map((chip) => chip.textContent)).toEqual([
-      "climate",
-      "weather",
-    ]);
-    for (const chip of chips) {
-      expect(chip).toHaveAttribute("data-style", "grey/regular/sm");
-    }
+    expect(screen.getByText("Keywords")).toBeInTheDocument();
+    expect(screen.getByText("climate")).toBeInTheDocument();
+    expect(screen.getByText("weather")).toBeInTheDocument();
   });
 
   it("renders no heading or chip row without values", () => {

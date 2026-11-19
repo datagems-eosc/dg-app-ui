@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { HierarchicalCategory } from "@/components/ui/HierarchicalDropdown";
 import {
+  type FieldOfScienceCategory,
   fieldOfScienceCodes,
   fieldOfScienceFilterValues,
   fieldOfScienceLabels,
@@ -8,18 +8,18 @@ import {
 } from "./fieldsOfScience";
 
 const field = (code: string, name: string) => ({
-  value: name,
+  name,
   label: name.charAt(0) + name.slice(1).toLowerCase(),
   code,
 });
 
 /**
- * Categories in the shape `processFieldsOfScience` produces: the option value
+ * Categories in the shape `processFieldsOfScience` produces: each field's name
  * is the vocabulary name as the Gateway returns it, the label its sentence
- * case, and the dropdown selects by code. `MATERIALS ENGINEERING` really is
+ * case, and selections are codes. `MATERIALS ENGINEERING` really is
  * listed under two codes in the Gateway vocabulary (`2.5` and `3.5`).
  */
-const categories: HierarchicalCategory[] = [
+const categories: FieldOfScienceCategory[] = [
   {
     name: "Natural sciences",
     code: "1",

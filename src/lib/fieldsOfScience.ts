@@ -1,18 +1,30 @@
-import type {
-  HierarchicalCategory,
-  HierarchicalOption,
-} from "@/components/ui/HierarchicalDropdown";
-
 /**
  * Fields-of-science values, matched against the Gateway vocabulary.
  *
  * Datasets store their fields of science as plain strings. Partner datasets
  * store the vocabulary name (`MATHEMATICS`); datasets onboarded through the
  * app before names were sent store the code (`1.1`). These helpers resolve
- * either form against the vocabulary as `processFieldsOfScience` shapes it:
- * the option value is the vocabulary name, the label its sentence case. The
- * dropdown selects by code, because the vocabulary repeats some names.
+ * either form against the vocabulary as `processFieldsOfScience` shapes it.
+ * Selections are codes, because the vocabulary repeats some names.
  */
+
+/** A field of science: a dropdown option that also carries its stored name. */
+export interface FieldOfScience {
+  /** Vocabulary code (`1.1`), unique across the vocabulary. */
+  code: string;
+  /** Readable name (`Mathematics`). */
+  label: string;
+  /** Vocabulary name as datasets store it (`MATHEMATICS`). */
+  name: string;
+}
+
+/** A top-level vocabulary category and its fields. */
+export interface FieldOfScienceCategory {
+  code: string;
+  /** Readable category name (`Natural sciences`). */
+  name: string;
+  options: FieldOfScience[];
+}
 
 const normalise = (value: string) => value.trim().toLowerCase();
 
@@ -23,12 +35,10 @@ const matches = (value: string, code: string, name: string) =>
 /** The child field a stored or selected value matches. */
 function findFieldOfScience(
   value: string,
-  categories: readonly HierarchicalCategory[],
-): HierarchicalOption | undefined {
+  categories: readonly FieldOfScienceCategory[],
+): FieldOfScience | undefined {
   for (const category of categories) {
-    const option = category.options.find((o) =>
-      matches(value, o.code, o.value),
-    );
+    const option = category.options.find((o) => matches(value, o.code, o.name));
     if (option) return option;
   }
   return undefined;
@@ -37,7 +47,7 @@ function findFieldOfScience(
 /** The top-level category a value matches. */
 const findCategory = (
   value: string,
-  categories: readonly HierarchicalCategory[],
+  categories: readonly FieldOfScienceCategory[],
 ) => categories.find((c) => matches(value, c.code, c.name));
 
 /**
@@ -47,7 +57,7 @@ const findCategory = (
  */
 export function fieldOfScienceLabels(
   values: readonly string[],
-  categories: readonly HierarchicalCategory[],
+  categories: readonly FieldOfScienceCategory[],
 ): string[] {
   const labels = values.map(
     (value) =>
@@ -65,7 +75,7 @@ export function fieldOfScienceLabels(
  */
 export function fieldOfScienceCodes(
   values: readonly string[],
-  categories: readonly HierarchicalCategory[],
+  categories: readonly FieldOfScienceCategory[],
 ): string[] {
   const selected = values.flatMap((value) => {
     const option = findFieldOfScience(value, categories);
@@ -81,10 +91,10 @@ export function fieldOfScienceCodes(
  */
 export function fieldOfScienceNames(
   values: readonly string[],
-  categories: readonly HierarchicalCategory[],
+  categories: readonly FieldOfScienceCategory[],
 ): string[] {
   const names = values.map(
-    (value) => findFieldOfScience(value, categories)?.value ?? value,
+    (value) => findFieldOfScience(value, categories)?.name ?? value,
   );
   return [...new Set(names)];
 }
@@ -97,11 +107,11 @@ export function fieldOfScienceNames(
  */
 export function fieldOfScienceFilterValues(
   selected: readonly string[],
-  categories: readonly HierarchicalCategory[],
+  categories: readonly FieldOfScienceCategory[],
 ): string[] {
   const values = selected.flatMap((value) => {
     const option = findFieldOfScience(value, categories);
-    return option ? [option.value, option.code] : [value];
+    return option ? [option.name, option.code] : [value];
   });
   return [...new Set(values)];
 }

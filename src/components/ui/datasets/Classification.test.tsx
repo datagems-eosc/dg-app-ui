@@ -162,7 +162,9 @@ describe("Classification country requiredness", () => {
   });
 });
 
-describe("Classification fields of science in the edit view", () => {
+// The form holds selected fields of science as vocabulary codes; the edit
+// view converts stored values before they reach Classification.
+describe("Classification selected fields of science", () => {
   const vocabulary = {
     hierarchy: [
       {
@@ -209,7 +211,7 @@ describe("Classification fields of science in the edit view", () => {
     return { onChange };
   };
 
-  it("shows a field stored as a code as selected", async () => {
+  it("shows the field with a given code as selected", async () => {
     const { onChange } = await renderPrefilled(["4.1"]);
 
     expect(
@@ -219,19 +221,10 @@ describe("Classification fields of science in the edit view", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("shows a field stored by name in other casing as selected", async () => {
-    await renderPrefilled(["Mathematics"]);
-
-    expect(screen.getByLabelText("Mathematics")).toBeChecked();
-  });
-
-  it("selects nothing for a stored value the vocabulary does not know", async () => {
-    await renderPrefilled(["dataset-test-A"]);
+  it("treats a vocabulary name as no selection", async () => {
+    await renderPrefilled(["MATHEMATICS"]);
 
     expect(screen.getByLabelText("Mathematics")).not.toBeChecked();
-    expect(
-      screen.getByLabelText("Agriculture, forestry, and fisheries"),
-    ).not.toBeChecked();
   });
 });
 

@@ -33,14 +33,14 @@ describe("FilterModal", () => {
       name: "Mathematics",
       code: "1",
       options: [
-        { value: "math-1", label: "Pure Mathematics", code: "math-1" },
-        { value: "math-2", label: "Applied Mathematics", code: "math-2" },
+        { code: "math-1", label: "Pure Mathematics" },
+        { code: "math-2", label: "Applied Mathematics" },
       ],
     },
     {
       name: "Engineering",
       code: "2",
-      options: [{ value: "eng-1", label: "Civil engineering", code: "eng-1" }],
+      options: [{ code: "eng-1", label: "Civil engineering" }],
     },
   ];
 

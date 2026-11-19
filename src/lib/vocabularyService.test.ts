@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// The service caches the processed vocabulary per module; load a fresh copy
-// for every test.
-const load = () => import("./vocabularyService");
+import {
+  cachedFieldsOfScience,
+  clearVocabularyCache,
+  loadFieldsOfScience,
+  processFieldsOfScience,
+} from "./vocabularyService";
 
 const response = {
   hierarchy: [
@@ -18,22 +20,31 @@ const response = {
   ],
 };
 
+const otherResponse = {
+  hierarchy: [
+    {
+      ordinal: 2,
+      code: "2",
+      name: "ENGINEERING AND TECHNOLOGY",
+      children: [{ ordinal: 5, code: "2.5", name: "MATERIALS ENGINEERING" }],
+    },
+  ],
+};
+
+beforeEach(() => {
+  clearVocabularyCache();
+});
+
 describe("processFieldsOfScience", () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
-  it("uses the vocabulary name as the option value, keeping code and readable label", async () => {
-    const { processFieldsOfScience } = await load();
-
+  it("keeps each field's vocabulary name, code and readable label", () => {
     expect(processFieldsOfScience(response)).toEqual([
       {
         name: "Natural sciences",
         code: "1",
         options: [
-          { value: "MATHEMATICS", label: "Mathematics", code: "1.1" },
+          { name: "MATHEMATICS", label: "Mathematics", code: "1.1" },
           {
-            value: "COMPUTER AND INFORMATION SCIENCES",
+            name: "COMPUTER AND INFORMATION SCIENCES",
             label: "Computer and information sciences",
             code: "1.2",
           },
@@ -42,11 +53,64 @@ describe("processFieldsOfScience", () => {
     ]);
   });
 
-  it("exposes the processed vocabulary once it has been loaded", async () => {
-    const { cachedFieldsOfScience, processFieldsOfScience } = await load();
+  it("converts the data it is given on every call", () => {
+    processFieldsOfScience(response);
 
+    expect(processFieldsOfScience(otherResponse)[0].code).toBe("2");
+  });
+});
+
+describe("loadFieldsOfScience", () => {
+  it("requests the vocabulary once for every caller", async () => {
+    const request = vi.fn().mockResolvedValue(response);
+
+    const [first, second] = await Promise.all([
+      loadFieldsOfScience(request),
+      loadFieldsOfScience(request),
+    ]);
+    const third = await loadFieldsOfScience(request);
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(first[0].code).toBe("1");
+    expect(second).toBe(first);
+    expect(third).toBe(first);
+  });
+
+  it("exposes the loaded vocabulary to synchronous readers", async () => {
     expect(cachedFieldsOfScience()).toBeNull();
-    const categories = processFieldsOfScience(response);
+
+    const categories = await loadFieldsOfScience(
+      vi.fn().mockResolvedValue(response),
+    );
+
     expect(cachedFieldsOfScience()).toBe(categories);
+  });
+
+  it("asks again after a failed request", async () => {
+    const request = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(response);
+
+    await expect(loadFieldsOfScience(request)).rejects.toThrow("offline");
+    expect(cachedFieldsOfScience()).toBeNull();
+    const categories = await loadFieldsOfScience(request);
+
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(categories[0].code).toBe("1");
+  });
+
+  it("asks again after a response with no usable vocabulary", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ hierarchy: [] })
+      .mockResolvedValueOnce(response);
+
+    expect(await loadFieldsOfScience(request)).toEqual([]);
+    expect(cachedFieldsOfScience()).toBeNull();
+    const categories = await loadFieldsOfScience(request);
+
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(categories[0].code).toBe("1");
   });
 });

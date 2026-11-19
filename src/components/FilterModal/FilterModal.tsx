@@ -339,9 +339,9 @@ export default function FilterModal({
                   </div>
                 ) : (
                   <HierarchicalDropdown
-                    value={filters.fieldsOfScience}
-                    onChange={(value) =>
-                      setFilters({ ...filters, fieldsOfScience: value })
+                    selectedCodes={filters.fieldsOfScience}
+                    onSelectedCodesChange={(codes) =>
+                      setFilters({ ...filters, fieldsOfScience: codes })
                     }
                     categories={fieldsOfScienceCategories}
                     placeholder="Search..."

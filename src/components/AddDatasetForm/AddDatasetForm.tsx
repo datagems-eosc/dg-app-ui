@@ -66,10 +66,16 @@ import type {
   SubmissionRequest,
   UnresolvedFileReason,
 } from "@/lib/datasetOnboarding/submission";
-import { fieldOfScienceNames } from "@/lib/fieldsOfScience";
+import {
+  fieldOfScienceCodes,
+  fieldOfScienceNames,
+} from "@/lib/fieldsOfScience";
 import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
-import { cachedFieldsOfScience } from "@/lib/vocabularyService";
+import {
+  cachedFieldsOfScience,
+  loadFieldsOfScience,
+} from "@/lib/vocabularyService";
 
 interface FormData {
   files: UploadedFile[];
@@ -80,6 +86,7 @@ interface FormData {
     keywords: string[];
   };
   classification: {
+    /** Selected fields of science as vocabulary codes. */
     fieldsOfScience: string[];
     collection: string;
     license: string;
@@ -366,6 +373,7 @@ export default function AddDatasetForm() {
   const hasToken = api.hasToken;
   const getUploadAllowedExtensions = api.getUploadAllowedExtensions;
   const queryDatasets = api.queryDatasets;
+  const getFieldsOfScience = api.getFieldsOfScience;
   const onboardingScope = api.datasetOnboarding.scope;
   const onboardingAuth = api.datasetOnboarding.auth;
 
@@ -516,6 +524,12 @@ export default function AddDatasetForm() {
     if (!datasetIdForEdit || !hasToken || !queryDatasets) return;
     let cancelled = false;
     setIsEditLoading(true);
+    // Stored fields of science are codes or names in any casing; the form
+    // holds codes, so they are matched against the vocabulary once, here.
+    // Without the vocabulary nothing is preselected.
+    const fieldsOfScience = loadFieldsOfScience(getFieldsOfScience).catch(
+      () => [],
+    );
     queryDatasets({
       ids: [datasetIdForEdit],
       project: {
@@ -536,7 +550,8 @@ export default function AddDatasetForm() {
       Order: { Items: ["+name"] },
       Metadata: { CountAll: false },
     })
-      .then((res) => {
+      .then(async (res) => {
+        const categories = await fieldsOfScience;
         if (cancelled) return;
         const items = Array.isArray(res.items) ? res.items : [];
         const item = items[0] as Record<string, unknown> | undefined;
@@ -549,11 +564,14 @@ export default function AddDatasetForm() {
           : typeof item.keywords === "string"
             ? [item.keywords]
             : [];
-        const fieldOfScience = Array.isArray(item.fieldOfScience)
-          ? (item.fieldOfScience as string[])
-          : typeof item.fieldOfScience === "string"
-            ? [item.fieldOfScience]
-            : [];
+        const fieldOfScience = fieldOfScienceCodes(
+          Array.isArray(item.fieldOfScience)
+            ? (item.fieldOfScience as string[])
+            : typeof item.fieldOfScience === "string"
+              ? [item.fieldOfScience]
+              : [],
+          categories,
+        );
         const license = String(item.license ?? "");
         const collections = Array.isArray(item.collections)
           ? (item.collections as Array<{ id?: string }>)
@@ -594,7 +612,14 @@ export default function AddDatasetForm() {
     return () => {
       cancelled = true;
     };
-  }, [datasetIdForEdit, hasToken, queryDatasets, applyToDraft, draftId]);
+  }, [
+    datasetIdForEdit,
+    hasToken,
+    queryDatasets,
+    getFieldsOfScience,
+    applyToDraft,
+    draftId,
+  ]);
 
   // --- navigation to the accepted process ----------------------------------
   //
@@ -771,7 +796,7 @@ export default function AddDatasetForm() {
           headline: formData.basicInfo.headline,
           description: formData.basicInfo.description,
           keywords: formData.basicInfo.keywords,
-          // The dropdown selects by code; datasets store the vocabulary name.
+          // The form holds codes; datasets store the vocabulary name.
           // Classification loaded the vocabulary before any field was chosen.
           fieldsOfScience: fieldOfScienceNames(
             formData.classification.fieldsOfScience,

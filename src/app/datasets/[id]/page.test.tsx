@@ -4,7 +4,7 @@ import { useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearVocabularyCache,
-  processFieldsOfScience,
+  loadFieldsOfScience,
 } from "@/lib/vocabularyService";
 
 /**
@@ -283,7 +283,7 @@ describe("dataset details page fields of science", () => {
   });
 
   it("uses a vocabulary loaded earlier in the session without asking again", async () => {
-    processFieldsOfScience(FIELDS_OF_SCIENCE);
+    await loadFieldsOfScience(async () => FIELDS_OF_SCIENCE);
     mockGetFieldsOfScience.mockRejectedValue(new Error("503"));
     mockGetDatasetById.mockResolvedValue({
       ...datasetPayload(["browsedataset"]),

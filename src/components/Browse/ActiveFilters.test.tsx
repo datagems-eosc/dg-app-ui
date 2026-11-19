@@ -1,25 +1,25 @@
 import { render, screen } from "@testing-library/react";
-import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import { describe, expect, it, vi } from "vitest";
 import type { FilterState } from "@/config/filterOptions";
+import type { FieldOfScienceCategory } from "@/lib/fieldsOfScience";
 import ActiveFilters from "./ActiveFilters";
 
 describe("ActiveFilters", () => {
-  const mockFieldsOfScienceCategories: HierarchicalCategory[] = [
+  const mockFieldsOfScienceCategories: FieldOfScienceCategory[] = [
     {
       name: "Mathematics",
       code: "1",
       options: [
-        { value: "math-1", label: "Pure Mathematics", code: "math-1" },
-        { value: "math-2", label: "Applied Mathematics", code: "math-2" },
+        { name: "math-1", label: "Pure Mathematics", code: "math-1" },
+        { name: "math-2", label: "Applied Mathematics", code: "math-2" },
       ],
     },
     {
       name: "Physics",
       code: "2",
       options: [
-        { value: "physics-1", label: "Quantum Physics", code: "physics-1" },
-        { value: "physics-2", label: "Classical Physics", code: "physics-2" },
+        { name: "physics-1", label: "Quantum Physics", code: "physics-1" },
+        { name: "physics-2", label: "Classical Physics", code: "physics-2" },
       ],
     },
   ];
@@ -169,14 +169,14 @@ describe("ActiveFilters", () => {
 
   it("shows fields selected from the Gateway vocabulary with their readable labels", () => {
     // The shape processFieldsOfScience gives the Gateway vocabulary.
-    const vocabulary: HierarchicalCategory[] = [
+    const vocabulary: FieldOfScienceCategory[] = [
       {
         name: "Natural sciences",
         code: "1",
         options: [
-          { value: "MATHEMATICS", label: "Mathematics", code: "1.1" },
+          { name: "MATHEMATICS", label: "Mathematics", code: "1.1" },
           {
-            value: "COMPUTER AND INFORMATION SCIENCES",
+            name: "COMPUTER AND INFORMATION SCIENCES",
             label: "Computer and information sciences",
             code: "1.2",
           },
@@ -202,13 +202,13 @@ describe("ActiveFilters", () => {
   });
 
   it("names a field the vocabulary lists twice once when both rows are selected", () => {
-    const vocabulary: HierarchicalCategory[] = [
+    const vocabulary: FieldOfScienceCategory[] = [
       {
         name: "Engineering and technology",
         code: "2",
         options: [
           {
-            value: "MATERIALS ENGINEERING",
+            name: "MATERIALS ENGINEERING",
             label: "Materials engineering",
             code: "2.5",
           },
@@ -219,7 +219,7 @@ describe("ActiveFilters", () => {
         code: "3",
         options: [
           {
-            value: "MATERIALS ENGINEERING",
+            name: "MATERIALS ENGINEERING",
             label: "Materials engineering",
             code: "3.5",
           },

@@ -11,22 +11,22 @@ const CATEGORY_SOURCE = [
     name: "Natural sciences",
     code: "1",
     options: [
-      { value: "1.01", label: "Mathematics", code: "1.01" },
-      { value: "1.02", label: "Computer sciences", code: "1.02" },
+      { code: "1.01", label: "Mathematics" },
+      { code: "1.02", label: "Computer sciences" },
     ],
   },
   {
     name: "Engineering and technology",
     code: "2",
     options: [
-      { value: "2.01", label: "Civil engineering", code: "2.01" },
-      { value: "2.02", label: "Electrical engineering", code: "2.02" },
+      { code: "2.01", label: "Civil engineering" },
+      { code: "2.02", label: "Electrical engineering" },
     ],
   },
   {
     name: "Medical and health sciences",
     code: "3",
-    options: [{ value: "3.01", label: "Basic medicine", code: "3.01" }],
+    options: [{ code: "3.01", label: "Basic medicine" }],
   },
 ];
 
@@ -73,8 +73,8 @@ function ControlledDropdown({
 
   return (
     <HierarchicalDropdown
-      value={value}
-      onChange={(next) => {
+      selectedCodes={value}
+      onSelectedCodesChange={(next) => {
         setValue(next);
         onValueChange?.(next);
       }}
@@ -304,8 +304,8 @@ describe("HierarchicalDropdown", () => {
       const user = userEvent.setup();
       const { rerender } = render(
         <HierarchicalDropdown
-          value={["1.01"]}
-          onChange={() => {}}
+          selectedCodes={["1.01"]}
+          onSelectedCodesChange={() => {}}
           categories={createCategories()}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -316,8 +316,8 @@ describe("HierarchicalDropdown", () => {
 
       rerender(
         <HierarchicalDropdown
-          value={["1.01"]}
-          onChange={() => {}}
+          selectedCodes={["1.01"]}
+          onSelectedCodesChange={() => {}}
           categories={createCategories()}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -331,8 +331,8 @@ describe("HierarchicalDropdown", () => {
       const user = userEvent.setup();
       const { rerender } = render(
         <HierarchicalDropdown
-          value={[]}
-          onChange={() => {}}
+          selectedCodes={[]}
+          onSelectedCodesChange={() => {}}
           categories={guarded([])}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -346,8 +346,8 @@ describe("HierarchicalDropdown", () => {
 
       rerender(
         <HierarchicalDropdown
-          value={[]}
-          onChange={() => {}}
+          selectedCodes={[]}
+          onSelectedCodesChange={() => {}}
           categories={createCategories()}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -364,8 +364,8 @@ describe("HierarchicalDropdown", () => {
     it("tolerates a categories prop that is not an array", () => {
       render(
         <HierarchicalDropdown
-          value={[]}
-          onChange={() => {}}
+          selectedCodes={[]}
+          onSelectedCodesChange={() => {}}
           categories={undefined as unknown as HierarchicalCategory[]}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -378,32 +378,20 @@ describe("HierarchicalDropdown", () => {
     });
   });
 
-  describe("options that share a value", () => {
-    // Fields-of-science option values are vocabulary names: they contain
-    // spaces, and the vocabulary lists MATERIALS ENGINEERING under two codes.
+  describe("options that share a label", () => {
+    // The fields-of-science vocabulary lists Materials engineering under two
+    // codes.
     const namedCategories = (): HierarchicalCategory[] =>
       guarded([
         {
           name: "Engineering and technology",
           code: "2",
-          options: [
-            {
-              value: "MATERIALS ENGINEERING",
-              label: "Materials engineering",
-              code: "2.5",
-            },
-          ],
+          options: [{ code: "2.5", label: "Materials engineering" }],
         },
         {
           name: "Medical and health sciences",
           code: "3",
-          options: [
-            {
-              value: "MATERIALS ENGINEERING",
-              label: "Materials engineering",
-              code: "3.5",
-            },
-          ],
+          options: [{ code: "3.5", label: "Materials engineering" }],
         },
       ]);
 
