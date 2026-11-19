@@ -46,7 +46,10 @@ describe("useApi().getRecommendNextQueries", () => {
 
     await expect(
       result.current.getRecommendNextQueries("rainfall in Athens", "c-1"),
-    ).rejects.toThrow("System error");
+    ).rejects.toThrow(
+      // UI #375: classified copy, never the Gateway's own error text.
+      /^The service is temporarily unavailable\. Please try again\.$/,
+    );
 
     expect(logApiError).not.toHaveBeenCalled();
     // Status only: a Gateway message can echo the user's query.

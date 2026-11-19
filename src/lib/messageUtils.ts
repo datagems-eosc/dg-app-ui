@@ -1,5 +1,16 @@
 import type { ConversationMessage } from "@/app/chat/page";
+import { ApiErrorMessage } from "@/lib/apiErrors";
+import { logWarn } from "@/lib/logger";
 import type { Message } from "@/types/chat";
+
+/**
+ * The Gateway's in-data answer status: a numeric enum (0 Success, 1 Error;
+ * dg-app-api InDataExplorationBuilder), accepted as text too. Anything else,
+ * including a missing status, is not a failure.
+ */
+const isFailedAnswer = (status: unknown): boolean =>
+  status === 1 ||
+  (typeof status === "string" && status.toLowerCase() === "error");
 
 function getMessageId(msg: unknown, idx: number): string {
   if (
@@ -155,6 +166,14 @@ export function parseConversationMessage(
     if (
       payload &&
       typeof payload === "object" &&
+      isFailedAnswer((payload as { status?: unknown }).status)
+    ) {
+      // A stored answer whose SQL failed to run (UI #375); logged when it
+      // happened, not on every history render.
+      content = ApiErrorMessage.GATEWAY_UNANSWERABLE;
+    } else if (
+      payload &&
+      typeof payload === "object" &&
       !Array.isArray(payload) &&
       "entries" in payload
     ) {
@@ -223,6 +242,7 @@ export function parseSearchInDataExploreResponse(
   const response = apiResponse as {
     result?: {
       question?: string;
+      status?: unknown;
       data?: {
         InputParams?: Array<{
           lat?: number;
@@ -286,7 +306,14 @@ export function parseSearchInDataExploreResponse(
     }
 
     const extractedTableData = firstEntry?.result?.table;
-    if (extractedTableData) {
+    if (isFailedAnswer(result.status)) {
+      // SQL was generated but failed to run (UI #375): the service's message
+      // is technical, so it goes to the log and the user gets the rephrase copy.
+      logWarn("In-data answer failed", {
+        message: (firstEntry?.result as { message?: unknown })?.message,
+      });
+      content = ApiErrorMessage.GATEWAY_UNANSWERABLE;
+    } else if (extractedTableData) {
       tableData = extractedTableData;
       if (extractedTableData.columns && extractedTableData.rows) {
         content = "Table Results:\n";

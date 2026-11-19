@@ -18,6 +18,7 @@ import {
   uniqueById,
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
+import { GatewayError } from "@/lib/gatewayError";
 import { logError } from "@/lib/logger";
 
 export const DEFAULT_SORT = "name-asc";
@@ -155,11 +156,11 @@ type SearchApi = Pick<
 
 /** A list request that failed, with the message the page shows for it. */
 class ListFailure extends Error {
-  readonly shown: ApiErrorMessage;
+  readonly shown: string;
   readonly logAs?: string;
   readonly reason?: unknown;
 
-  constructor(shown: ApiErrorMessage, logAs?: string, reason?: unknown) {
+  constructor(shown: string, logAs?: string, reason?: unknown) {
     super(shown);
     this.shown = shown;
     this.logAs = logAs;
@@ -396,12 +397,15 @@ export function useDatasetSearch({
       } catch (err: unknown) {
         if (!isLatest()) return;
         lastStarted.current = null;
-        // The Gateway's own error text stays in the log, not on the page.
+        // The Gateway's own error text stays in the log, not on the page; a
+        // classified Gateway failure carries user copy (UI #375).
         const failure =
           err instanceof ListFailure
             ? err
             : new ListFailure(
-                ApiErrorMessage.FETCH_DATASETS_FAILED,
+                err instanceof GatewayError
+                  ? err.message
+                  : ApiErrorMessage.FETCH_DATASETS_FAILED,
                 "Failed to list datasets",
                 err,
               );

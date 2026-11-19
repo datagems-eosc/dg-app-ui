@@ -5,6 +5,7 @@ import {
   mapApiDatasetToDataset,
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
+import { gatewayErrorFromResponse } from "@/lib/gatewayError";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -326,6 +327,27 @@ describe("useDatasetSearch", () => {
         expect(result.current.error).toBe("Failed to fetch datasets"),
       );
       expect(result.current.isLoading).toBe(false);
+    });
+
+    it("shows the classified Gateway message for a failed catalogue", async () => {
+      api.queryDatasets.mockRejectedValue(
+        gatewayErrorFromResponse(424, {
+          code: 104,
+          error: "error communicating with underpinning service",
+          message: {
+            statusCode: 503,
+            source: "DataManagement",
+            correlationId: "50c7a41b-757f-440d-a4e8-eef5be144cb2",
+          },
+        }),
+      );
+      const { result } = renderSearch();
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(
+          "The service is temporarily unavailable. Please try again. Reference: 50c7a41b",
+        ),
+      );
     });
 
     it("clears the earlier list when a new search fails", async () => {
