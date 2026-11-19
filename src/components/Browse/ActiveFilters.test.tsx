@@ -10,16 +10,16 @@ describe("ActiveFilters", () => {
       name: "Mathematics",
       code: "1",
       options: [
-        { value: "math-1", label: "Pure Mathematics" },
-        { value: "math-2", label: "Applied Mathematics" },
+        { value: "math-1", label: "Pure Mathematics", code: "math-1" },
+        { value: "math-2", label: "Applied Mathematics", code: "math-2" },
       ],
     },
     {
       name: "Physics",
       code: "2",
       options: [
-        { value: "physics-1", label: "Quantum Physics" },
-        { value: "physics-2", label: "Classical Physics" },
+        { value: "physics-1", label: "Quantum Physics", code: "physics-1" },
+        { value: "physics-2", label: "Classical Physics", code: "physics-2" },
       ],
     },
   ];

@@ -15,16 +15,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Checkbox } from "./Checkbox";
 import { Input } from "./Input";
 
+/**
+ * One selectable row. The dropdown identifies options by `code`, which is
+ * unique across all categories; `value` is the caller's payload (it may
+ * repeat across categories) and plays no part in selection.
+ */
 export interface HierarchicalOption {
   value: string;
   label: string;
-  /** When set, selection tracks the code: values may repeat across categories. */
-  code?: string;
+  code: string;
 }
-
-/** The string the dropdown's `value` holds for a selected option. */
-export const selectionKey = (option: HierarchicalOption) =>
-  option.code ?? option.value;
 
 export interface HierarchicalCategory {
   name: string;
@@ -33,7 +33,9 @@ export interface HierarchicalCategory {
 }
 
 interface HierarchicalDropdownProps {
+  /** The codes of the selected options. */
   value: string[];
+  /** Reports the codes of the selected options after a toggle. */
   onChange: (value: string[]) => void;
   categories: HierarchicalCategory[];
   placeholder?: string;
@@ -66,11 +68,11 @@ export default function HierarchicalDropdown({
     );
   };
 
-  const handleToggleOption = (optionValue: string) => {
-    if (value.includes(optionValue)) {
-      onChange(value.filter((v) => v !== optionValue));
+  const handleToggleOption = (optionCode: string) => {
+    if (value.includes(optionCode)) {
+      onChange(value.filter((code) => code !== optionCode));
     } else {
-      onChange([...value, optionValue]);
+      onChange([...value, optionCode]);
     }
   };
 
@@ -87,7 +89,7 @@ export default function HierarchicalDropdown({
                   option.label
                     .toLowerCase()
                     .includes(searchTerm.toLowerCase()) ||
-                  option.code?.toLowerCase().includes(searchTerm.toLowerCase()),
+                  option.code.toLowerCase().includes(searchTerm.toLowerCase()),
               ),
             }))
             .filter((category) => category.options.length > 0)
@@ -111,9 +113,8 @@ export default function HierarchicalDropdown({
 
   // Get selected count for a specific category
   const getSelectedCountForCategory = (category: HierarchicalCategory) => {
-    return category.options.filter((option) =>
-      value.includes(selectionKey(option)),
-    ).length;
+    return category.options.filter((option) => value.includes(option.code))
+      .length;
   };
 
   const getCategoryIcon = (code: string) => {
@@ -193,11 +194,12 @@ export default function HierarchicalDropdown({
               </div>
               {expandedCategories.includes(category.code) && (
                 <div>
-                  {category.options.map((option, optionIndex) => {
-                    const key = selectionKey(option);
-                    // Ensure the key is a valid string
+                  {category.options.map((option) => {
+                    // Ensure option.code is a valid string for the key
                     const optionKey =
-                      typeof key === "string" ? key : `option-${Math.random()}`;
+                      typeof option.code === "string"
+                        ? option.code
+                        : `option-${Math.random()}`;
                     const optionLabel =
                       typeof option.label === "string"
                         ? option.label
@@ -209,11 +211,9 @@ export default function HierarchicalDropdown({
                         className="flex items-center pl-3 pr-6 py-2"
                       >
                         <Checkbox
-                          // Values can contain spaces and repeat across
-                          // categories, so the id comes from the codes.
-                          id={`checkbox-${category.code}-${option.code ?? optionIndex}`}
-                          checked={value.includes(key)}
-                          onChange={() => handleToggleOption(key)}
+                          id={`checkbox-${category.code}-${option.code}`}
+                          checked={value.includes(option.code)}
+                          onChange={() => handleToggleOption(option.code)}
                           label={optionLabel}
                           className="w-full"
                         />

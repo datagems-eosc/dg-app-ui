@@ -1,7 +1,6 @@
-import {
-  type HierarchicalCategory,
-  type HierarchicalOption,
-  selectionKey,
+import type {
+  HierarchicalCategory,
+  HierarchicalOption,
 } from "@/components/ui/HierarchicalDropdown";
 
 /**
@@ -70,7 +69,7 @@ export function toFieldOfScienceOptionValues(
 ): string[] {
   const selected = values.flatMap((value) => {
     const option = findFieldOfScience(value, categories);
-    return option ? [selectionKey(option)] : [];
+    return option ? [option.code] : [];
   });
   return [...new Set(selected)];
 }
@@ -102,7 +101,7 @@ export function fieldOfScienceFilterValues(
 ): string[] {
   const values = selected.flatMap((value) => {
     const option = findFieldOfScience(value, categories);
-    return option ? [option.value, selectionKey(option)] : [value];
+    return option ? [option.value, option.code] : [value];
   });
   return [...new Set(values)];
 }

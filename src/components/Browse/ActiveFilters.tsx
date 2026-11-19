@@ -1,10 +1,7 @@
 "use client";
 
 import { Chip } from "@ui/Chip";
-import {
-  type HierarchicalCategory,
-  selectionKey,
-} from "@ui/HierarchicalDropdown";
+import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
 import { Tooltip } from "@ui/Tooltip";
 import { useMemo } from "react";
 import type { FilterState } from "@/config/filterOptions";
@@ -80,9 +77,7 @@ export default function ActiveFilters({
       // Get the exact names of selected fields of science
       const selectedFieldNames = filters.fieldsOfScience.map((fieldCode) => {
         for (const category of fieldsOfScienceCategories) {
-          const option = category.options.find(
-            (opt) => selectionKey(opt) === fieldCode,
-          );
+          const option = category.options.find((opt) => opt.code === fieldCode);
           if (option) {
             return option.label;
           }
