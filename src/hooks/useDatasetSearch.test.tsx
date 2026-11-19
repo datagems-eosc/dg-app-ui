@@ -5,6 +5,8 @@ import {
   mapApiDatasetToDataset,
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
+import { gatewayErrorFromResponse } from "@/lib/gatewayError";
+import { upstreamFailureBody } from "@/lib/gatewayError.fixtures";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -328,6 +330,22 @@ describe("useDatasetSearch", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
+    it("shows the classified Gateway message for a failed catalogue", async () => {
+      api.queryDatasets.mockRejectedValue(
+        gatewayErrorFromResponse(
+          424,
+          upstreamFailureBody(503, "DataManagement"),
+        ),
+      );
+      const { result } = renderSearch();
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(
+          "The service is temporarily unavailable. Please try again. Reference: 50c7a41b",
+        ),
+      );
+    });
+
     it("clears the earlier list when a new search fails", async () => {
       api.queryDatasets.mockResolvedValueOnce({
         items: [{ id: "old", name: "Old" }],
@@ -399,6 +417,20 @@ describe("useDatasetSearch", () => {
       await waitFor(() =>
         expect(result.current.error).toBe("Failed to fetch datasets"),
       );
+    });
+
+    it("shows the classified Gateway message for a failed step too", async () => {
+      const outage = gatewayErrorFromResponse(
+        424,
+        upstreamFailureBody(503, "DataManagement"),
+      );
+      api.queryUserCollections.mockResolvedValue({
+        items: [{ id: "mine", datasets: [{ id: "a" }] }],
+      });
+      api.queryDatasets.mockRejectedValue(outage);
+      const { result } = renderSearch({ kind: "custom", id: "mine" });
+
+      await waitFor(() => expect(result.current.error).toBe(outage.message));
     });
 
     it("says which step failed when a custom collection's details fail", async () => {

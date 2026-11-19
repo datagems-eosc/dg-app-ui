@@ -18,6 +18,7 @@ import {
   uniqueById,
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
+import { GatewayError } from "@/lib/gatewayError";
 import { logError } from "@/lib/logger";
 
 export const DEFAULT_SORT = "name-asc";
@@ -155,11 +156,11 @@ type SearchApi = Pick<
 
 /** A list request that failed, with the message the page shows for it. */
 class ListFailure extends Error {
-  readonly shown: ApiErrorMessage;
+  readonly shown: string;
   readonly logAs?: string;
   readonly reason?: unknown;
 
-  constructor(shown: ApiErrorMessage, logAs?: string, reason?: unknown) {
+  constructor(shown: string, logAs?: string, reason?: unknown) {
     super(shown);
     this.shown = shown;
     this.logAs = logAs;
@@ -167,15 +168,23 @@ class ListFailure extends Error {
   }
 }
 
+/**
+ * What the page shows for a failed request: a classified Gateway failure
+ * carries its own user copy; anything else gets the step's fixed message, so
+ * a raw error text never reaches the page.
+ */
+const shownFor = (err: unknown, fallback: ApiErrorMessage): string =>
+  err instanceof GatewayError ? err.message : fallback;
+
 async function orFail<T>(
   call: Promise<T>,
-  shown: ApiErrorMessage,
+  fallback: ApiErrorMessage,
   logAs: string,
 ): Promise<T> {
   try {
     return await call;
   } catch (err) {
-    throw new ListFailure(shown, logAs, err);
+    throw new ListFailure(shownFor(err, fallback), logAs, err);
   }
 }
 
@@ -396,12 +405,11 @@ export function useDatasetSearch({
       } catch (err: unknown) {
         if (!isLatest()) return;
         lastStarted.current = null;
-        // The Gateway's own error text stays in the log, not on the page.
         const failure =
           err instanceof ListFailure
             ? err
             : new ListFailure(
-                ApiErrorMessage.FETCH_DATASETS_FAILED,
+                shownFor(err, ApiErrorMessage.FETCH_DATASETS_FAILED),
                 "Failed to list datasets",
                 err,
               );

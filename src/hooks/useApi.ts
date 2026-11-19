@@ -19,6 +19,14 @@ import {
 } from "@/lib/datasetPermissions/gateway";
 import { publicEnv } from "@/lib/env";
 import type { UserFavorite } from "@/lib/favorites";
+import {
+  type GatewayError,
+  gatewayErrorFromNetworkFailure,
+  gatewayErrorFromResponse,
+  isNetworkFailure,
+  readGatewayError,
+  reportGatewayError,
+} from "@/lib/gatewayError";
 import { classifyIntent as classifyIntentRequest } from "@/lib/intentRouting/gateway";
 import type { ClassificationOutcome } from "@/lib/intentRouting/types";
 import {
@@ -118,6 +126,17 @@ const normalizeGatewayEnvironment = (baseUrl: string): string =>
 const readablePrincipalId = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null;
 
+/**
+ * The error to throw for a non-OK Gateway response: its message is classified
+ * user copy, never the Gateway's `error` text.
+ */
+const failedRequest = async (
+  operation: string,
+  response: Response,
+  context?: Record<string, unknown>,
+): Promise<GatewayError> =>
+  reportGatewayError(operation, await readGatewayError(response), context);
+
 export function useApi() {
   const { data: session, status: sessionStatus } = useSession();
   const token = (session as any)?.accessToken;
@@ -174,14 +193,29 @@ export function useApi() {
       headers.Authorization = `Bearer ${token}`;
       headers.oauth2 = token;
 
-      return fetchWithAuth(
-        url,
-        {
-          ...options,
-          headers,
-        },
-        policy,
-      );
+      try {
+        return await fetchWithAuth(
+          url,
+          {
+            ...options,
+            headers,
+          },
+          policy,
+        );
+      } catch (error) {
+        // No response at all: user copy instead of "Failed to fetch". A local
+        // abort is a cancellation and is rethrown as it is. Only the cause's
+        // name is logged: fetch also rejects with a TypeError for a request it
+        // refused to send, and the endpoint tells which one.
+        if (isNetworkFailure(error)) {
+          throw reportGatewayError(
+            "request",
+            gatewayErrorFromNetworkFailure(error),
+            { endpoint, cause: error.name },
+          );
+        }
+        throw error;
+      }
     },
     [token, baseUrl],
   );
@@ -323,25 +357,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage =
-          errorData.error ||
-          errorData.message ||
-          ApiErrorMessage.FETCH_DATASETS_FAILED;
-
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("queryDatasets", {
-            ...errorData,
-            statusCode: response.status,
-          });
-        }
-
-        const enhancedMessage =
-          response.status >= 500
-            ? `Server error (${response.status}): ${errorMessage}. Please contact support if the issue persists.`
-            : errorMessage;
-
-        throw new Error(enhancedMessage);
+        throw await failedRequest("queryDatasets", response);
       }
 
       const result = await response.json();
@@ -370,13 +386,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("queryCollections", errorData);
-        }
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_COLLECTIONS_FAILED,
-        );
+        throw await failedRequest("queryCollections", response);
       }
 
       const result = await response.json();
@@ -405,13 +415,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("queryUserCollections", errorData);
-        }
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_USER_COLLECTIONS_FAILED,
-        );
+        throw await failedRequest("queryUserCollections", response);
       }
 
       const res = await response.json();
@@ -449,13 +453,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("createUserCollection", errorData);
-        }
-        throw new Error(
-          errorData.error || ApiErrorMessage.CREATE_COLLECTION_FAILED,
-        );
+        throw await failedRequest("createUserCollection", response);
       }
 
       const result = await response.json();
@@ -484,16 +482,10 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("addDatasetToCollection", errorData, {
-            collectionId,
-            datasetId,
-          });
-        }
-        throw new Error(
-          errorData.error || ApiErrorMessage.ADD_DATASET_TO_COLLECTION_FAILED,
-        );
+        throw await failedRequest("addDatasetToCollection", response, {
+          collectionId,
+          datasetId,
+        });
       }
 
       const result = await response.json();
@@ -522,17 +514,10 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("removeDatasetFromCollection", errorData, {
-            collectionId,
-            datasetId,
-          });
-        }
-        throw new Error(
-          errorData.error ||
-            ApiErrorMessage.REMOVE_DATASET_FROM_COLLECTION_FAILED,
-        );
+        throw await failedRequest("removeDatasetFromCollection", response, {
+          collectionId,
+          datasetId,
+        });
       }
 
       const result = await response.json();
@@ -603,10 +588,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_USER_GRANTS_FAILED,
-        );
+        throw await failedRequest("getUserDatasetGrants", response);
       }
 
       return response.json();
@@ -628,10 +610,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_GROUP_GRANTS_FAILED,
-        );
+        throw await failedRequest("getGroupDatasetGrants", response);
       }
 
       return response.json();
@@ -653,10 +632,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_USER_GRANTS_FAILED,
-        );
+        throw await failedRequest("getUserCollectionGrants", response);
       }
 
       return response.json();
@@ -678,10 +654,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_GROUP_GRANTS_FAILED,
-        );
+        throw await failedRequest("getGroupCollectionGrants", response);
       }
 
       return response.json();
@@ -697,8 +670,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+        throw await failedRequest("assignUserDatasetGrant", response);
       }
     },
     [makeRequest],
@@ -712,10 +684,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
-        );
+        throw await failedRequest("unassignUserDatasetGrant", response);
       }
     },
     [makeRequest],
@@ -729,8 +698,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+        throw await failedRequest("assignGroupDatasetGrant", response);
       }
     },
     [makeRequest],
@@ -744,10 +712,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
-        );
+        throw await failedRequest("unassignGroupDatasetGrant", response);
       }
     },
     [makeRequest],
@@ -765,8 +730,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+        throw await failedRequest("assignUserCollectionGrant", response);
       }
     },
     [makeRequest],
@@ -784,10 +748,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
-        );
+        throw await failedRequest("unassignUserCollectionGrant", response);
       }
     },
     [makeRequest],
@@ -805,8 +766,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || ApiErrorMessage.ASSIGN_GRANT_FAILED);
+        throw await failedRequest("assignGroupCollectionGrant", response);
       }
     },
     [makeRequest],
@@ -824,10 +784,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.UNASSIGN_GRANT_FAILED,
-        );
+        throw await failedRequest("unassignGroupCollectionGrant", response);
       }
     },
     [makeRequest],
@@ -845,11 +802,7 @@ export function useApi() {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      if (errorData && Object.keys(errorData).length > 0) {
-        logApiError("getCurrentUserContextGrants", errorData);
-      }
-      throw new Error(errorData.error || ApiErrorMessage.FETCH_GRANTS_FAILED);
+      throw await failedRequest("getCurrentUserContextGrants", response);
     }
 
     const data = await response.json();
@@ -876,8 +829,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to grant permission");
+        throw await failedRequest("grantCollectionPermission", response);
       }
     },
     [makeRequest],
@@ -898,15 +850,9 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("deleteCollection", errorData, { collectionId });
-        }
-        const errorMessage =
-          errorData.error ||
-          errorData.message ||
-          ApiErrorMessage.DELETE_COLLECTION_FAILED;
-        throw new Error(errorMessage);
+        throw await failedRequest("deleteCollection", response, {
+          collectionId,
+        });
       }
 
       logApiResponse("deleteCollection", { collectionId });
@@ -923,10 +869,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.SEARCH_IN_DATA_FAILED,
-        );
+        throw await failedRequest("searchInDataExplore", response);
       }
 
       return response.json();
@@ -957,10 +900,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.SEARCH_CROSS_DATASET_FAILED,
-        );
+        throw await failedRequest("searchCrossDataset", response);
       }
 
       return response.json();
@@ -975,10 +915,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_CONVERSATION_FAILED,
-        );
+        throw await failedRequest("getConversation", response);
       }
 
       return response.json();
@@ -994,10 +931,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_CONVERSATIONS_FAILED,
-        );
+        throw await failedRequest("queryConversations", response);
       }
 
       return response.json();
@@ -1016,10 +950,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.PERSIST_CONVERSATION_FAILED,
-        );
+        throw await failedRequest("persistConversation", response);
       }
 
       return response.json();
@@ -1038,10 +969,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.PERSIST_CONVERSATION_DEEP_FAILED,
-        );
+        throw await failedRequest("persistConversationDeep", response);
       }
 
       return response.json();
@@ -1057,10 +985,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_MESSAGES_FAILED,
-        );
+        throw await failedRequest("queryMessages", response);
       }
 
       return response.json();
@@ -1086,10 +1011,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.UPDATE_CONVERSATION_FAILED,
-        );
+        throw await failedRequest("updateConversation", response);
       }
 
       return response.json();
@@ -1104,10 +1026,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.DELETE_CONVERSATION_FAILED,
-        );
+        throw await failedRequest("deleteConversation", response);
       }
 
       return {};
@@ -1121,10 +1040,7 @@ export function useApi() {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error || ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
-      );
+      throw await failedRequest("getFieldsOfScience", response);
     }
 
     return response.json();
@@ -1136,8 +1052,7 @@ export function useApi() {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || ApiErrorMessage.FETCH_LICENSES_FAILED);
+      throw await failedRequest("getLicenses", response);
     }
 
     return response.json();
@@ -1156,8 +1071,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to query users");
+        throw await failedRequest("queryUsers", response);
       }
 
       return response.json();
@@ -1179,20 +1093,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const rawMsg =
-          errorData.error ??
-          errorData.message ??
-          `Failed to query user groups (${response.status})`;
-        const msg =
-          typeof rawMsg === "string"
-            ? rawMsg
-            : Array.isArray(rawMsg)
-              ? (rawMsg as { Key?: string; Value?: string[] }[])
-                  .map((e) => `${e.Key ?? "?"}: ${(e.Value ?? []).join(", ")}`)
-                  .join("; ")
-              : String(rawMsg);
-        throw new Error(msg);
+        throw await failedRequest("queryUserGroups", response);
       }
 
       return response.json();
@@ -1227,10 +1128,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_USER_SETTINGS_FAILED,
-        );
+        throw await failedRequest("getUserSettingsByKey", response);
       }
 
       return response.json();
@@ -1412,13 +1310,7 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("getUserFavorites", errorData);
-        }
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_FAVORITES_FAILED,
-        );
+        throw await failedRequest("getUserFavorites", response);
       }
 
       const result = await response.json();
@@ -1447,11 +1339,9 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("addFavoriteDataset", errorData, { datasetId });
-        }
-        throw new Error(errorData.error || ApiErrorMessage.ADD_FAVORITE_FAILED);
+        throw await failedRequest("addFavoriteDataset", response, {
+          datasetId,
+        });
       }
 
       const result = await response.json();
@@ -1477,13 +1367,9 @@ export function useApi() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData && Object.keys(errorData).length > 0) {
-          logApiError("removeFavoriteDataset", errorData, { datasetId });
-        }
-        throw new Error(
-          errorData.error || ApiErrorMessage.REMOVE_FAVORITE_FAILED,
-        );
+        throw await failedRequest("removeFavoriteDataset", response, {
+          datasetId,
+        });
       }
 
       logApiResponse("removeFavoriteDataset", { datasetId });
@@ -1510,10 +1396,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_USER_SETTINGS_FAILED,
-        );
+        throw await failedRequest("getUserSettingsById", response);
       }
 
       return response.json();
@@ -1528,10 +1411,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.DELETE_USER_SETTINGS_FAILED,
-        );
+        throw await failedRequest("deleteUserSettingsById", response);
       }
     },
     [makeRequest],
@@ -1544,10 +1424,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.DELETE_USER_SETTINGS_FAILED,
-        );
+        throw await failedRequest("deleteUserSettingsByKey", response);
       }
     },
     [makeRequest],
@@ -1574,10 +1451,7 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || ApiErrorMessage.SAVE_USER_SETTINGS_FAILED,
-        );
+        throw await failedRequest("saveUserSettings", response);
       }
 
       return response.json();
@@ -1632,14 +1506,11 @@ export function useApi() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
         // Recommendations are optional: Chat falls back to its own suggestions.
         logWarn("Query recommendations unavailable", {
           status: response.status,
         });
-        throw new Error(
-          errorData.error || ApiErrorMessage.FETCH_RECOMMENDATIONS_FAILED,
-        );
+        throw await readGatewayError(response);
       }
 
       const result = await response.json();
@@ -1661,11 +1532,7 @@ export function useApi() {
       method: "GET",
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      logApiError("getUploadAllowedExtensions", errorData);
-      throw new Error(
-        errorData.error || ApiErrorMessage.FETCH_ALLOWED_EXTENSIONS_FAILED,
-      );
+      throw await failedRequest("getUploadAllowedExtensions", response);
     }
     const result = await response.json();
     logApiResponse("getUploadAllowedExtensions", {
@@ -1712,20 +1579,16 @@ export function useApi() {
             return;
           }
           if (xhr.status < 200 || xhr.status >= 300) {
-            let errorData: Record<string, unknown> = {};
+            let errorData: unknown;
             try {
-              errorData = JSON.parse(xhr.responseText) ?? {};
+              errorData = JSON.parse(xhr.responseText);
             } catch {
-              /* ignore */
+              /* not JSON: classified as generic */
             }
-            logApiError("uploadDatasetFiles", {
-              ...errorData,
-              statusCode: xhr.status,
-            });
             reject(
-              new Error(
-                (errorData.error as string) ||
-                  ApiErrorMessage.UPLOAD_DATASET_FAILED,
+              reportGatewayError(
+                "uploadDatasetFiles",
+                gatewayErrorFromResponse(xhr.status, errorData),
               ),
             );
             return;
@@ -1752,9 +1615,13 @@ export function useApi() {
           }
         });
 
-        xhr.addEventListener("error", () => {
-          logApiError("uploadDatasetFiles", { network: true });
-          reject(new Error(ApiErrorMessage.UPLOAD_DATASET_FAILED));
+        xhr.addEventListener("error", (event) => {
+          reject(
+            reportGatewayError(
+              "uploadDatasetFiles",
+              gatewayErrorFromNetworkFailure(event),
+            ),
+          );
         });
 
         xhr.addEventListener("abort", () => {
@@ -1880,10 +1747,10 @@ export function useApi() {
           }
         }
 
-        logApiError("onboardDataset", errorData);
-        throw new Error(
-          (errorData as { error?: string }).error ||
-            ApiErrorMessage.ONBOARD_DATASET_FAILED,
+        // The body was already read for the location retry above.
+        throw reportGatewayError(
+          "onboardDataset",
+          gatewayErrorFromResponse(response.status, errorData),
         );
       }
 
@@ -1910,13 +1777,7 @@ export function useApi() {
         },
       );
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        logApiError("getLinguisticFeatures", errorData);
-        throw new Error(
-          errorData.error ||
-            errorData.message ||
-            "Failed to get linguistic features",
-        );
+        throw await failedRequest("getLinguisticFeatures", response);
       }
       const result = await response.json();
       logApiResponse("getLinguisticFeatures", result);
@@ -1936,11 +1797,7 @@ export function useApi() {
         body: JSON.stringify({ id: datasetId, dataStoreKind }),
       });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        logApiError("profileDataset", errorData);
-        throw new Error(
-          errorData.error || ApiErrorMessage.PROFILE_DATASET_FAILED,
-        );
+        throw await failedRequest("profileDataset", response);
       }
       const result = await response.json();
       const id =
