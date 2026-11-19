@@ -508,13 +508,13 @@ describe("useDatasetSearch", () => {
     };
 
     it("sends the selected field's name and its code", async () => {
-      await applyFields(["MATHEMATICS"]);
+      await applyFields(["1.1"]);
 
       expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS", "1.1"]);
     });
 
     it("sends two names and two codes for two fields", async () => {
-      await applyFields(["MATHEMATICS", "COMPUTER AND INFORMATION SCIENCES"]);
+      await applyFields(["1.1", "1.2"]);
 
       expect(lastCatalogue().fieldsOfScience).toEqual([
         "MATHEMATICS",
@@ -524,16 +524,16 @@ describe("useDatasetSearch", () => {
       ]);
     });
 
-    it("sends the names alone while the vocabulary is not loaded", async () => {
+    it("sends the selected values as they are while the vocabulary is not loaded", async () => {
       clearVocabularyCache();
 
-      await applyFields(["MATHEMATICS"]);
+      await applyFields(["1.1"]);
 
-      expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS"]);
+      expect(lastCatalogue().fieldsOfScience).toEqual(["1.1"]);
     });
 
     it("sends no field of science once the filter is cleared", async () => {
-      const result = await applyFields(["MATHEMATICS"]);
+      const result = await applyFields(["1.1"]);
 
       act(() => result.current.onApplyFilters(getDefaultFilters()));
       await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(3));

@@ -239,3 +239,66 @@ describe("Classification fields of science in the edit view", () => {
     ).not.toBeChecked();
   });
 });
+
+describe("Classification field of science selection", () => {
+  // The Gateway vocabulary really lists MATERIALS ENGINEERING under two codes.
+  const vocabulary = {
+    hierarchy: [
+      {
+        ordinal: 2,
+        code: "2",
+        name: "ENGINEERING AND TECHNOLOGY",
+        children: [{ ordinal: 5, code: "2.5", name: "MATERIALS ENGINEERING" }],
+      },
+      {
+        ordinal: 3,
+        code: "3",
+        name: "MEDICAL AND HEALTH SCIENCES",
+        children: [{ ordinal: 5, code: "3.5", name: "MATERIALS ENGINEERING" }],
+      },
+    ],
+  };
+
+  it("ticks only the row the user ticked when two rows share a name", async () => {
+    mockUseApi.mockReturnValue({
+      hasToken: true,
+      getFieldsOfScience: vi.fn().mockResolvedValue(vocabulary),
+      getLicenses: vi.fn().mockResolvedValue([]),
+    });
+    vi.resetModules();
+    const Fresh = (await import("./Classification")).Classification;
+    const onChange = vi.fn();
+    const Controlled = () => {
+      const [value, setValue] =
+        useState<Parameters<typeof Fresh>[0]["data"]>(data);
+      return (
+        <Fresh
+          data={value}
+          onChange={(next) => {
+            onChange(next.fieldsOfScience);
+            setValue(next);
+          }}
+          errors={{}}
+        />
+      );
+    };
+    render(<Controlled />);
+    const user = userEvent.setup();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Engineering and technology"),
+      ).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Engineering and technology"));
+    await user.click(screen.getByText("Medical and health sciences"));
+
+    const [engineering, medical] = screen.getAllByLabelText(
+      "Materials engineering",
+    );
+    await user.click(engineering as HTMLElement);
+
+    expect(onChange).toHaveBeenLastCalledWith(["2.5"]);
+    expect(engineering).toBeChecked();
+    expect(medical).not.toBeChecked();
+  });
+});

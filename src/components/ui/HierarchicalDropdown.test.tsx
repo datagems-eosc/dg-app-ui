@@ -378,7 +378,7 @@ describe("HierarchicalDropdown", () => {
     });
   });
 
-  describe("option ids", () => {
+  describe("options that share a value", () => {
     // Fields-of-science option values are vocabulary names: they contain
     // spaces, and the vocabulary lists MATERIALS ENGINEERING under two codes.
     const namedCategories = (): HierarchicalCategory[] =>
@@ -420,6 +420,51 @@ describe("HierarchicalDropdown", () => {
       for (const id of ids) {
         expect(id).not.toMatch(/\s/);
       }
+    });
+
+    it("selects only the ticked option, reporting its code", async () => {
+      const user = userEvent.setup();
+      const changes: string[][] = [];
+      render(
+        <ControlledDropdown
+          categories={namedCategories()}
+          onValueChange={(value) => changes.push(value)}
+        />,
+      );
+
+      await user.type(searchBox(), "materials");
+      const [engineering, medical] = screen.getAllByLabelText(
+        "Materials engineering",
+      );
+      await user.click(engineering as HTMLElement);
+
+      expect(changes).toEqual([["2.5"]]);
+      expect(engineering).toBeChecked();
+      expect(medical).not.toBeChecked();
+      // One category counts one selection; the other shows no count.
+      expect(screen.getAllByText("1")).toHaveLength(1);
+    });
+
+    it("deselects only the unticked option", async () => {
+      const user = userEvent.setup();
+      const changes: string[][] = [];
+      render(
+        <ControlledDropdown
+          categories={namedCategories()}
+          initialValue={["2.5", "3.5"]}
+          onValueChange={(value) => changes.push(value)}
+        />,
+      );
+
+      await user.type(searchBox(), "materials");
+      const [engineering, medical] = screen.getAllByLabelText(
+        "Materials engineering",
+      );
+      await user.click(medical as HTMLElement);
+
+      expect(changes).toEqual([["2.5"]]);
+      expect(engineering).toBeChecked();
+      expect(medical).not.toBeChecked();
     });
   });
 });

@@ -167,7 +167,7 @@ describe("ActiveFilters", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows fields selected by vocabulary name with their readable labels", () => {
+  it("shows fields selected from the Gateway vocabulary with their readable labels", () => {
     // The shape processFieldsOfScience gives the Gateway vocabulary.
     const vocabulary: HierarchicalCategory[] = [
       {
@@ -185,7 +185,7 @@ describe("ActiveFilters", () => {
     ];
     const filters: FilterState = {
       ...defaultProps.filters,
-      fieldsOfScience: ["MATHEMATICS", "COMPUTER AND INFORMATION SCIENCES"],
+      fieldsOfScience: ["1.1", "1.2"],
     };
 
     render(

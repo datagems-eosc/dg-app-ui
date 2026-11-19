@@ -66,8 +66,10 @@ import type {
   SubmissionRequest,
   UnresolvedFileReason,
 } from "@/lib/datasetOnboarding/submission";
+import { fieldOfScienceNames } from "@/lib/fieldsOfScience";
 import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
+import { cachedFieldsOfScience } from "@/lib/vocabularyService";
 
 interface FormData {
   files: UploadedFile[];
@@ -769,7 +771,12 @@ export default function AddDatasetForm() {
           headline: formData.basicInfo.headline,
           description: formData.basicInfo.description,
           keywords: formData.basicInfo.keywords,
-          fieldsOfScience: formData.classification.fieldsOfScience,
+          // The dropdown selects by code; datasets store the vocabulary name.
+          // Classification loaded the vocabulary before any field was chosen.
+          fieldsOfScience: fieldOfScienceNames(
+            formData.classification.fieldsOfScience,
+            cachedFieldsOfScience() ?? [],
+          ),
           license: formData.classification.license,
           languages: formData.classification.languages,
           countries: formData.classification.countries,
