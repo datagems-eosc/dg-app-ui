@@ -17,7 +17,7 @@ import { logApiError } from "@/lib/logger";
 import { useApi } from "./useApi";
 
 /**
- * UI #375: a failed Gateway request surfaces classified copy, never the
+ * A failed Gateway request surfaces classified copy, never the
  * Gateway's own `error` text. Bodies as recorded from the Gateway (HTTP 424,
  * code 104) in the gateway-error-messages assessment.
  */
@@ -134,6 +134,28 @@ describe("useApi Gateway error messages", () => {
     );
   });
 
+  it("shows the unavailable copy on a timeout and logs which request failed", async () => {
+    stubFetch(async () => {
+      throw new DOMException("signal timed out", "TimeoutError");
+    });
+    const { result } = renderHook(() => useApi());
+
+    await expect(
+      result.current.searchInDataExplore({ question: "rain" }),
+    ).rejects.toThrow(
+      /^The service is temporarily unavailable\. Please try again\.$/,
+    );
+    expect(logApiError).toHaveBeenCalledWith(
+      "request",
+      expect.anything(),
+      expect.objectContaining({
+        kind: "unavailable",
+        cause: "TimeoutError",
+        endpoint: expect.stringContaining("in-data-explore"),
+      }),
+    );
+  });
+
   it("passes a local abort through unchanged", async () => {
     stubFetch(async () => {
       throw new DOMException("The operation was aborted.", "AbortError");
@@ -202,17 +224,26 @@ describe("useApi Gateway error messages", () => {
     });
   });
 
-  it("logs the classification without the payload", async () => {
-    stubFetch(async () => upstreamFailure(400, '{"echo":"qwzx vbnm plok"}'));
+  it("logs the classification without the shown text or the payload", async () => {
+    // The service's message is shown to the user, and it can quote the question.
+    stubFetch(async () =>
+      upstreamFailure(
+        400,
+        '{"code":102,"message":[{"Key":"question","Value":["Question qwzx vbnm plok cannot be answered."]}]}',
+      ),
+    );
     const { result } = renderHook(() => useApi());
 
-    await result.current
-      .getLinguisticFeatures({ DatasetIds: ["d-1"], Query: "qwzx vbnm plok" })
-      .catch(() => undefined);
+    await expect(
+      result.current.getLinguisticFeatures({
+        DatasetIds: ["d-1"],
+        Query: "qwzx vbnm plok",
+      }),
+    ).rejects.toThrow(/qwzx vbnm plok/);
 
     expect(logApiError).toHaveBeenCalledWith(
       "getLinguisticFeatures",
-      expect.any(Error),
+      expect.anything(),
       expect.objectContaining({
         status: 424,
         code: 104,
@@ -221,8 +252,9 @@ describe("useApi Gateway error messages", () => {
         correlationId: CORRELATION_ID,
       }),
     );
-    expect(JSON.stringify(vi.mocked(logApiError).mock.calls)).not.toContain(
-      "qwzx",
+    const logged = JSON.stringify(vi.mocked(logApiError).mock.calls, (_, v) =>
+      v instanceof Error ? v.message : v,
     );
+    expect(logged).not.toContain("qwzx");
   });
 });

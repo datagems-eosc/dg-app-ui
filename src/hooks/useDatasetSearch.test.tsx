@@ -423,6 +423,25 @@ describe("useDatasetSearch", () => {
       );
     });
 
+    it("shows the classified Gateway message for a failed step too", async () => {
+      const outage = gatewayErrorFromResponse(424, {
+        code: 104,
+        error: "error communicating with underpinning service",
+        message: {
+          statusCode: 503,
+          source: "DataManagement",
+          correlationId: "50c7a41b-757f-440d-a4e8-eef5be144cb2",
+        },
+      });
+      api.queryUserCollections.mockResolvedValue({
+        items: [{ id: "mine", datasets: [{ id: "a" }] }],
+      });
+      api.queryDatasets.mockRejectedValue(outage);
+      const { result } = renderSearch({ kind: "custom", id: "mine" });
+
+      await waitFor(() => expect(result.current.error).toBe(outage.message));
+    });
+
     it("says which step failed when a custom collection's details fail", async () => {
       api.queryUserCollections.mockResolvedValue({
         items: [{ id: "mine", datasets: [{ id: "a" }] }],

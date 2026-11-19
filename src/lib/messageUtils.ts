@@ -132,6 +132,21 @@ export function parseConversationMessage(
   } else if (msg.kind === 3) {
     // AI message (new format) - extract table data if available
     const payload = msg.data?.payload;
+    if (
+      payload &&
+      typeof payload === "object" &&
+      isFailedAnswer((payload as { status?: unknown }).status)
+    ) {
+      // Logged when it happened, not on every history render.
+      return {
+        id: msg.id || getMessageId(msg, idx),
+        type: "ai" as MessageType,
+        content: ApiErrorMessage.GATEWAY_UNANSWERABLE,
+        timestamp: msg.createdAt,
+        sources: 0,
+        relatedDatasetIds: [],
+      };
+    }
     const relatedDatasetIds: string[] = [];
     let latitude: number | undefined;
     let longitude: number | undefined;
@@ -164,14 +179,6 @@ export function parseConversationMessage(
     }
 
     if (
-      payload &&
-      typeof payload === "object" &&
-      isFailedAnswer((payload as { status?: unknown }).status)
-    ) {
-      // A stored answer whose SQL failed to run (UI #375); logged when it
-      // happened, not on every history render.
-      content = ApiErrorMessage.GATEWAY_UNANSWERABLE;
-    } else if (
       payload &&
       typeof payload === "object" &&
       !Array.isArray(payload) &&
@@ -231,6 +238,10 @@ export function parseConversationMessage(
   };
 }
 
+/** A unique ID that won't conflict with server message IDs. */
+const temporaryMessageId = (): string =>
+  `temp-ai-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 export function parseSearchInDataExploreResponse(
   apiResponse: unknown,
   datasetIds: string[],
@@ -268,6 +279,20 @@ export function parseSearchInDataExploreResponse(
   }
 
   const result = response.result;
+  if (isFailedAnswer(result.status)) {
+    // SQL was generated but failed to run. The service's message is technical
+    // and can quote the question, so it is neither shown nor logged.
+    logWarn("In-data answer failed");
+    return {
+      id: temporaryMessageId(),
+      type: "ai",
+      content: ApiErrorMessage.GATEWAY_UNANSWERABLE,
+      timestamp: new Date(),
+      sources: datasetIds.length,
+      relatedDatasetIds: datasetIds,
+    };
+  }
+
   let tableData: Message["tableData"] | undefined;
   let sqlQuery: string | undefined;
   let latitude: number | undefined;
@@ -306,14 +331,7 @@ export function parseSearchInDataExploreResponse(
     }
 
     const extractedTableData = firstEntry?.result?.table;
-    if (isFailedAnswer(result.status)) {
-      // SQL was generated but failed to run (UI #375): the service's message
-      // is technical, so it goes to the log and the user gets the rephrase copy.
-      logWarn("In-data answer failed", {
-        message: (firstEntry?.result as { message?: unknown })?.message,
-      });
-      content = ApiErrorMessage.GATEWAY_UNANSWERABLE;
-    } else if (extractedTableData) {
+    if (extractedTableData) {
       tableData = extractedTableData;
       if (extractedTableData.columns && extractedTableData.rows) {
         content = "Table Results:\n";
@@ -323,12 +341,8 @@ export function parseSearchInDataExploreResponse(
     }
   }
 
-  // Generate a unique ID that won't conflict with server message IDs
-  // Use a prefix and timestamp to ensure uniqueness
-  const messageId = `temp-ai-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
   return {
-    id: messageId,
+    id: temporaryMessageId(),
     type: "ai",
     content,
     timestamp: new Date(),

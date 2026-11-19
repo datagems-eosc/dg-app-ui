@@ -23,9 +23,9 @@ import {
   type GatewayError,
   gatewayErrorFromNetworkFailure,
   gatewayErrorFromResponse,
-  gatewayErrorLogDetails,
   isNetworkFailure,
   readGatewayError,
+  reportGatewayError,
 } from "@/lib/gatewayError";
 import { classifyIntent as classifyIntentRequest } from "@/lib/intentRouting/gateway";
 import type { ClassificationOutcome } from "@/lib/intentRouting/types";
@@ -127,22 +127,15 @@ const readablePrincipalId = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null;
 
 /**
- * The error to throw for a non-OK Gateway response (UI #375): its message is
- * classified user copy, never the Gateway's `error` text. The classification
- * is logged for support; the body itself is not, as it can echo user input.
+ * The error to throw for a non-OK Gateway response: its message is classified
+ * user copy, never the Gateway's `error` text.
  */
 const failedRequest = async (
   operation: string,
   response: Response,
   context?: Record<string, unknown>,
-): Promise<GatewayError> => {
-  const error = await readGatewayError(response);
-  logApiError(operation, error, {
-    ...gatewayErrorLogDetails(error),
-    ...context,
-  });
-  return error;
-};
+): Promise<GatewayError> =>
+  reportGatewayError(operation, await readGatewayError(response), context);
 
 export function useApi() {
   const { data: session, status: sessionStatus } = useSession();
@@ -211,9 +204,15 @@ export function useApi() {
         );
       } catch (error) {
         // No response at all: user copy instead of "Failed to fetch". A local
-        // abort is a cancellation and is rethrown as it is.
+        // abort is a cancellation and is rethrown as it is. Only the cause's
+        // name is logged: fetch also rejects with a TypeError for a request it
+        // refused to send, and the endpoint tells which one.
         if (isNetworkFailure(error)) {
-          throw gatewayErrorFromNetworkFailure(error);
+          throw reportGatewayError(
+            "request",
+            gatewayErrorFromNetworkFailure(error),
+            { endpoint, cause: error.name },
+          );
         }
         throw error;
       }
@@ -1586,13 +1585,12 @@ export function useApi() {
             } catch {
               /* not JSON: classified as generic */
             }
-            const error = gatewayErrorFromResponse(xhr.status, errorData);
-            logApiError(
-              "uploadDatasetFiles",
-              error,
-              gatewayErrorLogDetails(error),
+            reject(
+              reportGatewayError(
+                "uploadDatasetFiles",
+                gatewayErrorFromResponse(xhr.status, errorData),
+              ),
             );
-            reject(error);
             return;
           }
           try {
@@ -1617,9 +1615,13 @@ export function useApi() {
           }
         });
 
-        xhr.addEventListener("error", () => {
-          logApiError("uploadDatasetFiles", { network: true });
-          reject(gatewayErrorFromNetworkFailure("upload network error"));
+        xhr.addEventListener("error", (event) => {
+          reject(
+            reportGatewayError(
+              "uploadDatasetFiles",
+              gatewayErrorFromNetworkFailure(event),
+            ),
+          );
         });
 
         xhr.addEventListener("abort", () => {
@@ -1746,9 +1748,10 @@ export function useApi() {
         }
 
         // The body was already read for the location retry above.
-        const error = gatewayErrorFromResponse(response.status, errorData);
-        logApiError("onboardDataset", error, gatewayErrorLogDetails(error));
-        throw error;
+        throw reportGatewayError(
+          "onboardDataset",
+          gatewayErrorFromResponse(response.status, errorData),
+        );
       }
 
       const result = await response.json();

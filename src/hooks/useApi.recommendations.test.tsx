@@ -47,7 +47,7 @@ describe("useApi().getRecommendNextQueries", () => {
     await expect(
       result.current.getRecommendNextQueries("rainfall in Athens", "c-1"),
     ).rejects.toThrow(
-      // UI #375: classified copy, never the Gateway's own error text.
+      // Classified copy, never the Gateway's own error text.
       /^The service is temporarily unavailable\. Please try again\.$/,
     );
 

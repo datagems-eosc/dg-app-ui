@@ -168,15 +168,23 @@ class ListFailure extends Error {
   }
 }
 
+/**
+ * What the page shows for a failed request: a classified Gateway failure
+ * carries its own user copy; anything else gets the step's fixed message, so
+ * a raw error text never reaches the page.
+ */
+const shownFor = (err: unknown, fallback: ApiErrorMessage): string =>
+  err instanceof GatewayError ? err.message : fallback;
+
 async function orFail<T>(
   call: Promise<T>,
-  shown: ApiErrorMessage,
+  fallback: ApiErrorMessage,
   logAs: string,
 ): Promise<T> {
   try {
     return await call;
   } catch (err) {
-    throw new ListFailure(shown, logAs, err);
+    throw new ListFailure(shownFor(err, fallback), logAs, err);
   }
 }
 
@@ -397,15 +405,11 @@ export function useDatasetSearch({
       } catch (err: unknown) {
         if (!isLatest()) return;
         lastStarted.current = null;
-        // The Gateway's own error text stays in the log, not on the page; a
-        // classified Gateway failure carries user copy (UI #375).
         const failure =
           err instanceof ListFailure
             ? err
             : new ListFailure(
-                err instanceof GatewayError
-                  ? err.message
-                  : ApiErrorMessage.FETCH_DATASETS_FAILED,
+                shownFor(err, ApiErrorMessage.FETCH_DATASETS_FAILED),
                 "Failed to list datasets",
                 err,
               );

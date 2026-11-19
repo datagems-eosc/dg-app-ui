@@ -16,7 +16,7 @@ vi.mock("@/contexts/FeatureFlagsContext", () => ({
 import LanguageQuestionPage from "./page";
 
 /**
- * UI #375, observed 10 November: a meaningless question showed "error
+ * A meaningless question used to show "error
  * communicating with underpinning service". The page now shows the classified
  * message with its reference.
  */

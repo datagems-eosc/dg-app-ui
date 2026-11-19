@@ -1,5 +1,5 @@
 /**
- * User-facing classification of failed Gateway requests (UI #375).
+ * User-facing classification of failed Gateway requests.
  *
  * The Gateway reports every partner-service failure as HTTP 424, code 104
  * "error communicating with underpinning service", with the upstream service
@@ -11,6 +11,7 @@
  */
 
 import { ApiErrorMessage } from "./apiErrors";
+import { logApiError } from "./logger";
 
 export type GatewayErrorKind = "unanswerable" | "unavailable" | "generic";
 
@@ -126,7 +127,7 @@ export function gatewayErrorFromResponse(
 
   const kind = classify(status, source, upstreamStatus);
   let text: string = COPY[kind];
-  if (kind === "unanswerable" && upstreamStatus === 400) {
+  if (kind === "unanswerable") {
     text = readServiceMessage(detail?.payload) ?? text;
   }
 
@@ -141,8 +142,8 @@ export function gatewayErrorFromResponse(
 }
 
 /**
- * Builds the error for a request that got no response (network failure,
- * abort or timeout). The cause is kept for logs only; its text is never shown.
+ * Builds the error for a request that got no response (network failure or
+ * timeout). The cause is kept on the error; its text is never shown.
  */
 export function gatewayErrorFromNetworkFailure(cause: unknown): GatewayError {
   const error = new GatewayError(COPY.unavailable, {
@@ -162,7 +163,9 @@ export function gatewayErrorFromNetworkFailure(cause: unknown): GatewayError {
  * `TypeError` on a network failure and a `TimeoutError` on a signal timeout.
  * A local `AbortError` is a cancellation, not a failure, and stays as it is.
  */
-export const isNetworkFailure = (error: unknown): boolean =>
+export const isNetworkFailure = (
+  error: unknown,
+): error is TypeError | DOMException =>
   error instanceof TypeError ||
   (error instanceof DOMException && error.name === "TimeoutError");
 
@@ -178,7 +181,7 @@ export async function readGatewayError(
  * What support needs to trace a failure. Deliberately no payload or
  * response text: those can echo the user's question.
  */
-export const gatewayErrorLogDetails = (error: GatewayError) => ({
+const gatewayErrorLogDetails = (error: GatewayError) => ({
   kind: error.kind,
   status: error.status,
   code: error.code,
@@ -186,3 +189,20 @@ export const gatewayErrorLogDetails = (error: GatewayError) => ({
   upstreamStatus: error.upstreamStatus,
   correlationId: error.correlationId,
 });
+
+/**
+ * Logs a classified failure and returns it for throwing. The logged error is a
+ * fixed label, not `error.message`: the shown text can be the service's own
+ * message, which can quote the user's question.
+ */
+export const reportGatewayError = (
+  operation: string,
+  error: GatewayError,
+  context?: Record<string, unknown>,
+): GatewayError => {
+  logApiError(operation, `Gateway request failed (${error.kind})`, {
+    ...gatewayErrorLogDetails(error),
+    ...context,
+  });
+  return error;
+};

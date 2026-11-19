@@ -9,7 +9,7 @@ import {
 } from "./messageUtils";
 
 /**
- * UI #375: when the generated SQL fails to run, the Gateway still answers
+ * When the generated SQL fails to run, the Gateway still answers
  * HTTP 200, with `status` 1 (Error, a numeric enum in dg-app-api
  * InDataExplorationBuilder) and a "none" result entry carrying the service's
  * technical message.
@@ -49,16 +49,44 @@ describe("parseSearchInDataExploreResponse", () => {
     expect(parsed?.content).not.toContain("does not exist");
   });
 
-  it("logs the technical message instead of showing it", () => {
-    parseSearchInDataExploreResponse(
-      failedAnswer('column "x" does not exist'),
+  it.each([
+    ["empty entries", []],
+    ["no entries", undefined],
+  ])("shows the rephrase message for a failed answer with %s", (_, entries) => {
+    const parsed = parseSearchInDataExploreResponse(
+      { result: { status: 1, entries } },
       ["d-1"],
     );
 
-    expect(logWarn).toHaveBeenCalledWith(
-      "In-data answer failed",
-      expect.objectContaining({ message: 'column "x" does not exist' }),
+    expect(parsed?.content).toBe(REPHRASE);
+  });
+
+  it("drops the failed SQL and map coordinates", () => {
+    const answer = failedAnswer("syntax error");
+    const parsed = parseSearchInDataExploreResponse(
+      {
+        result: {
+          ...answer.result,
+          data: { InputParams: [{ lat: 38, lon: 23.7 }] },
+        },
+      },
+      ["d-1"],
     );
+
+    expect(parsed?.sqlQuery).toBeUndefined();
+    expect(parsed?.latitude).toBeUndefined();
+    expect(parsed?.longitude).toBeUndefined();
+  });
+
+  it("logs that the answer failed, not the service's message", () => {
+    // The SQL error can quote values taken from the user's question.
+    parseSearchInDataExploreResponse(
+      failedAnswer('column "qwzx" does not exist'),
+      ["d-1"],
+    );
+
+    expect(logWarn).toHaveBeenCalledWith("In-data answer failed");
+    expect(JSON.stringify(vi.mocked(logWarn).mock.calls)).not.toContain("qwzx");
   });
 
   it("accepts the status as text too", () => {
@@ -72,17 +100,23 @@ describe("parseSearchInDataExploreResponse", () => {
   });
 
   it("shows the rephrase message for a stored failed answer", () => {
+    const answer = failedAnswer("syntax error").result;
     const stored = {
       id: "m-2",
       kind: 3,
       createdAt: "2026-11-19T10:00:00Z",
-      data: { kind: 3, payload: failedAnswer("syntax error").result },
+      data: {
+        kind: 3,
+        payload: { ...answer, data: { InputParams: [{ lat: 38, lon: 23.7 }] } },
+      },
     } as unknown as Parameters<typeof parseConversationMessage>[0];
 
     const parsed = parseConversationMessage(stored, 1);
 
     expect(parsed.content).toBe(REPHRASE);
     expect(parsed.tableData).toBeUndefined();
+    expect(parsed.sqlQuery).toBeUndefined();
+    expect(parsed.latitude).toBeUndefined();
   });
 
   it("renders a successful table answer as before", () => {

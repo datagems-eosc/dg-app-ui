@@ -6,9 +6,9 @@ import {
 } from "./gatewayError";
 
 /**
- * Bodies recorded for UI #375. The Gateway wraps every upstream failure as
+ * Bodies as recorded from the Gateway, which wraps every upstream failure as
  * HTTP 424, code 104 "error communicating with underpinning service"
- * (dg-app-api c3db9d8, ErrorHandlingMiddleware) and copies the upstream body
+ * (its ErrorHandlingMiddleware) and copies the upstream body
  * into `message.payload` only when the upstream answered 400.
  */
 const CORRELATION_ID = "50c7a41b-757f-440d-a4e8-eef5be144cb2";
@@ -35,19 +35,30 @@ const UNANSWERABLE_PAYLOAD = JSON.stringify({
 });
 
 describe("gatewayErrorFromResponse", () => {
-  it("shows the service's own message for an unanswerable question", () => {
-    const error = gatewayErrorFromResponse(
-      424,
-      upstreamFailure(400, "InDataExploration", UNANSWERABLE_PAYLOAD),
-    );
+  it.each([
+    ["400 with the payload as a JSON string", 400, UNANSWERABLE_PAYLOAD],
+    ["422 with a payload", 422, UNANSWERABLE_PAYLOAD],
+    [
+      "400 with the payload as an object",
+      400,
+      JSON.parse(UNANSWERABLE_PAYLOAD),
+    ],
+  ])(
+    "shows the service's own message for an unanswerable question (%s)",
+    (_, upstream, payload) => {
+      const error = gatewayErrorFromResponse(
+        424,
+        upstreamFailure(upstream, "InDataExploration", payload),
+      );
 
-    expect(error).toBeInstanceOf(GatewayError);
-    expect(error.kind).toBe("unanswerable");
-    expect(error.message).toBe(
-      "The question cannot be answered from this dataset. Reference: 50c7a41b",
-    );
-    expect(error.message).not.toContain("underpinning service");
-  });
+      expect(error).toBeInstanceOf(GatewayError);
+      expect(error.kind).toBe("unanswerable");
+      expect(error.message).toBe(
+        "The question cannot be answered from this dataset. Reference: 50c7a41b",
+      );
+      expect(error.message).not.toContain("underpinning service");
+    },
+  );
 
   it.each([
     ["422 without a payload", upstreamFailure(422)],
@@ -147,10 +158,7 @@ describe("gatewayErrorFromResponse", () => {
 describe("gatewayErrorFromNetworkFailure", () => {
   it.each([
     ["a network error", new TypeError("Failed to fetch")],
-    [
-      "an abort or timeout",
-      new DOMException("The operation was aborted.", "AbortError"),
-    ],
+    ["a timeout", new DOMException("signal timed out", "TimeoutError")],
   ])("uses the unavailable copy without a reference for %s", (_, cause) => {
     const error = gatewayErrorFromNetworkFailure(cause);
 
