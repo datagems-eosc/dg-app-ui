@@ -5,7 +5,7 @@
  * `message.payload` only when the upstream answered 400.
  */
 
-export const RAW_GATEWAY_TEXT = "error communicating with underpinning service";
+const RAW_GATEWAY_TEXT = "error communicating with underpinning service";
 export const CORRELATION_ID = "50c7a41b-757f-440d-a4e8-eef5be144cb2";
 
 export const upstreamFailureBody = (

@@ -15,7 +15,6 @@ vi.mock("@/lib/logger", async (importOriginal) => {
 
 import {
   CORRELATION_ID,
-  RAW_GATEWAY_TEXT,
   upstreamFailureBody,
 } from "@/lib/gatewayError.fixtures";
 import { logApiError } from "@/lib/logger";
