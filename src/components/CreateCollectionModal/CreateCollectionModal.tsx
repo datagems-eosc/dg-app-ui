@@ -91,7 +91,8 @@ export default function CreateCollectionModal({
       customCollections.some((collection) => collection.id === id),
     );
   useEffect(() => {
-    setSelectedCollectionIds([]);
+    // Once the rows are visible, this effect could erase a user's first click.
+    if (picker.status !== "ready") setSelectedCollectionIds([]);
   }, [picker.owner, picker.status]);
   const handleTabSwitch = (tab: TabType) => setActiveTab(tab);
 
