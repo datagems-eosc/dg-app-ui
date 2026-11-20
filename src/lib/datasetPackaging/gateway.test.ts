@@ -89,3 +89,13 @@ it("rejects package counts beyond the Gateway integer representation", async () 
   ).toEqual({ status: "invalid-request" });
   expect(transport).not.toHaveBeenCalled();
 });
+
+it("decodes against the submitted pool and generation while the caller changes context", async () => {
+  const pending = { ...snapshot, candidateIds: [...ids] };
+  const result = await recommendPackages(pending, async () => {
+    pending.generation++;
+    pending.candidateIds.splice(0);
+    return Response.json(recommendation);
+  });
+  expect(result).toMatchObject({ status: "ready", packages: [{ key: "2:0" }] });
+});

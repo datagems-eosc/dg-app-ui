@@ -44,6 +44,7 @@ export async function recommendPackages(
     return { status: "invalid-request" };
   if (datasetsPerPackage > datasetIds.length)
     return { status: "insufficient-candidates" };
+  const submittedSnapshot = { ...snapshot, candidateIds: datasetIds };
   let response: Response;
   try {
     response = await transport(
@@ -79,7 +80,7 @@ export async function recommendPackages(
     };
   }
   try {
-    return decodePackages(await response.json(), snapshot);
+    return decodePackages(await response.json(), submittedSnapshot);
   } catch {
     return { status: "unsupported-contract" };
   }
