@@ -4,6 +4,7 @@ export interface FileColumn {
   type: "text" | "number" | "date" | "boolean" | "numeric" | "categorical";
   visible: boolean;
   description?: string;
+  inferredSemanticType?: string;
 }
 
 export interface FileRow {
@@ -22,23 +23,34 @@ export interface ColumnStatistics {
   max?: number | string;
   mean?: number;
   median?: number;
+  percentile05?: number;
+  percentile95?: number;
+  quantileSource?: "profiler";
   stdDev?: number;
   missingPercentage?: number;
   distribution?: number[];
+  distributionRanges?: [number, number][];
   topValues?: { value: string | number; count: number }[];
 }
 
-export interface DataQualityMetric {
-  columnId: string;
-  completeness?: number;
-  accuracy?: number;
-  consistency?: number;
-  issues?: {
-    type: "missing" | "outlier" | "duplicate" | "format";
-    count: number;
-    description: string;
-  }[];
+export interface DataQualityExample {
+  row: number;
+  value: FileRow["cells"][number]["value"];
 }
+
+export interface DataQualityFinding {
+  id: string;
+  column: string;
+  category: string;
+  description: string;
+  affectedRows?: number;
+  examples?: DataQualityExample[] | null;
+}
+
+export type DataQualityReport =
+  | { status: "unavailable" }
+  | { status: "invalid" }
+  | { status: "available"; summary: string; findings: DataQualityFinding[] };
 
 export interface FilePreviewData {
   type: "tabular";
@@ -50,7 +62,7 @@ export interface FilePreviewData {
   totalRows?: number;
   totalMissingPercentage?: number;
   statistics: ColumnStatistics[];
-  dataQuality: DataQualityMetric[];
+  dataQuality: DataQualityReport;
 }
 
 export interface PdfFilePreviewData {

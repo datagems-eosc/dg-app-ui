@@ -6,18 +6,20 @@ import styles from "./FilePreviewTabs.module.scss";
 
 interface FilePreviewTabsProps {
   idPrefix?: string;
+  hasQualityReport?: boolean;
   activeTab: FilePreviewTab;
   onTabChange: (tab: FilePreviewTab) => void;
 }
 
-const tabs: { key: FilePreviewTab; label: string; hasAI?: boolean }[] = [
+const tabs: { key: FilePreviewTab; label: string }[] = [
   { key: "preview", label: "Preview" },
   { key: "statistics", label: "Statistics" },
-  { key: "dataQuality", label: "Data Quality", hasAI: true },
+  { key: "dataQuality", label: "Data Quality" },
 ];
 
 export default function FilePreviewTabs({
   idPrefix,
+  hasQualityReport = false,
   activeTab,
   onTabChange,
 }: FilePreviewTabsProps) {
@@ -58,10 +60,16 @@ export default function FilePreviewTabs({
             activeTab === tab.key ? styles["filePreviewTabs__tab--active"] : ""
           }`}
         >
-          <span className={tab.hasAI ? styles["filePreviewTabs__tab--ai"] : ""}>
+          <span
+            className={
+              tab.key === "dataQuality" && hasQualityReport
+                ? styles["filePreviewTabs__tab--ai"]
+                : ""
+            }
+          >
             {tab.label}
           </span>
-          {tab.hasAI && (
+          {tab.key === "dataQuality" && hasQualityReport && (
             <span className={styles.filePreviewTabs__aiLabel}>AI</span>
           )}
         </button>

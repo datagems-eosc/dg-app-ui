@@ -2,6 +2,12 @@
 @use '@/styles' as *;
 
 .statisticsTab {
+  &__empty {
+    @include text-sm;
+    @include text-secondary;
+    padding: $spacing-lg;
+  }
+
   padding: 0;
   @include flex-column;
   gap: 0;
@@ -95,11 +101,6 @@
     gap: $spacing-lg;
   }
 
-  &__metricsRowFull {
-    display: flex;
-    width: 100%;
-  }
-
   &__metric {
     @include flex-column;
     gap: $spacing-xs;
@@ -164,8 +165,7 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    height: 175.5px;
-    padding-top: 9px;
+    height: 183px;
   }
 
   &__yLabel {
