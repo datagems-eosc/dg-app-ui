@@ -136,7 +136,7 @@ function LargeHistogram({
   );
 }
 
-const metricFormatter = new Intl.NumberFormat(undefined, {
+const metricFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
   signDisplay: "negative",
 });
@@ -273,7 +273,7 @@ export default function StatisticsTab({
             </span>
             <span className={styles.statisticsTab__summaryValue}>
               {totalRows !== undefined && Number.isFinite(totalRows)
-                ? totalRows.toLocaleString()
+                ? totalRows.toLocaleString("en-US")
                 : "Not available"}
             </span>
           </div>

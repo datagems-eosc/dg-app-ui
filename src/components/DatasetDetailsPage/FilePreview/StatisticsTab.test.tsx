@@ -36,6 +36,7 @@ function renderAirbnbPrice(mean: number | undefined = 168.42936734443126) {
 it("shows numeric price statistics when the live profile omits the field type", () => {
   renderAirbnbPrice();
   expect(screen.getByText("168.43")).toBeInTheDocument();
+  expect(screen.getByText("2,074")).toBeInTheDocument();
   const missingRows = screen.getByText("Missing rows").parentElement;
   if (!missingRows) throw new Error("Expected missing rows metric");
   expect(within(missingRows).getByText("0")).toBeInTheDocument();

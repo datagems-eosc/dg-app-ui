@@ -313,6 +313,66 @@ test("does not call a report clean when a finding edge has no source", () => {
   assert.deepEqual(noReport.dataQuality, { status: "unavailable" });
 });
 
+test("keeps a confirmed clean report readable when another finding loses its report link", () => {
+  const cleanSummary = "No data quality errors were detected.";
+  const graph = {
+    nodes: [
+      ...GRAPH.nodes,
+      {
+        id: "clean-report",
+        labels: ["dg:DataQuality"],
+        properties: { summary: cleanSummary },
+      },
+      {
+        id: "file2",
+        labels: ["cr:FileObject"],
+        properties: { name: "other.csv" },
+      },
+      { id: "rs2", labels: ["cr:RecordSet"] },
+      {
+        id: "col3",
+        labels: ["cr:Field"],
+        properties: { name: "Anzahl" },
+      },
+      {
+        id: "other-report",
+        labels: ["dg:DataQuality"],
+        properties: { summary: "An invalid value was found in Anzahl." },
+      },
+      {
+        id: "finding",
+        labels: ["dg:DataQualityError"],
+        properties: {
+          column: "Anzahl",
+          errorType: "value_error",
+          description: "Invalid value",
+        },
+      },
+    ],
+    edges: [
+      ...GRAPH.edges,
+      { from: "rs", to: "clean-report", labels: ["HAS_DATA_QUALITY"] },
+      { from: "ds", to: "file2", labels: ["distribution"] },
+      { from: "ds", to: "rs2", labels: ["recordSet"] },
+      { from: "rs2", to: "col3", labels: ["field"] },
+      { from: "col3", to: "file2", labels: ["source/fileObject"] },
+      { from: "rs2", to: "other-report", labels: ["HAS_DATA_QUALITY"] },
+      { from: null, to: "finding", labels: ["HAS_ERROR"] },
+    ],
+  };
+
+  const previews = buildFilePreviews(graph);
+  const first = previews.find(({ id }) => id === "file1")?.data;
+  const second = previews.find(({ id }) => id === "file2")?.data;
+  assert.ok(first?.type === "tabular" && second?.type === "tabular");
+  assert.deepEqual(first.dataQuality, {
+    status: "available",
+    summary: cleanSummary,
+    findings: [],
+  });
+  assert.deepEqual(second.dataQuality, { status: "invalid" });
+});
+
 for (const reversed of ["report", "finding"] as const) {
   test(`treats a reversed ${reversed} link as an unreadable report`, () => {
     const graph = {
@@ -393,14 +453,14 @@ test("treats a finding linked directly from the selected RecordSet as unreadable
   assert.deepEqual(data.dataQuality, { status: "invalid" });
 });
 
-test("does not call a report clean when a finding edge has no target", () => {
+test("rejects a report with its own broken finding link even with a clean summary", () => {
   const graph = {
     nodes: [
       ...GRAPH.nodes,
       {
         id: "report",
         labels: ["dg:DataQuality"],
-        properties: { summary: "Quality check" },
+        properties: { summary: "No data quality errors were detected." },
       },
     ],
     edges: [

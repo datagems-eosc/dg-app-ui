@@ -60,6 +60,9 @@ const EDGE_FIELD = "field";
 const EDGE_SOURCE = "source/fileObject";
 const EDGE_STATISTICS = "statistics";
 
+// The profiler emits this fixed summary when its finding list is empty.
+const NO_ERRORS_SUMMARY = "No data quality errors were detected.";
+
 const NUMERIC_TYPES = new Set([
   "sc:Integer",
   "sc:Float",
@@ -471,8 +474,13 @@ function readDataQuality(
       examples: readQualityExamples(examples),
     });
   }
-  // A source-less finding could belong to this report, so empty is inconclusive.
-  if (findings.length === 0 && index.hasUnassignedFindings) {
+  // A source-less finding makes an empty report inconclusive unless the
+  // profiler explicitly confirmed this report was clean.
+  if (
+    findings.length === 0 &&
+    index.hasUnassignedFindings &&
+    summary !== NO_ERRORS_SUMMARY
+  ) {
     return { status: "invalid" };
   }
   return { status: "available", summary, findings };
