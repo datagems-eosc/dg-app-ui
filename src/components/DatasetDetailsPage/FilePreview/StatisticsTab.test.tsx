@@ -250,6 +250,22 @@ it("keeps valid zero", () => {
   expect(screen.getByText("0")).toBeInTheDocument();
   expect(screen.getByText("0%")).toBeInTheDocument();
 });
+it("uses the same precision for positive missing rates in the table and column", () => {
+  const tab = (missingPercentage: number) => (
+    <StatisticsTab
+      columns={[{ id: "x", name: "Score", type: "numeric", visible: true }]}
+      statistics={[{ columnId: "x", missingPercentage }]}
+      totalMissingPercentage={missingPercentage}
+    />
+  );
+  const { rerender } = render(tab(0.1));
+  expect(screen.getAllByText("0.1%")).toHaveLength(2);
+
+  rerender(tab(0.001));
+  expect(screen.getAllByText("<0.01%")).toHaveLength(2);
+  expect(screen.queryByText("0%")).not.toBeInTheDocument();
+});
+
 it("does not invent a Celsius unit for numeric columns", () => {
   const { container } = render(
     <StatisticsTab

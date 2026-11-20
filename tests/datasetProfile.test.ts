@@ -363,6 +363,36 @@ test("rejects a selected report with a reversed link to a different RecordSet", 
   assert.deepEqual(data.dataQuality, { status: "invalid" });
 });
 
+test("treats a finding linked directly from the selected RecordSet as unreadable", () => {
+  const graph = {
+    nodes: [
+      ...GRAPH.nodes,
+      {
+        id: "report",
+        labels: ["dg:DataQuality"],
+        properties: { summary: "Checked" },
+      },
+      {
+        id: "finding",
+        labels: ["dg:DataQualityError"],
+        properties: {
+          column: "Anzahl",
+          errorType: "value_error",
+          description: "Invalid value",
+        },
+      },
+    ],
+    edges: [
+      ...GRAPH.edges,
+      { from: "rs", to: "report", labels: ["HAS_DATA_QUALITY"] },
+      { from: "rs", to: "finding", labels: ["HAS_ERROR"] },
+    ],
+  };
+  const data = buildFilePreviews(graph)[0]?.data;
+  assert.ok(data?.type === "tabular");
+  assert.deepEqual(data.dataQuality, { status: "invalid" });
+});
+
 test("does not call a report clean when a finding edge has no target", () => {
   const graph = {
     nodes: [
@@ -411,6 +441,73 @@ test("does not attach a report shared by a RecordSet spanning two files", () => 
     data.type === "tabular" ? data.dataQuality.status : data.type,
   );
   assert.deepEqual(reports, ["invalid", "invalid"]);
+});
+
+test("keeps unassigned columns out of both files in a shared RecordSet", () => {
+  const graph = {
+    nodes: [
+      ...GRAPH.nodes,
+      {
+        id: "file2",
+        labels: ["cr:FileObject"],
+        properties: { name: "other.csv" },
+      },
+      {
+        id: "unassigned",
+        labels: ["cr:Field"],
+        properties: { name: "Unassigned", semanticType: "price" },
+      },
+      {
+        id: "unassigned-stats",
+        labels: ["dg:ColumnStatistics"],
+        properties: { rowCount: 12, missingCount: 0, mean: 123 },
+      },
+    ],
+    edges: GRAPH.edges
+      .map((edge) =>
+        edge.from === "col2" && edge.labels.includes("source/fileObject")
+          ? { ...edge, to: "file2" }
+          : edge,
+      )
+      .concat(
+        { from: "rs", to: "unassigned", labels: ["field"] },
+        { from: "unassigned", to: "unassigned-stats", labels: ["statistics"] },
+      ),
+  };
+  const previews = buildFilePreviews(graph);
+  assert.equal(previews.length, 2);
+  for (const [position, { data }] of previews.entries()) {
+    assert.ok(data.type === "tabular");
+    const columnId = position === 0 ? "col1" : "col2";
+    assert.deepEqual(
+      data.columns.map((column) => column.id),
+      [columnId],
+    );
+    assert.deepEqual(
+      data.statistics.map((stats) => stats.columnId),
+      [columnId],
+    );
+    assert.equal(data.totalRows, 192);
+  }
+});
+
+test("keeps a column without a file link in a single-file RecordSet", () => {
+  const [preview] = buildFilePreviews({
+    ...GRAPH,
+    edges: GRAPH.edges.filter(
+      (edge) =>
+        edge.from !== "col2" || !edge.labels.includes("source/fileObject"),
+    ),
+  });
+  assert.ok(preview?.data.type === "tabular");
+  assert.deepEqual(
+    preview.data.columns.map((column) => column.id),
+    ["col1", "col2"],
+  );
+  assert.equal(
+    preview.data.statistics.find((stats) => stats.columnId === "col2")?.mean,
+    4.2,
+  );
 });
 
 test("rejects an explicit file link with no target even when another field identifies the file", () => {

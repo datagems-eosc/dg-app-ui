@@ -390,7 +390,11 @@ function readDataQuality(
     return { status: "invalid" };
   }
 
-  if (index.reportSourcesOf(recordSetId, "HAS_DATA_QUALITY").length > 0) {
+  if (
+    index.reportSourcesOf(recordSetId, "HAS_DATA_QUALITY").length > 0 ||
+    index.reportTargetsOf(recordSetId, "HAS_ERROR").length > 0 ||
+    index.reportSourcesOf(recordSetId, "HAS_ERROR").length > 0
+  ) {
     return { status: "invalid" };
   }
   const reportIds = [
@@ -672,15 +676,25 @@ export function buildFilePreviews(raw: unknown): FilePreviewEntry[] {
 
     let columns: GraphNode[] = [];
     if (recordSet) {
-      columns = index
-        .targetsOf(recordSet.id ?? "", EDGE_FIELD)
-        .map((columnId) => index.nodeById.get(columnId))
+      const fieldIds = index.targetsOf(recordSet.id ?? "", EDGE_FIELD);
+      // Unlinked columns can only inherit a source from a single-file RecordSet.
+      const canInferFile =
+        !index.duplicateNodeIds.has(fileId) &&
+        fieldIds.every(
+          (id) =>
+            isFieldEndpoint(id, index) &&
+            index.reportTargetsOf(id, EDGE_SOURCE).every((id) => id === fileId),
+        );
+      columns = fieldIds
+        .filter((id) => {
+          const sources = index.reportTargetsOf(id, EDGE_SOURCE);
+          return sources.length === 0
+            ? canInferFile
+            : sources.every((source) => source === fileId);
+        })
+        .map((id) => index.nodeById.get(id))
         .filter(
-          (node): node is GraphNode =>
-            !!node &&
-            hasLabel(node, LABEL_FIELD) &&
-            (fileOfColumn(node.id ?? "") === fileId ||
-              fileOfColumn(node.id ?? "") === undefined),
+          (node): node is GraphNode => !!node && hasLabel(node, LABEL_FIELD),
         );
     } else {
       columns = nodes.filter(

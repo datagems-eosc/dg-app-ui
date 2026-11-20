@@ -148,15 +148,27 @@ function formatMetric(value: string | number | undefined): string | undefined {
   return value?.trim() || undefined;
 }
 
+function formatMissingPercentage(
+  value: number | undefined,
+): string | undefined {
+  if (
+    value === undefined ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > 100
+  )
+    return undefined;
+  if (value > 0 && value < 0.01) return `<${metricFormatter.format(0.01)}%`;
+  return `${metricFormatter.format(value)}%`;
+}
+
 function Metric({
   label,
   value,
-  suffix = "",
   inferred = false,
 }: {
   label: string;
   value: string | number | undefined;
-  suffix?: string;
   inferred?: boolean;
 }) {
   const formatted = formatMetric(value);
@@ -167,7 +179,7 @@ function Metric({
         {inferred && formatted !== undefined && " (inferred)"}
       </span>
       <span className={styles.statisticsTab__metricValue}>
-        {formatted === undefined ? "Not available" : `${formatted}${suffix}`}
+        {formatted ?? "Not available"}
       </span>
     </div>
   );
@@ -224,7 +236,7 @@ export default function StatisticsTab({
     const displayedMetrics = [
       stats.uniqueValues,
       stats.nullCount,
-      stats.missingPercentage,
+      formatMissingPercentage(stats.missingPercentage),
     ];
     const numericMetrics = [
       min,
@@ -245,8 +257,9 @@ export default function StatisticsTab({
       ? [{ column, stats, isNumeric, histogram, min, max, hasMetrics }]
       : [];
   });
+  const missingPercentage = formatMissingPercentage(totalMissingPercentage);
   const hasSummary =
-    Number.isFinite(totalRows) || Number.isFinite(totalMissingPercentage);
+    Number.isFinite(totalRows) || missingPercentage !== undefined;
 
   return (
     <div className={styles.statisticsTab}>
@@ -269,10 +282,7 @@ export default function StatisticsTab({
               Missing values
             </span>
             <span className={styles.statisticsTab__summaryValue}>
-              {totalMissingPercentage !== undefined &&
-              Number.isFinite(totalMissingPercentage)
-                ? `${Math.round(totalMissingPercentage)}%`
-                : "Not available"}
+              {missingPercentage ?? "Not available"}
             </span>
           </div>
         </div>
@@ -358,8 +368,7 @@ export default function StatisticsTab({
                       <Metric label="Missing rows" value={stats.nullCount} />
                       <Metric
                         label="Missing percentage"
-                        value={stats.missingPercentage}
-                        suffix="%"
+                        value={formatMissingPercentage(stats.missingPercentage)}
                       />
                     </div>
                   </div>
