@@ -14,10 +14,8 @@ import MessageItem from "./MessageItem";
 interface ChatMessagesProps {
   messages: Message[];
   isMessagesLoading: boolean;
-  isGeneratingAIResponse?: boolean;
-  hideSpinner?: boolean;
-  /** The step the pending answer is in; picks the status texts. */
-  workingStep?: ChatWorkingStep;
+  /** The step of the pending answer, which picks the status texts; undefined when no answer is pending. */
+  pendingStep?: ChatWorkingStep;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onSourcesClick?: (messageId: string) => void;
   onRecommendationClick?: (recommendation: string) => void;
@@ -28,25 +26,25 @@ interface ChatMessagesProps {
 export default function ChatMessages({
   messages,
   isMessagesLoading,
-  isGeneratingAIResponse = false,
-  hideSpinner = false,
-  workingStep = "discovery",
+  pendingStep,
   messagesEndRef,
   onSourcesClick,
   onRecommendationClick,
   onDatasetProposalConfirm,
   showSelectedPanel,
 }: ChatMessagesProps) {
+  const isPending = pendingStep !== undefined;
+
   // Auto-scroll to bottom when generating AI response
   useEffect(() => {
-    if (isGeneratingAIResponse && messagesEndRef.current) {
+    if (isPending && messagesEndRef.current) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           scrollToBottom(messagesEndRef.current);
         });
       });
     }
-  }, [isGeneratingAIResponse, messagesEndRef]);
+  }, [isPending, messagesEndRef]);
 
   // Also scroll when new messages are added
   useEffect(() => {
@@ -93,10 +91,11 @@ export default function ChatMessages({
         />
       ))}
 
-      {isGeneratingAIResponse && !hideSpinner && (
+      {isPending && (
         <div className="max-w-4xl mx-auto px-4 lg:px-0 py-4">
           <WorkingStatus
-            messages={CHAT_WORKING_MESSAGES[workingStep]}
+            key={pendingStep}
+            messages={CHAT_WORKING_MESSAGES[pendingStep]}
             elapsed
           />
         </div>

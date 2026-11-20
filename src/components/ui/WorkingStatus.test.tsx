@@ -82,6 +82,17 @@ describe("WorkingStatus", () => {
     expect(screen.getByText(text)).toBeInTheDocument();
   });
 
+  it("never shows a negative elapsed time when the clock goes back", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T12:00:00Z"));
+    render(<WorkingStatus messages={MESSAGES} elapsed />);
+
+    vi.setSystemTime(new Date("2026-01-01T11:59:50Z"));
+    act(() => vi.advanceTimersByTime(1000));
+
+    expect(screen.getByText("0:00")).toBeInTheDocument();
+  });
+
   it("stops counting when it is removed", () => {
     vi.useFakeTimers();
     const { unmount } = render(<WorkingStatus messages={MESSAGES} elapsed />);

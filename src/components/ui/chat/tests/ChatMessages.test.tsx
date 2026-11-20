@@ -178,7 +178,7 @@ describe("ChatMessages", () => {
   });
 
   it("shows the working status with the elapsed time while an answer is pending", () => {
-    render(<ChatMessages {...defaultProps} isGeneratingAIResponse={true} />);
+    render(<ChatMessages {...defaultProps} pendingStep="discovery" />);
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "Looking for datasets that can answer this",
@@ -210,11 +210,7 @@ describe("ChatMessages", () => {
   ] as const)("shows the %s texts in a loop", (workingStep, texts) => {
     vi.useFakeTimers();
     const { container } = render(
-      <ChatMessages
-        {...defaultProps}
-        isGeneratingAIResponse={true}
-        workingStep={workingStep}
-      />,
+      <ChatMessages {...defaultProps} pendingStep={workingStep} />,
     );
     const shown = () =>
       container.querySelector('[data-active="true"]')?.textContent;
@@ -226,39 +222,35 @@ describe("ChatMessages", () => {
     expect(shown()).toContain(texts[0]);
   });
 
+  it("starts the new step from its first text when the step changes", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = render(
+      <ChatMessages {...defaultProps} pendingStep="in-dataset" />,
+    );
+    act(() => vi.advanceTimersByTime(12000));
+
+    rerender(<ChatMessages {...defaultProps} pendingStep="discovery" />);
+
+    expect(
+      container.querySelector('[data-active="true"]')?.textContent,
+    ).toContain("Looking for datasets that can answer this");
+  });
+
   it("starts the elapsed time again for the next question", () => {
     vi.useFakeTimers();
     const { rerender } = render(
-      <ChatMessages {...defaultProps} isGeneratingAIResponse={true} />,
+      <ChatMessages {...defaultProps} pendingStep="discovery" />,
     );
     act(() => vi.advanceTimersByTime(5000));
     expect(screen.getByText("0:05")).toBeInTheDocument();
 
-    rerender(<ChatMessages {...defaultProps} isGeneratingAIResponse={false} />);
-    rerender(<ChatMessages {...defaultProps} isGeneratingAIResponse={true} />);
+    rerender(<ChatMessages {...defaultProps} />);
+    rerender(<ChatMessages {...defaultProps} pendingStep="discovery" />);
     expect(screen.getByText("0:00")).toBeInTheDocument();
   });
 
   it("shows no working status when no answer is pending", () => {
-    render(<ChatMessages {...defaultProps} isGeneratingAIResponse={false} />);
-
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
-
-  it("shows no working status by default", () => {
     render(<ChatMessages {...defaultProps} />);
-
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
-
-  it("hides the working status when asked to", () => {
-    render(
-      <ChatMessages
-        {...defaultProps}
-        isGeneratingAIResponse={true}
-        hideSpinner={true}
-      />,
-    );
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
@@ -375,11 +367,7 @@ describe("ChatMessages", () => {
 
   it("shows the working status before the first message", () => {
     render(
-      <ChatMessages
-        {...defaultProps}
-        messages={[]}
-        isGeneratingAIResponse={true}
-      />,
+      <ChatMessages {...defaultProps} messages={[]} pendingStep="discovery" />,
     );
 
     expect(screen.getByRole("status")).toBeInTheDocument();

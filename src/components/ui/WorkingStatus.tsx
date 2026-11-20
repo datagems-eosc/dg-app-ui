@@ -51,7 +51,8 @@ function ElapsedTime() {
   useEffect(() => {
     const startedAt = Date.now();
     const timer = window.setInterval(
-      () => setSeconds(Math.floor((Date.now() - startedAt) / 1000)),
+      () =>
+        setSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000))),
       1000,
     );
     return () => window.clearInterval(timer);

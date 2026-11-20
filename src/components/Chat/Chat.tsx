@@ -584,7 +584,7 @@ export default function Chat({
     if (!text.trim()) return;
     setError(null);
     setIsLoading(true);
-    // Show spinner immediately when user sends a message
+    // Show the working status as soon as the user sends a message
     setIsGeneratingAIResponse(true);
     setWorkingStep(selectedDatasets.length > 0 ? "in-dataset" : "discovery");
 
@@ -644,7 +644,7 @@ export default function Chat({
           // Add AI message to state
           setMessages((prev) => [...prev, aiMessage]);
 
-          // Turn off spinner
+          // Hide the working status
           setIsGeneratingAIResponse(false);
 
           // Rekomendacje będą pobrane przez useEffect po zakończeniu isGeneratingAIResponse
@@ -763,7 +763,7 @@ export default function Chat({
         }
       } else if (!conversationId) {
         // If datasets are selected and not already in a conversation, create a new conversation and then search
-        // Show spinner while making API calls (new conversation with datasets path)
+        // Show the working status while making API calls (new conversation with datasets path)
         setIsGeneratingAIResponse(true);
 
         if (!api.hasToken) {
@@ -848,7 +848,7 @@ export default function Chat({
       };
       setMessages([userMessage]);
 
-      // Show spinner while generating AI response
+      // Show the working status while generating the AI response
       setIsGeneratingAIResponse(true);
 
       // If datasets were found via cross-dataset search, show a system message
@@ -1227,8 +1227,7 @@ export default function Chat({
                 <ChatMessages
                   messages={messages}
                   isMessagesLoading={isMessagesLoading}
-                  isGeneratingAIResponse={isGeneratingAIResponse}
-                  workingStep={workingStep}
+                  pendingStep={isGeneratingAIResponse ? workingStep : undefined}
                   messagesEndRef={messagesEndRef}
                   onSourcesClick={handleSourcesClick}
                   onRecommendationClick={handleRecommendationClick}

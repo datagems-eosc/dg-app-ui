@@ -74,8 +74,7 @@ vi.mock("@ui/chat/ChatInput", () => ({
 vi.mock("@ui/chat/ChatMessages", () => ({
   default: ({
     messages,
-    isGeneratingAIResponse,
-    workingStep,
+    pendingStep,
     onDatasetProposalConfirm,
   }: {
     messages: {
@@ -84,8 +83,7 @@ vi.mock("@ui/chat/ChatMessages", () => ({
       recommendations?: string[];
       datasetProposal?: unknown[];
     }[];
-    isGeneratingAIResponse?: boolean;
-    workingStep?: string;
+    pendingStep?: string;
     onDatasetProposalConfirm?: (id: string) => void;
   }) => (
     <ul>
@@ -106,7 +104,7 @@ vi.mock("@ui/chat/ChatMessages", () => ({
           ) : null}
         </li>
       ))}
-      {isGeneratingAIResponse ? <li>Working: {workingStep}</li> : null}
+      {pendingStep ? <li>Working: {pendingStep}</li> : null}
     </ul>
   ),
 }));
@@ -196,14 +194,13 @@ describe("Chat – first question without datasets", () => {
 
 describe("Chat – working status", () => {
   const pending = () => {
-    let settle: {
-      resolve: (v: unknown) => void;
-      reject: (e: unknown) => void;
-    } = { resolve: () => {}, reject: () => {} };
-    const promise = new Promise((resolve, reject) => {
-      settle = { resolve, reject };
+    let resolve!: (value: unknown) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
     });
-    return { promise, settle: () => settle };
+    return { promise, resolve, reject };
   };
 
   const send = async (text = "average rainfall in Basel") => {
@@ -251,7 +248,7 @@ describe("Chat – working status", () => {
     await send();
 
     expect(await screen.findByText("Working: discovery")).toBeInTheDocument();
-    await act(async () => search.settle().resolve(crossDatasetResult));
+    await act(async () => search.resolve(crossDatasetResult));
     expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
   });
 
@@ -262,7 +259,7 @@ describe("Chat – working status", () => {
     await send();
 
     expect(await screen.findByText("Working: discovery")).toBeInTheDocument();
-    await act(async () => search.settle().reject(new Error("unavailable")));
+    await act(async () => search.reject(new Error("unavailable")));
     expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
   });
 
@@ -274,7 +271,7 @@ describe("Chat – working status", () => {
 
     expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
     // The answer is shown on the conversation page this navigates to.
-    await act(async () => answer.settle().resolve(inDataAnswer));
+    await act(async () => answer.resolve(inDataAnswer));
     expect(push).toHaveBeenCalledWith("/chat/conv-2");
   });
 
@@ -289,7 +286,7 @@ describe("Chat – working status", () => {
     await send();
 
     expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
-    await act(async () => answer.settle().resolve(inDataAnswer));
+    await act(async () => answer.resolve(inDataAnswer));
     expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
   });
 
@@ -305,7 +302,38 @@ describe("Chat – working status", () => {
     });
 
     expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
-    await act(async () => answer.settle().resolve(inDataAnswer));
+    await act(async () => answer.resolve(inDataAnswer));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+  });
+
+  it("removes the working status when a follow-up fails", async () => {
+    const answer = pending();
+    api.searchInDataExplore.mockReturnValue(answer.promise);
+    renderChat({
+      selectedDatasets: ["ds-1"],
+      conversationId: "conv-1",
+      initialMessages: [],
+    });
+    await send();
+
+    expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
+    await act(async () => answer.reject(new Error("unavailable")));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+  });
+
+  it("removes the working status when answering from confirmed datasets fails", async () => {
+    const answer = pending();
+    api.searchInDataExplore.mockReturnValue(answer.promise);
+    renderChat({ conversationId: "conv-1", initialMessages: proposalHistory });
+    const confirm = await screen.findByRole("button", {
+      name: "Use these datasets",
+    });
+    await act(async () => {
+      fireEvent.click(confirm);
+    });
+
+    expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
+    await act(async () => answer.reject(new Error("unavailable")));
     expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
   });
 });
