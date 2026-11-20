@@ -5,6 +5,8 @@ import {
   datasetUuid,
 } from "./types";
 
+const maxInt32 = 2 ** 31 - 1;
+
 type Transport = (
   path: string,
   init: RequestInit,
@@ -36,9 +38,10 @@ export async function recommendPackages(
   if (
     !Number.isSafeInteger(packagesCount) ||
     packagesCount < 1 ||
-    packagesCount > 2 ** 31 - 1 ||
+    packagesCount > maxInt32 ||
     !Number.isSafeInteger(datasetsPerPackage) ||
     datasetsPerPackage < 2 ||
+    datasetsPerPackage > maxInt32 ||
     datasetIds.some((id) => !datasetUuid.test(id))
   )
     return { status: "invalid-request" };
@@ -65,19 +68,18 @@ export async function recommendPackages(
     return { status: "error" };
   }
   if (!response.ok) {
-    const statuses: Readonly<
-      Partial<
-        Record<number, "invalid-request" | "unauthenticated" | "forbidden">
-      >
-    > = {
-      400: "invalid-request",
-      401: "unauthenticated",
-      403: "forbidden",
-    };
-    return {
-      status: statuses[response.status] ?? "error",
-      httpStatus: response.status,
-    };
+    const httpStatus = response.status;
+    if (httpStatus === 401) {
+      // Gateway also uses 401 with its Forbidden code for inaccessible dataset IDs.
+      const body = await response.json().catch(() => null);
+      return {
+        status: body?.code === 101 ? "forbidden" : "unauthenticated",
+        httpStatus,
+      };
+    }
+    if (httpStatus === 403) return { status: "forbidden", httpStatus };
+    if (httpStatus === 400) return { status: "invalid-request", httpStatus };
+    return { status: "error", httpStatus };
   }
   try {
     return decodePackages(await response.json(), submittedSnapshot);

@@ -32,6 +32,7 @@ it.each([
   [{ packagesCount: 2.5 }, "invalid-request"],
   [{ datasetsPerPackage: 1 }, "invalid-request"],
   [{ datasetsPerPackage: 6 }, "insufficient-candidates"],
+  [{ datasetsPerPackage: 2 ** 31 }, "invalid-request"],
 ] as const)("avoids invalid requests %#", async (changes, status) => {
   const transport = vi.fn();
   expect(
@@ -44,6 +45,7 @@ it.each([
   [400, "invalid-request"],
   [401, "unauthenticated"],
   [403, "forbidden"],
+  [424, "error"],
   [503, "error"],
 ] as const)(
   "classifies HTTP %i without a retry",
@@ -98,4 +100,20 @@ it("decodes against the submitted pool and generation while the caller changes c
     return Response.json(recommendation);
   });
   expect(result).toMatchObject({ status: "ready", packages: [{ key: "2:0" }] });
+});
+
+it("recognizes a dataset access denial returned as HTTP 401", async () => {
+  const transport = vi
+    .fn()
+    .mockResolvedValue(
+      Response.json(
+        { code: 101, error: "Insufficient rights" },
+        { status: 401 },
+      ),
+    );
+  expect(await recommendPackages(snapshot, transport)).toEqual({
+    status: "forbidden",
+    httpStatus: 401,
+  });
+  expect(transport).toHaveBeenCalledTimes(1);
 });
