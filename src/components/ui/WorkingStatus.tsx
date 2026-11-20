@@ -115,7 +115,7 @@ export function WorkingStatus({
             key={message}
             data-active={i === index}
             className={cn(
-              "col-start-1 row-start-1 text-body-14-regular text-slate-600 whitespace-nowrap transition-opacity duration-300",
+              "col-start-1 row-start-1 text-body-14-regular text-slate-600 transition-opacity duration-300",
               i === index ? "opacity-100" : "opacity-0",
             )}
           >
