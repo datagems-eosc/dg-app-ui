@@ -44,15 +44,17 @@ function Dots() {
 const formatElapsed = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
-/** Time since mount, from the clock rather than tick counts (background tabs throttle intervals). */
+/**
+ * Time since mount, read from the monotonic clock rather than counted ticks
+ * (background tabs throttle intervals) or the wall clock (it can be corrected mid-wait).
+ */
 function ElapsedTime() {
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
-    const startedAt = Date.now();
+    const startedAt = performance.now();
     const timer = window.setInterval(
-      () =>
-        setSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000))),
+      () => setSeconds(Math.floor((performance.now() - startedAt) / 1000)),
       1000,
     );
     return () => window.clearInterval(timer);

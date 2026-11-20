@@ -82,15 +82,19 @@ describe("WorkingStatus", () => {
     expect(screen.getByText(text)).toBeInTheDocument();
   });
 
-  it("never shows a negative elapsed time when the clock goes back", () => {
+  it.each([
+    ["back", "2026-01-01T11:59:10Z"],
+    ["forward", "2026-01-01T12:05:00Z"],
+  ])("keeps counting when the system clock jumps %s", (_direction, jumpTo) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T12:00:00Z"));
     render(<WorkingStatus messages={MESSAGES} elapsed />);
+    act(() => vi.advanceTimersByTime(40_000));
 
-    vi.setSystemTime(new Date("2026-01-01T11:59:50Z"));
+    vi.setSystemTime(new Date(jumpTo));
     act(() => vi.advanceTimersByTime(1000));
 
-    expect(screen.getByText("0:00")).toBeInTheDocument();
+    expect(screen.getByText("0:41")).toBeInTheDocument();
   });
 
   it("stops counting when it is removed", () => {
