@@ -13,6 +13,8 @@ interface WorkingStatusProps {
   repeat?: boolean;
   /** Announced once to screen readers instead of the first message. */
   announcement?: string;
+  /** Show how long the wait has lasted (m:ss) at the end of the line. */
+  elapsed?: boolean;
   intervalMs?: number;
   iconSize?: number;
   className?: string;
@@ -39,6 +41,35 @@ function Dots() {
   );
 }
 
+const formatElapsed = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+
+/**
+ * Time since mount, read from the monotonic clock rather than counted ticks
+ * (background tabs throttle intervals) or the wall clock (it can be corrected mid-wait).
+ */
+function ElapsedTime() {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const startedAt = performance.now();
+    const timer = window.setInterval(
+      () => setSeconds(Math.floor((performance.now() - startedAt) / 1000)),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <span
+      aria-hidden="true"
+      className="ml-auto shrink-0 text-body-14-regular text-slate-600 tabular-nums"
+    >
+      {formatElapsed(seconds)}
+    </span>
+  );
+}
+
 /**
  * DataGEMS is working on the user's request: the pulsing DataGEMS mark with a
  * status that changes while the wait goes on. Use it wherever the user waits
@@ -48,6 +79,7 @@ export function WorkingStatus({
   messages,
   repeat = true,
   announcement,
+  elapsed = false,
   intervalMs = DEFAULT_INTERVAL_MS,
   iconSize = 16,
   className,
@@ -83,7 +115,7 @@ export function WorkingStatus({
             key={message}
             data-active={i === index}
             className={cn(
-              "col-start-1 row-start-1 text-body-14-regular text-slate-600 whitespace-nowrap transition-opacity duration-300",
+              "col-start-1 row-start-1 text-body-14-regular text-slate-600 transition-opacity duration-300",
               i === index ? "opacity-100" : "opacity-0",
             )}
           >
@@ -92,6 +124,7 @@ export function WorkingStatus({
           </span>
         ))}
       </span>
+      {elapsed && <ElapsedTime />}
     </div>
   );
 }

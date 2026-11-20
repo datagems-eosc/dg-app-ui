@@ -4,27 +4,18 @@ import type React from "react";
 import { useEffect } from "react";
 import { scrollToBottom } from "@/lib/scrollUtils";
 import type { Message } from "@/types/chat";
+import { WorkingStatus } from "../WorkingStatus";
+import {
+  CHAT_WORKING_MESSAGES,
+  type ChatWorkingStep,
+} from "./chatWorkingStatus";
 import MessageItem from "./MessageItem";
-
-function SendingSpinner({ text }: { text: string }) {
-  return (
-    <div className="flex items-center justify-center py-8">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">{text}</p>
-      </div>
-    </div>
-  );
-}
 
 interface ChatMessagesProps {
   messages: Message[];
   isMessagesLoading: boolean;
-  isGeneratingAIResponse?: boolean;
-  hideSpinner?: boolean;
-  spinnerText?: string;
-  thinkingMode?: boolean;
-  thinkingStepText?: string;
+  /** The step of the pending answer, which picks the status texts; undefined when no answer is pending. */
+  pendingStep?: ChatWorkingStep;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onSourcesClick?: (messageId: string) => void;
   onRecommendationClick?: (recommendation: string) => void;
@@ -35,27 +26,25 @@ interface ChatMessagesProps {
 export default function ChatMessages({
   messages,
   isMessagesLoading,
-  isGeneratingAIResponse = false,
-  hideSpinner = false,
-  spinnerText,
-  thinkingMode = false,
-  thinkingStepText,
+  pendingStep,
   messagesEndRef,
   onSourcesClick,
   onRecommendationClick,
   onDatasetProposalConfirm,
   showSelectedPanel,
 }: ChatMessagesProps) {
+  const isPending = pendingStep !== undefined;
+
   // Auto-scroll to bottom when generating AI response
   useEffect(() => {
-    if (isGeneratingAIResponse && messagesEndRef.current) {
+    if (isPending && messagesEndRef.current) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           scrollToBottom(messagesEndRef.current);
         });
       });
     }
-  }, [isGeneratingAIResponse, messagesEndRef]);
+  }, [isPending, messagesEndRef]);
 
   // Also scroll when new messages are added
   useEffect(() => {
@@ -102,25 +91,15 @@ export default function ChatMessages({
         />
       ))}
 
-      {/* AI Response Loading Spinner */}
-      {isGeneratingAIResponse && !hideSpinner ? (
-        thinkingMode ? (
-          <div className="max-w-4xl mx-auto px-4 lg:px-0 py-4">
-            <div className="border-l-2 border-slate-350 pl-4 flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-slate-850">
-                  Thinking
-                </div>
-                <div className="mt-1 text-sm text-slate-600 break-words whitespace-pre-wrap">
-                  {thinkingStepText ?? "Step 1 - processing"}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <SendingSpinner text={spinnerText ?? "Generating response..."} />
-        )
-      ) : null}
+      {isPending && (
+        <div className="max-w-4xl mx-auto px-4 lg:px-0 py-4">
+          <WorkingStatus
+            key={pendingStep}
+            messages={CHAT_WORKING_MESSAGES[pendingStep]}
+            elapsed
+          />
+        </div>
+      )}
 
       {/* Dummy div for scroll-to-bottom */}
       <div ref={messagesEndRef} />

@@ -74,8 +74,17 @@ vi.mock("@ui/chat/ChatInput", () => ({
 vi.mock("@ui/chat/ChatMessages", () => ({
   default: ({
     messages,
+    pendingStep,
+    onDatasetProposalConfirm,
   }: {
-    messages: { id: string; content: string; recommendations?: string[] }[];
+    messages: {
+      id: string;
+      content: string;
+      recommendations?: string[];
+      datasetProposal?: unknown[];
+    }[];
+    pendingStep?: string;
+    onDatasetProposalConfirm?: (id: string) => void;
   }) => (
     <ul>
       {messages.map((m) => (
@@ -85,8 +94,17 @@ vi.mock("@ui/chat/ChatMessages", () => ({
             <span key={r}>Suggestion: {r}</span>
           ))}
           {m.recommendations ? <span>Suggestions settled</span> : null}
+          {m.datasetProposal ? (
+            <button
+              type="button"
+              onClick={() => onDatasetProposalConfirm?.(m.id)}
+            >
+              Use these datasets
+            </button>
+          ) : null}
         </li>
       ))}
+      {pendingStep ? <li>Working: {pendingStep}</li> : null}
     </ul>
   ),
 }));
@@ -171,6 +189,152 @@ describe("Chat – first question without datasets", () => {
         "This dataset looks relevant to your question. Use it to answer?",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Chat – working status", () => {
+  const pending = () => {
+    let resolve!: (value: unknown) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+
+  const send = async (text = "average rainfall in Basel") => {
+    fireEvent.change(screen.getByLabelText("Message"), {
+      target: { value: text },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    });
+  };
+
+  const inDataAnswer = {
+    result: { question: "average rainfall in Basel", entries: [] },
+  };
+
+  // A first question and the datasets offered for it, as stored by Gateway.
+  const proposalHistory = [
+    {
+      kind: 0,
+      data: { payload: { query: "average rainfall in Basel" } },
+      createdAt: "2026-11-20T10:00:00Z",
+    },
+    {
+      kind: 1,
+      data: { payload: [{ dataset: { id: "ds-1", name: "Basel weather" } }] },
+      createdAt: "2026-11-20T10:00:01Z",
+    },
+  ] as unknown as React.ComponentProps<typeof Chat>["initialMessages"];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    api.persistConversation.mockResolvedValue({ id: "conv-1" });
+    api.persistConversationDeep = vi.fn().mockResolvedValue({ id: "conv-2" });
+  });
+
+  it("looks for datasets when none are selected, until the answer arrives", async () => {
+    const search = pending();
+    api.searchCrossDataset.mockReturnValue(search.promise);
+    renderChat();
+    await send();
+
+    expect(await screen.findByText("Working: discovery")).toBeInTheDocument();
+    await act(async () => search.resolve(crossDatasetResult));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+  });
+
+  it("removes the working status when the request fails", async () => {
+    const search = pending();
+    api.searchCrossDataset.mockReturnValue(search.promise);
+    renderChat();
+    await send();
+
+    expect(await screen.findByText("Working: discovery")).toBeInTheDocument();
+    await act(async () => search.reject(new Error("unavailable")));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+  });
+
+  it("answers from the selected datasets in a new chat", async () => {
+    const answer = pending();
+    api.searchInDataExplore.mockReturnValue(answer.promise);
+    renderChat({ selectedDatasets: ["ds-1"] });
+    await send();
+
+    expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
+    // The answer is shown on the conversation page this navigates to.
+    await act(async () => answer.resolve(inDataAnswer));
+    expect(push).toHaveBeenCalledWith("/chat/conv-2");
+  });
+
+  it("answers from the selected datasets in a follow-up", async () => {
+    const answer = pending();
+    api.searchInDataExplore.mockReturnValue(answer.promise);
+    renderChat({
+      selectedDatasets: ["ds-1"],
+      conversationId: "conv-1",
+      initialMessages: [],
+    });
+    await send();
+
+    expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
+    await act(async () => answer.resolve(inDataAnswer));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+  });
+
+  it("answers from the offered datasets once the user confirms them", async () => {
+    const answer = pending();
+    api.searchInDataExplore.mockReturnValue(answer.promise);
+    renderChat({ conversationId: "conv-1", initialMessages: proposalHistory });
+    const confirm = await screen.findByRole("button", {
+      name: "Use these datasets",
+    });
+    await act(async () => {
+      fireEvent.click(confirm);
+    });
+
+    expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
+    await act(async () => answer.resolve(inDataAnswer));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+  });
+
+  it("removes the working status when a follow-up fails", async () => {
+    const answer = pending();
+    api.searchInDataExplore.mockReturnValue(answer.promise);
+    renderChat({
+      selectedDatasets: ["ds-1"],
+      conversationId: "conv-1",
+      initialMessages: [],
+    });
+    await send();
+
+    expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
+    await act(async () => answer.reject(new Error("unavailable")));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+  });
+
+  it("removes the working status when answering from confirmed datasets fails", async () => {
+    const answer = pending();
+    api.searchInDataExplore.mockReturnValue(answer.promise);
+    renderChat({ conversationId: "conv-1", initialMessages: proposalHistory });
+    const confirm = await screen.findByRole("button", {
+      name: "Use these datasets",
+    });
+    await act(async () => {
+      fireEvent.click(confirm);
+    });
+
+    expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
+    await act(async () => answer.reject(new Error("unavailable")));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
   });
 });
 

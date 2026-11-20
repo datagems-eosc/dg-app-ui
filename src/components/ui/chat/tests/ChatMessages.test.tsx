@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "@/types/chat";
 import ChatMessages from "../ChatMessages";
 
@@ -28,6 +28,10 @@ describe("ChatMessages", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("should render empty state when no messages", () => {
@@ -173,26 +177,82 @@ describe("ChatMessages", () => {
     expect(messageElements[1]).toHaveAttribute("data-testid", "message-2");
   });
 
-  it("should show loading spinner when isGeneratingAIResponse is true", () => {
-    render(<ChatMessages {...defaultProps} isGeneratingAIResponse={true} />);
+  it("shows the working status with the elapsed time while an answer is pending", () => {
+    render(<ChatMessages {...defaultProps} pendingStep="discovery" />);
 
-    expect(screen.getByText("Generating response...")).toBeInTheDocument();
-  });
-
-  it("should not show loading spinner when isGeneratingAIResponse is false", () => {
-    render(<ChatMessages {...defaultProps} isGeneratingAIResponse={false} />);
-
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Looking for datasets that can answer this",
+    );
+    expect(screen.getByText("0:00")).toBeInTheDocument();
+    expect(screen.queryByText("Thinking")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Step 1/)).not.toBeInTheDocument();
     expect(
       screen.queryByText("Generating response..."),
     ).not.toBeInTheDocument();
   });
 
-  it("should not show loading spinner when isGeneratingAIResponse is undefined", () => {
+  it.each([
+    [
+      "discovery",
+      [
+        "Looking for datasets that can answer this",
+        "Checking which datasets match your question",
+      ],
+    ],
+    [
+      "in-dataset",
+      [
+        "Reading the selected datasets",
+        "Running the analysis",
+        "Preparing the answer",
+      ],
+    ],
+  ] as const)("shows the %s texts in a loop", (workingStep, texts) => {
+    vi.useFakeTimers();
+    const { container } = render(
+      <ChatMessages {...defaultProps} pendingStep={workingStep} />,
+    );
+    const shown = () =>
+      container.querySelector('[data-active="true"]')?.textContent;
+
+    for (const text of texts) {
+      expect(shown()).toContain(text);
+      act(() => vi.advanceTimersByTime(6000));
+    }
+    expect(shown()).toContain(texts[0]);
+  });
+
+  it("starts the new step from its first text when the step changes", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = render(
+      <ChatMessages {...defaultProps} pendingStep="in-dataset" />,
+    );
+    act(() => vi.advanceTimersByTime(12000));
+
+    rerender(<ChatMessages {...defaultProps} pendingStep="discovery" />);
+
+    expect(
+      container.querySelector('[data-active="true"]')?.textContent,
+    ).toContain("Looking for datasets that can answer this");
+  });
+
+  it("starts the elapsed time again for the next question", () => {
+    vi.useFakeTimers();
+    const { rerender } = render(
+      <ChatMessages {...defaultProps} pendingStep="discovery" />,
+    );
+    act(() => vi.advanceTimersByTime(5000));
+    expect(screen.getByText("0:05")).toBeInTheDocument();
+
+    rerender(<ChatMessages {...defaultProps} />);
+    rerender(<ChatMessages {...defaultProps} pendingStep="discovery" />);
+    expect(screen.getByText("0:00")).toBeInTheDocument();
+  });
+
+  it("shows no working status when no answer is pending", () => {
     render(<ChatMessages {...defaultProps} />);
 
-    expect(
-      screen.queryByText("Generating response..."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("should render messagesEndRef div", () => {
@@ -305,16 +365,12 @@ describe("ChatMessages", () => {
     expect(messageElements).toHaveLength(2);
   });
 
-  it("should handle empty messages array with loading spinner", () => {
+  it("shows the working status before the first message", () => {
     render(
-      <ChatMessages
-        {...defaultProps}
-        messages={[]}
-        isGeneratingAIResponse={true}
-      />,
+      <ChatMessages {...defaultProps} messages={[]} pendingStep="discovery" />,
     );
 
-    expect(screen.getByText("Generating response...")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
   it("should handle messages with microsecond precision timestamps", () => {
