@@ -13,6 +13,8 @@ interface WorkingStatusProps {
   repeat?: boolean;
   /** Announced once to screen readers instead of the first message. */
   announcement?: string;
+  /** Show how long the wait has lasted (m:ss) at the end of the line. */
+  elapsed?: boolean;
   intervalMs?: number;
   iconSize?: number;
   className?: string;
@@ -39,6 +41,32 @@ function Dots() {
   );
 }
 
+const formatElapsed = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+
+/** Time since mount, from the clock rather than tick counts (background tabs throttle intervals). */
+function ElapsedTime() {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const startedAt = Date.now();
+    const timer = window.setInterval(
+      () => setSeconds(Math.floor((Date.now() - startedAt) / 1000)),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <span
+      aria-hidden="true"
+      className="ml-auto shrink-0 text-body-14-regular text-slate-600 tabular-nums"
+    >
+      {formatElapsed(seconds)}
+    </span>
+  );
+}
+
 /**
  * DataGEMS is working on the user's request: the pulsing DataGEMS mark with a
  * status that changes while the wait goes on. Use it wherever the user waits
@@ -48,6 +76,7 @@ export function WorkingStatus({
   messages,
   repeat = true,
   announcement,
+  elapsed = false,
   intervalMs = DEFAULT_INTERVAL_MS,
   iconSize = 16,
   className,
@@ -92,6 +121,7 @@ export function WorkingStatus({
           </span>
         ))}
       </span>
+      {elapsed && <ElapsedTime />}
     </div>
   );
 }

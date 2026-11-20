@@ -4,27 +4,20 @@ import type React from "react";
 import { useEffect } from "react";
 import { scrollToBottom } from "@/lib/scrollUtils";
 import type { Message } from "@/types/chat";
+import { WorkingStatus } from "../WorkingStatus";
+import {
+  CHAT_WORKING_MESSAGES,
+  type ChatWorkingStep,
+} from "./chatWorkingStatus";
 import MessageItem from "./MessageItem";
-
-function SendingSpinner({ text }: { text: string }) {
-  return (
-    <div className="flex items-center justify-center py-8">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">{text}</p>
-      </div>
-    </div>
-  );
-}
 
 interface ChatMessagesProps {
   messages: Message[];
   isMessagesLoading: boolean;
   isGeneratingAIResponse?: boolean;
   hideSpinner?: boolean;
-  spinnerText?: string;
-  thinkingMode?: boolean;
-  thinkingStepText?: string;
+  /** The step the pending answer is in; picks the status texts. */
+  workingStep?: ChatWorkingStep;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onSourcesClick?: (messageId: string) => void;
   onRecommendationClick?: (recommendation: string) => void;
@@ -37,9 +30,7 @@ export default function ChatMessages({
   isMessagesLoading,
   isGeneratingAIResponse = false,
   hideSpinner = false,
-  spinnerText,
-  thinkingMode = false,
-  thinkingStepText,
+  workingStep = "discovery",
   messagesEndRef,
   onSourcesClick,
   onRecommendationClick,
@@ -102,25 +93,14 @@ export default function ChatMessages({
         />
       ))}
 
-      {/* AI Response Loading Spinner */}
-      {isGeneratingAIResponse && !hideSpinner ? (
-        thinkingMode ? (
-          <div className="max-w-4xl mx-auto px-4 lg:px-0 py-4">
-            <div className="border-l-2 border-slate-350 pl-4 flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-slate-850">
-                  Thinking
-                </div>
-                <div className="mt-1 text-sm text-slate-600 break-words whitespace-pre-wrap">
-                  {thinkingStepText ?? "Step 1 - processing"}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <SendingSpinner text={spinnerText ?? "Generating response..."} />
-        )
-      ) : null}
+      {isGeneratingAIResponse && !hideSpinner && (
+        <div className="max-w-4xl mx-auto px-4 lg:px-0 py-4">
+          <WorkingStatus
+            messages={CHAT_WORKING_MESSAGES[workingStep]}
+            elapsed
+          />
+        </div>
+      )}
 
       {/* Dummy div for scroll-to-bottom */}
       <div ref={messagesEndRef} />

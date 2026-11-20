@@ -5,6 +5,7 @@ import ChatInitialView from "@ui/chat/ChatInitialView";
 import { ChatInput, type ChatInputRef } from "@ui/chat/ChatInput";
 import ChatMessages from "@ui/chat/ChatMessages";
 import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
+import type { ChatWorkingStep } from "@ui/chat/chatWorkingStatus";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { datasetProposalPrompt } from "@ui/chat/DatasetProposalBlock";
 import { Database } from "lucide-react";
@@ -75,7 +76,7 @@ export default function Chat({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isGeneratingAIResponse, setIsGeneratingAIResponse] = useState(false);
-  const [aiLoadingText, setAiLoadingText] = useState("Step 1 - processing");
+  const [workingStep, setWorkingStep] = useState<ChatWorkingStep>("discovery");
   const [hasInitialized, setHasInitialized] = useState(false);
 
   // Collections state
@@ -585,7 +586,7 @@ export default function Chat({
     setIsLoading(true);
     // Show spinner immediately when user sends a message
     setIsGeneratingAIResponse(true);
-    setAiLoadingText("Step 1 - processing");
+    setWorkingStep(selectedDatasets.length > 0 ? "in-dataset" : "discovery");
 
     // Store current datasets as previous before sending
     setPreviousDatasets([...selectedDatasets]);
@@ -598,7 +599,6 @@ export default function Chat({
 
       // For existing conversations, use the in-data-explore API directly
       if (conversationId && selectedDatasets.length > 0) {
-        setAiLoadingText("Analyzing data from selected datasets...");
         const userMessage: Message = {
           id: Date.now().toString(),
           type: "user",
@@ -651,7 +651,6 @@ export default function Chat({
         }
 
         setIsLoading(false);
-        setAiLoadingText("Step 1 - processing");
         return;
       }
 
@@ -1033,7 +1032,7 @@ export default function Chat({
     setMessages((prev) => [...prev, simulatedUserMessage]);
     setIsLoading(true);
     setIsGeneratingAIResponse(true);
-    setAiLoadingText("Analyzing data from selected datasets...");
+    setWorkingStep("in-dataset");
     setError(null);
 
     try {
@@ -1083,7 +1082,6 @@ export default function Chat({
     } finally {
       setIsLoading(false);
       setIsGeneratingAIResponse(false);
-      setAiLoadingText("Step 1 - processing");
     }
   };
 
@@ -1230,8 +1228,7 @@ export default function Chat({
                   messages={messages}
                   isMessagesLoading={isMessagesLoading}
                   isGeneratingAIResponse={isGeneratingAIResponse}
-                  thinkingMode={true}
-                  thinkingStepText={aiLoadingText}
+                  workingStep={workingStep}
                   messagesEndRef={messagesEndRef}
                   onSourcesClick={handleSourcesClick}
                   onRecommendationClick={handleRecommendationClick}

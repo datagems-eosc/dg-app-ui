@@ -24,6 +24,25 @@ export const Classifying: Story = {
   },
 };
 
+/** Chat: waiting for an answer, with the elapsed time on the right. */
+export const ElapsedTime: Story = {
+  args: {
+    messages: [
+      "Reading the selected datasets",
+      "Running the analysis",
+      "Preparing the answer",
+    ],
+    elapsed: true,
+  },
+  decorators: [
+    (Story) => (
+      <div className="w-120">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
 /** Datasets: Smart search, stays on the last message during a long wait. */
 export const SmartSearch: Story = {
   args: {

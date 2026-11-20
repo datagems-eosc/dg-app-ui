@@ -60,6 +60,59 @@ describe("WorkingStatus", () => {
     );
   });
 
+  it("shows no elapsed time unless asked to", () => {
+    render(<WorkingStatus messages={MESSAGES} />);
+    expect(screen.queryByText("0:00")).not.toBeInTheDocument();
+  });
+
+  it("starts the elapsed time at zero", () => {
+    render(<WorkingStatus messages={MESSAGES} elapsed />);
+    expect(screen.getByText("0:00")).toBeInTheDocument();
+  });
+
+  it.each([
+    [1_000, "0:01"],
+    [42_000, "0:42"],
+    [65_000, "1:05"],
+    [600_000, "10:00"],
+  ])("counts the elapsed time up: after %i ms it reads %s", (ms, text) => {
+    vi.useFakeTimers();
+    render(<WorkingStatus messages={MESSAGES} elapsed />);
+    act(() => vi.advanceTimersByTime(ms));
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  it("stops counting when it is removed", () => {
+    vi.useFakeTimers();
+    const { unmount } = render(<WorkingStatus messages={MESSAGES} elapsed />);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps the elapsed time away from screen readers", () => {
+    vi.useFakeTimers();
+    render(<WorkingStatus messages={MESSAGES} elapsed />);
+    act(() => vi.advanceTimersByTime(7000));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /^Searching inside the data$/,
+    );
+    expect(screen.getByText("0:07")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("keeps counting when the user prefers reduced motion", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "matchMedia",
+      vi
+        .fn()
+        .mockReturnValue({ matches: true }) as unknown as typeof matchMedia,
+    );
+    const { container } = render(<WorkingStatus messages={MESSAGES} elapsed />);
+    act(() => vi.advanceTimersByTime(12000));
+    expect(visible(container)).toContain("Searching inside the data");
+    expect(screen.getByText("0:12")).toBeInTheDocument();
+  });
+
   it("does not change the text when the user prefers reduced motion", () => {
     vi.useFakeTimers();
     vi.stubGlobal(
