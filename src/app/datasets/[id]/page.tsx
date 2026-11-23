@@ -17,7 +17,10 @@ import {
   SHARING_WITHOUT_EVIDENCE,
 } from "@/lib/datasetPermissions/model";
 import { ACCESS_ACTION_NAMES } from "@/lib/datasetPermissions/types";
-import { fieldOfScienceLabels } from "@/lib/fieldsOfScience";
+import {
+  type FieldOfScienceCategory,
+  fieldOfScienceLabels,
+} from "@/lib/fieldsOfScience";
 import { logApiError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import { loadFieldsOfScience } from "@/lib/vocabularyService";
@@ -54,6 +57,25 @@ export default function DatasetDetailsPage() {
     status: "loading",
   });
 
+  // Fields of science show as stored until the vocabulary arrives, and stay
+  // so if it cannot be loaded; the dataset never waits for it.
+  const [fieldsOfScience, setFieldsOfScience] = useState<
+    FieldOfScienceCategory[]
+  >([]);
+  useEffect(() => {
+    if (!api.hasToken) return;
+    let isCancelled = false;
+    loadFieldsOfScience(api.getFieldsOfScience).then(
+      (categories) => {
+        if (!isCancelled) setFieldsOfScience(categories);
+      },
+      () => {},
+    );
+    return () => {
+      isCancelled = true;
+    };
+  }, [api.hasToken, api.getFieldsOfScience]);
+
   const datasetId = useMemo(() => {
     if (!params?.id || typeof params.id !== "string") {
       return null;
@@ -77,7 +99,7 @@ export default function DatasetDetailsPage() {
       setRead({ owner, status: "loading" });
 
       try {
-        const [apiDataset, global, fieldsOfScience] = await Promise.all([
+        const [apiDataset, global] = await Promise.all([
           api.getDatasetById(datasetId, [
             "id",
             "code",
@@ -108,8 +130,6 @@ export default function DatasetDetailsPage() {
           readGlobalPermissions(controller.signal).catch(() => ({
             evidence: PERMISSIONS_FAILED,
           })),
-          // Without the vocabulary, fields of science are shown as stored.
-          loadFieldsOfScience(api.getFieldsOfScience).catch(() => []),
         ]);
 
         if (isCancelled) return;
@@ -129,12 +149,6 @@ export default function DatasetDetailsPage() {
           decideAction("grant", evidence) === "allowed" ||
           decideAction("revoke", evidence) === "allowed";
         const mappedDataset = mapApiDatasetToDatasetPlus(apiDataset);
-        if (mappedDataset.fieldOfScience) {
-          mappedDataset.fieldOfScience = fieldOfScienceLabels(
-            mappedDataset.fieldOfScience,
-            fieldsOfScience,
-          );
-        }
         mappedDataset.permissions = mappedDataset.permissions?.filter(
           (name) => name !== "Manage",
         );
@@ -178,7 +192,6 @@ export default function DatasetDetailsPage() {
     owner,
     api.hasToken,
     api.getDatasetById,
-    api.getFieldsOfScience,
     readGlobalPermissions,
   ]);
 
@@ -190,8 +203,21 @@ export default function DatasetDetailsPage() {
         ? read.kind
         : null;
   const error = errorKind ? DATASET_ERROR_MESSAGES[errorKind] : null;
-  const dataset =
+  const readDataset =
     read.owner === owner && read.status === "success" ? read.dataset : null;
+  const dataset = useMemo(
+    () =>
+      readDataset?.fieldOfScience
+        ? {
+            ...readDataset,
+            fieldOfScience: fieldOfScienceLabels(
+              readDataset.fieldOfScience,
+              fieldsOfScience,
+            ),
+          }
+        : readDataset,
+    [readDataset, fieldsOfScience],
+  );
   const isLoading =
     !error && (read.owner !== owner || read.status === "loading");
 

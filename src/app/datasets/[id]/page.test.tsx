@@ -236,15 +236,12 @@ describe("dataset details page fields of science", () => {
     mockGetCurrentUserContextGrants.mockResolvedValue([]);
   });
 
-  const fieldChips = () => {
-    const heading = screen.getByRole("heading", {
-      level: 3,
-      name: "Fields of Science",
-    });
-    return Array.from(
-      heading.parentElement?.querySelectorAll("span") ?? [],
-    ).map((chip) => chip.textContent);
-  };
+  /** The Fields of Science section: its heading and chips. */
+  const fields = () =>
+    within(
+      screen.getByRole("heading", { level: 3, name: "Fields of Science" })
+        .parentElement as HTMLElement,
+    );
 
   it("shows stored codes and names by readable name, once each", async () => {
     mockGetDatasetById.mockResolvedValue({
@@ -258,11 +255,30 @@ describe("dataset details page fields of science", () => {
     });
     await renderPage();
 
-    expect(fieldChips()).toEqual([
-      "Mathematics",
-      "Earth and related environmental sciences",
-      "dataset-test-A",
-    ]);
+    expect(fields().getAllByText("Mathematics")).toHaveLength(1);
+    expect(
+      fields().getByText("Earth and related environmental sciences"),
+    ).toBeInTheDocument();
+    expect(fields().getByText("dataset-test-A")).toBeInTheDocument();
+    expect(fields().queryByText("1.1")).not.toBeInTheDocument();
+    expect(fields().queryByText("MATHEMATICS")).not.toBeInTheDocument();
+  });
+
+  it("shows the dataset before the vocabulary arrives, then the names", async () => {
+    const vocabulary = deferred<typeof FIELDS_OF_SCIENCE>();
+    mockGetFieldsOfScience.mockReturnValue(vocabulary.promise);
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(fields().getByText("1.1")).toBeInTheDocument();
+
+    await act(async () => vocabulary.resolve(FIELDS_OF_SCIENCE));
+
+    expect(fields().getByText("Mathematics")).toBeInTheDocument();
+    expect(fields().queryByText("1.1")).not.toBeInTheDocument();
   });
 
   it("shows stored values as stored when the vocabulary cannot be loaded", async () => {
@@ -273,7 +289,7 @@ describe("dataset details page fields of science", () => {
     });
     await renderPage();
 
-    expect(fieldChips()).toEqual(["1.1"]);
+    expect(fields().getByText("1.1")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
         level: 1,
@@ -291,7 +307,7 @@ describe("dataset details page fields of science", () => {
     });
     await renderPage();
 
-    expect(fieldChips()).toEqual(["Mathematics"]);
+    expect(fields().getByText("Mathematics")).toBeInTheDocument();
     expect(mockGetFieldsOfScience).not.toHaveBeenCalled();
   });
 });
