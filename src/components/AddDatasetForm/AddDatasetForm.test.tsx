@@ -673,7 +673,7 @@ describe("AddDatasetForm managed submission", () => {
     await user.click(startButton());
     expect(ledger.starts()).toHaveLength(1);
     expect(ledger.uploads).toHaveLength(1);
-    expect(screen.getAllByTestId("submission-notice")).toHaveLength(1);
+    expect(screen.getAllByTestId("notice")).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Go to Browse" }));
     expect(mockPush).toHaveBeenCalledWith("/browse");
     expect(ledger.starts()).toHaveLength(1);
@@ -713,7 +713,7 @@ describe("AddDatasetForm managed submission", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(ledger.starts()).toHaveLength(1);
-    expect(screen.getAllByTestId("submission-notice")).toHaveLength(1);
+    expect(screen.getAllByTestId("notice")).toHaveLength(1);
     expect(
       screen.getAllByText(/Please don't upload it again yet\./),
     ).toHaveLength(1);
