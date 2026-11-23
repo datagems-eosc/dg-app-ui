@@ -282,33 +282,20 @@ describe("DatasetPermissionsModal", () => {
         { id: "group-2", name: "Analytics" },
       ],
     };
-    mockUseApi.mockReturnValue({
-      hasToken: true,
-      // Groups arrive a little after the Manage Groups dialog opens, as on a
-      // slow CI runner, so the test must wait for the group checkboxes.
-      queryUserGroups: vi.fn(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(() => resolve(groups), 20);
-          }),
-      ),
-      getGroupDatasetGrants: vi.fn().mockResolvedValue({ "dataset-1": [] }),
-      assignGroupDatasetGrant: vi.fn().mockResolvedValue(undefined),
-      unassignGroupDatasetGrant: vi.fn().mockResolvedValue(undefined),
-      queryUsers: vi.fn().mockResolvedValue({ items: [] }),
-      getUserDatasetGrants: vi.fn().mockResolvedValue({}),
-      assignUserDatasetGrant: vi.fn().mockResolvedValue(undefined),
-      unassignUserDatasetGrant: vi.fn().mockResolvedValue(undefined),
-    });
-
-    render(
-      <DatasetPermissionsModal
-        isOpen
-        datasetId="dataset-1"
-        datasetName="Dataset One"
-        onClose={vi.fn()}
-      />,
+    mockUseApi.mockReturnValue(
+      createApi({
+        // Groups arrive a little after the Manage Groups dialog opens, as on a
+        // slow CI runner, so the test must wait for the group checkboxes.
+        queryUserGroups: vi.fn(
+          () =>
+            new Promise((resolve) => {
+              setTimeout(() => resolve(groups), 20);
+            }),
+        ),
+      }),
     );
+
+    render(renderModal());
 
     expect(await screen.findByText("Research Team")).toBeInTheDocument();
     expect(screen.getByText("Analytics")).toBeInTheDocument();
