@@ -53,6 +53,9 @@ const pending = () => {
   return { promise, resolve };
 };
 
+/** Each request gets the signal that cancels it. */
+const withSignal = { signal: expect.any(AbortSignal) };
+
 /** What every live region currently holds. */
 const announced = () =>
   screen.getAllByRole("status").map((element) => element.textContent);
@@ -91,7 +94,7 @@ describe("DatasetRecommendationsSection — loading", () => {
     );
     expect(screen.queryByTestId("recommendation-placeholder")).toBeNull();
     expect(announced()).toEqual([""]);
-    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1");
+    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1", withSignal);
   });
 });
 
@@ -131,7 +134,7 @@ describe("DatasetRecommendationsSection — feature status", () => {
     render(<DatasetRecommendationsSection datasetId="d1" />);
 
     expect(await screen.findByText(notKnownNote)).toBeInTheDocument();
-    expect(getDatasetFeatures).toHaveBeenCalledWith("d1");
+    expect(getDatasetFeatures).toHaveBeenCalledWith("d1", withSignal);
     expect(getDatasetRecommendations).not.toHaveBeenCalled();
     expect(
       screen.getByRole("heading", { name: "Recommended datasets" }),
@@ -153,7 +156,7 @@ describe("DatasetRecommendationsSection — feature status", () => {
     render(<DatasetRecommendationsSection datasetId="d1" />);
 
     expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
-    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1");
+    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1", withSignal);
     expect(screen.queryByText(notKnownNote)).toBeNull();
   });
 
@@ -195,7 +198,7 @@ describe("DatasetRecommendationsSection — feature status", () => {
       expect(await screen.findByText("Second Answer")).toBeInTheDocument();
       expect(screen.queryByText(notKnownNote)).toBeNull();
       expect(getDatasetRecommendations).toHaveBeenCalledTimes(1);
-      expect(getDatasetRecommendations).toHaveBeenCalledWith("d2");
+      expect(getDatasetRecommendations).toHaveBeenCalledWith("d2", withSignal);
     },
   );
 });
@@ -210,7 +213,7 @@ describe("DatasetRecommendationsSection — rejected request", () => {
     render(<DatasetRecommendationsSection datasetId="d1" />);
 
     expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
-    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1");
+    expect(getDatasetRecommendations).toHaveBeenCalledWith("d1", withSignal);
   });
 
   it("shows the not-available note when the recommendations request rejects", async () => {
@@ -262,7 +265,7 @@ describe("DatasetRecommendationsSection — dataset change", () => {
     );
     // d1's feature status arrives and its recommendations request goes out.
     await waitFor(() =>
-      expect(getDatasetRecommendations).toHaveBeenCalledWith("d1"),
+      expect(getDatasetRecommendations).toHaveBeenCalledWith("d1", withSignal),
     );
     rerender(<DatasetRecommendationsSection datasetId="d2" />);
     await act(async () => {
@@ -276,7 +279,10 @@ describe("DatasetRecommendationsSection — dataset change", () => {
     second.resolve(datasets({ id: "new", name: "New Answer" }));
     expect(await screen.findByText("New Answer")).toBeInTheDocument();
     expect(screen.queryByText("Old Answer")).toBeNull();
-    expect(getDatasetRecommendations).toHaveBeenLastCalledWith("d2");
+    expect(getDatasetRecommendations).toHaveBeenLastCalledWith(
+      "d2",
+      withSignal,
+    );
   });
 
   it("goes back to loading when the dataset changes after an answer", async () => {
@@ -291,6 +297,77 @@ describe("DatasetRecommendationsSection — dataset change", () => {
     rerender(<DatasetRecommendationsSection datasetId="d2" />);
 
     expect(screen.queryByText("Old Answer")).toBeNull();
+    expect(screen.getAllByTestId("recommendation-placeholder")).toHaveLength(6);
+  });
+});
+
+describe("DatasetRecommendationsSection — cancellation", () => {
+  /** The signal the nth call of a request mock was given. */
+  const signalOf = (request: typeof getDatasetFeatures, call = 0) =>
+    (request.mock.calls[call]?.[1] as { signal?: AbortSignal } | undefined)
+      ?.signal;
+
+  /** A request that never answers, and rejects like fetch when aborted. */
+  const abortable = (_id: string, options?: { signal?: AbortSignal }) =>
+    new Promise<never>((_, reject) => {
+      options?.signal?.addEventListener("abort", () =>
+        reject(new DOMException("Aborted", "AbortError")),
+      );
+    });
+
+  it("cancels the running recommendations request when the page is left", async () => {
+    getDatasetRecommendations.mockReturnValue(pending().promise);
+
+    const { unmount } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await waitFor(() => expect(getDatasetRecommendations).toHaveBeenCalled());
+    expect(signalOf(getDatasetRecommendations)?.aborted).toBe(false);
+    unmount();
+
+    expect(signalOf(getDatasetRecommendations)?.aborted).toBe(true);
+  });
+
+  it("cancels the previous dataset's feature status read on a dataset change", async () => {
+    getDatasetFeatures
+      .mockReturnValueOnce(new Promise(() => {}))
+      .mockResolvedValueOnce(null);
+    getDatasetRecommendations.mockReturnValue(pending().promise);
+
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    expect(signalOf(getDatasetFeatures)?.aborted).toBe(false);
+    rerender(<DatasetRecommendationsSection datasetId="d2" />);
+
+    expect(signalOf(getDatasetFeatures)?.aborted).toBe(true);
+    await waitFor(() =>
+      expect(getDatasetRecommendations).toHaveBeenCalledWith("d2", withSignal),
+    );
+    expect(getDatasetRecommendations).not.toHaveBeenCalledWith(
+      "d1",
+      expect.anything(),
+    );
+  });
+
+  it("cancels the previous dataset's recommendations request without a note", async () => {
+    getDatasetRecommendations
+      .mockImplementationOnce(abortable)
+      .mockReturnValueOnce(pending().promise);
+
+    const { rerender } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await waitFor(() => expect(getDatasetRecommendations).toHaveBeenCalled());
+    rerender(<DatasetRecommendationsSection datasetId="d2" />);
+    await act(async () => {});
+
+    expect(signalOf(getDatasetRecommendations)?.aborted).toBe(true);
+    expect(
+      screen.queryByText(
+        "Recommendations are not available for this dataset right now.",
+      ),
+    ).toBeNull();
     expect(screen.getAllByTestId("recommendation-placeholder")).toHaveLength(6);
   });
 });
@@ -314,7 +391,9 @@ describe("DatasetRecommendationsSection — session token refresh", () => {
     expect(screen.getByText("Alpha Dataset")).toBeInTheDocument();
 
     rerender(<DatasetRecommendationsSection datasetId="d2" />);
-    await waitFor(() => expect(refreshed).toHaveBeenCalledWith("d2"));
+    await waitFor(() =>
+      expect(refreshed).toHaveBeenCalledWith("d2", withSignal),
+    );
   });
 
   it("waits for a session token before asking", async () => {
@@ -355,7 +434,7 @@ describe("DatasetRecommendationsSection — session token refresh", () => {
 
     expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
     expect(refreshed).toHaveBeenCalledTimes(1);
-    expect(refreshed).toHaveBeenCalledWith("d1");
+    expect(refreshed).toHaveBeenCalledWith("d1", withSignal);
   });
 
   // The token rotates every few minutes; a refused page must not flash the
@@ -397,7 +476,7 @@ describe("DatasetRecommendationsSection — session token refresh", () => {
 
     expect(await screen.findByText("Alpha Dataset")).toBeInTheDocument();
     expect(refreshed).toHaveBeenCalledTimes(1);
-    expect(refreshed).toHaveBeenCalledWith("d1");
+    expect(refreshed).toHaveBeenCalledWith("d1", withSignal);
   });
 
   it("tries the newest token when another refresh comes during the retry", async () => {

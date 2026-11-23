@@ -352,6 +352,7 @@ export function ProcessingView({
         // A spinner must not suggest progress we cannot currently observe.
         active={headline.active && !hasConnectionProblem}
         emphasis
+        wrap="words"
         actions={
           !showStepsPanel && showRefresh ? (
             <Button type="button" variant="outline" onClick={onCheckAgain}>
@@ -370,6 +371,7 @@ export function ProcessingView({
               <Notice
                 key={code}
                 {...copy}
+                wrap="words"
                 body={
                   code === "connection-stale"
                     ? staleBodyOf(read.phase)
@@ -379,7 +381,7 @@ export function ProcessingView({
             );
           })}
           {readNotice === null || promoted ? null : (
-            <Notice {...readNoticeCopyOf(readNotice)} />
+            <Notice {...readNoticeCopyOf(readNotice)} wrap="words" />
           )}
         </div>
       )}

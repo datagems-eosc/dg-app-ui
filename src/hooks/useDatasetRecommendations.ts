@@ -51,20 +51,29 @@ export function useDatasetRecommendations(
     if (!datasetId || !hasToken || !needsRequest) return;
     const send = requestRef.current;
     const readFeatures = featuresRef.current;
-    let cancelled = false;
+    // Leaving the page or the dataset cancels the requests still running: the
+    // first recommend answer can take about 40 seconds.
+    const controller = new AbortController();
+    const { signal } = controller;
     // Backstop only: the adapters never reject. If one did, the section must
     // not stay loading.
     const ask = async (): Promise<DatasetRecommendationsResult | null> => {
-      const features = await readFeatures(datasetId).catch(() => null);
-      if (cancelled) return null;
+      const features = await readFeatures(datasetId, { signal }).catch(
+        () => null,
+      );
+      if (signal.aborted) return null;
       if (features?.recommendation === false) return { status: "notKnown" };
-      return send(datasetId).catch(() => ({ status: "failed" }) as const);
+      return send(datasetId, { signal }).catch(
+        () => ({ status: "failed" }) as const,
+      );
     };
     ask().then((result) => {
-      if (result && !cancelled) setAnswer({ datasetId, result, via: send });
+      if (result && !signal.aborted) {
+        setAnswer({ datasetId, result, via: send });
+      }
     });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [datasetId, hasToken, needsRequest, current]);
 

@@ -1309,7 +1309,10 @@ export function useApi() {
   );
 
   const getDatasetRecommendations = useCallback(
-    async (datasetId: string): Promise<DatasetRecommendationsResult> => {
+    async (
+      datasetId: string,
+      { signal }: { signal?: AbortSignal } = {},
+    ): Promise<DatasetRecommendationsResult> => {
       if (!token) return { status: "failed" };
 
       // Everything below answers with a result: building the URL can throw
@@ -1326,12 +1329,13 @@ export function useApi() {
 
         // No refresh and no sign-out on 401: the recommend endpoint answers
         // 401 "insufficient rights" for datasets the user can't access, and
-        // the section explains that refusal instead.
+        // the section explains that refusal instead (as it does a 403).
         const response = await makeRequest(
           endpoint,
           {
             method: "GET",
             headers: { "X-Request-Type": "getDatasetRecommendations" },
+            signal,
           },
           { retryOn401: false },
         );
@@ -1352,7 +1356,10 @@ export function useApi() {
         });
         return result;
       } catch (error) {
-        logApiError("getDatasetRecommendations", error, { datasetId });
+        // A cancelled read is the caller leaving, not a failure.
+        if (!signal?.aborted) {
+          logApiError("getDatasetRecommendations", error, { datasetId });
+        }
         return { status: "failed" };
       }
     },
@@ -1366,7 +1373,10 @@ export function useApi() {
    * recommender error fails the whole request.
    */
   const getDatasetFeatures = useCallback(
-    async (datasetId: string): Promise<DatasetFeatures | null> => {
+    async (
+      datasetId: string,
+      { signal }: { signal?: AbortSignal } = {},
+    ): Promise<DatasetFeatures | null> => {
       if (!token) return null;
       try {
         const endpoint = `/dataset/${encodeURIComponent(
@@ -1379,6 +1389,7 @@ export function useApi() {
           {
             method: "GET",
             headers: { "X-Request-Type": "getDatasetFeatures" },
+            signal,
           },
           { retryOn401: false },
         );
@@ -1394,7 +1405,9 @@ export function useApi() {
         logApiResponse("getDatasetFeatures", { datasetId, features });
         return features;
       } catch (error) {
-        logApiError("getDatasetFeatures", error, { datasetId });
+        if (!signal?.aborted) {
+          logApiError("getDatasetFeatures", error, { datasetId });
+        }
         return null;
       }
     },

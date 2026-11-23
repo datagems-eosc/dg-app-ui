@@ -14,6 +14,10 @@ const meta: Meta<typeof Notice> = {
       control: "select",
       options: ["neutral", "caution", "problem", "success"],
     },
+    wrap: {
+      control: "radio",
+      options: ["anywhere", "words"],
+    },
   },
 };
 
@@ -82,6 +86,23 @@ export const Inline: Story = {
       }
     />
   ),
+};
+
+/** Inline success keeps the plain info icon: it qualifies, it is no outcome. */
+export const InlineSuccess: Story = {
+  render: () => (
+    <InlineNotice tone="success" title="You can open this dataset." />
+  ),
+};
+
+/** Dataset processing: sentences only, so the body breaks between words. */
+export const WordWrap: Story = {
+  args: {
+    tone: "problem",
+    title: "Processing couldn't finish",
+    body: "Ask a DataGEMS administrator to check this dataset.",
+    wrap: "words",
+  },
 };
 
 /** Dataset adding: a body with a list, as the upload form uses it. */

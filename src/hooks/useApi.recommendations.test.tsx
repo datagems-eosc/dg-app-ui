@@ -174,17 +174,27 @@ describe("useApi().getDatasetRecommendations", () => {
     expect(getSession).not.toHaveBeenCalled();
   });
 
-  it.each([424, 403, 404, 500, 502])(
-    "returns failed on HTTP %i",
-    async (status) => {
-      respond(status, { code: 104, error: "System error" });
-      const { result } = renderHook(() => useApi());
+  // The Gateway answers 403 when its censor refuses the requested dataset
+  // fields: a refusal like 401, not an outage.
+  it("returns no access on 403 and does not sign the user out", async () => {
+    respond(403, { code: 102, error: "forbidden" });
+    const { result } = renderHook(() => useApi());
 
-      await expect(
-        result.current.getDatasetRecommendations("d1"),
-      ).resolves.toEqual({ status: "failed" });
-    },
-  );
+    await expect(
+      result.current.getDatasetRecommendations("d1"),
+    ).resolves.toEqual({ status: "noAccess" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(getSession).not.toHaveBeenCalled();
+  });
+
+  it.each([424, 404, 500, 502])("returns failed on HTTP %i", async (status) => {
+    respond(status, { code: 104, error: "System error" });
+    const { result } = renderHook(() => useApi());
+
+    await expect(
+      result.current.getDatasetRecommendations("d1"),
+    ).resolves.toEqual({ status: "failed" });
+  });
 
   it("returns failed when the request cannot be sent", async () => {
     vi.stubGlobal(
@@ -198,6 +208,36 @@ describe("useApi().getDatasetRecommendations", () => {
     await expect(
       result.current.getDatasetRecommendations("d1"),
     ).resolves.toEqual({ status: "failed" });
+  });
+
+  it("sends the caller's signal so leaving the page cancels the request", async () => {
+    respond(200, []);
+    const { result } = renderHook(() => useApi());
+    const controller = new AbortController();
+
+    await result.current.getDatasetRecommendations("d1", {
+      signal: controller.signal,
+    });
+
+    expect(vi.mocked(fetch).mock.calls[0][1]?.signal).toBe(controller.signal);
+  });
+
+  it("logs no error when the caller cancels the request", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        controller.abort();
+        throw new DOMException("Aborted", "AbortError");
+      }),
+    );
+    const { result } = renderHook(() => useApi());
+
+    await result.current.getDatasetRecommendations("d1", {
+      signal: controller.signal,
+    });
+
+    expect(logApiError).not.toHaveBeenCalled();
   });
 
   it("returns failed when a successful answer is not JSON", async () => {
@@ -278,6 +318,35 @@ describe("useApi().getDatasetFeatures", () => {
     const { result } = renderHook(() => useApi());
 
     await expect(result.current.getDatasetFeatures("d1")).resolves.toBeNull();
+  });
+
+  it("sends the caller's signal so leaving the page cancels the request", async () => {
+    respond(200, { id: "d1", features: { recommendation: true } });
+    const { result } = renderHook(() => useApi());
+    const controller = new AbortController();
+
+    await result.current.getDatasetFeatures("d1", {
+      signal: controller.signal,
+    });
+
+    expect(vi.mocked(fetch).mock.calls[0][1]?.signal).toBe(controller.signal);
+  });
+
+  it("logs no error when the caller cancels the request", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        controller.abort();
+        throw new DOMException("Aborted", "AbortError");
+      }),
+    );
+    const { result } = renderHook(() => useApi());
+
+    await expect(
+      result.current.getDatasetFeatures("d1", { signal: controller.signal }),
+    ).resolves.toBeNull();
+    expect(logApiError).not.toHaveBeenCalled();
   });
 
   it("returns null when the answer has no features", async () => {

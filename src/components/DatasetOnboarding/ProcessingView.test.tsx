@@ -840,6 +840,18 @@ describe("ProcessingView", () => {
     expect(container.textContent).toContain(LONG_DATASET_TITLE);
   });
 
+  // Its notices hold sentences, not file names: they break between words, as
+  // before the notice box was shared with the dataset-adding screen.
+  it("breaks notice text only between words", () => {
+    render(<ProcessingView view={failedView} />);
+
+    const body = screen.getByText(
+      "Ask a DataGEMS administrator to check this dataset.",
+    );
+    expect(body.className).toContain("break-words");
+    expect(body.className).not.toContain("wrap-anywhere");
+  });
+
   it("renders without a title at all", () => {
     render(<ProcessingView view={pendingRunningView} />);
     expect(

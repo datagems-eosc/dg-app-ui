@@ -2,7 +2,8 @@
  * Similar-dataset recommendations — what the section shows for a dataset.
  *
  * `GET /search/dataset/{id}/recommend` can answer with datasets, with an empty
- * list, refuse the caller (401, the user cannot browse the seed dataset) or
+ * list, refuse the caller (401, the user cannot browse the seed dataset; 403,
+ * the user may not read the requested dataset fields) or
  * fail (424 from the Task Orchestrator, any other status, a network error).
  * One more outcome comes from not asking at all: the dataset's feature status
  * says the recommender does not know it. The page explains each one
@@ -58,8 +59,13 @@ export const recommendationsFromBody = (
   };
 };
 
-/** Reads a non-success status: 401 is a refusal, everything else a failure. */
+/**
+ * Reads a non-success status: 401 and 403 are refusals, everything else a
+ * failure.
+ */
 export const recommendationsFromStatus = (
   status: number,
 ): DatasetRecommendationsResult =>
-  status === 401 ? { status: "noAccess" } : { status: "failed" };
+  status === 401 || status === 403
+    ? { status: "noAccess" }
+    : { status: "failed" };

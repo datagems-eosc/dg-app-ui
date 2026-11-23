@@ -59,13 +59,16 @@ const TONES: Record<NoticeTone, ToneStyle> = {
 function NoticeIcon({
   tone,
   active = false,
+  glyph = TONES[tone].Glyph,
   className,
 }: {
   tone: NoticeTone;
   active?: boolean;
+  /** Overrides the tone's own glyph. */
+  glyph?: LucideIcon;
   className?: string;
 }) {
-  const Icon = active ? LoaderCircle : TONES[tone].Glyph;
+  const Icon = active ? LoaderCircle : glyph;
   return (
     <Icon
       className={clsx(
@@ -104,7 +107,14 @@ export function InlineNotice({
 }: InlineNoticeProps) {
   return (
     <div className="flex items-start gap-2">
-      <NoticeIcon tone={tone} active={active} className="h-4 w-4" />
+      <NoticeIcon
+        tone={tone}
+        active={active}
+        // A check mark beside content would read as a second outcome; a
+        // qualifying line keeps the plain info glyph for success.
+        glyph={tone === "success" ? Info : undefined}
+        className="h-4 w-4"
+      />
       <div className="min-w-0 flex-1">
         <p
           className={clsx(
@@ -135,6 +145,11 @@ interface NoticeProps {
   emphasis?: boolean;
   /** Actions under the text, such as a button. */
   actions?: ReactNode;
+  /**
+   * How the body wraps: "anywhere" (default) for file names and ids without
+   * break points, "words" for text that is only sentences.
+   */
+  wrap?: "anywhere" | "words";
 }
 
 /**
@@ -151,6 +166,7 @@ export function Notice({
   active = false,
   emphasis = false,
   actions,
+  wrap = "anywhere",
 }: NoticeProps) {
   return (
     <div
@@ -170,10 +186,10 @@ export function Notice({
             {title}
           </p>
           {body == null ? null : (
-            // wrap-anywhere: file names and ids have no break points.
             <div
               className={clsx(
-                "mt-1 space-y-1 wrap-anywhere text-body-14-regular",
+                "mt-1 space-y-1 text-body-14-regular",
+                wrap === "words" ? "break-words" : "wrap-anywhere",
                 TONES[tone].body,
               )}
             >
