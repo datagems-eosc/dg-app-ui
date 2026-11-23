@@ -1,4 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import {
+  CHAT_WORKING_MESSAGES,
+  CHAT_WORKING_REPEAT,
+} from "./chat/chatWorkingStatus";
 import { WorkingStatus } from "./WorkingStatus";
 
 const meta: Meta<typeof WorkingStatus> = {
@@ -22,6 +26,22 @@ export const Classifying: Story = {
       "Checking how best to help",
     ],
   },
+};
+
+/** Chat: waiting for an answer, with the elapsed time on the right. */
+export const ElapsedTime: Story = {
+  args: {
+    messages: CHAT_WORKING_MESSAGES["in-dataset"],
+    repeat: CHAT_WORKING_REPEAT["in-dataset"],
+    elapsed: true,
+  },
+  decorators: [
+    (Story) => (
+      <div className="w-120">
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 /** Datasets: Smart search, stays on the last message during a long wait. */
