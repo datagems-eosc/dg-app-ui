@@ -111,7 +111,11 @@ const classify = (
   return "generic";
 };
 
-const withReference = (text: string, correlationId: string | null): string =>
+/** Appends the short support reference ("Reference: <8 chars>") when there is one. */
+export const withReference = (
+  text: string,
+  correlationId: string | null,
+): string =>
   correlationId ? `${text} Reference: ${correlationId.slice(0, 8)}` : text;
 
 /** Builds the error for a non-OK Gateway response from its status and body. */

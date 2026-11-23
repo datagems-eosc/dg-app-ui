@@ -5,7 +5,10 @@ import {
   mapApiDatasetToDataset,
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
-import { gatewayErrorFromResponse } from "@/lib/gatewayError";
+import {
+  gatewayErrorFromNetworkFailure,
+  gatewayErrorFromResponse,
+} from "@/lib/gatewayError";
 import { upstreamFailureBody } from "@/lib/gatewayError.fixtures";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
@@ -370,7 +373,9 @@ describe("useDatasetSearch", () => {
         items: [{ id: "old", name: "Old" }],
         count: 1,
       });
-      api.searchCrossDataset.mockRejectedValueOnce(new Error("503"));
+      api.searchCrossDataset.mockRejectedValueOnce(
+        gatewayErrorFromResponse(424, upstreamFailureBody(503, "Discovery")),
+      );
       const { result } = renderSearch();
       await waitFor(() =>
         expect(result.current.datasets.map((d) => d.id)).toEqual(["old"]),
@@ -380,9 +385,26 @@ describe("useDatasetSearch", () => {
       act(() => result.current.onSmartSearchToggle(true));
 
       await waitFor(() =>
-        expect(result.current.error).toBe(ApiErrorMessage.SMART_SEARCH_FAILED),
+        expect(result.current.error).toBe(
+          `${ApiErrorMessage.SMART_SEARCH_FAILED} Reference: 50c7a41b`,
+        ),
       );
       expect(result.current.datasets).toEqual([]);
+    });
+
+    it("keeps the Smart search message without a reference when no response came", async () => {
+      api.searchCrossDataset.mockRejectedValueOnce(
+        gatewayErrorFromNetworkFailure(new TypeError("Failed to fetch")),
+      );
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalled());
+
+      act(() => result.current.onSearchTermChange("rain in Crete"));
+      act(() => result.current.onSmartSearchToggle(true));
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(ApiErrorMessage.SMART_SEARCH_FAILED),
+      );
     });
 
     it("ignores a failure that arrives after a newer search succeeded", async () => {

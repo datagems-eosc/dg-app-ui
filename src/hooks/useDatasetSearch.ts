@@ -18,7 +18,7 @@ import {
   uniqueById,
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
-import { GatewayError } from "@/lib/gatewayError";
+import { GatewayError, withReference } from "@/lib/gatewayError";
 import { logError } from "@/lib/logger";
 
 export const DEFAULT_SORT = "name-asc";
@@ -176,15 +176,25 @@ class ListFailure extends Error {
 const shownFor = (err: unknown, fallback: ApiErrorMessage): string =>
   err instanceof GatewayError ? err.message : fallback;
 
+/**
+ * Smart search keeps its own message, which tells the user to turn it off and
+ * search by name, and only adds the reference of a classified failure.
+ */
+const smartSearchShownFor = (err: unknown): string =>
+  withReference(
+    ApiErrorMessage.SMART_SEARCH_FAILED,
+    err instanceof GatewayError ? err.correlationId : null,
+  );
+
 async function orFail<T>(
   call: Promise<T>,
-  fallback: ApiErrorMessage,
+  shown: (err: unknown) => string,
   logAs: string,
 ): Promise<T> {
   try {
     return await call;
   } catch (err) {
-    throw new ListFailure(shownFor(err, fallback), logAs, err);
+    throw new ListFailure(shown(err), logAs, err);
   }
 }
 
@@ -217,7 +227,7 @@ async function loadSmart(
       resultCount: 100,
       ...(collectionId ? { collectionIds: [collectionId] } : {}),
     }),
-    ApiErrorMessage.SMART_SEARCH_FAILED,
+    smartSearchShownFor,
     "Smart search failed",
   );
   const found = mapDiscoveryResults(
@@ -246,7 +256,7 @@ async function loadCustom(
       ids: datasetIds,
       page: { Offset: 0, Size: 100 },
     }),
-    ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
+    (err) => shownFor(err, ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED),
     "Failed to fetch dataset details",
   );
   const found = Array.isArray(details.items) ? details.items : [];
