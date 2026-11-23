@@ -6,6 +6,25 @@ import { useState } from "react";
 import DGIcon from "@/components/ui/chat/DGIcon";
 import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
+import { ApiErrorMessage } from "@/lib/apiErrors";
+import { GatewayError, withReference } from "@/lib/gatewayError";
+
+/**
+ * The analysis service's own text for an unanswerable question is technical
+ * ("No valid RAG results were provided."), so this page always shows the
+ * rephrase copy for it, with the reference. Other failures keep their copy.
+ */
+const analysisErrorMessage = (err: unknown): string => {
+  if (err instanceof GatewayError && err.kind === "unanswerable") {
+    return withReference(
+      ApiErrorMessage.GATEWAY_UNANSWERABLE,
+      err.correlationId,
+    );
+  }
+  return err instanceof Error
+    ? err.message
+    : "Analysis failed. Please try again.";
+};
 
 function Toggle({
   checked,
@@ -97,11 +116,7 @@ export default function LanguageQuestionPage() {
       );
       router.push("/use-case/language/analysis");
     } catch (err) {
-      setSubmitError(
-        err instanceof Error
-          ? err.message
-          : "Analysis failed. Please try again.",
-      );
+      setSubmitError(analysisErrorMessage(err));
       setIsSubmitting(false);
     }
   };

@@ -21,9 +21,57 @@ import LanguageQuestionPage from "./page";
  * communicating with underpinning service". The page now shows the classified
  * message with its reference.
  */
+const askAndStart = () => {
+  render(<LanguageQuestionPage />);
+  fireEvent.change(screen.getByPlaceholderText("Ask a question..."), {
+    target: { value: "qwzx vbnm plok" },
+  });
+  fireEvent.keyDown(screen.getByPlaceholderText("Ask a question..."), {
+    key: "Enter",
+  });
+  fireEvent.click(screen.getByRole("button", { name: /start analysis/i }));
+};
+
 describe("LanguageQuestionPage failed analysis", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("shows the rephrase message, not the service's technical text", async () => {
+    const payload = JSON.stringify({
+      code: 102,
+      error: "validation error",
+      message: [
+        { Key: "question", Value: ["No valid RAG results were provided."] },
+      ],
+    });
+    api.getLinguisticFeatures.mockRejectedValue(
+      gatewayErrorFromResponse(
+        424,
+        upstreamFailureBody(400, "InDataExploration", payload),
+      ),
+    );
+    askAndStart();
+
+    expect(
+      await screen.findByText(
+        "This question can't be answered from the selected data. Try rephrasing it. Reference: 50c7a41b",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No valid RAG results/)).not.toBeInTheDocument();
+  });
+
+  it("shows the unavailable message for a service failure", async () => {
+    api.getLinguisticFeatures.mockRejectedValue(
+      gatewayErrorFromResponse(424, upstreamFailureBody(503)),
+    );
+    askAndStart();
+
+    expect(
+      await screen.findByText(
+        "The service is temporarily unavailable. Please try again. Reference: 50c7a41b",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows the unanswerable message and reference, not the Gateway text", async () => {
