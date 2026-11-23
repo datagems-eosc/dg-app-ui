@@ -276,14 +276,22 @@ describe("DatasetPermissionsModal", () => {
   });
 
   it("filters groups with Manage Groups selection", async () => {
+    const groups = {
+      items: [
+        { id: "group-1", name: "Research Team" },
+        { id: "group-2", name: "Analytics" },
+      ],
+    };
     mockUseApi.mockReturnValue({
       hasToken: true,
-      queryUserGroups: vi.fn().mockResolvedValue({
-        items: [
-          { id: "group-1", name: "Research Team" },
-          { id: "group-2", name: "Analytics" },
-        ],
-      }),
+      // Groups arrive a little after the Manage Groups dialog opens, as on a
+      // slow CI runner, so the test must wait for the group checkboxes.
+      queryUserGroups: vi.fn(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve(groups), 20);
+          }),
+      ),
       getGroupDatasetGrants: vi.fn().mockResolvedValue({ "dataset-1": [] }),
       assignGroupDatasetGrant: vi.fn().mockResolvedValue(undefined),
       unassignGroupDatasetGrant: vi.fn().mockResolvedValue(undefined),
@@ -307,6 +315,7 @@ describe("DatasetPermissionsModal", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Manage" }));
     const manageDialog = await screen.findByLabelText("Manage Groups");
+    await within(manageDialog).findByText("Analytics");
 
     const groupCheckbox = document.getElementById("group-group-2");
     const groupCheckboxWrapper = groupCheckbox?.parentElement?.parentElement;
