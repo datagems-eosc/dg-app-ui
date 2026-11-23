@@ -170,9 +170,10 @@ export const gatewayErrorFromNetworkFailure = (cause: unknown): GatewayError =>
   new GatewayError(COPY[GatewayErrorKind.Unavailable], NO_RESPONSE, { cause });
 
 /**
- * True for a request that never got a response: `fetch` rejects with a
+ * True for the error kinds `fetch` rejects with when no response arrives: a
  * `TypeError` on a network failure and a `TimeoutError` on a signal timeout.
- * A local `AbortError` is a cancellation, not a failure, and stays as it is.
+ * A local `AbortError` is a cancellation, not a failure. Any code can throw a
+ * `TypeError`, so pair this with `isFetchRejection` to know `fetch` threw it.
  */
 export const isNetworkFailure = (
   error: unknown,

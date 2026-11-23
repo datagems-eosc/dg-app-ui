@@ -5,7 +5,7 @@ vi.mock("next-auth/react", () => ({
   getSession: () => mockGetSession(),
 }));
 
-import { type AuthRetryPolicy, fetchWithAuth } from "./utils";
+import { type AuthRetryPolicy, fetchWithAuth, isFetchRejection } from "./utils";
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -175,6 +175,22 @@ describe("default callers keep their existing behaviour", () => {
     expect(headerOf(calls[1], "Authorization")).toBe("Bearer new-token");
     expect(headerOf(calls[1], "oauth2")).toBe("new-token");
     expect(response).toBe(retried);
+  });
+
+  it("marks a network failure during the retry as a fetch rejection", async () => {
+    const offline = new TypeError("Failed to fetch");
+    createFetch((call) => {
+      if (call === 1) return unauthorized("retry-offline");
+      throw offline;
+    });
+    mockGetSession.mockResolvedValue({ accessToken: "new-token" });
+
+    const error = await fetchWithAuth(URL_UNDER_TEST, BEARER_INIT).catch(
+      (reason: unknown) => reason,
+    );
+
+    expect(error).toBe(offline);
+    expect(isFetchRejection(error)).toBe(true);
   });
 
   it("logs out when the refresh yields no token", async () => {

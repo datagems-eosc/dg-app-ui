@@ -194,9 +194,8 @@ const smartSearchShownFor = (err: unknown): string =>
 
 async function orFail<T>(
   call: Promise<T>,
-  fallback: ApiErrorMessage,
   logAs: string,
-  shown: (err: unknown) => string = (err) => shownFor(err, fallback),
+  shown: (err: unknown) => string,
 ): Promise<T> {
   try {
     return await call;
@@ -234,7 +233,6 @@ async function loadSmart(
       resultCount: 100,
       ...(collectionId ? { collectionIds: [collectionId] } : {}),
     }),
-    ApiErrorMessage.SMART_SEARCH_FAILED,
     "Smart search failed",
     smartSearchShownFor,
   );
@@ -264,8 +262,8 @@ async function loadCustom(
       ids: datasetIds,
       page: { Offset: 0, Size: 100 },
     }),
-    ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
     "Failed to fetch dataset details",
+    (err) => shownFor(err, ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED),
   );
   const found = Array.isArray(details.items) ? details.items : [];
   return { datasets: uniqueById(found.map(mapApiDatasetToDataset)) };
@@ -285,8 +283,8 @@ async function withFieldOfScienceNames(
   if (!Array.isArray(selected)) return payload;
   const categories = await orFail(
     loadFieldsOfScience(api.getFieldsOfScience),
-    ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
     "Failed to load fields of science for the filter",
+    (err) => shownFor(err, ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED),
   );
   if (categories.length === 0) {
     throw new ListFailure(
