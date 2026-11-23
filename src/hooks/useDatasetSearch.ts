@@ -268,7 +268,10 @@ async function withFieldOfScienceNames(
     "Failed to load fields of science for the filter",
   );
   if (categories.length === 0) {
-    throw new ListFailure(ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED);
+    throw new ListFailure(
+      ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
+      "Fields of science vocabulary was empty for the filter",
+    );
   }
   return {
     ...payload,

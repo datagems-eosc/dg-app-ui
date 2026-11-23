@@ -96,6 +96,12 @@ vi.mock("@/hooks/useApi", () => ({
   }),
 }));
 
+const mockLogError = vi.fn();
+vi.mock("@/lib/logger", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/logger")>()),
+  logError: (...args: unknown[]) => mockLogError(...args),
+}));
+
 vi.mock("@/contexts/FeatureFlagsContext", () => ({
   useFeatureFlag: () => false,
 }));
@@ -296,6 +302,10 @@ describe("dataset details page fields of science", () => {
         name: "Sea surface temperature",
       }),
     ).toBeInTheDocument();
+    expect(mockLogError).toHaveBeenCalledWith(
+      "Failed to fetch fields of science",
+      expect.any(Error),
+    );
   });
 
   it("uses a vocabulary loaded earlier in the session without asking again", async () => {

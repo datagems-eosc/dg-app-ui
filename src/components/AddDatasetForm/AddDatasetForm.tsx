@@ -716,6 +716,11 @@ export default function AddDatasetForm() {
     if (formData.classification.fieldsOfScience.length === 0) {
       newErrors.classification.fieldsOfScience =
         "At least one field of science must be selected";
+    } else if (!cachedFieldsOfScience()) {
+      // The form holds codes; without the vocabulary they cannot become the
+      // names datasets store, and codes must not be sent instead.
+      newErrors.classification.fieldsOfScience =
+        "Fields of science could not be loaded. Reload the page and try again.";
     }
 
     if (!formData.classification.license.trim()) {
@@ -784,6 +789,10 @@ export default function AddDatasetForm() {
     if (draft.scopeKey !== scopeKey) return;
 
     if (!validateForm()) return;
+    // validateForm has shown why; without the vocabulary the selected codes
+    // cannot become names, and codes must never be sent instead.
+    const vocabulary = cachedFieldsOfScience();
+    if (!vocabulary) return;
 
     const request: SubmissionRequest = {
       // Every retained file is passed, including unresolved ones. The accepted
@@ -797,10 +806,9 @@ export default function AddDatasetForm() {
           description: formData.basicInfo.description,
           keywords: formData.basicInfo.keywords,
           // The form holds codes; datasets store the vocabulary name.
-          // Classification loaded the vocabulary before any field was chosen.
           fieldsOfScience: fieldOfScienceNames(
             formData.classification.fieldsOfScience,
-            cachedFieldsOfScience() ?? [],
+            vocabulary,
           ),
           license: formData.classification.license,
           languages: formData.classification.languages,

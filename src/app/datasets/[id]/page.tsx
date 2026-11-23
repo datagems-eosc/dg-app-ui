@@ -21,7 +21,7 @@ import {
   type FieldOfScienceCategory,
   fieldOfScienceLabels,
 } from "@/lib/fieldsOfScience";
-import { logApiError } from "@/lib/logger";
+import { logApiError, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
 import { loadFieldsOfScience } from "@/lib/vocabularyService";
 
@@ -69,7 +69,8 @@ export default function DatasetDetailsPage() {
       (categories) => {
         if (!isCancelled) setFieldsOfScience(categories);
       },
-      () => {},
+      (reason: unknown) =>
+        logError("Failed to fetch fields of science", reason),
     );
     return () => {
       isCancelled = true;

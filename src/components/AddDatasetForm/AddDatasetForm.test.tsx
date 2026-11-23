@@ -352,6 +352,8 @@ const fillMetadata = async (
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Each test loads the vocabulary through its own stubs.
+  clearVocabularyCache();
   window.__env = { ...window.__env, DATAGEMS_API_BASE_URL: API_BASE };
   window.localStorage.clear();
   window.sessionStorage.clear();
@@ -583,6 +585,27 @@ describe("AddDatasetForm managed submission", () => {
     ]) {
       expect(body).not.toHaveProperty(absent);
     }
+  });
+
+  it("refuses to send codes when the vocabulary is gone at submission", async () => {
+    const user = userEvent.setup();
+    const ledger = stubBoundaries();
+    const { container } = mount();
+
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await uploadFile(user, container);
+    await fillMetadata(user);
+    clearVocabularyCache();
+    await user.click(startButton());
+
+    expect(
+      await screen.findByText(
+        "Fields of science could not be loaded. Reload the page and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(ledger.starts()).toHaveLength(0);
   });
 
   it("blocks on an unresolved file and names it, without sending anything", async () => {
@@ -1360,7 +1383,6 @@ describe("AddDatasetForm fields of science in the edit view", () => {
   });
 
   it("still fills the rest of the form when the vocabulary fails", async () => {
-    clearVocabularyCache();
     stubBoundaries({
       editDataset: {
         id: "ds-1",

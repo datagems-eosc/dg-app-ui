@@ -6,6 +6,7 @@ import {
   mapApiDatasetToDataset,
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
+import { logError } from "@/lib/logger";
 import { clearVocabularyCache } from "@/lib/vocabularyService";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
@@ -543,6 +544,7 @@ describe("useDatasetSearch", () => {
         );
         expect(api.queryDatasets).toHaveBeenCalledTimes(1);
         expect(result.current.datasets).toEqual([]);
+        expect(logError).toHaveBeenCalledTimes(1);
       },
     );
 

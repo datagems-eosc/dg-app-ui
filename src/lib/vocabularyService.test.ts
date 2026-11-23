@@ -100,6 +100,19 @@ describe("loadFieldsOfScience", () => {
     expect(categories[0].code).toBe("1");
   });
 
+  it("does not keep a vocabulary that arrives after the cache was cleared", async () => {
+    let answer!: (data: unknown) => void;
+    const pending = loadFieldsOfScience(
+      () => new Promise((resolve) => (answer = resolve)),
+    );
+
+    clearVocabularyCache();
+    answer(response);
+    await pending;
+
+    expect(cachedFieldsOfScience()).toBeNull();
+  });
+
   it("asks again after a response with no usable vocabulary", async () => {
     const request = vi
       .fn()

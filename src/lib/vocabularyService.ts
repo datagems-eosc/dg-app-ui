@@ -73,9 +73,11 @@ export function loadFieldsOfScience(
       const categories = processFieldsOfScience(
         data as VocabularyResponse | VocabularyItem[],
       );
+      // A request the cache was cleared under keeps nothing.
+      if (fieldsOfScienceRequest !== pending) return categories;
       if (categories.length > 0) {
         fieldsOfScienceLoaded = categories;
-      } else if (fieldsOfScienceRequest === pending) {
+      } else {
         fieldsOfScienceRequest = null;
       }
       return categories;
@@ -89,9 +91,8 @@ export function loadFieldsOfScience(
 }
 
 /**
- * The vocabulary `loadFieldsOfScience` has loaded, otherwise `null`. For
- * synchronous readers that only run after a field was chosen from the
- * dropdown, which needs the loaded vocabulary first.
+ * The vocabulary `loadFieldsOfScience` has loaded, otherwise `null`. A
+ * synchronous reader must handle `null`: never fall back to sending codes.
  */
 export function cachedFieldsOfScience(): FieldOfScienceCategory[] | null {
   return fieldsOfScienceLoaded;
