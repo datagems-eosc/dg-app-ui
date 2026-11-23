@@ -123,6 +123,29 @@ const throwIfAborted = (signal: AbortSignal | null | undefined): void => {
   if (signal?.aborted) throw abortError();
 };
 
+const fetchRejections = new WeakSet<object>();
+
+/**
+ * `fetch` itself, remembering what it rejected with. A rejection from `fetch`
+ * means no response arrived; a `TypeError` raised by code around it is a bug
+ * and must not be reported as an unreachable service.
+ */
+async function sendRequest(
+  input: RequestInfo,
+  init?: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    if (typeof error === "object" && error !== null) fetchRejections.add(error);
+    throw error;
+  }
+}
+
+/** True when `error` is what `fetch` rejected with inside `fetchWithAuth`. */
+export const isFetchRejection = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && fetchRejections.has(error);
+
 /**
  * Wrapper for fetch that handles auth on 401 responses:
  *   1. Forces a session refresh via getSession() — NextAuth's JWT callback
@@ -148,7 +171,7 @@ export async function fetchWithAuth(
   const optedIn = policy !== undefined;
   if (optedIn) throwIfAborted(init?.signal);
 
-  let response = await fetch(input, init);
+  let response = await sendRequest(input, init);
 
   if (response.status !== 401 || typeof window === "undefined") {
     return response;
@@ -206,7 +229,7 @@ export async function fetchWithAuth(
     retryHeaders.set("oauth2", newToken);
   }
 
-  response = await fetch(input, { ...init, headers: retryHeaders });
+  response = await sendRequest(input, { ...init, headers: retryHeaders });
 
   // Cancelled while the retry was in flight, or between its settlement and
   // this continuation. The retry has already been sent and is not undone —

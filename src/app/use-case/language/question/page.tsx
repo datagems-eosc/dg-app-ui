@@ -6,6 +6,34 @@ import { useState } from "react";
 import DGIcon from "@/components/ui/chat/DGIcon";
 import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
+import { ApiErrorMessage } from "@/lib/apiErrors";
+import {
+  GatewayError,
+  GatewayErrorKind,
+  withReference,
+} from "@/lib/gatewayError";
+
+/**
+ * The analysis service's own text for an unanswerable question is technical
+ * ("No valid RAG results were provided."), so this page always shows the
+ * rephrase copy for it, with the reference. Other Gateway failures keep their
+ * classified copy, and messages the UI wrote itself (a missing session token)
+ * stay as they are; anything else gets fixed copy, never its own text.
+ */
+const UI_MESSAGES: ReadonlySet<string> = new Set(
+  Object.values(ApiErrorMessage),
+);
+
+const analysisErrorMessage = (err: unknown): string => {
+  if (!(err instanceof GatewayError)) {
+    return err instanceof Error && UI_MESSAGES.has(err.message)
+      ? err.message
+      : ApiErrorMessage.ANALYSIS_FAILED;
+  }
+  return err.kind === GatewayErrorKind.Unanswerable
+    ? withReference(ApiErrorMessage.GATEWAY_UNANSWERABLE, err.correlationId)
+    : err.message;
+};
 
 function Toggle({
   checked,
@@ -97,11 +125,7 @@ export default function LanguageQuestionPage() {
       );
       router.push("/use-case/language/analysis");
     } catch (err) {
-      setSubmitError(
-        err instanceof Error
-          ? err.message
-          : "Analysis failed. Please try again.",
-      );
+      setSubmitError(analysisErrorMessage(err));
       setIsSubmitting(false);
     }
   };

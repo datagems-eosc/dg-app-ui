@@ -1,5 +1,30 @@
 import type { ConversationMessage } from "@/app/chat/page";
+import { ApiErrorMessage } from "@/lib/apiErrors";
+import { logWarn } from "@/lib/logger";
 import type { Message } from "@/types/chat";
+
+/**
+ * The Gateway's in-data answer status: a numeric enum (0 Success, 1 Error;
+ * dg-app-api InDataExplorationBuilder), accepted as text too. Anything else,
+ * including a missing status, is not a failure.
+ */
+const isFailedAnswer = (status: unknown): boolean =>
+  status === 1 ||
+  (typeof status === "string" && status.toLowerCase() === "error");
+
+/** A failed answer shows only the rephrase copy: no SQL, table or map. */
+const failedAnswerMessage = (
+  id: string,
+  timestamp: Message["timestamp"],
+  datasetIds: string[],
+): Message => ({
+  id,
+  type: "ai",
+  content: ApiErrorMessage.GATEWAY_UNANSWERABLE,
+  timestamp,
+  sources: datasetIds.length,
+  relatedDatasetIds: datasetIds,
+});
 
 function getMessageId(msg: unknown, idx: number): string {
   if (
@@ -121,6 +146,18 @@ export function parseConversationMessage(
   } else if (msg.kind === 3) {
     // AI message (new format) - extract table data if available
     const payload = msg.data?.payload;
+    if (
+      payload &&
+      typeof payload === "object" &&
+      isFailedAnswer((payload as { status?: unknown }).status)
+    ) {
+      // Logged when it happened, not on every history render.
+      return failedAnswerMessage(
+        msg.id || getMessageId(msg, idx),
+        msg.createdAt,
+        [],
+      );
+    }
     const relatedDatasetIds: string[] = [];
     let latitude: number | undefined;
     let longitude: number | undefined;
@@ -212,6 +249,9 @@ export function parseConversationMessage(
   };
 }
 
+const temporaryMessageId = (): string =>
+  `temp-ai-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
 export function parseSearchInDataExploreResponse(
   apiResponse: unknown,
   datasetIds: string[],
@@ -223,6 +263,7 @@ export function parseSearchInDataExploreResponse(
   const response = apiResponse as {
     result?: {
       question?: string;
+      status?: unknown;
       data?: {
         InputParams?: Array<{
           lat?: number;
@@ -248,6 +289,13 @@ export function parseSearchInDataExploreResponse(
   }
 
   const result = response.result;
+  if (isFailedAnswer(result.status)) {
+    // SQL was generated but failed to run. The service's message is technical
+    // and can quote the question, so it is neither shown nor logged.
+    logWarn("In-data answer failed");
+    return failedAnswerMessage(temporaryMessageId(), new Date(), datasetIds);
+  }
+
   let tableData: Message["tableData"] | undefined;
   let sqlQuery: string | undefined;
   let latitude: number | undefined;
@@ -296,12 +344,8 @@ export function parseSearchInDataExploreResponse(
     }
   }
 
-  // Generate a unique ID that won't conflict with server message IDs
-  // Use a prefix and timestamp to ensure uniqueness
-  const messageId = `temp-ai-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
   return {
-    id: messageId,
+    id: temporaryMessageId(),
     type: "ai",
     content,
     timestamp: new Date(),

@@ -19,6 +19,7 @@ import {
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
 import { fieldOfScienceFilterValues } from "@/lib/fieldsOfScience";
+import { GatewayError, withReference } from "@/lib/gatewayError";
 import { logError } from "@/lib/logger";
 import { loadFieldsOfScience } from "@/lib/vocabularyService";
 
@@ -161,11 +162,11 @@ type SearchApi = Pick<
 
 /** A list request that failed, with the message the page shows for it. */
 class ListFailure extends Error {
-  readonly shown: ApiErrorMessage;
+  readonly shown: string;
   readonly logAs?: string;
   readonly reason?: unknown;
 
-  constructor(shown: ApiErrorMessage, logAs?: string, reason?: unknown) {
+  constructor(shown: string, logAs?: string, reason?: unknown) {
     super(shown);
     this.shown = shown;
     this.logAs = logAs;
@@ -173,15 +174,33 @@ class ListFailure extends Error {
   }
 }
 
+/**
+ * What the page shows for a failed request: a classified Gateway failure
+ * carries its own user copy; anything else gets the step's fixed message, so
+ * a raw error text never reaches the page.
+ */
+const shownFor = (err: unknown, fallback: ApiErrorMessage): string =>
+  err instanceof GatewayError ? err.message : fallback;
+
+/**
+ * Smart search keeps its own message, which tells the user to turn it off and
+ * search by name, and only adds the reference of a classified failure.
+ */
+const smartSearchShownFor = (err: unknown): string =>
+  withReference(
+    ApiErrorMessage.SMART_SEARCH_FAILED,
+    err instanceof GatewayError ? err.correlationId : null,
+  );
+
 async function orFail<T>(
   call: Promise<T>,
-  shown: ApiErrorMessage,
   logAs: string,
+  shown: (err: unknown) => string,
 ): Promise<T> {
   try {
     return await call;
   } catch (err) {
-    throw new ListFailure(shown, logAs, err);
+    throw new ListFailure(shown(err), logAs, err);
   }
 }
 
@@ -214,8 +233,8 @@ async function loadSmart(
       resultCount: 100,
       ...(collectionId ? { collectionIds: [collectionId] } : {}),
     }),
-    ApiErrorMessage.SMART_SEARCH_FAILED,
     "Smart search failed",
+    smartSearchShownFor,
   );
   const found = mapDiscoveryResults(
     Array.isArray(data.result) ? data.result : [],
@@ -243,8 +262,8 @@ async function loadCustom(
       ids: datasetIds,
       page: { Offset: 0, Size: 100 },
     }),
-    ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
     "Failed to fetch dataset details",
+    (err) => shownFor(err, ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED),
   );
   const found = Array.isArray(details.items) ? details.items : [];
   return { datasets: uniqueById(found.map(mapApiDatasetToDataset)) };
@@ -264,8 +283,8 @@ async function withFieldOfScienceNames(
   if (!Array.isArray(selected)) return payload;
   const categories = await orFail(
     loadFieldsOfScience(api.getFieldsOfScience),
-    ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
     "Failed to load fields of science for the filter",
+    (err) => shownFor(err, ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED),
   );
   if (categories.length === 0) {
     throw new ListFailure(
@@ -442,12 +461,11 @@ export function useDatasetSearch({
       } catch (err: unknown) {
         if (!isLatest()) return;
         lastStarted.current = null;
-        // The Gateway's own error text stays in the log, not on the page.
         const failure =
           err instanceof ListFailure
             ? err
             : new ListFailure(
-                ApiErrorMessage.FETCH_DATASETS_FAILED,
+                shownFor(err, ApiErrorMessage.FETCH_DATASETS_FAILED),
                 "Failed to list datasets",
                 err,
               );

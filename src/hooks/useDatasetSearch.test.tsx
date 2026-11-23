@@ -6,6 +6,11 @@ import {
   mapApiDatasetToDataset,
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
+import {
+  gatewayErrorFromNetworkFailure,
+  gatewayErrorFromResponse,
+} from "@/lib/gatewayError";
+import { upstreamFailureBody } from "@/lib/gatewayError.fixtures";
 import { logError } from "@/lib/logger";
 import { clearVocabularyCache } from "@/lib/vocabularyService";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
@@ -332,6 +337,22 @@ describe("useDatasetSearch", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
+    it("shows the classified Gateway message for a failed catalogue", async () => {
+      api.queryDatasets.mockRejectedValue(
+        gatewayErrorFromResponse(
+          424,
+          upstreamFailureBody(503, "DataManagement"),
+        ),
+      );
+      const { result } = renderSearch();
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(
+          "The service is temporarily unavailable. Please try again. Reference: 50c7a41b",
+        ),
+      );
+    });
+
     it("clears the earlier list when a new search fails", async () => {
       api.queryDatasets.mockResolvedValueOnce({
         items: [{ id: "old", name: "Old" }],
@@ -356,7 +377,9 @@ describe("useDatasetSearch", () => {
         items: [{ id: "old", name: "Old" }],
         count: 1,
       });
-      api.searchCrossDataset.mockRejectedValueOnce(new Error("503"));
+      api.searchCrossDataset.mockRejectedValueOnce(
+        gatewayErrorFromResponse(424, upstreamFailureBody(503, "Discovery")),
+      );
       const { result } = renderSearch();
       await waitFor(() =>
         expect(result.current.datasets.map((d) => d.id)).toEqual(["old"]),
@@ -366,9 +389,26 @@ describe("useDatasetSearch", () => {
       act(() => result.current.onSmartSearchToggle(true));
 
       await waitFor(() =>
-        expect(result.current.error).toBe(ApiErrorMessage.SMART_SEARCH_FAILED),
+        expect(result.current.error).toBe(
+          `${ApiErrorMessage.SMART_SEARCH_FAILED} Reference: 50c7a41b`,
+        ),
       );
       expect(result.current.datasets).toEqual([]);
+    });
+
+    it("keeps the Smart search message without a reference when no response came", async () => {
+      api.searchCrossDataset.mockRejectedValueOnce(
+        gatewayErrorFromNetworkFailure(new TypeError("Failed to fetch")),
+      );
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalled());
+
+      act(() => result.current.onSearchTermChange("rain in Crete"));
+      act(() => result.current.onSmartSearchToggle(true));
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(ApiErrorMessage.SMART_SEARCH_FAILED),
+      );
     });
 
     it("ignores a failure that arrives after a newer search succeeded", async () => {
@@ -403,6 +443,20 @@ describe("useDatasetSearch", () => {
       await waitFor(() =>
         expect(result.current.error).toBe("Failed to fetch datasets"),
       );
+    });
+
+    it("shows the classified Gateway message for a failed step too", async () => {
+      const outage = gatewayErrorFromResponse(
+        424,
+        upstreamFailureBody(503, "DataManagement"),
+      );
+      api.queryUserCollections.mockResolvedValue({
+        items: [{ id: "mine", datasets: [{ id: "a" }] }],
+      });
+      api.queryDatasets.mockRejectedValue(outage);
+      const { result } = renderSearch({ kind: "custom", id: "mine" });
+
+      await waitFor(() => expect(result.current.error).toBe(outage.message));
     });
 
     it("says which step failed when a custom collection's details fail", async () => {
@@ -547,6 +601,28 @@ describe("useDatasetSearch", () => {
         expect(logError).toHaveBeenCalledTimes(1);
       },
     );
+
+    it("shows the classified message when the vocabulary request fails at the Gateway", async () => {
+      api.getFieldsOfScience.mockRejectedValue(
+        gatewayErrorFromResponse(424, upstreamFailureBody(503)),
+      );
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+      act(() =>
+        result.current.onApplyFilters({
+          ...getDefaultFilters(),
+          fieldsOfScience: ["1.1"],
+        }),
+      );
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(
+          `${ApiErrorMessage.GATEWAY_UNAVAILABLE} Reference: 50c7a41b`,
+        ),
+      );
+      expect(api.queryDatasets).toHaveBeenCalledTimes(1);
+    });
 
     it("keeps the name and the code on the next page", async () => {
       api.queryDatasets.mockResolvedValue({
