@@ -328,6 +328,23 @@ describe("DatasetRecommendationsSection — cancellation", () => {
     expect(signalOf(getDatasetRecommendations)?.aborted).toBe(true);
   });
 
+  it("does not cancel a request that has already answered", async () => {
+    getDatasetRecommendations.mockResolvedValue(
+      datasets({ id: "r1", name: "Alpha Dataset", description: "desc" }),
+    );
+
+    const { unmount } = render(
+      <DatasetRecommendationsSection datasetId="d1" />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText("Alpha Dataset")).toBeInTheDocument(),
+    );
+    unmount();
+
+    expect(signalOf(getDatasetFeatures)?.aborted).toBe(false);
+    expect(signalOf(getDatasetRecommendations)?.aborted).toBe(false);
+  });
+
   it("cancels the previous dataset's feature status read on a dataset change", async () => {
     getDatasetFeatures
       .mockReturnValueOnce(new Promise(() => {}))

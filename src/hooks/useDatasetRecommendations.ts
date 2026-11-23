@@ -53,8 +53,11 @@ export function useDatasetRecommendations(
     const readFeatures = featuresRef.current;
     // Leaving the page or the dataset cancels the requests still running: the
     // first recommend answer can take about 40 seconds.
+    // Only while they run: an answered request aborted afterwards still shows
+    // as cancelled in the browser's network panel.
     const controller = new AbortController();
     const { signal } = controller;
+    let settled = false;
     // Backstop only: the adapters never reject. If one did, the section must
     // not stay loading.
     const ask = async (): Promise<DatasetRecommendationsResult | null> => {
@@ -68,12 +71,13 @@ export function useDatasetRecommendations(
       );
     };
     ask().then((result) => {
+      settled = true;
       if (result && !signal.aborted) {
         setAnswer({ datasetId, result, via: send });
       }
     });
     return () => {
-      controller.abort();
+      if (!settled) controller.abort();
     };
   }, [datasetId, hasToken, needsRequest, current]);
 
