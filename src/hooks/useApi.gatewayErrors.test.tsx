@@ -63,7 +63,7 @@ describe("useApi Gateway error messages", () => {
     );
   });
 
-  it("shows the service's message for an unanswerable Language question", async () => {
+  it("keeps the service's message for an unanswerable Chat question", async () => {
     const payload = JSON.stringify({
       code: 102,
       error: "validation error",
@@ -78,10 +78,7 @@ describe("useApi Gateway error messages", () => {
     const { result } = renderHook(() => useApi());
 
     await expect(
-      result.current.getLinguisticFeatures({
-        DatasetIds: ["d-1"],
-        Query: "qwzx vbnm plok",
-      }),
+      result.current.searchInDataExplore({ question: "qwzx vbnm plok" }),
     ).rejects.toThrow(
       "The question cannot be answered from this dataset. Reference: 50c7a41b",
     );

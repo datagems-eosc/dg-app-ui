@@ -15,6 +15,7 @@ export enum ApiErrorMessage {
   DOWNLOAD_FILE_FAILED = "Failed to download file",
   SMART_SEARCH_FAILED = "Smart search is not available right now. Try again, or turn off Smart search to search dataset names and descriptions.",
   LOAD_MORE_DATASETS_FAILED = "Couldn't load more datasets. Try again.",
+  ANALYSIS_FAILED = "Analysis failed. Please try again.",
   // Classified Gateway failures; see lib/gatewayError.
   GATEWAY_UNANSWERABLE = "This question can't be answered from the selected data. Try rephrasing it.",
   GATEWAY_UNAVAILABLE = "The service is temporarily unavailable. Please try again.",

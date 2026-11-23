@@ -74,19 +74,34 @@ describe("LanguageQuestionPage failed analysis", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows fixed copy, not the parser's text, when the answer is unreadable", async () => {
+    api.getLinguisticFeatures.mockRejectedValue(
+      new SyntaxError("Unexpected token '<', \"<html>\" is not valid JSON"),
+    );
+    askAndStart();
+
+    expect(
+      await screen.findByText("Analysis failed. Please try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Unexpected token/)).not.toBeInTheDocument();
+  });
+
+  it("keeps a message the UI wrote itself, such as a missing session token", async () => {
+    api.getLinguisticFeatures.mockRejectedValue(
+      new Error("No authentication token available"),
+    );
+    askAndStart();
+
+    expect(
+      await screen.findByText("No authentication token available"),
+    ).toBeInTheDocument();
+  });
+
   it("shows the unanswerable message and reference, not the Gateway text", async () => {
     api.getLinguisticFeatures.mockRejectedValue(
       gatewayErrorFromResponse(424, upstreamFailureBody(422)),
     );
-    render(<LanguageQuestionPage />);
-
-    fireEvent.change(screen.getByPlaceholderText("Ask a question..."), {
-      target: { value: "qwzx vbnm plok" },
-    });
-    fireEvent.keyDown(screen.getByPlaceholderText("Ask a question..."), {
-      key: "Enter",
-    });
-    fireEvent.click(screen.getByRole("button", { name: /start analysis/i }));
+    askAndStart();
 
     expect(
       await screen.findByText(
