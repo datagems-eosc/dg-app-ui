@@ -500,7 +500,7 @@ export function ProcessingView({
         </div>
       )}
 
-      {sharingCopy === null ? null : <Notice {...sharingCopy} />}
+      {sharingCopy === null ? null : <Notice {...sharingCopy} wrap="words" />}
     </section>
   );
 }

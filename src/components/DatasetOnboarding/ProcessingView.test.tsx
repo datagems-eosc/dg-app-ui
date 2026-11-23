@@ -842,14 +842,25 @@ describe("ProcessingView", () => {
 
   // Its notices hold sentences, not file names: they break between words, as
   // before the notice box was shared with the dataset-adding screen.
-  it("breaks notice text only between words", () => {
-    render(<ProcessingView view={failedView} />);
-
-    const body = screen.getByText(
+  it.each([
+    [
+      "the headline",
+      failedView,
       "Ask a DataGEMS administrator to check this dataset.",
-    );
-    expect(body.className).toContain("break-words");
-    expect(body.className).not.toContain("wrap-anywhere");
+    ],
+    [
+      "the sharing notice",
+      historicalSharingFailedView,
+      "Ask a DataGEMS administrator to check access.",
+    ],
+  ])("breaks %s text only between words", (_name, view, text) => {
+    render(<ProcessingView view={view} />);
+
+    expect(screen.getByText(text).className).toContain("break-words");
+    // No notice on the screen breaks inside words.
+    for (const notice of screen.getAllByTestId("notice")) {
+      expect(notice.querySelector(".wrap-anywhere")).toBeNull();
+    }
   });
 
   it("renders without a title at all", () => {

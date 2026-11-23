@@ -114,6 +114,8 @@ describe("DatasetRecommendationsSection — notes", () => {
       render(<DatasetRecommendationsSection datasetId="d1" />);
 
       expect(await screen.findByText(note)).toBeInTheDocument();
+      // In the shared notice box, not a box of its own.
+      expect(screen.getByTestId("notice")).toHaveTextContent(note);
       expect(
         screen.getByRole("heading", { name: "Recommended datasets" }),
       ).toBeInTheDocument();

@@ -383,7 +383,7 @@ async function forbiddenStart() {
       "403 cannot replay Start",
       w.count("start") === 1 && w.count("upload") === 1,
     );
-    await page.getByTestId("submission-notice").screenshot({
+    await page.getByTestId("notice").screenshot({
       path: path.join(out, `08-forbidden-start-${viewport.width}.png`),
     });
     await page.getByRole("button", { name: "Go to Browse" }).click();
