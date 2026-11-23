@@ -6,10 +6,7 @@ import {
   mapApiDatasetToDataset,
   mapDiscoveryResults,
 } from "@/lib/datasetMapping";
-import {
-  clearVocabularyCache,
-  loadFieldsOfScience,
-} from "@/lib/vocabularyService";
+import { clearVocabularyCache } from "@/lib/vocabularyService";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -17,6 +14,7 @@ const api = {
   queryDatasets: vi.fn(),
   queryUserCollections: vi.fn(),
   searchCrossDataset: vi.fn(),
+  getFieldsOfScience: vi.fn(),
 };
 
 // useApi returns a new object on every render, as the real hook does.
@@ -469,28 +467,29 @@ describe("useDatasetSearch", () => {
   });
 
   describe("field-of-science filter", () => {
-    // Browse loads the vocabulary before a field can be chosen; the request
-    // reads that loaded vocabulary. Which values a selection sends is unit
-    // tested with `fieldOfScienceFilterValues`; these tests cover the wiring.
-    beforeEach(async () => {
+    // Which values a selection sends is unit tested with
+    // `fieldOfScienceFilterValues`; these tests cover the wiring.
+    const VOCABULARY = {
+      hierarchy: [
+        {
+          ordinal: 1,
+          code: "1",
+          name: "NATURAL SCIENCES",
+          children: [
+            { ordinal: 1, code: "1.1", name: "MATHEMATICS" },
+            {
+              ordinal: 2,
+              code: "1.2",
+              name: "COMPUTER AND INFORMATION SCIENCES",
+            },
+          ],
+        },
+      ],
+    };
+
+    beforeEach(() => {
       clearVocabularyCache();
-      await loadFieldsOfScience(async () => ({
-        hierarchy: [
-          {
-            ordinal: 1,
-            code: "1",
-            name: "NATURAL SCIENCES",
-            children: [
-              { ordinal: 1, code: "1.1", name: "MATHEMATICS" },
-              {
-                ordinal: 2,
-                code: "1.2",
-                name: "COMPUTER AND INFORMATION SCIENCES",
-              },
-            ],
-          },
-        ],
-      }));
+      api.getFieldsOfScience.mockResolvedValue(VOCABULARY);
     });
 
     afterEach(() => clearVocabularyCache());
@@ -514,12 +513,51 @@ describe("useDatasetSearch", () => {
       expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS", "1.1"]);
     });
 
-    it("sends the selected values as they are while the vocabulary is not loaded", async () => {
-      clearVocabularyCache();
+    it.each([
+      [
+        "fails",
+        () => api.getFieldsOfScience.mockRejectedValue(new Error("503")),
+      ],
+      [
+        "is empty",
+        () => api.getFieldsOfScience.mockResolvedValue({ hierarchy: [] }),
+      ],
+    ])(
+      "reports the filter as failed instead of sending codes alone when the vocabulary %s",
+      async (_, vocabulary) => {
+        vocabulary();
+        const { result } = renderSearch();
+        await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
 
-      await applyFields(["1.1"]);
+        act(() =>
+          result.current.onApplyFilters({
+            ...getDefaultFilters(),
+            fieldsOfScience: ["1.1"],
+          }),
+        );
 
-      expect(lastCatalogue().fieldsOfScience).toEqual(["1.1"]);
+        await waitFor(() =>
+          expect(result.current.error).toBe(
+            ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
+          ),
+        );
+        expect(api.queryDatasets).toHaveBeenCalledTimes(1);
+        expect(result.current.datasets).toEqual([]);
+      },
+    );
+
+    it("keeps the name and the code on the next page", async () => {
+      api.queryDatasets.mockResolvedValue({
+        items: [{ id: "a", name: "A" }],
+        count: 2,
+      });
+      const result = await applyFields(["1.1"]);
+      await waitFor(() => expect(result.current.hasMore).toBe(true));
+
+      await act(async () => result.current.onLoadMore());
+
+      expect(api.queryDatasets).toHaveBeenCalledTimes(3);
+      expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS", "1.1"]);
     });
 
     it("sends no field of science once the filter is cleared", async () => {
