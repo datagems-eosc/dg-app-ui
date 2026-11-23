@@ -13,6 +13,31 @@ describe("DatasetTagsSection", () => {
     expect(screen.getByText("weather")).toBeInTheDocument();
   });
 
+  it("shows a placeholder instead of the tags while they load", () => {
+    render(
+      <DatasetTagsSection
+        title="Fields of Science"
+        items={["4.1", "1.1"]}
+        isLoading
+      />,
+    );
+
+    expect(screen.getByText("Fields of Science")).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: "Loading Fields of Science" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("4.1")).not.toBeInTheDocument();
+    expect(screen.queryByText("1.1")).not.toBeInTheDocument();
+  });
+
+  it("renders nothing while loading when there are no values", () => {
+    const { container } = render(
+      <DatasetTagsSection title="Fields of Science" items={[]} isLoading />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("renders no heading or chip row without values", () => {
     const { container } = render(
       <DatasetTagsSection title="Keywords" items={[]} />,

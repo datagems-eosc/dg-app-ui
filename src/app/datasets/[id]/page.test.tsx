@@ -270,7 +270,10 @@ describe("dataset details page fields of science", () => {
     expect(fields().queryByText("MATHEMATICS")).not.toBeInTheDocument();
   });
 
-  it("shows the dataset before the vocabulary arrives, then the names", async () => {
+  const loadingFields = () =>
+    screen.queryByRole("status", { name: "Loading Fields of Science" });
+
+  it("shows the dataset with a placeholder for fields of science until the names arrive", async () => {
     const vocabulary = deferred<typeof FIELDS_OF_SCIENCE>();
     mockGetFieldsOfScience.mockReturnValue(vocabulary.promise);
     mockGetDatasetById.mockResolvedValue({
@@ -279,12 +282,46 @@ describe("dataset details page fields of science", () => {
     });
     await renderPage();
 
-    expect(fields().getByText("1.1")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Sea surface temperature",
+      }),
+    ).toBeInTheDocument();
+    expect(loadingFields()).toBeInTheDocument();
+    expect(fields().queryByText("1.1")).not.toBeInTheDocument();
 
     await act(async () => vocabulary.resolve(FIELDS_OF_SCIENCE));
 
+    expect(loadingFields()).not.toBeInTheDocument();
     expect(fields().getByText("Mathematics")).toBeInTheDocument();
     expect(fields().queryByText("1.1")).not.toBeInTheDocument();
+  });
+
+  it("shows no fields-of-science placeholder for a dataset without fields", async () => {
+    mockGetFieldsOfScience.mockReturnValue(new Promise(() => {}));
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: [],
+    });
+    await renderPage();
+
+    expect(loadingFields()).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { level: 3, name: "Fields of Science" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows stored values as stored when the vocabulary comes back empty", async () => {
+    mockGetFieldsOfScience.mockResolvedValue({ hierarchy: [] });
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(loadingFields()).not.toBeInTheDocument();
+    expect(fields().getByText("1.1")).toBeInTheDocument();
   });
 
   it("shows stored values as stored when the vocabulary cannot be loaded", async () => {
@@ -295,6 +332,7 @@ describe("dataset details page fields of science", () => {
     });
     await renderPage();
 
+    expect(loadingFields()).not.toBeInTheDocument();
     expect(fields().getByText("1.1")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {

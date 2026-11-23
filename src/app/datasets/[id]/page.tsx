@@ -57,11 +57,12 @@ export default function DatasetDetailsPage() {
     status: "loading",
   });
 
-  // Fields of science show as stored until the vocabulary arrives, and stay
-  // so if it cannot be loaded; the dataset never waits for it.
+  // The dataset never waits for the vocabulary: its fields of science show a
+  // placeholder until it arrives (null), and show as stored when it cannot be
+  // loaded or comes back empty.
   const [fieldsOfScience, setFieldsOfScience] = useState<
-    FieldOfScienceCategory[]
-  >([]);
+    FieldOfScienceCategory[] | null
+  >(null);
   useEffect(() => {
     if (!api.hasToken) return;
     let isCancelled = false;
@@ -69,8 +70,10 @@ export default function DatasetDetailsPage() {
       (categories) => {
         if (!isCancelled) setFieldsOfScience(categories);
       },
-      (reason: unknown) =>
-        logError("Failed to fetch fields of science", reason),
+      (reason: unknown) => {
+        logError("Failed to fetch fields of science", reason);
+        if (!isCancelled) setFieldsOfScience([]);
+      },
     );
     return () => {
       isCancelled = true;
@@ -213,7 +216,7 @@ export default function DatasetDetailsPage() {
             ...readDataset,
             fieldOfScience: fieldOfScienceLabels(
               readDataset.fieldOfScience,
-              fieldsOfScience,
+              fieldsOfScience ?? [],
             ),
           }
         : readDataset,
@@ -266,6 +269,7 @@ export default function DatasetDetailsPage() {
       <DatasetDetailsPageContent
         key={owner}
         dataset={dataset}
+        fieldsOfSciencePending={fieldsOfScience === null}
         returnToRoles={returnTo === "settings-roles"}
       />
     </DashboardLayout>
