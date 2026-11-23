@@ -58,11 +58,14 @@ function mapTreeToFileNodes(nodes: ProfileTreeNode[]): FileNode[] {
 
 interface DatasetDetailsPageContentProps {
   dataset: DatasetPlus;
+  /** The fields-of-science names are still loading. */
+  fieldsOfSciencePending?: boolean;
   returnToRoles?: boolean;
 }
 
 export default function DatasetDetailsPageContent({
   dataset,
+  fieldsOfSciencePending = false,
   returnToRoles = false,
 }: DatasetDetailsPageContentProps) {
   const router = useRouter();
@@ -171,6 +174,7 @@ export default function DatasetDetailsPageContent({
                     <DatasetTagsSection
                       title="Fields of Science"
                       items={dataset.fieldOfScience}
+                      isLoading={fieldsOfSciencePending}
                     />
                   )}
                 {dataset.keywords && dataset.keywords.length > 0 && (

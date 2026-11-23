@@ -17,8 +17,13 @@ import {
   SHARING_WITHOUT_EVIDENCE,
 } from "@/lib/datasetPermissions/model";
 import { ACCESS_ACTION_NAMES } from "@/lib/datasetPermissions/types";
-import { logApiError } from "@/lib/logger";
+import {
+  type FieldOfScienceCategory,
+  fieldOfScienceLabels,
+} from "@/lib/fieldsOfScience";
+import { logApiError, logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
+import { loadFieldsOfScience } from "@/lib/vocabularyService";
 
 const DATASET_ERROR_MESSAGES = {
   "not-found": "Dataset not found.",
@@ -51,6 +56,29 @@ export default function DatasetDetailsPage() {
     owner: null,
     status: "loading",
   });
+
+  // The dataset never waits for the vocabulary: its fields of science show a
+  // placeholder until it arrives (null), and show as stored when it cannot be
+  // loaded or comes back empty.
+  const [fieldsOfScience, setFieldsOfScience] = useState<
+    FieldOfScienceCategory[] | null
+  >(null);
+  useEffect(() => {
+    if (!api.hasToken) return;
+    let isCancelled = false;
+    loadFieldsOfScience(api.getFieldsOfScience).then(
+      (categories) => {
+        if (!isCancelled) setFieldsOfScience(categories);
+      },
+      (reason: unknown) => {
+        logError("Failed to fetch fields of science", reason);
+        if (!isCancelled) setFieldsOfScience([]);
+      },
+    );
+    return () => {
+      isCancelled = true;
+    };
+  }, [api.hasToken, api.getFieldsOfScience]);
 
   const datasetId = useMemo(() => {
     if (!params?.id || typeof params.id !== "string") {
@@ -179,8 +207,21 @@ export default function DatasetDetailsPage() {
         ? read.kind
         : null;
   const error = errorKind ? DATASET_ERROR_MESSAGES[errorKind] : null;
-  const dataset =
+  const readDataset =
     read.owner === owner && read.status === "success" ? read.dataset : null;
+  const dataset = useMemo(
+    () =>
+      readDataset?.fieldOfScience
+        ? {
+            ...readDataset,
+            fieldOfScience: fieldOfScienceLabels(
+              readDataset.fieldOfScience,
+              fieldsOfScience ?? [],
+            ),
+          }
+        : readDataset,
+    [readDataset, fieldsOfScience],
+  );
   const isLoading =
     !error && (read.owner !== owner || read.status === "loading");
 
@@ -228,6 +269,7 @@ export default function DatasetDetailsPage() {
       <DatasetDetailsPageContent
         key={owner}
         dataset={dataset}
+        fieldsOfSciencePending={fieldsOfScience === null}
         returnToRoles={returnTo === "settings-roles"}
       />
     </DashboardLayout>

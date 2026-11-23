@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -11,22 +11,22 @@ const CATEGORY_SOURCE = [
     name: "Natural sciences",
     code: "1",
     options: [
-      { value: "1.01", label: "Mathematics", code: "1.01" },
-      { value: "1.02", label: "Computer sciences", code: "1.02" },
+      { code: "1.01", label: "Mathematics" },
+      { code: "1.02", label: "Computer sciences" },
     ],
   },
   {
     name: "Engineering and technology",
     code: "2",
     options: [
-      { value: "2.01", label: "Civil engineering", code: "2.01" },
-      { value: "2.02", label: "Electrical engineering", code: "2.02" },
+      { code: "2.01", label: "Civil engineering" },
+      { code: "2.02", label: "Electrical engineering" },
     ],
   },
   {
     name: "Medical and health sciences",
     code: "3",
-    options: [{ value: "3.01", label: "Basic medicine", code: "3.01" }],
+    options: [{ code: "3.01", label: "Basic medicine" }],
   },
 ];
 
@@ -73,8 +73,8 @@ function ControlledDropdown({
 
   return (
     <HierarchicalDropdown
-      value={value}
-      onChange={(next) => {
+      selectedCodes={value}
+      onSelectedCodesChange={(next) => {
         setValue(next);
         onValueChange?.(next);
       }}
@@ -304,8 +304,8 @@ describe("HierarchicalDropdown", () => {
       const user = userEvent.setup();
       const { rerender } = render(
         <HierarchicalDropdown
-          value={["1.01"]}
-          onChange={() => {}}
+          selectedCodes={["1.01"]}
+          onSelectedCodesChange={() => {}}
           categories={createCategories()}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -316,8 +316,8 @@ describe("HierarchicalDropdown", () => {
 
       rerender(
         <HierarchicalDropdown
-          value={["1.01"]}
-          onChange={() => {}}
+          selectedCodes={["1.01"]}
+          onSelectedCodesChange={() => {}}
           categories={createCategories()}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -331,8 +331,8 @@ describe("HierarchicalDropdown", () => {
       const user = userEvent.setup();
       const { rerender } = render(
         <HierarchicalDropdown
-          value={[]}
-          onChange={() => {}}
+          selectedCodes={[]}
+          onSelectedCodesChange={() => {}}
           categories={guarded([])}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -346,8 +346,8 @@ describe("HierarchicalDropdown", () => {
 
       rerender(
         <HierarchicalDropdown
-          value={[]}
-          onChange={() => {}}
+          selectedCodes={[]}
+          onSelectedCodesChange={() => {}}
           categories={createCategories()}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -364,8 +364,8 @@ describe("HierarchicalDropdown", () => {
     it("tolerates a categories prop that is not an array", () => {
       render(
         <HierarchicalDropdown
-          value={[]}
-          onChange={() => {}}
+          selectedCodes={[]}
+          onSelectedCodesChange={() => {}}
           categories={undefined as unknown as HierarchicalCategory[]}
           searchPlaceholder="Search..."
           noOptionsText="No fields of science found"
@@ -375,6 +375,89 @@ describe("HierarchicalDropdown", () => {
       expect(
         screen.getByText("No fields of science found"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("options that share a label", () => {
+    // The fields-of-science vocabulary lists Materials engineering under two
+    // codes.
+    const namedCategories = (): HierarchicalCategory[] =>
+      guarded([
+        {
+          name: "Engineering and technology",
+          code: "2",
+          options: [{ code: "2.5", label: "Materials engineering" }],
+        },
+        {
+          name: "Medical and health sciences",
+          code: "3",
+          options: [{ code: "3.5", label: "Materials engineering" }],
+        },
+      ]);
+
+    it("gives each listed option its own checkbox, even for a repeated value", async () => {
+      const user = userEvent.setup();
+      render(<ControlledDropdown categories={namedCategories()} />);
+
+      await user.type(searchBox(), "materials");
+
+      const checkboxes = screen.getAllByLabelText("Materials engineering");
+      const ids = checkboxes.map((checkbox) => checkbox.id);
+      expect(checkboxes).toHaveLength(2);
+      expect(new Set(ids).size).toBe(2);
+      for (const id of ids) {
+        expect(id).not.toMatch(/\s/);
+      }
+    });
+
+    it("selects only the ticked option, reporting its code", async () => {
+      const user = userEvent.setup();
+      const changes: string[][] = [];
+      render(
+        <ControlledDropdown
+          categories={namedCategories()}
+          onValueChange={(value) => changes.push(value)}
+        />,
+      );
+
+      await user.type(searchBox(), "materials");
+      const [engineering, medical] = screen.getAllByLabelText(
+        "Materials engineering",
+      );
+      await user.click(engineering as HTMLElement);
+
+      expect(changes).toEqual([["2.5"]]);
+      expect(engineering).toBeChecked();
+      expect(medical).not.toBeChecked();
+      // Only the ticked row's category counts a selection.
+      const header = (name: string) =>
+        within(screen.getByText(name).parentElement as HTMLElement);
+      expect(header("Engineering and technology").getByText("1")).toBeVisible();
+      expect(
+        header("Medical and health sciences").queryByText("1"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("deselects only the unticked option", async () => {
+      const user = userEvent.setup();
+      const changes: string[][] = [];
+      render(
+        <ControlledDropdown
+          categories={namedCategories()}
+          initialValue={["2.5", "3.5"]}
+          onValueChange={(value) => changes.push(value)}
+        />,
+      );
+
+      await user.type(searchBox(), "materials");
+      const [engineering, medical] = screen.getAllByLabelText(
+        "Materials engineering",
+      );
+      await user.click(medical as HTMLElement);
+
+      expect(changes).toEqual([["2.5"]]);
+      expect(engineering).toBeChecked();
+      expect(medical).not.toBeChecked();
     });
   });
 });
