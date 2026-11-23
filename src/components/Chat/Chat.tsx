@@ -641,15 +641,13 @@ export default function Chat({
         );
 
         if (aiMessage) {
-          // Add AI message to state
           setMessages((prev) => [...prev, aiMessage]);
-
-          // Hide the working status
-          setIsGeneratingAIResponse(false);
-
-          // Rekomendacje będą pobrane przez useEffect po zakończeniu isGeneratingAIResponse
+        } else {
+          setError(ApiErrorMessage.SEARCH_IN_DATA_FAILED);
         }
 
+        // Hide the working status; recommendations load once it is gone
+        setIsGeneratingAIResponse(false);
         setIsLoading(false);
         return;
       }
@@ -1167,6 +1165,8 @@ export default function Chat({
 
   // Helper: Only disable input when loading or generating AI response
   const isInputDisabled = isLoading || isGeneratingAIResponse;
+  // The working status is the waiting indicator; the input only shows its own while none is up
+  const isInputSending = isLoading && !isGeneratingAIResponse;
 
   // Add scroll-to-bottom for messages
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -1286,7 +1286,7 @@ export default function Chat({
                 }}
                 selectedCollection={selectedCollection}
                 onSelectCollection={handleSelectCollection}
-                isLoading={isLoading}
+                isLoading={isInputSending}
                 disabled={isInputDisabled}
                 error={error}
                 showAddDatasetsModal={showAddDatasetsModal}
@@ -1322,7 +1322,7 @@ export default function Chat({
               }}
               selectedCollection={selectedCollection}
               onSelectCollection={handleSelectCollection}
-              isLoading={isLoading}
+              isLoading={isInputSending}
               disabled={isInputDisabled}
               error={error}
               showAddDatasetsModal={showAddDatasetsModal}

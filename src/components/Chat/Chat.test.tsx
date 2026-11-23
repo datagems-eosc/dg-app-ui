@@ -49,8 +49,14 @@ vi.mock("@ui/chat/ChatInput", () => ({
     onSend: (e?: unknown) => void;
     onSelectCollection?: (c: unknown) => void;
     placeholder?: string;
+    error?: string | null;
+    isLoading?: boolean;
+    disabled?: boolean;
   }) => (
     <div>
+      {props.error ? <p>{props.error}</p> : null}
+      {props.isLoading ? <p>Sending...</p> : null}
+      {props.disabled ? <p>Input locked</p> : null}
       <button
         type="button"
         onClick={() =>
@@ -252,6 +258,19 @@ describe("Chat – working status", () => {
     expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
   });
 
+  it("keeps the input locked without its own sending spinner while the status shows", async () => {
+    const search = pending();
+    api.searchCrossDataset.mockReturnValue(search.promise);
+    renderChat();
+    await send();
+
+    expect(await screen.findByText("Working: discovery")).toBeInTheDocument();
+    expect(screen.getByText("Input locked")).toBeInTheDocument();
+    expect(screen.queryByText("Sending...")).not.toBeInTheDocument();
+    await act(async () => search.resolve(crossDatasetResult));
+    expect(screen.queryByText("Input locked")).not.toBeInTheDocument();
+  });
+
   it("removes the working status when the request fails", async () => {
     const search = pending();
     api.searchCrossDataset.mockReturnValue(search.promise);
@@ -319,6 +338,22 @@ describe("Chat – working status", () => {
     expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
     await act(async () => answer.reject(new Error("unavailable")));
     expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+  });
+
+  it("removes the working status and shows an error when a follow-up answer cannot be read", async () => {
+    const answer = pending();
+    api.searchInDataExplore.mockReturnValue(answer.promise);
+    renderChat({
+      selectedDatasets: ["ds-1"],
+      conversationId: "conv-1",
+      initialMessages: [],
+    });
+    await send();
+
+    expect(await screen.findByText("Working: in-dataset")).toBeInTheDocument();
+    await act(async () => answer.resolve({}));
+    expect(screen.queryByText(/^Working:/)).not.toBeInTheDocument();
+    expect(screen.getByText("Failed to search in data")).toBeInTheDocument();
   });
 
   it("removes the working status when answering from confirmed datasets fails", async () => {

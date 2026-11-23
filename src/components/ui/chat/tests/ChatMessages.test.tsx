@@ -191,35 +191,44 @@ describe("ChatMessages", () => {
     ).not.toBeInTheDocument();
   });
 
-  it.each([
-    [
-      "discovery",
-      [
-        "Looking for datasets that can answer this",
-        "Checking which datasets match your question",
-      ],
-    ],
-    [
-      "in-dataset",
-      [
-        "Reading the selected datasets",
-        "Running the analysis",
-        "Preparing the answer",
-      ],
-    ],
-  ] as const)("shows the %s texts in a loop", (workingStep, texts) => {
+  const activeText = (container: HTMLElement) =>
+    container.querySelector('[data-active="true"]')?.textContent;
+
+  it("shows the discovery texts in a loop", () => {
     vi.useFakeTimers();
     const { container } = render(
-      <ChatMessages {...defaultProps} pendingStep={workingStep} />,
+      <ChatMessages {...defaultProps} pendingStep="discovery" />,
     );
-    const shown = () =>
-      container.querySelector('[data-active="true"]')?.textContent;
 
-    for (const text of texts) {
-      expect(shown()).toContain(text);
+    for (const text of [
+      "Looking for datasets that can answer this",
+      "Checking which datasets match your question",
+    ]) {
+      expect(activeText(container)).toContain(text);
       act(() => vi.advanceTimersByTime(6000));
     }
-    expect(shown()).toContain(texts[0]);
+    expect(activeText(container)).toContain(
+      "Looking for datasets that can answer this",
+    );
+  });
+
+  it("shows the in-dataset texts once in order and stays on the last one", () => {
+    vi.useFakeTimers();
+    const { container } = render(
+      <ChatMessages {...defaultProps} pendingStep="in-dataset" />,
+    );
+
+    for (const text of [
+      "Reading the selected datasets",
+      "Running the analysis",
+      "Preparing the answer",
+      "Still working on the answer",
+    ]) {
+      expect(activeText(container)).toContain(text);
+      act(() => vi.advanceTimersByTime(6000));
+    }
+    act(() => vi.advanceTimersByTime(60000));
+    expect(activeText(container)).toContain("Still working on the answer");
   });
 
   it("starts the new step from its first text when the step changes", () => {

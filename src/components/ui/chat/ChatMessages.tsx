@@ -7,6 +7,7 @@ import type { Message } from "@/types/chat";
 import { WorkingStatus } from "../WorkingStatus";
 import {
   CHAT_WORKING_MESSAGES,
+  CHAT_WORKING_REPEAT,
   type ChatWorkingStep,
 } from "./chatWorkingStatus";
 import MessageItem from "./MessageItem";
@@ -96,6 +97,7 @@ export default function ChatMessages({
           <WorkingStatus
             key={pendingStep}
             messages={CHAT_WORKING_MESSAGES[pendingStep]}
+            repeat={CHAT_WORKING_REPEAT[pendingStep]}
             elapsed
           />
         </div>
