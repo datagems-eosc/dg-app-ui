@@ -16,11 +16,6 @@ vi.mock("@/contexts/FeatureFlagsContext", () => ({
 
 import LanguageQuestionPage from "./page";
 
-/**
- * A meaningless question used to show "error
- * communicating with underpinning service". The page now shows the classified
- * message with its reference.
- */
 const askAndStart = () => {
   render(<LanguageQuestionPage />);
   fireEvent.change(screen.getByPlaceholderText("Ask a question..."), {

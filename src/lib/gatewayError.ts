@@ -13,36 +13,55 @@
 import { ApiErrorMessage } from "./apiErrors";
 import { logApiError } from "./logger";
 
-export type GatewayErrorKind = "unanswerable" | "unavailable" | "generic";
-
-interface GatewayErrorDetails {
-  kind: GatewayErrorKind;
-  status: number | null;
-  code: number | null;
-  source: string | null;
-  upstreamStatus: number | null;
-  correlationId: string | null;
+export enum GatewayErrorKind {
+  Unanswerable = "unanswerable",
+  Unavailable = "unavailable",
+  Generic = "generic",
 }
 
-export class GatewayError extends Error {
+/**
+ * What support needs to trace a failure, and all that is logged. Deliberately
+ * no payload or response text: those can echo the user's question.
+ */
+export interface GatewayErrorDetails {
   readonly kind: GatewayErrorKind;
   readonly status: number | null;
   readonly code: number | null;
   readonly source: string | null;
   readonly upstreamStatus: number | null;
   readonly correlationId: string | null;
+}
 
-  constructor(message: string, details: GatewayErrorDetails) {
-    super(message);
+export class GatewayError extends Error {
+  readonly details: GatewayErrorDetails;
+
+  constructor(
+    message: string,
+    details: GatewayErrorDetails,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
     this.name = "GatewayError";
-    this.kind = details.kind;
-    this.status = details.status;
-    this.code = details.code;
-    this.source = details.source;
-    this.upstreamStatus = details.upstreamStatus;
-    this.correlationId = details.correlationId;
+    this.details = details;
+  }
+
+  get kind(): GatewayErrorKind {
+    return this.details.kind;
+  }
+
+  get correlationId(): string | null {
+    return this.details.correlationId;
   }
 }
+
+const NO_RESPONSE: GatewayErrorDetails = {
+  kind: GatewayErrorKind.Unavailable,
+  status: null,
+  code: null,
+  source: null,
+  upstreamStatus: null,
+  correlationId: null,
+};
 
 const IN_DATA_EXPLORATION = "InDataExploration";
 
@@ -83,10 +102,10 @@ const readServiceMessage = (payload: unknown): string | null => {
   return texts.length > 0 ? texts.join(" ").trim() : null;
 };
 
-const COPY: Record<GatewayErrorKind, string> = {
-  unanswerable: ApiErrorMessage.GATEWAY_UNANSWERABLE,
-  unavailable: ApiErrorMessage.GATEWAY_UNAVAILABLE,
-  generic: ApiErrorMessage.GATEWAY_GENERIC,
+const COPY: Record<GatewayErrorKind, ApiErrorMessage> = {
+  [GatewayErrorKind.Unanswerable]: ApiErrorMessage.GATEWAY_UNANSWERABLE,
+  [GatewayErrorKind.Unavailable]: ApiErrorMessage.GATEWAY_UNAVAILABLE,
+  [GatewayErrorKind.Generic]: ApiErrorMessage.GATEWAY_GENERIC,
 };
 
 /** First matching rule wins (spec: gateway-error-messages). */
@@ -99,26 +118,24 @@ const classify = (
     source === IN_DATA_EXPLORATION &&
     (upstreamStatus === 400 || upstreamStatus === 422)
   ) {
-    return "unanswerable";
+    return GatewayErrorKind.Unanswerable;
   }
   if (
     (upstreamStatus !== null && upstreamStatus >= 500) ||
     (status === 424 && upstreamStatus === null) ||
     status >= 500
   ) {
-    return "unavailable";
+    return GatewayErrorKind.Unavailable;
   }
-  return "generic";
+  return GatewayErrorKind.Generic;
 };
 
-/** Appends the short support reference ("Reference: <8 chars>") when there is one. */
 export const withReference = (
   text: string,
   correlationId: string | null,
 ): string =>
   correlationId ? `${text} Reference: ${correlationId.slice(0, 8)}` : text;
 
-/** Builds the error for a non-OK Gateway response from its status and body. */
 export function gatewayErrorFromResponse(
   status: number,
   body: unknown,
@@ -131,7 +148,7 @@ export function gatewayErrorFromResponse(
 
   const kind = classify(status, source, upstreamStatus);
   let text: string = COPY[kind];
-  if (kind === "unanswerable") {
+  if (kind === GatewayErrorKind.Unanswerable) {
     text = readServiceMessage(detail?.payload) ?? text;
   }
 
@@ -149,18 +166,8 @@ export function gatewayErrorFromResponse(
  * Builds the error for a request that got no response (network failure or
  * timeout). The cause is kept on the error; its text is never shown.
  */
-export function gatewayErrorFromNetworkFailure(cause: unknown): GatewayError {
-  const error = new GatewayError(COPY.unavailable, {
-    kind: "unavailable",
-    status: null,
-    code: null,
-    source: null,
-    upstreamStatus: null,
-    correlationId: null,
-  });
-  error.cause = cause;
-  return error;
-}
+export const gatewayErrorFromNetworkFailure = (cause: unknown): GatewayError =>
+  new GatewayError(COPY[GatewayErrorKind.Unavailable], NO_RESPONSE, { cause });
 
 /**
  * True for a request that never got a response: `fetch` rejects with a
@@ -173,26 +180,13 @@ export const isNetworkFailure = (
   error instanceof TypeError ||
   (error instanceof DOMException && error.name === "TimeoutError");
 
-/** Reads a non-OK response's body (tolerating a missing or non-JSON body). */
+/** Tolerates a missing or non-JSON body. */
 export async function readGatewayError(
   response: Response,
 ): Promise<GatewayError> {
   const body: unknown = await response.json().catch(() => undefined);
   return gatewayErrorFromResponse(response.status, body);
 }
-
-/**
- * What support needs to trace a failure. Deliberately no payload or
- * response text: those can echo the user's question.
- */
-const gatewayErrorLogDetails = (error: GatewayError) => ({
-  kind: error.kind,
-  status: error.status,
-  code: error.code,
-  source: error.source,
-  upstreamStatus: error.upstreamStatus,
-  correlationId: error.correlationId,
-});
 
 /**
  * Logs a classified failure and returns it for throwing. The logged error is a
@@ -205,7 +199,7 @@ export const reportGatewayError = (
   context?: Record<string, unknown>,
 ): GatewayError => {
   logApiError(operation, `Gateway request failed (${error.kind})`, {
-    ...gatewayErrorLogDetails(error),
+    ...error.details,
     ...context,
   });
   return error;

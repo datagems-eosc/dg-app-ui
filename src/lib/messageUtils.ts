@@ -12,6 +12,20 @@ const isFailedAnswer = (status: unknown): boolean =>
   status === 1 ||
   (typeof status === "string" && status.toLowerCase() === "error");
 
+/** A failed answer shows only the rephrase copy: no SQL, table or map. */
+const failedAnswerMessage = (
+  id: string,
+  timestamp: Message["timestamp"],
+  datasetIds: string[],
+): Message => ({
+  id,
+  type: "ai",
+  content: ApiErrorMessage.GATEWAY_UNANSWERABLE,
+  timestamp,
+  sources: datasetIds.length,
+  relatedDatasetIds: datasetIds,
+});
+
 function getMessageId(msg: unknown, idx: number): string {
   if (
     msg &&
@@ -138,14 +152,11 @@ export function parseConversationMessage(
       isFailedAnswer((payload as { status?: unknown }).status)
     ) {
       // Logged when it happened, not on every history render.
-      return {
-        id: msg.id || getMessageId(msg, idx),
-        type: "ai" as MessageType,
-        content: ApiErrorMessage.GATEWAY_UNANSWERABLE,
-        timestamp: msg.createdAt,
-        sources: 0,
-        relatedDatasetIds: [],
-      };
+      return failedAnswerMessage(
+        msg.id || getMessageId(msg, idx),
+        msg.createdAt,
+        [],
+      );
     }
     const relatedDatasetIds: string[] = [];
     let latitude: number | undefined;
@@ -238,7 +249,6 @@ export function parseConversationMessage(
   };
 }
 
-/** A unique ID that won't conflict with server message IDs. */
 const temporaryMessageId = (): string =>
   `temp-ai-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
@@ -283,14 +293,7 @@ export function parseSearchInDataExploreResponse(
     // SQL was generated but failed to run. The service's message is technical
     // and can quote the question, so it is neither shown nor logged.
     logWarn("In-data answer failed");
-    return {
-      id: temporaryMessageId(),
-      type: "ai",
-      content: ApiErrorMessage.GATEWAY_UNANSWERABLE,
-      timestamp: new Date(),
-      sources: datasetIds.length,
-      relatedDatasetIds: datasetIds,
-    };
+    return failedAnswerMessage(temporaryMessageId(), new Date(), datasetIds);
   }
 
   let tableData: Message["tableData"] | undefined;

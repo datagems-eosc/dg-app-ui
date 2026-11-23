@@ -20,11 +20,7 @@ import {
 import { logApiError } from "@/lib/logger";
 import { useApi } from "./useApi";
 
-/**
- * A failed Gateway request surfaces classified copy, never the
- * Gateway's own `error` text. Bodies as recorded from the Gateway (HTTP 424,
- * code 104) in the gateway-error-messages assessment.
- */
+// Bodies as recorded from the Gateway (HTTP 424, code 104).
 const API_BASE = "https://gateway.test/dg";
 
 const upstreamFailure = (statusCode: number | null, payload: unknown = null) =>
@@ -157,6 +153,18 @@ describe("useApi Gateway error messages", () => {
     await expect(
       result.current.searchInDataExplore({ question: "rain" }),
     ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("rethrows a TypeError that did not come from fetch itself", async () => {
+    // A response-less resolve makes the transport fail on `response.status`:
+    // a code error, not a missing response.
+    stubFetch(async () => undefined as unknown as Response);
+    const { result } = renderHook(() => useApi());
+
+    const failure = result.current.searchInDataExplore({ question: "rain" });
+
+    await expect(failure).rejects.toBeInstanceOf(TypeError);
+    await expect(failure).rejects.not.toThrow(/temporarily unavailable/);
   });
 
   describe("dataset upload", () => {

@@ -194,8 +194,9 @@ const smartSearchShownFor = (err: unknown): string =>
 
 async function orFail<T>(
   call: Promise<T>,
-  shown: (err: unknown) => string,
+  fallback: ApiErrorMessage,
   logAs: string,
+  shown: (err: unknown) => string = (err) => shownFor(err, fallback),
 ): Promise<T> {
   try {
     return await call;
@@ -233,8 +234,9 @@ async function loadSmart(
       resultCount: 100,
       ...(collectionId ? { collectionIds: [collectionId] } : {}),
     }),
-    smartSearchShownFor,
+    ApiErrorMessage.SMART_SEARCH_FAILED,
     "Smart search failed",
+    smartSearchShownFor,
   );
   const found = mapDiscoveryResults(
     Array.isArray(data.result) ? data.result : [],
@@ -262,7 +264,7 @@ async function loadCustom(
       ids: datasetIds,
       page: { Offset: 0, Size: 100 },
     }),
-    (err) => shownFor(err, ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED),
+    ApiErrorMessage.FETCH_DATASET_DETAILS_FAILED,
     "Failed to fetch dataset details",
   );
   const found = Array.isArray(details.items) ? details.items : [];
@@ -283,7 +285,7 @@ async function withFieldOfScienceNames(
   if (!Array.isArray(selected)) return payload;
   const categories = await orFail(
     loadFieldsOfScience(api.getFieldsOfScience),
-    (err) => shownFor(err, ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED),
+    ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
     "Failed to load fields of science for the filter",
   );
   if (categories.length === 0) {

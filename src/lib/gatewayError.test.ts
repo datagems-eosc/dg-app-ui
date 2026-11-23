@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   GatewayError,
+  GatewayErrorKind,
   gatewayErrorFromNetworkFailure,
   gatewayErrorFromResponse,
 } from "./gatewayError";
@@ -38,7 +39,7 @@ describe("gatewayErrorFromResponse", () => {
       );
 
       expect(error).toBeInstanceOf(GatewayError);
-      expect(error.kind).toBe("unanswerable");
+      expect(error.kind).toBe(GatewayErrorKind.Unanswerable);
       expect(error.message).toBe(
         "The question cannot be answered from this dataset. Reference: 50c7a41b",
       );
@@ -59,7 +60,7 @@ describe("gatewayErrorFromResponse", () => {
   ])("uses the rephrase copy for an unanswerable question (%s)", (_, body) => {
     const error = gatewayErrorFromResponse(424, body);
 
-    expect(error.kind).toBe("unanswerable");
+    expect(error.kind).toBe(GatewayErrorKind.Unanswerable);
     expect(error.message).toBe(
       "This question can't be answered from the selected data. Try rephrasing it. Reference: 50c7a41b",
     );
@@ -85,7 +86,7 @@ describe("gatewayErrorFromResponse", () => {
   ])("uses the unavailable copy for %s", (_, status, body) => {
     const error = gatewayErrorFromResponse(status, body);
 
-    expect(error.kind).toBe("unavailable");
+    expect(error.kind).toBe(GatewayErrorKind.Unavailable);
     expect(error.message).toBe(
       "The service is temporarily unavailable. Please try again. Reference: 50c7a41b",
     );
@@ -109,7 +110,7 @@ describe("gatewayErrorFromResponse", () => {
   ])("uses the generic copy for %s", (_, status, body) => {
     const error = gatewayErrorFromResponse(status, body);
 
-    expect(error.kind).toBe("generic");
+    expect(error.kind).toBe(GatewayErrorKind.Generic);
     expect(error.message).toBe(
       "Something went wrong. Please try again. Reference: 50c7a41b",
     );
@@ -124,14 +125,14 @@ describe("gatewayErrorFromResponse", () => {
   ])("uses the generic copy without a reference for %s", (_, status, body) => {
     const error = gatewayErrorFromResponse(status, body);
 
-    expect(error.kind).toBe("generic");
+    expect(error.kind).toBe(GatewayErrorKind.Generic);
     expect(error.message).toBe("Something went wrong. Please try again.");
   });
 
   it("keeps the classification details for logging", () => {
     const error = gatewayErrorFromResponse(424, upstreamFailure(422));
 
-    expect(error).toMatchObject({
+    expect(error.details).toMatchObject({
       status: 424,
       code: 104,
       source: "InDataExploration",
@@ -149,8 +150,8 @@ describe("gatewayErrorFromNetworkFailure", () => {
     const error = gatewayErrorFromNetworkFailure(cause);
 
     expect(error).toBeInstanceOf(GatewayError);
-    expect(error.kind).toBe("unavailable");
-    expect(error.status).toBeNull();
+    expect(error.kind).toBe(GatewayErrorKind.Unavailable);
+    expect(error.details.status).toBeNull();
     expect(error.message).toBe(
       "The service is temporarily unavailable. Please try again.",
     );

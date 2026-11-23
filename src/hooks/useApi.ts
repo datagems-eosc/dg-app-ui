@@ -48,6 +48,7 @@ import {
   fetchWithAuth,
   getApiBaseUrl,
   getLogoutUrl,
+  isFetchRejection,
 } from "@/lib/utils";
 import type { ContextGrant } from "@/types/contextGrants";
 import type {
@@ -134,10 +135,6 @@ const normalizeGatewayEnvironment = (baseUrl: string): string =>
 const readablePrincipalId = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null;
 
-/**
- * The error to throw for a non-OK Gateway response: its message is classified
- * user copy, never the Gateway's `error` text.
- */
 const failedRequest = async (
   operation: string,
   response: Response,
@@ -211,11 +208,13 @@ export function useApi() {
           policy,
         );
       } catch (error) {
-        // No response at all: user copy instead of "Failed to fetch". A local
-        // abort is a cancellation and is rethrown as it is. Only the cause's
-        // name is logged: fetch also rejects with a TypeError for a request it
-        // refused to send, and the endpoint tells which one.
-        if (isNetworkFailure(error)) {
+        // No response at all: user copy instead of "Failed to fetch". Only a
+        // rejection from fetch itself counts; a TypeError from the code around
+        // it is a bug and a local abort is a cancellation, both rethrown as
+        // they are. Only the cause's name is logged: fetch also rejects with a
+        // TypeError for a request it refused to send, and the endpoint tells
+        // which one.
+        if (isFetchRejection(error) && isNetworkFailure(error)) {
           throw reportGatewayError(
             "request",
             gatewayErrorFromNetworkFailure(error),

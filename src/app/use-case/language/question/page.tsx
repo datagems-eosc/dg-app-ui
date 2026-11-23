@@ -7,7 +7,11 @@ import DGIcon from "@/components/ui/chat/DGIcon";
 import { useFeatureFlags } from "@/contexts/FeatureFlagsContext";
 import { useApi } from "@/hooks/useApi";
 import { ApiErrorMessage } from "@/lib/apiErrors";
-import { GatewayError, withReference } from "@/lib/gatewayError";
+import {
+  GatewayError,
+  GatewayErrorKind,
+  withReference,
+} from "@/lib/gatewayError";
 
 /**
  * The analysis service's own text for an unanswerable question is technical
@@ -26,7 +30,7 @@ const analysisErrorMessage = (err: unknown): string => {
       ? err.message
       : ApiErrorMessage.ANALYSIS_FAILED;
   }
-  return err.kind === "unanswerable"
+  return err.kind === GatewayErrorKind.Unanswerable
     ? withReference(ApiErrorMessage.GATEWAY_UNANSWERABLE, err.correlationId)
     : err.message;
 };
