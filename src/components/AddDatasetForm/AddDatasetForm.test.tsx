@@ -43,6 +43,7 @@ import {
 } from "@/contexts/FeatureFlagsContext";
 import { PROCESS_INSTANCE_ID } from "@/lib/datasetOnboarding/fixtures";
 import { FEATURE_FLAGS_STORAGE_KEY } from "@/lib/featureFlags/storage";
+import { clearVocabularyCache } from "@/lib/vocabularyService";
 import AddDatasetForm from "./AddDatasetForm";
 
 // The real editor's internals are not under test here (MarkdownEditor.test.tsx
@@ -116,6 +117,8 @@ const LICENSES = [
 
 interface GatewayOptions {
   readonly editDataset?: Record<string, unknown>;
+  /** Answer the fields-of-science vocabulary with a 503. */
+  readonly failFieldsOfScience?: boolean;
   /** Answer to `POST /workflow-process/onboard`. */
   readonly start?: { readonly status: number; readonly body: unknown };
   /** Answer to the upload XHR. */
@@ -180,7 +183,9 @@ const stubBoundaries = (options: GatewayOptions = {}): Ledger => {
         return new Response(JSON.stringify([".csv"]), { status: 200 });
       }
       if (url.includes("/vocabulary/fields-of-science")) {
-        return new Response(JSON.stringify(FIELDS_OF_SCIENCE), { status: 200 });
+        return options.failFieldsOfScience
+          ? new Response(JSON.stringify({ error: "down" }), { status: 503 })
+          : new Response(JSON.stringify(FIELDS_OF_SCIENCE), { status: 200 });
       }
       if (url.includes("/vocabulary/license")) {
         return new Response(JSON.stringify(LICENSES), { status: 200 });
@@ -347,6 +352,8 @@ const fillMetadata = async (
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Each test loads the vocabulary through its own stubs.
+  clearVocabularyCache();
   window.__env = { ...window.__env, DATAGEMS_API_BASE_URL: API_BASE };
   window.localStorage.clear();
   window.sessionStorage.clear();
@@ -559,7 +566,8 @@ describe("AddDatasetForm managed submission", () => {
       description: "Hourly readings from the pilot network.",
       license: "cc-by-4.0",
       keywords: ["sensors"],
-      fieldOfScience: ["1.5"],
+      // The vocabulary name the Gateway returns, not its code (`1.5`).
+      fieldOfScience: ["EARTH AND RELATED ENVIRONMENTAL SCIENCES"],
       country: ["US"],
       dataLocations: [{ kind: 0, location: STAGED }],
     });
@@ -577,6 +585,27 @@ describe("AddDatasetForm managed submission", () => {
     ]) {
       expect(body).not.toHaveProperty(absent);
     }
+  });
+
+  it("refuses to send codes when the vocabulary is gone at submission", async () => {
+    const user = userEvent.setup();
+    const ledger = stubBoundaries();
+    const { container } = mount();
+
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await uploadFile(user, container);
+    await fillMetadata(user);
+    clearVocabularyCache();
+    await user.click(startButton());
+
+    expect(
+      await screen.findByText(
+        "Fields of science could not be loaded. Reload the page and try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(ledger.starts()).toHaveLength(0);
   });
 
   it("blocks on an unresolved file and names it, without sending anything", async () => {
@@ -673,7 +702,7 @@ describe("AddDatasetForm managed submission", () => {
     await user.click(startButton());
     expect(ledger.starts()).toHaveLength(1);
     expect(ledger.uploads).toHaveLength(1);
-    expect(screen.getAllByTestId("submission-notice")).toHaveLength(1);
+    expect(screen.getAllByTestId("notice")).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Go to Browse" }));
     expect(mockPush).toHaveBeenCalledWith("/browse");
     expect(ledger.starts()).toHaveLength(1);
@@ -713,7 +742,7 @@ describe("AddDatasetForm managed submission", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
     });
     expect(ledger.starts()).toHaveLength(1);
-    expect(screen.getAllByTestId("submission-notice")).toHaveLength(1);
+    expect(screen.getAllByTestId("notice")).toHaveLength(1);
     expect(
       screen.getAllByText(/Please don't upload it again yet\./),
     ).toHaveLength(1);
@@ -1313,4 +1342,64 @@ describe("AddDatasetForm citation hydration", () => {
       ).toHaveValue(expected);
     },
   );
+});
+
+describe("AddDatasetForm fields of science in the edit view", () => {
+  const openEdit = async (fieldOfScience: string[]) => {
+    stubBoundaries({
+      editDataset: { id: "ds-1", name: "Stored fields", fieldOfScience },
+    });
+    mockSearchParams.mockReturnValue(
+      new URLSearchParams({ datasetId: "ds-1" }),
+    );
+    const user = userEvent.setup();
+    mount();
+    await waitFor(() =>
+      expect(
+        screen.getAllByDisplayValue("Stored fields").length,
+      ).toBeGreaterThan(0),
+    );
+    await user.click(await screen.findByText("Natural sciences"));
+    return () =>
+      screen.getByLabelText("Earth and related environmental sciences");
+  };
+
+  it("preselects a field stored as a code", async () => {
+    const field = await openEdit(["1.5"]);
+
+    await waitFor(() => expect(field()).toBeChecked());
+  });
+
+  it("preselects a field stored by name in other casing", async () => {
+    const field = await openEdit(["Earth and related environmental sciences"]);
+
+    await waitFor(() => expect(field()).toBeChecked());
+  });
+
+  it("selects nothing for a stored value the vocabulary does not know", async () => {
+    const field = await openEdit(["dataset-test-A"]);
+
+    expect(field()).not.toBeChecked();
+  });
+
+  it("still fills the rest of the form when the vocabulary fails", async () => {
+    stubBoundaries({
+      editDataset: {
+        id: "ds-1",
+        name: "Stored fields",
+        fieldOfScience: ["1.5"],
+      },
+      failFieldsOfScience: true,
+    });
+    mockSearchParams.mockReturnValue(
+      new URLSearchParams({ datasetId: "ds-1" }),
+    );
+    mount();
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByDisplayValue("Stored fields").length,
+      ).toBeGreaterThan(0),
+    );
+  });
 });

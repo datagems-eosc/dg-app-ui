@@ -127,7 +127,4 @@ export const VALIDATION_CONFIG = {
 } as const;
 
 // Export vocabulary processing functions (not fetch - use useApi for fetching)
-export {
-  processFieldsOfScience,
-  processLicenses,
-} from "../lib/vocabularyService";
+export { processLicenses } from "../lib/vocabularyService";

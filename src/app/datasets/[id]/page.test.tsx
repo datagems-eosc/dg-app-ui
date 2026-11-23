@@ -2,6 +2,10 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  clearVocabularyCache,
+  loadFieldsOfScience,
+} from "@/lib/vocabularyService";
 
 /**
  * Composition proof for the dataset details route.
@@ -21,7 +25,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const mockGetDatasetById = vi.fn();
+const mockGetFieldsOfScience = vi.fn();
 const mockGetCurrentUserContextGrants = vi.fn();
+// The vocabulary is processed and cached once per module, so every test that
+// loads it loads the same one.
+const FIELDS_OF_SCIENCE = {
+  hierarchy: [
+    {
+      ordinal: 1,
+      code: "1",
+      name: "NATURAL SCIENCES",
+      children: [
+        { ordinal: 1, code: "1.1", name: "MATHEMATICS" },
+        {
+          ordinal: 5,
+          code: "1.5",
+          name: "EARTH AND RELATED ENVIRONMENTAL SCIENCES",
+        },
+      ],
+    },
+  ],
+};
 const mockReadGlobalPermissions = vi.fn();
 const mockPush = vi.fn();
 const deferred = <T,>() => {
@@ -40,6 +64,7 @@ beforeEach(() => {
   mockDatasetId = "ds-1";
   mockHasToken = true;
   mockGetDatasetById.mockReset();
+  mockGetFieldsOfScience.mockReset().mockResolvedValue(FIELDS_OF_SCIENCE);
   mockReadGlobalPermissions.mockReset().mockResolvedValue({
     evidence: { kind: "read", names: [], coverage: { kind: "exhaustive" } },
   });
@@ -66,9 +91,16 @@ vi.mock("@/hooks/useApi", () => ({
         : null,
     },
     getDatasetById: mockGetDatasetById,
+    getFieldsOfScience: mockGetFieldsOfScience,
     getCurrentUserContextGrants: mockGetCurrentUserContextGrants,
     downloadDatasetFile: vi.fn(),
   }),
+}));
+
+const mockLogError = vi.fn();
+vi.mock("@/lib/logger", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/logger")>()),
+  logError: (...args: unknown[]) => mockLogError(...args),
 }));
 
 vi.mock("@/contexts/FeatureFlagsContext", () => ({
@@ -202,6 +234,131 @@ describe("dataset details page headline", () => {
       expect(screen.getAllByText("No description available.")).toHaveLength(1);
     },
   );
+});
+
+describe("dataset details page fields of science", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearVocabularyCache();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  });
+
+  /** The Fields of Science section: its heading and chips. */
+  const fields = () =>
+    within(
+      screen.getByRole("heading", { level: 3, name: "Fields of Science" })
+        .parentElement as HTMLElement,
+    );
+
+  it("shows stored codes and names by readable name, once each", async () => {
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: [
+        "1.1",
+        "MATHEMATICS",
+        "EARTH AND RELATED ENVIRONMENTAL SCIENCES",
+        "dataset-test-A",
+      ],
+    });
+    await renderPage();
+
+    expect(fields().getAllByText("Mathematics")).toHaveLength(1);
+    expect(
+      fields().getByText("Earth and related environmental sciences"),
+    ).toBeInTheDocument();
+    expect(fields().getByText("dataset-test-A")).toBeInTheDocument();
+    expect(fields().queryByText("1.1")).not.toBeInTheDocument();
+    expect(fields().queryByText("MATHEMATICS")).not.toBeInTheDocument();
+  });
+
+  const loadingFields = () =>
+    screen.queryByRole("status", { name: "Loading Fields of Science" });
+
+  it("shows the dataset with a placeholder for fields of science until the names arrive", async () => {
+    const vocabulary = deferred<typeof FIELDS_OF_SCIENCE>();
+    mockGetFieldsOfScience.mockReturnValue(vocabulary.promise);
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Sea surface temperature",
+      }),
+    ).toBeInTheDocument();
+    expect(loadingFields()).toBeInTheDocument();
+    expect(fields().queryByText("1.1")).not.toBeInTheDocument();
+
+    await act(async () => vocabulary.resolve(FIELDS_OF_SCIENCE));
+
+    expect(loadingFields()).not.toBeInTheDocument();
+    expect(fields().getByText("Mathematics")).toBeInTheDocument();
+    expect(fields().queryByText("1.1")).not.toBeInTheDocument();
+  });
+
+  it("shows no fields-of-science placeholder for a dataset without fields", async () => {
+    mockGetFieldsOfScience.mockReturnValue(new Promise(() => {}));
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: [],
+    });
+    await renderPage();
+
+    expect(loadingFields()).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { level: 3, name: "Fields of Science" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows stored values as stored when the vocabulary comes back empty", async () => {
+    mockGetFieldsOfScience.mockResolvedValue({ hierarchy: [] });
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(loadingFields()).not.toBeInTheDocument();
+    expect(fields().getByText("1.1")).toBeInTheDocument();
+  });
+
+  it("shows stored values as stored when the vocabulary cannot be loaded", async () => {
+    mockGetFieldsOfScience.mockRejectedValue(new Error("503"));
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(loadingFields()).not.toBeInTheDocument();
+    expect(fields().getByText("1.1")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Sea surface temperature",
+      }),
+    ).toBeInTheDocument();
+    expect(mockLogError).toHaveBeenCalledWith(
+      "Failed to fetch fields of science",
+      expect.any(Error),
+    );
+  });
+
+  it("uses a vocabulary loaded earlier in the session without asking again", async () => {
+    await loadFieldsOfScience(async () => FIELDS_OF_SCIENCE);
+    mockGetFieldsOfScience.mockRejectedValue(new Error("503"));
+    mockGetDatasetById.mockResolvedValue({
+      ...datasetPayload(["browsedataset"]),
+      fieldOfScience: ["1.1"],
+    });
+    await renderPage();
+
+    expect(fields().getByText("Mathematics")).toBeInTheDocument();
+    expect(mockGetFieldsOfScience).not.toHaveBeenCalled();
+  });
 });
 
 describe("dataset details page – caller permissions", () => {

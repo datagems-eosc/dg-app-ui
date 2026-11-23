@@ -16,6 +16,9 @@
  * progress and a contributor cannot rerun one.
  */
 
+// clsx, not cn: tailwind-merge drops the text-body-* typography classes when
+// a text colour is merged in the same call.
+import { clsx } from "clsx";
 import {
   CircleCheck,
   CircleMinus,
@@ -30,22 +33,6 @@ import {
   stageStateCopyOf,
   UNRECOGNISED_STAGE_LABEL,
 } from "./presentation";
-
-/**
- * Joins class names without running tailwind-merge.
- *
- * The shared `cn` helper merges through tailwind-merge, which classifies this
- * project's custom typography classes (`text-body-14-regular`,
- * `text-H2-32-semibold`, ...) as `text-*` utilities and therefore drops them
- * whenever a text colour is merged in the same call — verified in this
- * workspace, and the reason a typography class silently disappears from the
- * rendered markup. Typography and colour do not conflict in CSS, so they are
- * concatenated here. The shared helper is protected baseline and is left
- * untouched; the finding is recorded in the handback.
- */
-const classes = (
-  ...values: ReadonlyArray<string | false | undefined>
-): string => values.filter(Boolean).join(" ");
 
 /**
  * Stage state is essential information, not decoration, so every one of these
@@ -69,7 +56,7 @@ const TONE_TEXT: Record<StageTone, string> = {
 };
 
 const StageIcon = ({ tone }: { tone: StageTone }) => {
-  const className = classes("h-4 w-4 shrink-0", TONE_TEXT[tone]);
+  const className = clsx("h-4 w-4 shrink-0", TONE_TEXT[tone]);
   switch (tone) {
     case "success":
       return <CircleCheck className={className} aria-hidden="true" />;
@@ -79,10 +66,7 @@ const StageIcon = ({ tone }: { tone: StageTone }) => {
       // Reduced motion is a setting, not a preference to talk the user out of.
       return (
         <LoaderCircle
-          className={classes(
-            className,
-            "animate-spin motion-reduce:animate-none",
-          )}
+          className={clsx(className, "animate-spin motion-reduce:animate-none")}
           aria-hidden="true"
         />
       );
@@ -101,7 +85,7 @@ const StageRow = ({ stage }: { stage: StageView }) => {
   return (
     <div className="rounded-lg bg-slate-75 px-4 py-3">
       <p
-        className={classes(
+        className={clsx(
           "text-body-16-medium break-words",
           // A stage that has not run still names itself, so it recedes to the
           // secondary text colour rather than to the tertiary one the uploader
@@ -114,7 +98,7 @@ const StageRow = ({ stage }: { stage: StageView }) => {
         {label}
       </p>
       <p
-        className={classes(
+        className={clsx(
           "mt-1 flex items-center gap-1.5 text-body-14-regular",
           TONE_TEXT[tone],
         )}

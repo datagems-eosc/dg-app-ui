@@ -1,4 +1,4 @@
-import type { HierarchicalCategory } from "@ui/HierarchicalDropdown";
+import type { FieldOfScienceCategory } from "./fieldsOfScience";
 import { logError } from "./logger";
 
 // Types for the API response
@@ -13,16 +13,18 @@ interface VocabularyResponse {
   hierarchy?: VocabularyItem[];
 }
 
-// Cache for vocabulary data
-let fieldsOfScienceCache: HierarchicalCategory[] | null = null;
+// The fields-of-science vocabulary: the request in flight or settled, and
+// the categories it produced once they are usable.
+let fieldsOfScienceRequest: Promise<FieldOfScienceCategory[]> | null = null;
+let fieldsOfScienceLoaded: FieldOfScienceCategory[] | null = null;
 let licensesCache:
   | { value: string; label: string; description?: string; urls?: string[] }[]
   | null = null;
 
-// Convert API response to HierarchicalCategory format
+// Convert API response to FieldOfScienceCategory format
 function convertToHierarchicalCategories(
   hierarchy: VocabularyItem[],
-): HierarchicalCategory[] {
+): FieldOfScienceCategory[] {
   return hierarchy
     .filter((item) => item.children && item.children.length > 0)
     .map((item) => ({
@@ -32,7 +34,8 @@ function convertToHierarchicalCategories(
       options:
         item.children?.map((childItem) => {
           return {
-            value: childItem.code,
+            // Datasets store and are searched by the vocabulary name.
+            name: childItem.name,
             label:
               childItem.name.charAt(0).toUpperCase() +
               childItem.name.slice(1).toLowerCase(),
@@ -43,30 +46,56 @@ function convertToHierarchicalCategories(
     .filter((category) => category.options.length > 0);
 }
 
+/** Converts a fields-of-science vocabulary response into dropdown categories. */
 export function processFieldsOfScience(
   data: VocabularyResponse | VocabularyItem[],
-): HierarchicalCategory[] {
-  // Return cached data if available
-  if (fieldsOfScienceCache) {
-    return fieldsOfScienceCache;
-  }
-
+): FieldOfScienceCategory[] {
   try {
     // Handle both formats: direct array or wrapped in hierarchy property
     const hierarchy = Array.isArray(data) ? data : data.hierarchy;
-
-    const categories = convertToHierarchicalCategories(hierarchy ?? []);
-
-    // Cache the result
-    fieldsOfScienceCache = categories;
-
-    return categories;
+    return convertToHierarchicalCategories(hierarchy ?? []);
   } catch (error) {
     logError("Error processing fields of science", error);
-
-    // Return empty array as fallback
     return [];
   }
+}
+
+/**
+ * The fields-of-science vocabulary, requested once per session: every caller
+ * shares one request and its result. A failed request, or one that returns no
+ * usable categories, is not kept, so the next caller asks again.
+ */
+export function loadFieldsOfScience(
+  request: () => Promise<unknown>,
+): Promise<FieldOfScienceCategory[]> {
+  if (!fieldsOfScienceRequest) {
+    const pending = request().then((data) => {
+      const categories = processFieldsOfScience(
+        data as VocabularyResponse | VocabularyItem[],
+      );
+      // A request the cache was cleared under keeps nothing.
+      if (fieldsOfScienceRequest !== pending) return categories;
+      if (categories.length > 0) {
+        fieldsOfScienceLoaded = categories;
+      } else {
+        fieldsOfScienceRequest = null;
+      }
+      return categories;
+    });
+    pending.catch(() => {
+      if (fieldsOfScienceRequest === pending) fieldsOfScienceRequest = null;
+    });
+    fieldsOfScienceRequest = pending;
+  }
+  return fieldsOfScienceRequest;
+}
+
+/**
+ * The vocabulary `loadFieldsOfScience` has loaded, otherwise `null`. A
+ * synchronous reader must handle `null`: never fall back to sending codes.
+ */
+export function cachedFieldsOfScience(): FieldOfScienceCategory[] | null {
+  return fieldsOfScienceLoaded;
 }
 
 export function processLicenses(
@@ -154,6 +183,7 @@ export function processLicenses(
 
 // Clear cache (useful for testing or when data needs to be refreshed)
 export function clearVocabularyCache() {
-  fieldsOfScienceCache = null;
+  fieldsOfScienceRequest = null;
+  fieldsOfScienceLoaded = null;
   licensesCache = null;
 }

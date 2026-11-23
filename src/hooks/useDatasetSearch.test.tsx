@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getDefaultFilters } from "@/config/filterOptions";
 import { ApiErrorMessage } from "@/lib/apiErrors";
 import {
   mapApiDatasetToDataset,
@@ -10,6 +11,8 @@ import {
   gatewayErrorFromResponse,
 } from "@/lib/gatewayError";
 import { upstreamFailureBody } from "@/lib/gatewayError.fixtures";
+import { logError } from "@/lib/logger";
+import { clearVocabularyCache } from "@/lib/vocabularyService";
 import { type DatasetSearchScope, useDatasetSearch } from "./useDatasetSearch";
 
 const api = {
@@ -17,6 +20,7 @@ const api = {
   queryDatasets: vi.fn(),
   queryUserCollections: vi.fn(),
   searchCrossDataset: vi.fn(),
+  getFieldsOfScience: vi.fn(),
 };
 
 // useApi returns a new object on every render, as the real hook does.
@@ -514,6 +518,133 @@ describe("useDatasetSearch", () => {
         "B",
         "No id",
       ]);
+    });
+  });
+
+  describe("field-of-science filter", () => {
+    // Which values a selection sends is unit tested with
+    // `fieldOfScienceFilterValues`; these tests cover the wiring.
+    const VOCABULARY = {
+      hierarchy: [
+        {
+          ordinal: 1,
+          code: "1",
+          name: "NATURAL SCIENCES",
+          children: [
+            { ordinal: 1, code: "1.1", name: "MATHEMATICS" },
+            {
+              ordinal: 2,
+              code: "1.2",
+              name: "COMPUTER AND INFORMATION SCIENCES",
+            },
+          ],
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      clearVocabularyCache();
+      api.getFieldsOfScience.mockResolvedValue(VOCABULARY);
+    });
+
+    afterEach(() => clearVocabularyCache());
+
+    const applyFields = async (fieldsOfScience: string[]) => {
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+      act(() =>
+        result.current.onApplyFilters({
+          ...getDefaultFilters(),
+          fieldsOfScience,
+        }),
+      );
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(2));
+      return result;
+    };
+
+    it("sends the selected field's name and its code", async () => {
+      await applyFields(["1.1"]);
+
+      expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS", "1.1"]);
+    });
+
+    it.each([
+      [
+        "fails",
+        () => api.getFieldsOfScience.mockRejectedValue(new Error("503")),
+      ],
+      [
+        "is empty",
+        () => api.getFieldsOfScience.mockResolvedValue({ hierarchy: [] }),
+      ],
+    ])(
+      "reports the filter as failed instead of sending codes alone when the vocabulary %s",
+      async (_, vocabulary) => {
+        vocabulary();
+        const { result } = renderSearch();
+        await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+        act(() =>
+          result.current.onApplyFilters({
+            ...getDefaultFilters(),
+            fieldsOfScience: ["1.1"],
+          }),
+        );
+
+        await waitFor(() =>
+          expect(result.current.error).toBe(
+            ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
+          ),
+        );
+        expect(api.queryDatasets).toHaveBeenCalledTimes(1);
+        expect(result.current.datasets).toEqual([]);
+        expect(logError).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it("shows the classified message when the vocabulary request fails at the Gateway", async () => {
+      api.getFieldsOfScience.mockRejectedValue(
+        gatewayErrorFromResponse(424, upstreamFailureBody(503)),
+      );
+      const { result } = renderSearch();
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(1));
+
+      act(() =>
+        result.current.onApplyFilters({
+          ...getDefaultFilters(),
+          fieldsOfScience: ["1.1"],
+        }),
+      );
+
+      await waitFor(() =>
+        expect(result.current.error).toBe(
+          `${ApiErrorMessage.GATEWAY_UNAVAILABLE} Reference: 50c7a41b`,
+        ),
+      );
+      expect(api.queryDatasets).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the name and the code on the next page", async () => {
+      api.queryDatasets.mockResolvedValue({
+        items: [{ id: "a", name: "A" }],
+        count: 2,
+      });
+      const result = await applyFields(["1.1"]);
+      await waitFor(() => expect(result.current.hasMore).toBe(true));
+
+      await act(async () => result.current.onLoadMore());
+
+      expect(api.queryDatasets).toHaveBeenCalledTimes(3);
+      expect(lastCatalogue().fieldsOfScience).toEqual(["MATHEMATICS", "1.1"]);
+    });
+
+    it("sends no field of science once the filter is cleared", async () => {
+      const result = await applyFields(["1.1"]);
+
+      act(() => result.current.onApplyFilters(getDefaultFilters()));
+      await waitFor(() => expect(api.queryDatasets).toHaveBeenCalledTimes(3));
+
+      expect(lastCatalogue()).not.toHaveProperty("fieldsOfScience");
     });
   });
 

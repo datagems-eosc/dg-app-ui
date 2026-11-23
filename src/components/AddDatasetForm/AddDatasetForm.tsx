@@ -35,14 +35,8 @@ import { BasicInformation } from "@ui/datasets/BasicInformation";
 import { Classification } from "@ui/datasets/Classification";
 import { DatasetUpload, type UploadedFile } from "@ui/datasets/DatasetUpload";
 import { FormSectionLayout } from "@ui/FormSectionLayout";
+import { Notice } from "@ui/Notice";
 import { Toast } from "@ui/Toast";
-import {
-  CircleCheck,
-  CircleX,
-  Info,
-  LoaderCircle,
-  TriangleAlert,
-} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import {
@@ -66,8 +60,16 @@ import type {
   SubmissionRequest,
   UnresolvedFileReason,
 } from "@/lib/datasetOnboarding/submission";
+import {
+  fieldOfScienceCodes,
+  fieldOfScienceNames,
+} from "@/lib/fieldsOfScience";
 import { logError } from "@/lib/logger";
 import { getNavigationUrl } from "@/lib/utils";
+import {
+  cachedFieldsOfScience,
+  loadFieldsOfScience,
+} from "@/lib/vocabularyService";
 
 interface FormData {
   files: UploadedFile[];
@@ -78,6 +80,7 @@ interface FormData {
     keywords: string[];
   };
   classification: {
+    /** Selected fields of science as vocabulary codes. */
     fieldsOfScience: string[];
     collection: string;
     license: string;
@@ -194,103 +197,6 @@ const scopeKeyOf = (
 // Feedback presentation
 // ---------------------------------------------------------------------------
 
-type NoticeTone = "neutral" | "caution" | "problem" | "success";
-
-/**
- * The same tinted-surface hierarchy as the accepted processing view, so the two
- * halves of one journey read as one feature. Classes are concatenated rather
- * than merged through `cn`: the shared helper drops a typography class whenever
- * a text colour is merged in the same call, which is recorded in the 04B
- * handback and left untouched here.
- */
-const TONE_SURFACE: Record<NoticeTone, string> = {
-  neutral: "border-slate-200 bg-slate-75",
-  caution: "border-amber-200 bg-amber-50",
-  problem: "border-red-200 bg-red-50",
-  success: "border-emerald-200 bg-emerald-50",
-};
-
-const TONE_TITLE: Record<NoticeTone, string> = {
-  neutral: "text-gray-750",
-  caution: "text-amber-900",
-  problem: "text-red-800",
-  success: "text-emerald-800",
-};
-
-const TONE_BODY: Record<NoticeTone, string> = {
-  neutral: "text-gray-650",
-  caution: "text-amber-800",
-  problem: "text-red-700",
-  success: "text-emerald-700",
-};
-
-const TONE_ICON: Record<NoticeTone, string> = {
-  neutral: "text-icon",
-  caution: "text-amber-600",
-  problem: "text-red-550",
-  success: "text-emerald-600",
-};
-
-const NoticeIcon = ({ tone, busy }: { tone: NoticeTone; busy: boolean }) => {
-  const className = ["mt-0.5 h-5 w-5 shrink-0", TONE_ICON[tone]].join(" ");
-  if (busy) {
-    return (
-      <LoaderCircle
-        className={`${className} animate-spin motion-reduce:animate-none`}
-        aria-hidden="true"
-      />
-    );
-  }
-  switch (tone) {
-    case "success":
-      return <CircleCheck className={className} aria-hidden="true" />;
-    case "problem":
-      return <CircleX className={className} aria-hidden="true" />;
-    case "caution":
-      return <TriangleAlert className={className} aria-hidden="true" />;
-    default:
-      return <Info className={className} aria-hidden="true" />;
-  }
-};
-
-/** Text and icon carry the state; colour only reinforces it. */
-const Notice = ({
-  tone,
-  title,
-  busy = false,
-  children,
-  actions,
-}: {
-  tone: NoticeTone;
-  title: string;
-  busy?: boolean;
-  /** Omitted when the title already says everything useful. */
-  children?: ReactNode;
-  actions?: ReactNode;
-}) => (
-  <div
-    className={`rounded-xl border p-4 ${TONE_SURFACE[tone]}`}
-    data-testid="submission-notice"
-  >
-    <div className="flex items-start gap-3">
-      <NoticeIcon tone={tone} busy={busy} />
-      <div className="min-w-0 flex-1">
-        <p className={`break-words text-body-14-medium ${TONE_TITLE[tone]}`}>
-          {title}
-        </p>
-        {children === undefined ? null : (
-          <div
-            className={`mt-1 space-y-1 wrap-anywhere text-body-14-regular ${TONE_BODY[tone]}`}
-          >
-            {children}
-          </div>
-        )}
-        {actions === undefined ? null : <div className="mt-3">{actions}</div>}
-      </div>
-    </div>
-  </div>
-);
-
 /**
  * What the person can do about each file, in their terms. The file card above
  * offers Retry upload for a failed local file and Remove for every file; these
@@ -364,6 +270,7 @@ export default function AddDatasetForm() {
   const hasToken = api.hasToken;
   const getUploadAllowedExtensions = api.getUploadAllowedExtensions;
   const queryDatasets = api.queryDatasets;
+  const getFieldsOfScience = api.getFieldsOfScience;
   const onboardingScope = api.datasetOnboarding.scope;
   const onboardingAuth = api.datasetOnboarding.auth;
 
@@ -514,6 +421,12 @@ export default function AddDatasetForm() {
     if (!datasetIdForEdit || !hasToken || !queryDatasets) return;
     let cancelled = false;
     setIsEditLoading(true);
+    // Stored fields of science are codes or names in any casing; the form
+    // holds codes, so they are matched against the vocabulary once, here.
+    // Without the vocabulary nothing is preselected.
+    const fieldsOfScience = loadFieldsOfScience(getFieldsOfScience).catch(
+      () => [],
+    );
     queryDatasets({
       ids: [datasetIdForEdit],
       project: {
@@ -534,7 +447,8 @@ export default function AddDatasetForm() {
       Order: { Items: ["+name"] },
       Metadata: { CountAll: false },
     })
-      .then((res) => {
+      .then(async (res) => {
+        const categories = await fieldsOfScience;
         if (cancelled) return;
         const items = Array.isArray(res.items) ? res.items : [];
         const item = items[0] as Record<string, unknown> | undefined;
@@ -547,11 +461,14 @@ export default function AddDatasetForm() {
           : typeof item.keywords === "string"
             ? [item.keywords]
             : [];
-        const fieldOfScience = Array.isArray(item.fieldOfScience)
-          ? (item.fieldOfScience as string[])
-          : typeof item.fieldOfScience === "string"
-            ? [item.fieldOfScience]
-            : [];
+        const fieldOfScience = fieldOfScienceCodes(
+          Array.isArray(item.fieldOfScience)
+            ? (item.fieldOfScience as string[])
+            : typeof item.fieldOfScience === "string"
+              ? [item.fieldOfScience]
+              : [],
+          categories,
+        );
         const license = String(item.license ?? "");
         const collections = Array.isArray(item.collections)
           ? (item.collections as Array<{ id?: string }>)
@@ -592,7 +509,14 @@ export default function AddDatasetForm() {
     return () => {
       cancelled = true;
     };
-  }, [datasetIdForEdit, hasToken, queryDatasets, applyToDraft, draftId]);
+  }, [
+    datasetIdForEdit,
+    hasToken,
+    queryDatasets,
+    getFieldsOfScience,
+    applyToDraft,
+    draftId,
+  ]);
 
   // --- navigation to the accepted process ----------------------------------
   //
@@ -689,6 +613,11 @@ export default function AddDatasetForm() {
     if (formData.classification.fieldsOfScience.length === 0) {
       newErrors.classification.fieldsOfScience =
         "At least one field of science must be selected";
+    } else if (!cachedFieldsOfScience()) {
+      // The form holds codes; without the vocabulary they cannot become the
+      // names datasets store, and codes must not be sent instead.
+      newErrors.classification.fieldsOfScience =
+        "Fields of science could not be loaded. Reload the page and try again.";
     }
 
     if (!formData.classification.license.trim()) {
@@ -757,6 +686,10 @@ export default function AddDatasetForm() {
     if (draft.scopeKey !== scopeKey) return;
 
     if (!validateForm()) return;
+    // validateForm has shown why; without the vocabulary the selected codes
+    // cannot become names, and codes must never be sent instead.
+    const vocabulary = cachedFieldsOfScience();
+    if (!vocabulary) return;
 
     const request: SubmissionRequest = {
       // Every retained file is passed, including unresolved ones. The accepted
@@ -769,7 +702,11 @@ export default function AddDatasetForm() {
           headline: formData.basicInfo.headline,
           description: formData.basicInfo.description,
           keywords: formData.basicInfo.keywords,
-          fieldsOfScience: formData.classification.fieldsOfScience,
+          // The form holds codes; datasets store the vocabulary name.
+          fieldsOfScience: fieldOfScienceNames(
+            formData.classification.fieldsOfScience,
+            vocabulary,
+          ),
           license: formData.classification.license,
           languages: formData.classification.languages,
           countries: formData.classification.countries,
@@ -838,9 +775,11 @@ export default function AddDatasetForm() {
     if (isEditRequest) {
       return (
         // Submission stays blocked, and no replacement dataset is created.
-        <Notice tone="caution" title="This page can't edit an existing dataset">
-          <p>Your changes haven&apos;t been saved.</p>
-        </Notice>
+        <Notice
+          tone="caution"
+          title="This page can't edit an existing dataset"
+          body="Your changes haven't been saved."
+        />
       );
     }
     switch (availability.kind) {
@@ -855,24 +794,24 @@ export default function AddDatasetForm() {
           <Notice
             tone="caution"
             title="Adding datasets is currently unavailable"
-          >
-            <p>
-              You can still check the progress of datasets you already
-              submitted.
-            </p>
-          </Notice>
+            body="You can still check the progress of datasets you already submitted."
+          />
         );
       case "sign-in-required":
         return (
-          <Notice tone="caution" title="Please sign in again">
-            <p>You need to be signed in to add a dataset.</p>
-          </Notice>
+          <Notice
+            tone="caution"
+            title="Please sign in again"
+            body="You need to be signed in to add a dataset."
+          />
         );
       default:
         return (
-          <Notice tone="caution" title="We couldn't prepare the upload form">
-            <p>Reload the page and try again.</p>
-          </Notice>
+          <Notice
+            tone="caution"
+            title="We couldn't prepare the upload form"
+            body="Reload the page and try again."
+          />
         );
     }
   };
@@ -884,57 +823,72 @@ export default function AddDatasetForm() {
       case "unresolved-files":
         return (
           // Every retained file is still named; none is silently left out.
-          <Notice tone="problem" title="Some files need attention">
-            <ul className="list-disc space-y-1 pl-5">
-              {block.files.map((file) => (
-                <li key={file.fileId}>
-                  <span className="text-body-14-medium">{file.name}</span>
-                  {": "}
-                  {UNRESOLVED_FILE_REASON[file.reason]}
-                </li>
-              ))}
-            </ul>
-          </Notice>
+          <Notice
+            tone="problem"
+            title="Some files need attention"
+            body={
+              <ul className="list-disc space-y-1 pl-5">
+                {block.files.map((file) => (
+                  <li key={file.fileId}>
+                    <span className="text-body-14-medium">{file.name}</span>
+                    {": "}
+                    {UNRESOLVED_FILE_REASON[file.reason]}
+                  </li>
+                ))}
+              </ul>
+            }
+          />
         );
       case "references-unusable":
         return (
           // The controller refuses accepted, starting and uncertain attempts
           // before it checks references, so this follows a definite refusal:
           // re-uploading here cannot duplicate a dataset.
-          <Notice tone="problem" title="These files can't be submitted again">
-            <p>
-              They were used in an earlier attempt. Remove them and upload them
-              again:
-            </p>
-            <ul className="list-disc space-y-0.5 pl-5">
-              {block.files.map((file) => (
-                <li key={file.fileId}>{file.name}</li>
-              ))}
-            </ul>
-          </Notice>
+          <Notice
+            tone="problem"
+            title="These files can't be submitted again"
+            body={
+              <>
+                <p>
+                  They were used in an earlier attempt. Remove them and upload
+                  them again:
+                </p>
+                <ul className="list-disc space-y-0.5 pl-5">
+                  {block.files.map((file) => (
+                    <li key={file.fileId}>{file.name}</li>
+                  ))}
+                </ul>
+              </>
+            }
+          />
         );
       case "already-starting":
-        return <Notice tone="neutral" title="Submitting your dataset…" busy />;
+        return (
+          <Notice tone="neutral" title="Submitting your dataset…" active />
+        );
       case "attempt-accepted":
         return (
-          <Notice tone="neutral" title="Your dataset has been submitted">
-            <p>View its processing progress.</p>
-          </Notice>
+          <Notice
+            tone="neutral"
+            title="Your dataset has been submitted"
+            body="View its processing progress."
+          />
         );
       case "attempt-unknown":
         return (
           <Notice
             tone="caution"
             title="We couldn't confirm your earlier submission"
-          >
-            <p>{UNKNOWN_SUBMISSION_GUIDANCE}</p>
-          </Notice>
+            body={UNKNOWN_SUBMISSION_GUIDANCE}
+          />
         );
       case "identity-unavailable":
         return (
-          <Notice tone="caution" title="Please sign in again">
-            <p>You need to be signed in to add a dataset.</p>
-          </Notice>
+          <Notice
+            tone="caution"
+            title="Please sign in again"
+            body="You need to be signed in to add a dataset."
+          />
         );
       default:
         // `owner-inactive` is never stored against the current owner, so it
@@ -947,7 +901,9 @@ export default function AddDatasetForm() {
     if (session === null) return null;
     switch (session.status) {
       case "starting":
-        return <Notice tone="neutral" title="Submitting your dataset…" busy />;
+        return (
+          <Notice tone="neutral" title="Submitting your dataset…" active />
+        );
       case "accepted":
         return (
           // Accepted may still mean queued, so nothing here says processing
@@ -965,22 +921,23 @@ export default function AddDatasetForm() {
                 </Button>
               )
             }
-          >
-            <p>
-              {navigationFailed
+            body={
+              navigationFailed
                 ? "We couldn't open its progress page. Select View progress to open it."
-                : "Opening processing progress…"}
-            </p>
-          </Notice>
+                : "Opening processing progress…"
+            }
+          />
         );
       case "rejected":
         return (
           // A definite refusal. The status code stays in diagnostics; a refusal
           // does not establish the staged files are still usable, hence the
           // re-upload. No new start or retry affordance is offered.
-          <Notice tone="problem" title="Your dataset wasn't created">
-            <p>Upload the files again before trying again.</p>
-          </Notice>
+          <Notice
+            tone="problem"
+            title="Your dataset wasn't created"
+            body="Upload the files again before trying again."
+          />
         );
       case "unknown": {
         const forbidden = session.unknownFailure?.kind === "forbidden";
@@ -1004,26 +961,27 @@ export default function AddDatasetForm() {
                 Go to Browse
               </Button>
             }
-          >
-            {forbidden ? (
-              <>
-                <p>
-                  Ask a DataGEMS administrator to check your onboarding
-                  permissions.
-                </p>
-                <p>
-                  We couldn&apos;t confirm whether processing started.
-                  Don&apos;t upload these files again until the administrator
-                  has checked this submission.
-                </p>
-              </>
-            ) : (
-              <>
-                <p>{UNKNOWN_SUBMISSION_GUIDANCE}</p>
-                <p>It may not appear in Browse yet.</p>
-              </>
-            )}
-          </Notice>
+            body={
+              forbidden ? (
+                <>
+                  <p>
+                    Ask a DataGEMS administrator to check your onboarding
+                    permissions.
+                  </p>
+                  <p>
+                    We couldn&apos;t confirm whether processing started.
+                    Don&apos;t upload these files again until the administrator
+                    has checked this submission.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>{UNKNOWN_SUBMISSION_GUIDANCE}</p>
+                  <p>It may not appear in Browse yet.</p>
+                </>
+              )
+            }
+          />
         );
       }
       default:

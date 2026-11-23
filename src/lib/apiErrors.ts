@@ -2,6 +2,8 @@ export enum ApiErrorMessage {
   NO_AUTH_TOKEN = "No authentication token available",
   FETCH_DATASETS_FAILED = "Failed to fetch datasets",
   FETCH_COLLECTIONS_FAILED = "Failed to fetch collections",
+  SEARCH_IN_DATA_FAILED = "Failed to search in data",
+  FETCH_FIELDS_OF_SCIENCE_FAILED = "Failed to fetch fields of science",
   FETCH_GRANTS_FAILED = "Failed to fetch grants",
   UNEXPECTED_ERROR = "An unexpected error occurred",
   NO_ACCESS_TOKEN = "No access token available",

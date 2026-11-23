@@ -18,8 +18,10 @@ import {
   uniqueById,
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
+import { fieldOfScienceFilterValues } from "@/lib/fieldsOfScience";
 import { GatewayError, withReference } from "@/lib/gatewayError";
 import { logError } from "@/lib/logger";
+import { loadFieldsOfScience } from "@/lib/vocabularyService";
 
 export const DEFAULT_SORT = "name-asc";
 
@@ -114,6 +116,7 @@ function cataloguePayload(
   if (backend.license && backend.license.length > 0) {
     payload.license = backend.license.join(",");
   }
+  // The selected codes; `withFieldOfScienceNames` adds their names.
   if (backend.fieldsOfScience && backend.fieldsOfScience.length > 0) {
     payload.fieldsOfScience = backend.fieldsOfScience;
   }
@@ -151,7 +154,10 @@ const keepCollection = <T extends DatasetPlus>(found: T[], id: string) =>
 
 type SearchApi = Pick<
   ReturnType<typeof useApi>,
-  "queryDatasets" | "queryUserCollections" | "searchCrossDataset"
+  | "queryDatasets"
+  | "queryUserCollections"
+  | "searchCrossDataset"
+  | "getFieldsOfScience"
 >;
 
 /** A list request that failed, with the message the page shows for it. */
@@ -263,12 +269,42 @@ async function loadCustom(
   return { datasets: uniqueById(found.map(mapApiDatasetToDataset)) };
 }
 
+/**
+ * The catalogue request with each selected field of science sent by name and
+ * by code, because datasets onboarded before names were sent store codes.
+ * Without the vocabulary the filter is reported as failed: codes alone would
+ * quietly miss every dataset stored by name.
+ */
+async function withFieldOfScienceNames(
+  api: SearchApi,
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const selected = payload.fieldsOfScience;
+  if (!Array.isArray(selected)) return payload;
+  const categories = await orFail(
+    loadFieldsOfScience(api.getFieldsOfScience),
+    (err) => shownFor(err, ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED),
+    "Failed to load fields of science for the filter",
+  );
+  if (categories.length === 0) {
+    throw new ListFailure(
+      ApiErrorMessage.FETCH_FIELDS_OF_SCIENCE_FAILED,
+      "Fields of science vocabulary was empty for the filter",
+    );
+  }
+  return {
+    ...payload,
+    fieldsOfScience: fieldOfScienceFilterValues(selected, categories),
+  };
+}
+
 /** The first catalogue page for the search, sort and filters. */
 async function loadCatalogue(
   api: SearchApi,
-  payload: Record<string, unknown>,
+  filtered: Record<string, unknown>,
   sort: string,
 ): Promise<ListResult> {
+  const payload = await withFieldOfScienceNames(api, filtered);
   const data = await api.queryDatasets(payload);
   const items = Array.isArray(data.items) ? data.items : [];
   return {
@@ -296,8 +332,13 @@ export function useDatasetSearch({
   scope,
   handoff = NO_HANDOFF,
 }: DatasetSearchOptions) {
-  const { hasToken, queryDatasets, queryUserCollections, searchCrossDataset } =
-    useApi();
+  const {
+    hasToken,
+    queryDatasets,
+    queryUserCollections,
+    searchCrossDataset,
+    getFieldsOfScience,
+  } = useApi();
   const scopeKind = scope?.kind ?? null;
   const scopeId = scope && scope.kind !== "all" ? scope.id : null;
   const builtInCollectionId = scope?.kind === "collection" ? scope.id : null;
@@ -388,7 +429,12 @@ export function useDatasetSearch({
     if (key === lastStarted.current) return;
     lastStarted.current = key;
 
-    const api = { queryDatasets, queryUserCollections, searchCrossDataset };
+    const api = {
+      queryDatasets,
+      queryUserCollections,
+      searchCrossDataset,
+      getFieldsOfScience,
+    };
     const request = ++listRequest.current;
     const isLatest = () => request === listRequest.current;
     setIsLoading(true);
@@ -409,8 +455,8 @@ export function useDatasetSearch({
         if (!isLatest()) return;
         setDatasets(result.datasets);
         if (result.page) {
-          const { itemCount, count } = result.page;
-          startPaging(payload, listSort, itemCount, count);
+          const { payload: sent, itemCount, count } = result.page;
+          startPaging(sent, listSort, itemCount, count);
         }
       } catch (err: unknown) {
         if (!isLatest()) return;

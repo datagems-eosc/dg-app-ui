@@ -5,6 +5,7 @@ import ChatInitialView from "@ui/chat/ChatInitialView";
 import { ChatInput, type ChatInputRef } from "@ui/chat/ChatInput";
 import ChatMessages from "@ui/chat/ChatMessages";
 import { ChatMessagesSkeleton } from "@ui/chat/ChatMessagesSkeleton";
+import type { ChatWorkingStep } from "@ui/chat/chatWorkingStatus";
 import DatasetChangeWarning from "@ui/chat/DatasetChangeWarning";
 import { datasetProposalPrompt } from "@ui/chat/DatasetProposalBlock";
 import { Database } from "lucide-react";
@@ -75,7 +76,7 @@ export default function Chat({
   const [messages, setMessages] = useState<Message[]>([]);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isGeneratingAIResponse, setIsGeneratingAIResponse] = useState(false);
-  const [aiLoadingText, setAiLoadingText] = useState("Step 1 - processing");
+  const [workingStep, setWorkingStep] = useState<ChatWorkingStep>("discovery");
   const [hasInitialized, setHasInitialized] = useState(false);
 
   // Collections state
@@ -583,9 +584,9 @@ export default function Chat({
     if (!text.trim()) return;
     setError(null);
     setIsLoading(true);
-    // Show spinner immediately when user sends a message
+    // Show the working status as soon as the user sends a message
     setIsGeneratingAIResponse(true);
-    setAiLoadingText("Step 1 - processing");
+    setWorkingStep(selectedDatasets.length > 0 ? "in-dataset" : "discovery");
 
     // Store current datasets as previous before sending
     setPreviousDatasets([...selectedDatasets]);
@@ -598,7 +599,6 @@ export default function Chat({
 
       // For existing conversations, use the in-data-explore API directly
       if (conversationId && selectedDatasets.length > 0) {
-        setAiLoadingText("Analyzing data from selected datasets...");
         const userMessage: Message = {
           id: Date.now().toString(),
           type: "user",
@@ -641,17 +641,14 @@ export default function Chat({
         );
 
         if (aiMessage) {
-          // Add AI message to state
           setMessages((prev) => [...prev, aiMessage]);
-
-          // Turn off spinner
-          setIsGeneratingAIResponse(false);
-
-          // Rekomendacje będą pobrane przez useEffect po zakończeniu isGeneratingAIResponse
+        } else {
+          setError(ApiErrorMessage.SEARCH_IN_DATA_FAILED);
         }
 
+        // Hide the working status; recommendations load once it is gone
+        setIsGeneratingAIResponse(false);
         setIsLoading(false);
-        setAiLoadingText("Step 1 - processing");
         return;
       }
 
@@ -764,7 +761,7 @@ export default function Chat({
         }
       } else if (!conversationId) {
         // If datasets are selected and not already in a conversation, create a new conversation and then search
-        // Show spinner while making API calls (new conversation with datasets path)
+        // Show the working status while making API calls (new conversation with datasets path)
         setIsGeneratingAIResponse(true);
 
         if (!api.hasToken) {
@@ -849,7 +846,7 @@ export default function Chat({
       };
       setMessages([userMessage]);
 
-      // Show spinner while generating AI response
+      // Show the working status while generating the AI response
       setIsGeneratingAIResponse(true);
 
       // If datasets were found via cross-dataset search, show a system message
@@ -1033,7 +1030,7 @@ export default function Chat({
     setMessages((prev) => [...prev, simulatedUserMessage]);
     setIsLoading(true);
     setIsGeneratingAIResponse(true);
-    setAiLoadingText("Analyzing data from selected datasets...");
+    setWorkingStep("in-dataset");
     setError(null);
 
     try {
@@ -1083,7 +1080,6 @@ export default function Chat({
     } finally {
       setIsLoading(false);
       setIsGeneratingAIResponse(false);
-      setAiLoadingText("Step 1 - processing");
     }
   };
 
@@ -1169,6 +1165,8 @@ export default function Chat({
 
   // Helper: Only disable input when loading or generating AI response
   const isInputDisabled = isLoading || isGeneratingAIResponse;
+  // The working status is the waiting indicator; the input only shows its own while none is up
+  const isInputSending = isLoading && !isGeneratingAIResponse;
 
   // Add scroll-to-bottom for messages
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -1229,9 +1227,7 @@ export default function Chat({
                 <ChatMessages
                   messages={messages}
                   isMessagesLoading={isMessagesLoading}
-                  isGeneratingAIResponse={isGeneratingAIResponse}
-                  thinkingMode={true}
-                  thinkingStepText={aiLoadingText}
+                  pendingStep={isGeneratingAIResponse ? workingStep : undefined}
                   messagesEndRef={messagesEndRef}
                   onSourcesClick={handleSourcesClick}
                   onRecommendationClick={handleRecommendationClick}
@@ -1290,7 +1286,7 @@ export default function Chat({
                 }}
                 selectedCollection={selectedCollection}
                 onSelectCollection={handleSelectCollection}
-                isLoading={isLoading}
+                isLoading={isInputSending}
                 disabled={isInputDisabled}
                 error={error}
                 showAddDatasetsModal={showAddDatasetsModal}
@@ -1326,7 +1322,7 @@ export default function Chat({
               }}
               selectedCollection={selectedCollection}
               onSelectCollection={handleSelectCollection}
-              isLoading={isLoading}
+              isLoading={isInputSending}
               disabled={isInputDisabled}
               error={error}
               showAddDatasetsModal={showAddDatasetsModal}

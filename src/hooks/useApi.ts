@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useCallback, useMemo } from "react";
 import { ApiErrorMessage } from "@/lib/apiErrors";
+import { type DatasetFeatures, featuresFromBody } from "@/lib/datasetFeatures";
 import {
   createDatasetAccessReader,
   type DatasetAccessReader,
@@ -17,6 +18,13 @@ import {
   type DatasetPermissionsGateway,
   type DatasetPermissionsTransport,
 } from "@/lib/datasetPermissions/gateway";
+import {
+  type DatasetRecommendationsResult,
+  RECOMMENDATION_COUNT,
+  RECOMMENDATION_QUERY,
+  recommendationsFromBody,
+  recommendationsFromStatus,
+} from "@/lib/datasetRecommendations";
 import { publicEnv } from "@/lib/env";
 import type { UserFavorite } from "@/lib/favorites";
 import {
@@ -1209,50 +1217,34 @@ export function useApi() {
   const getDatasetRecommendations = useCallback(
     async (
       datasetId: string,
-      n = 6,
-      fields: string[] = [
-        "id",
-        "name",
-        "description",
-        "keywords",
-        "fieldOfScience",
-        "license",
-        "url",
-        "mimeType",
-        "datePublished",
-        "collections.id",
-        "collections.name",
-        "collections.code",
-        "permissions",
-      ],
-    ): Promise<any[]> => {
-      if (!token) return [];
+      { signal }: { signal?: AbortSignal } = {},
+    ): Promise<DatasetRecommendationsResult> => {
+      if (!token) return { status: "failed" };
 
-      const params = fields.map((f) => `f=${encodeURIComponent(f)}`);
-      params.push(`n=${n}`);
-      const url = `${baseUrl}/gw/api/search/dataset/${encodeURIComponent(
-        datasetId,
-      )}/recommend?${params.join("&")}`;
-
-      logApiRequest("getDatasetRecommendations", { datasetId, n });
-
+      // Everything below answers with a result: building the URL can throw
+      // too (a URIError on a malformed id).
       try {
-        // Plain fetch (NOT fetchWithAuth): the recommend endpoint returns
-        // 401 "insufficient rights" for datasets the user can't access, and
-        // fetchWithAuth would treat that as an auth failure and force a logout.
-        // Recommendations are a non-critical footer, so degrade to empty.
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            oauth2: token,
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-            "X-Request-Type": "getDatasetRecommendations",
-          },
+        const endpoint = `/search/dataset/${encodeURIComponent(
+          datasetId,
+        )}/recommend?${RECOMMENDATION_QUERY}`;
+
+        logApiRequest("getDatasetRecommendations", {
+          datasetId,
+          n: RECOMMENDATION_COUNT,
         });
+
+        // No refresh and no sign-out on 401: the recommend endpoint answers
+        // 401 "insufficient rights" for datasets the user can't access, and
+        // the section explains that refusal instead (as it does a 403).
+        const response = await makeRequest(
+          endpoint,
+          {
+            method: "GET",
+            headers: { "X-Request-Type": "getDatasetRecommendations" },
+            signal,
+          },
+          { retryOn401: false },
+        );
 
         if (!response.ok) {
           logApiError(
@@ -1260,22 +1252,72 @@ export function useApi() {
             { status: response.status },
             { datasetId },
           );
-          return [];
+          return recommendationsFromStatus(response.status);
         }
 
-        const result = await response.json();
-        const items = Array.isArray(result) ? result : [];
+        const result = recommendationsFromBody(await response.json());
         logApiResponse("getDatasetRecommendations", {
           datasetId,
-          count: items.length,
+          count: result.status === "datasets" ? result.datasets.length : 0,
         });
-        return items;
+        return result;
       } catch (error) {
-        logApiError("getDatasetRecommendations", error, { datasetId });
-        return [];
+        // A cancelled read is the caller leaving, not a failure.
+        if (!signal?.aborted) {
+          logApiError("getDatasetRecommendations", error, { datasetId });
+        }
+        return { status: "failed" };
       }
     },
-    [token, baseUrl],
+    [token, makeRequest],
+  );
+
+  /**
+   * Which DataGEMS services know the dataset (`features`), or null when that
+   * cannot be read (no session, refused, failed, no `features` in the answer).
+   * Asked on its own request: the Gateway asks the recommender for it, and a
+   * recommender error fails the whole request.
+   */
+  const getDatasetFeatures = useCallback(
+    async (
+      datasetId: string,
+      { signal }: { signal?: AbortSignal } = {},
+    ): Promise<DatasetFeatures | null> => {
+      if (!token) return null;
+      try {
+        const endpoint = `/dataset/${encodeURIComponent(
+          datasetId,
+        )}?f=id&f=features`;
+        logApiRequest("getDatasetFeatures", { datasetId });
+        // A 401 here only means the status is unknown: no refresh, no sign-out.
+        const response = await makeRequest(
+          endpoint,
+          {
+            method: "GET",
+            headers: { "X-Request-Type": "getDatasetFeatures" },
+            signal,
+          },
+          { retryOn401: false },
+        );
+        if (!response.ok) {
+          logApiError(
+            "getDatasetFeatures",
+            { status: response.status },
+            { datasetId },
+          );
+          return null;
+        }
+        const features = featuresFromBody(await response.json());
+        logApiResponse("getDatasetFeatures", { datasetId, features });
+        return features;
+      } catch (error) {
+        if (!signal?.aborted) {
+          logApiError("getDatasetFeatures", error, { datasetId });
+        }
+        return null;
+      }
+    },
+    [token, makeRequest],
   );
 
   const getUserFavorites = useCallback(
@@ -1824,6 +1866,7 @@ export function useApi() {
     getDatasetById,
     downloadDatasetFile,
     getDatasetRecommendations,
+    getDatasetFeatures,
     getUserFavorites,
     addFavoriteDataset,
     removeFavoriteDataset,
