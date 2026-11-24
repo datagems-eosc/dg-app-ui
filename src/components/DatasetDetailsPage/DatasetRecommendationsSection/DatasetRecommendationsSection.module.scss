@@ -18,14 +18,11 @@ $chip-sm-height: 32px;
     row-gap: $spacing-xs;
   }
 
-  // Beside the heading on wide screens; on its own line on narrow ones,
-  // where it would wrap anyway.
+  // At the right end of the heading's row; when it wraps on narrow screens it
+  // stays right-aligned on its own line.
   &__status {
     min-width: 0;
-
-    @media (max-width: $breakpoint-md - 1px) {
-      flex-basis: 100%;
-    }
+    margin-left: auto;
   }
 
   &__title {
