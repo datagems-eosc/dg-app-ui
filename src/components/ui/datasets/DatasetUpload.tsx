@@ -4,6 +4,7 @@ import { Link as LinkIcon, Upload } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
+import { GatewayError } from "@/lib/gatewayError";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { FileUploadCard } from "./FileUploadCard";
@@ -16,6 +17,8 @@ export interface UploadedFile {
   status: "uploading" | "success" | "error";
   progress: number;
   error?: string;
+  /** Shown on the card: set only from a classified Gateway failure. */
+  failureMessage?: string;
   file?: File;
   stagedPath?: string;
 }
@@ -131,6 +134,8 @@ export function DatasetUpload({
             progress: 0,
             status: "error",
             error: message,
+            failureMessage:
+              err instanceof GatewayError ? err.message : undefined,
           });
         });
         onFilesChange(allFiles.map((f) => errorUpdates.get(f.id) ?? f));

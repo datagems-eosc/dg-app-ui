@@ -352,7 +352,6 @@ export function useApi() {
     async (payload: any): Promise<any> => {
       logApiRequest("queryDatasets", {
         endpoint: "/dataset/query",
-        payload,
       });
 
       const response = await makeRequest("/dataset/query", {
@@ -381,7 +380,6 @@ export function useApi() {
     async (payload: any): Promise<any> => {
       logApiRequest("queryCollections", {
         endpoint: "/collection/query",
-        payload,
       });
 
       const response = await makeRequest("/collection/query", {
@@ -410,7 +408,6 @@ export function useApi() {
     async (payload: any): Promise<any> => {
       logApiRequest("queryUserCollections", {
         endpoint: "/collection/query",
-        payload,
       });
 
       const response = await makeRequest("/collection/query", {
@@ -444,8 +441,6 @@ export function useApi() {
 
       logApiRequest("createUserCollection", {
         endpoint: "/collection/persist",
-        name,
-        code,
       });
 
       const response = await makeRequest(
@@ -1069,7 +1064,6 @@ export function useApi() {
     async (payload: UserLookup): Promise<UserQueryResult> => {
       logApiRequest("queryUsers", {
         endpoint: "/user/query",
-        payload,
       });
 
       const response = await makeRequest("/user/query", {
@@ -1089,10 +1083,7 @@ export function useApi() {
   const queryUserGroups = useCallback(
     async (payload: UserGroupLookup): Promise<UserGroupQueryResult> => {
       const endpoint = publicEnv("USER_GROUPS_ENDPOINT", "/user/group/query");
-      logApiRequest("queryUserGroups", {
-        endpoint,
-        payload,
-      });
+      logApiRequest("queryUserGroups", { endpoint });
 
       const response = await makeRequest(endpoint, {
         method: "POST",
@@ -1515,7 +1506,6 @@ export function useApi() {
 
       logApiRequest("getRecommendNextQueries", {
         endpoint: "/search/recommend",
-        query,
       });
 
       const requestPayload: {
@@ -1734,7 +1724,6 @@ export function useApi() {
 
       logApiRequest("onboardDataset", {
         endpoint: "/dataset/onboard",
-        DataLocations: dataLocationsMapped,
       });
 
       const response = await makeRequest("/dataset/onboard", {
@@ -1808,7 +1797,6 @@ export function useApi() {
     async (payload: { DatasetIds: string[]; Query: string }): Promise<any> => {
       logApiRequest("getLinguisticFeatures", {
         endpoint: "/pilot/language/linguistic-features",
-        payload,
       });
       const response = await makeRequest(
         "/pilot/language/linguistic-features",

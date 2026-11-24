@@ -17,7 +17,7 @@ import {
   CORRELATION_ID,
   upstreamFailureBody,
 } from "@/lib/gatewayError.fixtures";
-import { logApiError } from "@/lib/logger";
+import { apiLogger, logApiError } from "@/lib/logger";
 import { useApi } from "./useApi";
 
 // Bodies as recorded from the Gateway (HTTP 424, code 104).
@@ -249,4 +249,50 @@ describe("useApi Gateway error messages", () => {
     );
     expect(logged).not.toContain("qwzx");
   });
+});
+
+describe("useApi request logs", () => {
+  const TYPED = "qwzx vbnm plok";
+  type Api = ReturnType<typeof useApi>;
+
+  it.each<[string, string, (api: Api) => Promise<unknown>]>([
+    [
+      "Language question",
+      "/pilot/language/linguistic-features",
+      (api) => api.getLinguisticFeatures({ DatasetIds: ["d-1"], Query: TYPED }),
+    ],
+    [
+      "next-query suggestions",
+      "/search/recommend",
+      (api) => api.getRecommendNextQueries(TYPED),
+    ],
+    [
+      "new collection name",
+      "/collection/persist",
+      (api) => api.createUserCollection(TYPED),
+    ],
+    [
+      "dataset search text",
+      "/dataset/query",
+      (api) => api.queryDatasets({ like: TYPED, project: { fields: ["id"] } }),
+    ],
+  ])(
+    "logs the %s request without the typed text",
+    async (_, endpoint, call) => {
+      stubFetch(async () => new Response("{}", { status: 200 }));
+      const info = vi.spyOn(apiLogger, "info");
+      const { result } = renderHook(() => useApi());
+
+      await call(result.current).catch(() => undefined);
+
+      const requestLogs = info.mock.calls.filter(
+        ([fields]) => (fields as { type?: string }).type === "request",
+      );
+      expect(requestLogs).toContainEqual([
+        expect.objectContaining({ endpoint }),
+        expect.any(String),
+      ]);
+      expect(JSON.stringify(info.mock.calls)).not.toContain("qwzx");
+    },
+  );
 });

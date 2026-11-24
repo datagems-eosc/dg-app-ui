@@ -16,6 +16,11 @@ interface FileUploadCardProps {
      * actionable guidance instead.
      */
     error?: string;
+    /**
+     * User copy for the failure, from a classified Gateway error (its message
+     * and reference). Shown in place of the generic guidance when present.
+     */
+    failureMessage?: string;
   };
   onRemove: () => void;
   onRetry?: () => void;
@@ -71,9 +76,10 @@ export function FileUploadCard({
   const failureGuidance =
     file.status !== "error"
       ? null
-      : onRetry
-        ? "Retry the upload, or remove this file if you don't need it."
-        : "Remove this file, then add it again.";
+      : (file.failureMessage ??
+        (onRetry
+          ? "Retry the upload, or remove this file if you don't need it."
+          : "Remove this file, then add it again."));
 
   // Joined rather than merged through `cn`: tailwind-merge drops this
   // project's custom typography classes when a text colour is merged in the
