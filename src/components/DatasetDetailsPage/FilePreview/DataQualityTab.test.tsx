@@ -18,8 +18,12 @@ it("shows both findings for a reported column and discloses the actual examples"
             column: "Keywords",
             category: "format_inconsistency",
             description: "Unexpected format",
-            affectedRows: 96,
-            examples: [{ row: 4, value: false }],
+            affectedRows: 1234,
+            examples: [
+              { row: 4, value: false },
+              { row: 5, value: null },
+              { row: 6, value: 0 },
+            ],
           },
           {
             id: "b",
@@ -40,9 +44,13 @@ it("shows both findings for a reported column and discloses the actual examples"
   await user.click(format);
   expect(format.parentElement).toHaveAttribute("open");
   expect(screen.getByText("Unexpected format")).toBeInTheDocument();
-  expect(
-    within(screen.getByRole("table")).getByText("false"),
-  ).toBeInTheDocument();
+  expect(screen.getByText("Affected rows: 1,234")).toBeInTheDocument();
+  const examples = within(
+    screen.getByRole("table", { name: "Reported examples" }),
+  );
+  expect(examples.getByRole("row", { name: "4 false" })).toBeInTheDocument();
+  expect(examples.getByRole("row", { name: "5 Empty" })).toBeInTheDocument();
+  expect(examples.getByRole("row", { name: "6 0" })).toBeInTheDocument();
   expect(screen.getByText("Missing values")).toBeInTheDocument();
   expect(screen.queryByText("Birth Date")).not.toBeInTheDocument();
   expect(

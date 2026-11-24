@@ -90,7 +90,8 @@ export default function DataQualityTab({
               <p>{finding.description}</p>
               <p>
                 Affected rows:{" "}
-                {finding.affectedRows?.toLocaleString() ?? "Not available"}
+                {finding.affectedRows?.toLocaleString("en-US") ??
+                  "Not available"}
               </p>
               {finding.examples === null && (
                 <p>Examples could not be loaded.</p>
@@ -111,7 +112,7 @@ export default function DataQualityTab({
                       {finding.examples.map(({ row, value }, index) => (
                         <tr key={`${row}-${index}`}>
                           <td>{row}</td>
-                          <td>{String(value)}</td>
+                          <td>{value === null ? "Empty" : String(value)}</td>
                         </tr>
                       ))}
                     </tbody>

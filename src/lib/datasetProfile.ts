@@ -228,7 +228,8 @@ function possibleRowTotals(
   if (missingCount == null && missingPercentage === 0) return [rowCount];
   if (!isCount(missingCount)) return [];
 
-  // Older profiles can report a total; the CSV profiler reports only populated rows.
+  // Older profiles can report a total. The CSV profiler's calculate_statistics.py
+  // uses column.count() for rowCount, which excludes missing cells.
   const candidates = new Set([rowCount, rowCount + missingCount]);
   return [...candidates].filter(
     (total) =>
