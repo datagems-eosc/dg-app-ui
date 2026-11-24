@@ -1,10 +1,12 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { expect, it, vi } from "vitest";
+import type { FilePreviewData } from "@/types/filePreview";
 import ExtendedFilePreviewModal from "./ExtendedFilePreviewModal";
 
-const data = {
-  type: "tabular" as const,
+const data: FilePreviewData = {
+  type: "tabular",
   filename: "data.csv",
   fileSize: "",
   description: "",
@@ -12,7 +14,7 @@ const data = {
   rows: [],
   statistics: [],
   totalRows: 0,
-  dataQuality: [],
+  dataQuality: { status: "unavailable" },
 };
 function Harness() {
   const [open, setOpen] = useState(false);
@@ -57,4 +59,43 @@ it("keeps nested Show columns Escape from closing Extended view", () => {
   expect(columns).toHaveFocus();
   fireEvent.keyDown(document, { key: "Escape" });
   expect(trigger).toHaveFocus();
+});
+
+it("includes quality findings in the Extended view tab order", async () => {
+  const user = userEvent.setup();
+  render(
+    <ExtendedFilePreviewModal
+      isOpen
+      fileData={{
+        ...data,
+        dataQuality: {
+          status: "available",
+          summary: "One finding",
+          findings: [
+            {
+              id: "finding",
+              column: "Price",
+              category: "missing_value",
+              description: "Missing price",
+            },
+          ],
+        },
+      }}
+      activeTab="dataQuality"
+      columns={[]}
+      onClose={vi.fn()}
+      onSaveColumns={vi.fn()}
+      onTabChange={vi.fn()}
+    />,
+  );
+
+  const tab = screen.getByRole("tab", { name: /Data Quality/ });
+  tab.focus();
+  await user.tab();
+  const summary = screen.getByText("Price").closest("summary");
+  expect(summary).toHaveFocus();
+  await user.tab();
+  expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+  await user.tab({ shift: true });
+  expect(summary).toHaveFocus();
 });

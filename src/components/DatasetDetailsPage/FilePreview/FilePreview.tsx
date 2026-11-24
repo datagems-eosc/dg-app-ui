@@ -90,6 +90,7 @@ export default function FilePreview({
 
         <FilePreviewTabs
           idPrefix={tabId}
+          hasQualityReport={tabularData.dataQuality.status === "available"}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />

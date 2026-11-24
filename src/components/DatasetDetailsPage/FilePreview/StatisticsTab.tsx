@@ -27,68 +27,90 @@ function getColumnIcon(type: string) {
 // Large Histogram component for Statistics Tab (not mini)
 function LargeHistogram({
   values,
+  ranges,
   min,
   max,
-  minLabel,
-  maxLabel,
+  label,
 }: {
   values: number[];
+  ranges?: [number, number][];
   min: number;
   max: number;
-  minLabel?: string;
-  maxLabel?: string;
+  label: string;
 }) {
-  const maxBarHeight = Math.max(...values);
+  const intervals = 5;
+  const maxCount = values.reduce((max, count) => Math.max(max, count), 0);
+  const stepEstimate = Math.max(1, maxCount / intervals);
+  const magnitude = 10 ** Math.floor(Math.log10(stepEstimate));
+  const step = Math.ceil(stepEstimate / magnitude) * magnitude;
+  const axisMax = step * intervals;
+  const ticks = Array.from(
+    { length: intervals + 1 },
+    (_, i) => axisMax - i * step,
+  );
   const chartHeight = 165;
   const chartWidth = 219;
-  const barWidth = chartWidth / values.length;
+  const chartTop = 9;
+  const equalWidth = chartWidth / values.length;
+  const minLabel = metricFormatter.format(min);
+  const maxLabel = metricFormatter.format(max);
+  const labelsCollide = min !== max && minLabel === maxLabel;
 
   return (
     <div className={styles.largeHistogram}>
       {/* Y-axis scale */}
       <div className={styles.largeHistogram__yAxis}>
-        <span className={styles.largeHistogram__yLabel}>100</span>
-        <span className={styles.largeHistogram__yLabel}>80</span>
-        <span className={styles.largeHistogram__yLabel}>60</span>
-        <span className={styles.largeHistogram__yLabel}>40</span>
-        <span className={styles.largeHistogram__yLabel}>20</span>
-        <span className={styles.largeHistogram__yLabel}>0</span>
+        {ticks.map((count) => (
+          <span key={count} className={styles.largeHistogram__yLabel}>
+            {metricFormatter.format(count)}
+          </span>
+        ))}
       </div>
 
       {/* Chart */}
       <div className={styles.largeHistogram__chart}>
         <svg
+          role="img"
+          aria-label={label}
           width={chartWidth}
           height={chartHeight + 57}
           className={styles.largeHistogram__svg}
         >
           {/* Grid lines */}
-          {[0, 31.5, 63, 94.5, 126, 157.5].map((y, i) => (
+          {ticks.map((count, index) => (
             <line
-              key={i}
+              key={count}
               x1="0"
-              y1={y + 9}
+              y1={chartTop + (index * chartHeight) / intervals}
               x2={chartWidth}
-              y2={y + 9}
+              y2={chartTop + (index * chartHeight) / intervals}
               className={styles.largeHistogram__gridLine}
             />
           ))}
 
           {/* Bars */}
           {values.map((value, index) => {
-            const height = (value / maxBarHeight) * chartHeight;
-            const x = index * barWidth;
-            const y = chartHeight - height;
+            const height = (value / axisMax) * chartHeight;
+            const range = ranges?.[index];
+            const x = range
+              ? ((range[0] - min) / (max - min)) * chartWidth
+              : index * equalWidth;
+            const width = range
+              ? ((range[1] - range[0]) / (max - min)) * chartWidth
+              : equalWidth;
+            const y = chartTop + chartHeight - height;
 
             return (
               <rect
                 key={index}
                 x={x}
                 y={y}
-                width={barWidth - 2}
+                width={width - Math.min(2, width / 4)}
                 height={height}
                 className={styles.largeHistogram__bar}
-              />
+              >
+                <title>{metricFormatter.format(value)} rows</title>
+              </rect>
             );
           })}
 
@@ -98,19 +120,104 @@ function LargeHistogram({
             y={chartHeight + 20}
             className={styles.largeHistogram__xLabel}
           >
-            {minLabel || min}
+            {labelsCollide ? String(min) : minLabel}
           </text>
           <text
-            x={chartWidth - 50}
+            x={chartWidth}
             y={chartHeight + 20}
+            textAnchor="end"
             className={styles.largeHistogram__xLabel}
           >
-            {maxLabel || max}
+            {labelsCollide ? String(max) : maxLabel}
           </text>
         </svg>
       </div>
     </div>
   );
+}
+
+const metricFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  signDisplay: "negative",
+});
+
+function formatMetric(value: string | number | undefined): string | undefined {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? metricFormatter.format(value) : undefined;
+  }
+  return value?.trim() || undefined;
+}
+
+function formatMissingPercentage(
+  value: number | undefined,
+): string | undefined {
+  if (
+    value === undefined ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > 100
+  )
+    return undefined;
+  if (value > 0 && value < 0.01) return `<${metricFormatter.format(0.01)}%`;
+  return `${metricFormatter.format(value)}%`;
+}
+
+function Metric({
+  label,
+  value,
+  inferred = false,
+}: {
+  label: string;
+  value: string | number | undefined;
+  inferred?: boolean;
+}) {
+  const formatted = formatMetric(value);
+  return (
+    <div className={styles.statisticsTab__metric}>
+      <span className={styles.statisticsTab__metricLabel}>
+        {label}
+        {inferred && formatted !== undefined && " (inferred)"}
+      </span>
+      <span className={styles.statisticsTab__metricValue}>
+        {formatted ?? "Not available"}
+      </span>
+    </div>
+  );
+}
+
+function numericBounds(
+  min: ColumnStatistics["min"],
+  max: ColumnStatistics["max"],
+) {
+  const toNumber = (value: ColumnStatistics["min"]) => {
+    const number =
+      typeof value === "string" && value.trim() ? Number(value) : value;
+    return typeof number === "number" && Number.isFinite(number)
+      ? number
+      : undefined;
+  };
+  const lower = toNumber(min);
+  const upper = toNumber(max);
+  return lower !== undefined && upper !== undefined && lower > upper
+    ? ([undefined, undefined] as const)
+    : ([lower, upper] as const);
+}
+
+function getHistogram(stats: ColumnStatistics) {
+  const ranges = stats.distributionRanges;
+  const [min, max] = numericBounds(
+    ranges?.[0]?.[0] ?? stats.min,
+    ranges?.at(-1)?.[1] ?? stats.max,
+  );
+  return stats.distribution?.length &&
+    min !== undefined &&
+    max !== undefined &&
+    (!ranges ||
+      (ranges.length === stats.distribution.length &&
+        max > min &&
+        Number.isFinite(max - min)))
+    ? { values: stats.distribution, min, max, ranges }
+    : undefined;
 }
 
 export default function StatisticsTab({
@@ -119,7 +226,40 @@ export default function StatisticsTab({
   totalRows,
   totalMissingPercentage,
 }: StatisticsTabProps) {
-  const visibleColumns = columns.filter((col) => col.visible);
+  const byColumn = new Map(statistics.map((stat) => [stat.columnId, stat]));
+  const cards = columns.flatMap((column) => {
+    const stats = byColumn.get(column.id);
+    if (!column.visible || !stats) return [];
+    const isNumeric = column.type === "numeric" || column.type === "number";
+    const histogram = isNumeric ? getHistogram(stats) : undefined;
+    const [min, max] = numericBounds(stats.min, stats.max);
+    const displayedMetrics = [
+      stats.uniqueValues,
+      stats.nullCount,
+      formatMissingPercentage(stats.missingPercentage),
+    ];
+    const numericMetrics = [
+      min,
+      max,
+      stats.mean,
+      stats.median,
+      stats.stdDev,
+      stats.percentile05,
+      stats.percentile95,
+    ];
+    const hasMetric = (values: (string | number | undefined)[]) =>
+      values.some((value) => formatMetric(value) !== undefined);
+    const hasMetrics =
+      !!histogram ||
+      hasMetric(displayedMetrics) ||
+      (isNumeric && hasMetric(numericMetrics));
+    return hasMetrics || column.inferredSemanticType
+      ? [{ column, stats, isNumeric, histogram, min, max, hasMetrics }]
+      : [];
+  });
+  const missingPercentage = formatMissingPercentage(totalMissingPercentage);
+  const hasSummary =
+    Number.isFinite(totalRows) || missingPercentage !== undefined;
 
   return (
     <div className={styles.statisticsTab}>
@@ -133,7 +273,7 @@ export default function StatisticsTab({
             </span>
             <span className={styles.statisticsTab__summaryValue}>
               {totalRows !== undefined && Number.isFinite(totalRows)
-                ? totalRows.toLocaleString()
+                ? totalRows.toLocaleString("en-US")
                 : "Not available"}
             </span>
           </div>
@@ -142,232 +282,125 @@ export default function StatisticsTab({
               Missing values
             </span>
             <span className={styles.statisticsTab__summaryValue}>
-              {totalMissingPercentage !== undefined &&
-              Number.isFinite(totalMissingPercentage)
-                ? `${Math.round(totalMissingPercentage)}%`
-                : "Not available"}
+              {missingPercentage ?? "Not available"}
             </span>
           </div>
         </div>
       </div>
 
       {/* Column Statistics */}
-      {visibleColumns.map((column) => {
-        const stats = statistics.find((s) => s.columnId === column.id);
-        if (!stats) return null;
+      {cards.length === 0 && !hasSummary && (
+        <p className={styles.statisticsTab__empty}>
+          No statistics available for this file.
+        </p>
+      )}
+      {cards.map(
+        ({ column, stats, isNumeric, histogram, min, max, hasMetrics }) => {
+          const IconComponent = getColumnIcon(column.type);
+          const inferredQuantiles = stats.quantileSource === "profiler";
 
-        const IconComponent = getColumnIcon(column.type);
-        const isNumeric = column.type === "numeric" || column.type === "number";
-
-        return (
-          <div key={column.id} className={styles.statisticsTab__colStats}>
-            {/* Column Header */}
-            <div className={styles.statisticsTab__colHeader}>
-              <div className={styles.statisticsTab__colName}>
-                <IconComponent className={styles.statisticsTab__icon} />
-                <span>{column.name}</span>
-              </div>
-              {column.description && (
-                <div className={styles.statisticsTab__colDescription}>
-                  {column.description}
+          return (
+            <div key={column.id} className={styles.statisticsTab__colStats}>
+              {/* Column Header */}
+              <div className={styles.statisticsTab__colHeader}>
+                <div className={styles.statisticsTab__colName}>
+                  <IconComponent className={styles.statisticsTab__icon} />
+                  <span>{column.name}</span>
                 </div>
-              )}
-            </div>
-
-            {/* Metrics and Chart Container */}
-            <div className={styles.statisticsTab__content}>
-              {/* Left Side: Metrics */}
-              <div className={styles.statisticsTab__metrics}>
-                {isNumeric ? (
-                  <>
-                    {/* Row 1 */}
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Max value
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          {stats.max ?? "-"}
-                        </span>
-                      </div>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Mean value
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          {stats.mean ?? "-"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Row 2 */}
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Standard deviation
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          {stats.stdDev ?? "-"}
-                        </span>
-                      </div>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Quantiles (0.25, 0.5, 0.75)
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          {stats.median ? `${stats.median}` : "-"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Row 3 */}
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Min value
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          {stats.min ?? "-"}
-                        </span>
-                      </div>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Median value
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          {stats.median ?? "-"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Row 4: Missing percentage (full width) */}
-                    <div className={styles.statisticsTab__metricsRowFull}>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Missing percentage
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          {stats.missingPercentage !== undefined &&
-                          Number.isFinite(stats.missingPercentage)
-                            ? `${stats.missingPercentage}%`
-                            : "Not available"}
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* Categorical columns metrics */}
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Max value
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          -
-                        </span>
-                      </div>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Mean value
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          -
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Standard deviation
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          -
-                        </span>
-                      </div>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Quantiles (0.25, 0.5, 0.75)
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          -
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className={styles.statisticsTab__metricsRow}>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Min value
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          -
-                        </span>
-                      </div>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Median value
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          -
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className={styles.statisticsTab__metricsRowFull}>
-                      <div className={styles.statisticsTab__metric}>
-                        <span className={styles.statisticsTab__metricLabel}>
-                          Missing percentage
-                        </span>
-                        <span className={styles.statisticsTab__metricValue}>
-                          {stats.missingPercentage !== undefined &&
-                          Number.isFinite(stats.missingPercentage)
-                            ? `${stats.missingPercentage}%`
-                            : "Not available"}
-                        </span>
-                      </div>
-                    </div>
-                  </>
+                {column.inferredSemanticType && (
+                  <p className={styles.statisticsTab__colDescription}>
+                    Inferred semantic type: {column.inferredSemanticType}
+                  </p>
                 )}
-              </div>
-
-              {/* Right Side: Large Number or Histogram */}
-              <div className={styles.statisticsTab__visual}>
-                {isNumeric &&
-                stats.distribution &&
-                stats.min !== undefined &&
-                stats.max !== undefined ? (
-                  <LargeHistogram
-                    values={stats.distribution}
-                    min={
-                      typeof stats.min === "number"
-                        ? stats.min
-                        : Number.parseFloat(String(stats.min))
-                    }
-                    max={
-                      typeof stats.max === "number"
-                        ? stats.max
-                        : Number.parseFloat(String(stats.max))
-                    }
-                    minLabel={`${stats.min}`}
-                    maxLabel={`${stats.max}`}
-                  />
-                ) : (
-                  <div className={styles.statisticsTab__largeNumber}>
-                    <span className={styles.statisticsTab__largeNumberLabel}>
-                      Unique values in this column
-                    </span>
-                    <span className={styles.statisticsTab__largeNumberValue}>
-                      {stats.uniqueValues ?? "Not available"}
-                    </span>
+                {column.description && (
+                  <div className={styles.statisticsTab__colDescription}>
+                    {column.description}
                   </div>
                 )}
               </div>
+
+              {/* Metrics and Chart Container */}
+              {hasMetrics && (
+                <div className={styles.statisticsTab__content}>
+                  {/* Left Side: Metrics */}
+                  <div className={styles.statisticsTab__metrics}>
+                    {isNumeric && (
+                      <>
+                        <div className={styles.statisticsTab__metricsRow}>
+                          <Metric label="Max value" value={max} />
+                          <Metric label="Mean value" value={stats.mean} />
+                        </div>
+                        <div className={styles.statisticsTab__metricsRow}>
+                          <Metric label="Min value" value={min} />
+                          <Metric
+                            label="Median value"
+                            value={stats.median}
+                            inferred={inferredQuantiles}
+                          />
+                        </div>
+                        <div className={styles.statisticsTab__metricsRow}>
+                          <Metric
+                            label="5th percentile"
+                            value={stats.percentile05}
+                            inferred={inferredQuantiles}
+                          />
+                          <Metric
+                            label="95th percentile"
+                            value={stats.percentile95}
+                            inferred={inferredQuantiles}
+                          />
+                        </div>
+                        <div className={styles.statisticsTab__metricsRow}>
+                          <Metric
+                            label="Standard deviation"
+                            value={stats.stdDev}
+                          />
+                          {histogram && (
+                            <Metric
+                              label="Unique values"
+                              value={stats.uniqueValues}
+                            />
+                          )}
+                        </div>
+                      </>
+                    )}
+                    <div className={styles.statisticsTab__metricsRow}>
+                      <Metric label="Missing rows" value={stats.nullCount} />
+                      <Metric
+                        label="Missing percentage"
+                        value={formatMissingPercentage(stats.missingPercentage)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Side: Large Number or Histogram */}
+                  <div className={styles.statisticsTab__visual}>
+                    {histogram ? (
+                      <LargeHistogram
+                        {...histogram}
+                        label={`Distribution of ${column.name}`}
+                      />
+                    ) : (
+                      <div className={styles.statisticsTab__largeNumber}>
+                        <span
+                          className={styles.statisticsTab__largeNumberLabel}
+                        >
+                          Unique values in this column
+                        </span>
+                        <span
+                          className={styles.statisticsTab__largeNumberValue}
+                        >
+                          {formatMetric(stats.uniqueValues) ?? "Not available"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        );
-      })}
+          );
+        },
+      )}
     </div>
   );
 }

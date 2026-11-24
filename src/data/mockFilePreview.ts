@@ -198,46 +198,33 @@ export const mockFilePreviewData: Record<
         ],
       },
     ],
-    dataQuality: [
-      {
-        columnId: "station_id",
-        completeness: 100,
-        accuracy: 98,
-        consistency: 100,
-        issues: [],
-      },
-      {
-        columnId: "temperature",
-        completeness: 86,
-        accuracy: 95,
-        consistency: 92,
-        issues: [
-          {
-            type: "missing",
-            count: 203,
-            description: "Missing temperature readings",
-          },
-          {
-            type: "outlier",
-            count: 12,
-            description: "Temperature values outside expected range",
-          },
-        ],
-      },
-      {
-        columnId: "precipitation",
-        completeness: 68,
-        accuracy: 88,
-        consistency: 85,
-        issues: [
-          {
-            type: "missing",
-            count: 463,
-            description: "Missing precipitation data",
-          },
-        ],
-      },
-    ],
+    dataQuality: {
+      status: "available",
+      summary: "Profiling found missing and outlying readings.",
+      findings: [
+        {
+          id: "temperature-missing",
+          column: "temperature",
+          category: "missing_value",
+          affectedRows: 203,
+          description: "Missing temperature readings",
+        },
+        {
+          id: "temperature-outlier",
+          column: "temperature",
+          category: "outlier",
+          affectedRows: 12,
+          description: "Temperature values outside expected range",
+        },
+        {
+          id: "precipitation-missing",
+          column: "precipitation",
+          category: "missing_value",
+          affectedRows: 463,
+          description: "Missing precipitation data",
+        },
+      ],
+    },
   },
   "file2-xlsx": {
     type: "tabular",
@@ -276,7 +263,7 @@ export const mockFilePreviewData: Record<
     totalRows: 2834,
     totalMissingPercentage: 18,
     statistics: [],
-    dataQuality: [],
+    dataQuality: { status: "unavailable" },
   },
   "file-pdf": {
     type: "pdf",

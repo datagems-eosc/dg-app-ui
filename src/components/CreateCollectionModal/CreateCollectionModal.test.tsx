@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Profiler } from "react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { CollectionsProvider } from "@/contexts/CollectionsContext";
 import CreateCollectionModal from "./CreateCollectionModal";
@@ -163,6 +164,34 @@ it("preserves focus restoration and collection mutations", async () => {
     </>,
   );
   expect(trigger).toHaveFocus();
+});
+
+it("keeps the first collection choice when the picker becomes ready", async () => {
+  let clicked = false;
+  render(
+    <Profiler
+      id="picker"
+      onRender={() => {
+        if (clicked) return;
+        const row = screen.queryByText("Favorites");
+        if (!row) return;
+        // Click as soon as the row exists, before the modal's passive effects run.
+        clicked = true;
+        row.click();
+      }}
+    >
+      <Modal />
+    </Profiler>,
+  );
+
+  await screen.findByText("Favorites");
+  expect(clicked).toBe(true);
+  const add = screen.getByRole("button", { name: "Add to Collection" });
+  expect(add).toBeEnabled();
+  fireEvent.click(add);
+  await waitFor(() =>
+    expect(fixture.add).toHaveBeenCalledWith("favorites", "one"),
+  );
 });
 
 it("does not claim collections are empty before authenticated loading can start", () => {
