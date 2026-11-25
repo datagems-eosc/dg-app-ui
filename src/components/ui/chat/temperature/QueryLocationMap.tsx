@@ -98,7 +98,7 @@ export function QueryLocationMap({ location }: QueryLocationMapProps) {
           aria-hidden="true"
         />
         <p>
-          <b className="font-medium">The map couldn't load.</b>{" "}
+          <b className="font-medium">{"The map couldn't load."}</b>{" "}
           <span className="text-gray-650">Query location {coordinates}</span>
         </p>
       </div>
