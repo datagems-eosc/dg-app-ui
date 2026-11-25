@@ -198,7 +198,7 @@ export function TemperatureChart({ answer }: TemperatureChartProps) {
   };
 
   return (
-    <div ref={ref} className="flex flex-col gap-2">
+    <div ref={ref} className="flex min-w-0 flex-col gap-2">
       <div
         role="img"
         tabIndex={0}
@@ -210,10 +210,12 @@ export function TemperatureChart({ answer }: TemperatureChartProps) {
         className="relative rounded-md focus-visible:outline-2 focus-visible:outline-blue-500"
       >
         <svg
-          width={width}
+          width="100%"
           height={height}
           viewBox={`0 0 ${width} ${height}`}
-          className="block overflow-visible text-blue-500"
+          // The SVG fills its container; its width never feeds back into
+          // the measurement, so narrow screens do not widen the answer.
+          className="block max-w-full overflow-visible text-blue-500"
           aria-hidden="true"
           onMouseMove={onMouseMove}
           onMouseLeave={() => setActive(null)}
