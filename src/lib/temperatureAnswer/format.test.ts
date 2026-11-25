@@ -10,13 +10,19 @@ import { parseTimeValue, type TimeValue } from "./timeValue";
 
 const time = (raw: string) => parseTimeValue(raw) as TimeValue;
 
-// A zone far from UTC: local-time Date getters would show the wrong day.
+// West of UTC, midnight-UTC dates fall on the previous local day, so any
+// local-time Date API would show or parse the wrong day here.
 const originalTz = process.env.TZ;
 beforeAll(() => {
-  process.env.TZ = "Pacific/Kiritimati";
+  process.env.TZ = "America/Los_Angeles";
 });
 afterAll(() => {
-  process.env.TZ = originalTz;
+  if (originalTz === undefined) delete process.env.TZ;
+  else process.env.TZ = originalTz;
+});
+
+it("runs in a zone where a UTC midnight is still the previous day", () => {
+  expect(new Date(Date.UTC(2020, 6, 1)).getDate()).toBe(30);
 });
 
 describe("formatTemperature", () => {

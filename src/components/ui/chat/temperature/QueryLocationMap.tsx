@@ -37,7 +37,6 @@ export function QueryLocationMap({ location }: QueryLocationMapProps) {
   useEffect(() => {
     let cancelled = false;
     let map: MapLibreMap | null = null;
-    setFailed(false);
     // Stop a map whose basemap could not load; the text fallback replaces it.
     const fail = () => {
       map?.remove();

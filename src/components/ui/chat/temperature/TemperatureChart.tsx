@@ -63,13 +63,19 @@ function temperatureTicks(min: number, max: number): number[] {
   return ticks;
 }
 
-type TickMode = "month" | "clock" | "day";
+type TickMode = "month" | "clock" | "dayClock" | "day";
 
 /** Which labels fit the span: months, clock times within a day, or days. */
 function tickMode(points: Point[]): TickMode {
   const span = points[points.length - 1].time.epochMs - points[0].time.epochMs;
   if (points[0].time.kind === "date" && span > 92 * DAY_MS) return "month";
-  if (points[0].time.kind === "datetime" && span <= DAY_MS) return "clock";
+  if (points[0].time.kind === "datetime") {
+    const firstDay = Math.floor(points[0].time.epochMs / DAY_MS);
+    const lastDay = Math.floor(points[points.length - 1].time.epochMs / DAY_MS);
+    // Within one day the clock is enough; over a few days both are needed.
+    if (firstDay === lastDay) return "clock";
+    if (span <= 7 * DAY_MS) return "dayClock";
+  }
   return "day";
 }
 
@@ -93,6 +99,8 @@ function timeTicks(points: Point[], mode: TickMode, narrow: boolean): Point[] {
 const TICK_LABEL: Record<TickMode, (point: Point) => string> = {
   month: (point) => formatAxisMonth(point.time),
   clock: (point) => formatAxisClock(point.time),
+  dayClock: (point) =>
+    `${formatAxisTime(point.time)} ${formatAxisClock(point.time)}`,
   day: (point) => formatAxisTime(point.time),
 };
 

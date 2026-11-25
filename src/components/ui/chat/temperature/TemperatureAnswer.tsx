@@ -39,7 +39,13 @@ export function TemperatureAnswer({ answer, message }: TemperatureAnswerProps) {
       ) : (
         <TemperatureDataPanel answer={answer} onDownload={download} />
       )}
-      {location && <QueryLocationMap location={location} />}
+      {location && (
+        // A new location starts a fresh map, including after a failed one.
+        <QueryLocationMap
+          key={`${location.latitude},${location.longitude}`}
+          location={location}
+        />
+      )}
     </div>
   );
 }

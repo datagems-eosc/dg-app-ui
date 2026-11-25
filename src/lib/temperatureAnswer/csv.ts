@@ -14,7 +14,7 @@ const NEEDS_QUOTES = /[",\r\n]/;
 
 // Excel in semicolon-separator locales (Greek, most of the EU) splits a
 // double-clicked CSV at every ";", so a formula after one would start a cell.
-const FORMULA_AFTER_SEMICOLON = /;(\s*)(?=[=+\-@\t\r])/g;
+const FORMULA_AFTER_SEMICOLON = /;([\s"]*)(?=[=+\-@\t\r])/g;
 
 function textField(text: string): string {
   const guarded = text.replace(FORMULA_AFTER_SEMICOLON, ";$1'");

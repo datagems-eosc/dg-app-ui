@@ -92,11 +92,17 @@ describe("tableToCsv", () => {
             ["x;=1+1", 1],
             ["x; =HYPERLINK(1)", 2],
             ["a;b", 3],
+            ['a;"=1+1', 4],
           ],
         ),
       ),
     );
-    expect(out.slice(1)).toEqual(["x;'=1+1,1", "x; '=HYPERLINK(1),2", "a;b,3"]);
+    expect(out.slice(1)).toEqual([
+      "x;'=1+1,1",
+      "x; '=HYPERLINK(1),2",
+      "a;b,3",
+      '"a;""\'=1+1",4',
+    ]);
   });
 
   it("neutralises a formula-like column name", () => {

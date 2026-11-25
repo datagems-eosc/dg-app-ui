@@ -91,6 +91,24 @@ describe("TemperatureAnswer", () => {
     expect(container.firstElementChild?.lastElementChild).toBe(map);
   });
 
+  it("starts a fresh map when the location changes", () => {
+    const answer = interpretTemperatureAnswer(athensTimeTable) as Interpreted;
+    const { rerender } = render(
+      <TemperatureAnswer
+        answer={answer}
+        message={{ tableData: athensTimeTable, sqlQuery: athensDaySql }}
+      />,
+    );
+    const first = screen.getByTestId("query-location-map");
+    rerender(
+      <TemperatureAnswer
+        answer={answer}
+        message={{ tableData: athensTimeTable, sqlQuery: zurichSingleSql }}
+      />,
+    );
+    expect(screen.getByTestId("query-location-map")).not.toBe(first);
+  });
+
   it("shows no map without a supported location", () => {
     const answer = interpretTemperatureAnswer(athensTimeTable) as Interpreted;
     render(

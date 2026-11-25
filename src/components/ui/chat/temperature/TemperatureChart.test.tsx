@@ -118,6 +118,24 @@ describe("TemperatureChart", () => {
     expect(labels).toContain("23:00");
   });
 
+  it("gives date and time on ticks of an hourly series over two days", () => {
+    const twoDays = interpretTemperatureAnswer(
+      table(
+        ["time", "avg_tmean_celsius"],
+        Array.from({ length: 48 }, (_, h) => [
+          new Date(Date.UTC(2020, 6, 1, h)).toISOString(),
+          25,
+        ]),
+      ),
+    ) as TemperatureAnswer;
+    const { container } = render(<TemperatureChart answer={twoDays} />);
+    const ticks = [...container.querySelectorAll("text")]
+      .map((t) => t.textContent ?? "")
+      .filter((label) => /Jul/.test(label));
+    expect(ticks[0]).toBe("1 Jul 00:00");
+    expect(new Set(ticks).size).toBe(ticks.length);
+  });
+
   it("names the year on January ticks of a multi-year series", () => {
     const twoYears = interpretTemperatureAnswer(
       table(

@@ -253,7 +253,7 @@ describe("interpretTemperatureAnswer — rows and observations", () => {
     expect(answer?.rows[0].cells.constructor).toBeUndefined();
   });
 
-  it("marks UTC display even when every zoned row is a duplicate", () => {
+  it("does not claim UTC when every zoned row is a duplicate shown as returned", () => {
     const answer = interpretTemperatureAnswer(
       table(
         ["time", "avg_tmean_celsius"],
@@ -263,7 +263,7 @@ describe("interpretTemperatureAnswer — rows and observations", () => {
         ],
       ),
     );
-    expect(answer?.timeHasZone).toBe(true);
+    expect(answer?.timeHasZone).toBe(false);
   });
 
   it.each([

@@ -141,8 +141,8 @@ export function interpretTemperatureAnswer(
     columns,
     timeColumn,
     temperatureColumn,
-    // From every readable time, duplicates included: they are shown in UTC too.
-    timeHasZone: rows.some((row) => row.time?.value?.hasZone === true),
+    // Only times the table converts to UTC; duplicates are shown as returned.
+    timeHasZone: observations.some((o) => o.time.hasZone),
     rows,
     observations,
     canChart: kind === "series" && plotted >= MIN_CHART_POINTS,

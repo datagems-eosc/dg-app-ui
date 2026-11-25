@@ -52,6 +52,8 @@ describe("supportedTemperatureColumn", () => {
     "average_temp_celsius",
     "avg_temperature_degc",
     "avg_tmean_degC",
+    "tmeanInCelsius",
+    "avgTempAtCelsius",
   ])("supports %s", (name) => {
     expect(supportedTemperatureColumn([name])).toBe(name);
   });

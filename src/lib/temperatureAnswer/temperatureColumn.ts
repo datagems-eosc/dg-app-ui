@@ -37,7 +37,7 @@ function tokens(name: string): string[] {
   return (
     name
       // "stationCount" → station_count, while "degC" and "T2M" stay whole.
-      .replace(/([a-z0-9])([A-Z][a-z])/g, "$1_$2")
+      .replace(/([a-z0-9])(?=[A-Z][a-z])/g, "$1_")
       .toLowerCase()
       .split(/[^a-z0-9]+/)
       .filter(Boolean)
