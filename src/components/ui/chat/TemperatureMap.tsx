@@ -1,9 +1,10 @@
 "use client";
 
 import { Button } from "@ui/Button";
-import maplibregl, { type StyleSpecification } from "maplibre-gl";
+import maplibregl from "maplibre-gl";
 import React from "react";
 import type { TableData } from "@/types/chat";
+import { satelliteStyle, streetStyle } from "./mapStyles";
 
 interface TemperatureMapProps {
   content: string;
@@ -158,60 +159,6 @@ function MapLibreMap({
   const _metersToLngDelta = (meters: number, atLatDeg: number) =>
     meters / (111320 * Math.cos((atLatDeg * Math.PI) / 180));
 
-  const streetStyle: StyleSpecification = React.useMemo(
-    () => ({
-      version: 8,
-      sources: {
-        osm: {
-          type: "raster",
-          tiles: [
-            "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
-          ],
-          tileSize: 256,
-          attribution: "© OpenStreetMap contributors",
-        },
-      },
-      layers: [
-        {
-          id: "osm",
-          type: "raster",
-          source: "osm",
-          minzoom: 0,
-          maxzoom: 19,
-        },
-      ],
-    }),
-    [],
-  );
-
-  const satelliteStyle: StyleSpecification = React.useMemo(
-    () => ({
-      version: 8,
-      sources: {
-        esri: {
-          type: "raster",
-          tiles: [
-            "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          ],
-          tileSize: 256,
-          attribution: "Imagery © Esri & contributors",
-        },
-      },
-      layers: [
-        {
-          id: "esri",
-          type: "raster",
-          source: "esri",
-          minzoom: 0,
-          maxzoom: 19,
-        },
-      ],
-    }),
-    [],
-  );
-
   React.useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -231,7 +178,7 @@ function MapLibreMap({
       map.remove();
       mapRef.current = null;
     };
-  }, [latitude, longitude, streetStyle]);
+  }, [latitude, longitude]);
 
   // Sync center if props change
   React.useEffect(() => {
@@ -271,7 +218,7 @@ function MapLibreMap({
     if (!initialMap) return;
     const style = basemap === "map" ? streetStyle : satelliteStyle;
     initialMap.setStyle(style as any);
-  }, [basemap, streetStyle, satelliteStyle]);
+  }, [basemap]);
 
   // Heat overlay management (separated from basemap changes)
   React.useEffect(() => {
