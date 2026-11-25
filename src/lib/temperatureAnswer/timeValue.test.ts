@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parseTimeColumn, parseTimeValue } from "./timeValue";
+
+// A zone far from UTC: any local-time Date API would shift dates here.
+const originalTz = process.env.TZ;
+beforeAll(() => {
+  process.env.TZ = "Pacific/Kiritimati";
+});
+afterAll(() => {
+  process.env.TZ = originalTz;
+});
 
 describe("parseTimeValue", () => {
   it("reads a calendar date as that UTC day", () => {
@@ -7,6 +16,7 @@ describe("parseTimeValue", () => {
       kind: "date",
       epochMs: Date.UTC(2020, 6, 1),
       hasZone: false,
+      raw: "2020-07-01",
     });
   });
 
@@ -22,6 +32,7 @@ describe("parseTimeValue", () => {
       kind: "datetime",
       epochMs: Date.UTC(2020, 6, 1, 11),
       hasZone: true,
+      raw: "2020-07-01T11:00:00Z",
     });
   });
 
@@ -39,7 +50,17 @@ describe("parseTimeValue", () => {
       kind: "datetime",
       epochMs: Date.UTC(2020, 6, 1, 11),
       hasZone: false,
+      raw: "2020-07-01 11:00:00",
     });
+  });
+
+  it("accepts an hour-only offset", () => {
+    expect(parseTimeValue("2020-07-01 11:00:00+00")?.epochMs).toBe(
+      Date.UTC(2020, 6, 1, 11),
+    );
+    expect(parseTimeValue("2020-07-01T13:00:00+02")?.epochMs).toBe(
+      Date.UTC(2020, 6, 1, 11),
+    );
   });
 
   it("keeps fractional seconds", () => {
@@ -114,10 +135,8 @@ describe("parseTimeColumn", () => {
   });
 
   it("does not shift dates by the viewer's time zone", () => {
-    // The parser never uses local-time Date APIs; the value is the UTC day.
+    expect(new Date(2020, 6, 1).getTimezoneOffset()).not.toBe(0);
     const [first] = parseTimeColumn(["2020-07-01"]);
-    expect(new Date(first.value?.epochMs ?? 0).toISOString()).toBe(
-      "2020-07-01T00:00:00.000Z",
-    );
+    expect(first.value?.epochMs).toBe(Date.UTC(2020, 6, 1));
   });
 });

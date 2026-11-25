@@ -14,11 +14,7 @@
  * returns a structured location.
  */
 
-export interface QueryLocation {
-  latitude: number;
-  longitude: number;
-  source: "sql";
-}
+import type { QueryLocation } from "./queryLocation";
 
 const NUMBER = String.raw`[+-]?\d+(?:\.\d+)?`;
 const CAST_TYPE = String.raw`(?:DECIMAL|NUMERIC)(?:\s*\(\s*\d+\s*(?:,\s*\d+\s*)?\))?`;

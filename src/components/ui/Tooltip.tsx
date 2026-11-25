@@ -150,6 +150,13 @@ export function Tooltip({
       onMouseLeave={hideTooltip}
       onFocus={showOnFocus ? showTooltip : undefined}
       onBlur={showOnFocus ? hideTooltip : undefined}
+      onKeyDown={
+        showOnFocus
+          ? (event) => {
+              if (event.key === "Escape") hideTooltip();
+            }
+          : undefined
+      }
     >
       {children}
       {mounted && tooltipContent && createPortal(tooltipContent, document.body)}

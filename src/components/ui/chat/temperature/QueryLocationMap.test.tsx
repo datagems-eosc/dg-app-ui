@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryLocationMap } from "./QueryLocationMap";
@@ -69,8 +75,16 @@ describe("QueryLocationMap", () => {
     const user = userEvent.setup();
     render(<QueryLocationMap location={ATHENS} />);
     await waitFor(() => expect(mockMapLibre.Map).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Map" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await user.click(screen.getByRole("button", { name: "Satellite" }));
     expect(mockMapInstance.setStyle).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Satellite" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await user.click(screen.getByRole("button", { name: "Zoom in" }));
     expect(mockMapInstance.zoomIn).toHaveBeenCalled();
   });
@@ -83,6 +97,7 @@ describe("QueryLocationMap", () => {
       "The map couldn't load. Query location 38.0, 23.7",
     );
     expect(screen.queryByTestId("query-location-caption")).toBeNull();
+    expect(mockMapInstance.remove).toHaveBeenCalled();
   });
 
   it("keeps the map after a later tile error", async () => {
@@ -91,6 +106,18 @@ describe("QueryLocationMap", () => {
     emit("data", { dataType: "source", tile: {} });
     emit("error", { error: new Error("one tile") });
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("starts on the basemap chosen before the map loaded", async () => {
+    render(<QueryLocationMap location={ATHENS} />);
+    // Synchronously, before the dynamic import of MapLibre has resolved.
+    expect(mockMapLibre.Map).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Satellite" }));
+    await waitFor(() => expect(mockMapLibre.Map).toHaveBeenCalled());
+    const options = (
+      mockMapLibre.Map.mock.calls as unknown as Array<[{ style: unknown }]>
+    )[0][0];
+    expect(options.style).toMatchObject({ sources: { esri: {} } });
   });
 
   it("falls back when the map cannot be created", async () => {

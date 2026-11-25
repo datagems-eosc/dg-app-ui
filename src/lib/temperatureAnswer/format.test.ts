@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   formatAxisTime,
   formatDateRange,
@@ -9,6 +9,15 @@ import {
 import { parseTimeValue, type TimeValue } from "./timeValue";
 
 const time = (raw: string) => parseTimeValue(raw) as TimeValue;
+
+// A zone far from UTC: local-time Date getters would show the wrong day.
+const originalTz = process.env.TZ;
+beforeAll(() => {
+  process.env.TZ = "Pacific/Kiritimati";
+});
+afterAll(() => {
+  process.env.TZ = originalTz;
+});
 
 describe("formatTemperature", () => {
   it.each([
@@ -44,8 +53,9 @@ describe("formatTime", () => {
     );
   });
 
-  it("shows a zone-less timestamp as its wall-clock time", () => {
-    expect(formatTime(time("2020-07-01 09:05"))).toBe("1 Jul 2020, 09:05");
+  it("shows a zone-less timestamp exactly as returned", () => {
+    expect(formatTime(time("2020-07-01 09:05"))).toBe("2020-07-01 09:05");
+    expect(formatTime(time("2020-07-01T09:05:30"))).toBe("2020-07-01T09:05:30");
   });
 });
 

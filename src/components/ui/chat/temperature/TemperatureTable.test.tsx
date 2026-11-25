@@ -8,6 +8,7 @@ import {
   extraColumnTable,
   missingValuesTable,
   reorderedCellsTable,
+  table,
 } from "@/lib/temperatureAnswer/fixtures/synthetic";
 import {
   interpretTemperatureAnswer,
@@ -63,10 +64,36 @@ describe("TemperatureTable", () => {
   it("announces missing values and flags unreadable dates", () => {
     render(<TemperatureTable answer={answerOf(missingValuesTable)} />);
     const rows = bodyRows();
-    expect(within(rows[7]).getByLabelText("No value")).toHaveTextContent("—");
-    expect(within(rows[14]).getByLabelText("No value")).toBeInTheDocument();
+    expect(within(rows[7]).getAllByRole("cell")[1]).toHaveTextContent(
+      "—No value",
+    );
+    expect(within(rows[7]).getByText("—")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(within(rows[14]).getByText("No value")).toHaveClass("sr-only");
     expect(within(rows[15]).getAllByRole("cell")[0]).toHaveTextContent(
       "07/16/2020 · date not recognised",
+    );
+  });
+
+  it("shows timestamps that collide as returned, with a flag", () => {
+    render(
+      <TemperatureTable
+        answer={answerOf(
+          table(
+            ["time", "avg_tmean_celsius"],
+            [
+              ["2020-07-01T11:00:00Z", 29.9],
+              ["2020-07-01T14:00:00+03:00", 29.1],
+              ["2020-07-02T11:00:00Z", 28.9],
+            ],
+          ),
+        )}
+      />,
+    );
+    expect(within(bodyRows()[1]).getAllByRole("cell")[0]).toHaveTextContent(
+      "2020-07-01T14:00:00+03:00 · same time as another row",
     );
   });
 

@@ -31,13 +31,17 @@ const OTHER_AGGREGATE_TOKENS = new Set([
   "tmax",
 ]);
 const CELSIUS_TOKENS = new Set(["celsius", "degc"]);
+const OTHER_UNIT_TOKENS = new Set(["kelvin", "fahrenheit", "degk", "degf"]);
 
 function tokens(name: string): string[] {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
+  return (
+    name
+      // "stationCount" → station_count, while "degC" and "T2M" stay whole.
+      .replace(/([a-z0-9])([A-Z][a-z])/g, "$1_$2")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean)
+  );
 }
 
 export function isTimeColumnName(name: string): boolean {
@@ -58,6 +62,7 @@ function isSupportedTemperature(name: string): boolean {
   return (
     meanTemperature &&
     !parts.some((token) => OTHER_AGGREGATE_TOKENS.has(token)) &&
+    !parts.some((token) => OTHER_UNIT_TOKENS.has(token)) &&
     parts.some((token) => CELSIUS_TOKENS.has(token))
   );
 }

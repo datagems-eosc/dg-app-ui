@@ -4,12 +4,14 @@
  * service replaces it here without changing the map.
  */
 import type { Message } from "@/types/chat";
-import {
-  extractQueryLocationFromSql,
-  type QueryLocation,
-} from "./sqlQueryLocation";
+import { extractQueryLocationFromSql } from "./sqlQueryLocation";
 
-export type { QueryLocation };
+export interface QueryLocation {
+  latitude: number;
+  longitude: number;
+  /** Where the location was read from; only the temporary SQL reader today. */
+  source: "sql";
+}
 
 export function resolveQueryLocation(
   message: Pick<Message, "sqlQuery" | "latitude" | "longitude">,

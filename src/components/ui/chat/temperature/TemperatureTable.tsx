@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { formatTemperature, formatTime } from "@/lib/temperatureAnswer/format";
 import type {
   TemperatureAnswer,
@@ -13,9 +14,12 @@ interface TemperatureTableProps {
 
 function MissingCell() {
   return (
-    <span className="text-slate-400" aria-label="No value">
-      —
-    </span>
+    <>
+      <span className="text-slate-400" aria-hidden="true">
+        —
+      </span>
+      <span className="sr-only">No value</span>
+    </>
   );
 }
 
@@ -26,7 +30,8 @@ function rawText(value: unknown): string {
 function TimeCell({ row, raw }: { row: TemperatureRow; raw: unknown }) {
   const time = row.time;
   if (!time || time.status === "missing") return <MissingCell />;
-  if (time.status === "unrecognised") {
+  if (time.value === null) {
+    // Unrecognised: shown as returned.
     return (
       <>
         {rawText(raw)}
@@ -37,17 +42,17 @@ function TimeCell({ row, raw }: { row: TemperatureRow; raw: unknown }) {
       </>
     );
   }
-  const shown = time.value ? formatTime(time.value) : "";
   return time.status === "duplicate" ? (
+    // Shown as returned, so the reason for the clash stays visible.
     <>
-      {shown}
+      {rawText(raw)}
       <span className="text-descriptions-12-regular text-gray-650">
         {" "}
         · same time as another row
       </span>
     </>
   ) : (
-    shown
+    formatTime(time.value)
   );
 }
 
@@ -67,9 +72,19 @@ function heading(answer: TemperatureAnswer, column: string): string {
 
 /** The returned rows in returned order; cells bound by column name. */
 export function TemperatureTable({ answer }: TemperatureTableProps) {
-  const numeric = (column: string) =>
-    column === answer.temperatureColumn ||
-    answer.rows.some((row) => typeof row.cells[column] === "number");
+  // Right-aligned columns, worked out once rather than per cell.
+  const numericColumns = useMemo(
+    () =>
+      new Set(
+        answer.columns.filter(
+          (column) =>
+            column === answer.temperatureColumn ||
+            answer.rows.some((row) => typeof row.cells[column] === "number"),
+        ),
+      ),
+    [answer],
+  );
+  const numeric = (column: string) => numericColumns.has(column);
 
   return (
     <section

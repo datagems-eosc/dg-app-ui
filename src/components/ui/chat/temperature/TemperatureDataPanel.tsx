@@ -56,6 +56,7 @@ export function TemperatureDataPanel({
             {VIEWS.map(({ id, label, Icon }, index) => (
               <button
                 key={id}
+                id={`${panelId}-${id}`}
                 ref={(element) => {
                   tabs.current[index] = element;
                 }}
@@ -95,6 +96,7 @@ export function TemperatureDataPanel({
       <div
         id={panelId}
         role={answer.canChart ? "tabpanel" : undefined}
+        aria-labelledby={answer.canChart ? `${panelId}-${active}` : undefined}
         className={active === "chart" ? "px-3 pt-3 pb-2" : undefined}
       >
         {answer.kind === "empty" && (

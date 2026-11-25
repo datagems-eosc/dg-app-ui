@@ -10,19 +10,19 @@ export interface TimeValue {
   /** UTC milliseconds; for zone-less values, the wall-clock time read as UTC. */
   epochMs: number;
   hasZone: boolean;
+  /** The cell as returned, shown unchanged for zone-less timestamps. */
+  raw: string;
 }
 
-export type TimeStatus = "ok" | "missing" | "unrecognised" | "duplicate";
-
-export interface ParsedTime {
-  status: TimeStatus;
-  value: TimeValue | null;
-}
+/** A readable time always has a value; a missing or unreadable one never does. */
+export type ParsedTime =
+  | { status: "ok" | "duplicate"; value: TimeValue }
+  | { status: "missing" | "unrecognised"; value: null };
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MONTH = /^(\d{4})-(\d{2})$/;
 const DATETIME =
-  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(\.\d{1,9})?)?(Z|[+-]\d{2}:?\d{2})?$/;
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(\.\d{1,9})?)?(Z|[+-]\d{2}(?::?\d{2})?)?$/;
 
 const MAX_OFFSET_MINUTES = 14 * 60;
 
@@ -37,7 +37,7 @@ function offsetMinutes(zone: string): number | null {
   if (zone === "Z") return 0;
   const digits = zone.slice(1).replace(":", "");
   const hours = Number(digits.slice(0, 2));
-  const minutes = Number(digits.slice(2));
+  const minutes = Number(digits.slice(2) || "0");
   if (minutes > 59) return null;
   const total = hours * 60 + minutes;
   if (total > MAX_OFFSET_MINUTES) return null;
@@ -50,13 +50,17 @@ export function parseTimeValue(raw: unknown): TimeValue | null {
   const date = DATE.exec(raw);
   if (date) {
     const epochMs = utcDate(Number(date[1]), Number(date[2]), Number(date[3]));
-    return epochMs === null ? null : { kind: "date", epochMs, hasZone: false };
+    return epochMs === null
+      ? null
+      : { kind: "date", epochMs, hasZone: false, raw };
   }
 
   const month = MONTH.exec(raw);
   if (month) {
     const epochMs = utcDate(Number(month[1]), Number(month[2]), 1);
-    return epochMs === null ? null : { kind: "month", epochMs, hasZone: false };
+    return epochMs === null
+      ? null
+      : { kind: "month", epochMs, hasZone: false, raw };
   }
 
   const datetime = DATETIME.exec(raw);
@@ -75,6 +79,7 @@ export function parseTimeValue(raw: unknown): TimeValue | null {
     epochMs:
       day + ((hours * 60 + minutes - offset) * 60 + seconds) * 1000 + millis,
     hasZone: zone !== undefined,
+    raw,
   };
 }
 
@@ -111,9 +116,10 @@ export function parseTimeColumn(raws: unknown[]): ParsedTime[] {
       );
     }
   }
-  return parsed.map((entry) =>
-    entry.value && (counts.get(entry.value.epochMs) ?? 0) > 1
-      ? { status: "duplicate", value: entry.value }
-      : entry,
+  return parsed.map(
+    (entry): ParsedTime =>
+      entry.value && (counts.get(entry.value.epochMs) ?? 0) > 1
+        ? { status: "duplicate", value: entry.value }
+        : entry,
   );
 }

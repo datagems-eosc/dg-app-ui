@@ -25,6 +25,18 @@ describe("Tooltip", () => {
     expect(screen.queryByText("Download CSV")).not.toBeInTheDocument();
   });
 
+  it("closes with Escape while focused", () => {
+    render(
+      <Tooltip content="Download CSV" showOnFocus delay={0}>
+        <button type="button">Save</button>
+      </Tooltip>,
+    );
+    fireEvent.focus(screen.getByRole("button"));
+    act(() => vi.runAllTimers());
+    fireEvent.keyDown(screen.getByRole("button"), { key: "Escape" });
+    expect(screen.queryByText("Download CSV")).not.toBeInTheDocument();
+  });
+
   it("keeps hover-only behaviour by default", () => {
     render(
       <Tooltip content="Details" delay={0}>

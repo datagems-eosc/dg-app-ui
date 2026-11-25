@@ -11,6 +11,8 @@ import {
   useState,
 } from "react";
 import {
+  formatAxisClock,
+  formatAxisMonth,
   formatAxisTime,
   formatDateRange,
   formatTemperature,
@@ -34,20 +36,6 @@ const MAX_POINT_MARKERS = 60;
 const DEFAULT_WIDTH = 640;
 const NARROW_WIDTH = 480;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MONTH_NAMES = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
 
 function useWidth() {
   const ref = useRef<HTMLDivElement>(null);
@@ -75,9 +63,18 @@ function temperatureTicks(min: number, max: number): number[] {
   return ticks;
 }
 
-function timeTicks(points: Point[], narrow: boolean): Point[] {
+type TickMode = "month" | "clock" | "day";
+
+/** Which labels fit the span: months, clock times within a day, or days. */
+function tickMode(points: Point[]): TickMode {
   const span = points[points.length - 1].time.epochMs - points[0].time.epochMs;
-  if (points[0].time.kind === "date" && span > 92 * DAY_MS) {
+  if (points[0].time.kind === "date" && span > 92 * DAY_MS) return "month";
+  if (points[0].time.kind === "datetime" && span <= DAY_MS) return "clock";
+  return "day";
+}
+
+function timeTicks(points: Point[], mode: TickMode, narrow: boolean): Point[] {
+  if (mode === "month") {
     // Long daily series: one label per month (every third on narrow widths).
     return points.filter((point) => {
       const date = new Date(point.time.epochMs);
@@ -93,11 +90,11 @@ function timeTicks(points: Point[], narrow: boolean): Point[] {
   );
 }
 
-function tickLabel(point: Point, monthly: boolean): string {
-  return monthly
-    ? MONTH_NAMES[new Date(point.time.epochMs).getUTCMonth()]
-    : formatAxisTime(point.time);
-}
+const TICK_LABEL: Record<TickMode, (point: Point) => string> = {
+  month: (point) => formatAxisMonth(point.time),
+  clock: (point) => formatAxisClock(point.time),
+  day: (point) => formatAxisTime(point.time),
+};
 
 /** Splits the time-ordered observations into line segments at each gap. */
 function segments(observations: Observation[]): Point[][] {
@@ -124,6 +121,8 @@ export function TemperatureChart({ answer }: TemperatureChartProps) {
   const { ref, width } = useWidth();
   const gradientId = useId();
   const [active, setActive] = useState<number | null>(null);
+  // Only keyboard moves are announced; hovering would flood a screen reader.
+  const [announced, setAnnounced] = useState<number | null>(null);
 
   const narrow = width < NARROW_WIDTH;
   const height = narrow ? 200 : 240;
@@ -157,11 +156,13 @@ export function TemperatureChart({ answer }: TemperatureChartProps) {
     PADDING.top +
     (1 - (value - yMin) / (yMax - yMin || 1)) * (baseline - PADDING.top);
 
-  const xTicks = timeTicks(points, narrow);
-  const monthly =
-    points[0].time.kind === "date" && tLast - tFirst > 92 * DAY_MS;
+  const mode = tickMode(points);
+  const monthly = mode === "month";
+  const xTicks = timeTicks(points, mode, narrow);
   const activePoint = active === null ? null : points[active];
-  const range = answer.dateRange ? formatDateRange(answer.dateRange) : "";
+  const range = answer.dateRange
+    ? formatDateRange(answer.dateRange, " to ")
+    : "";
   const note = notPlottedNote(answer.notPlotted);
 
   const nearestIndex = (svgX: number) => {
@@ -194,6 +195,7 @@ export function TemperatureChart({ answer }: TemperatureChartProps) {
     if (event.key in next) {
       event.preventDefault();
       setActive(next[event.key]);
+      setAnnounced(next[event.key]);
     }
   };
 
@@ -203,10 +205,13 @@ export function TemperatureChart({ answer }: TemperatureChartProps) {
         role="img"
         tabIndex={0}
         aria-label={`Line chart of ${label}, ${points.length} values${
-          range ? `, ${range.replace(" – ", " to ")}` : ""
+          range ? `, ${range}` : ""
         }`}
         onKeyDown={onKeyDown}
-        onBlur={() => setActive(null)}
+        onBlur={() => {
+          setActive(null);
+          setAnnounced(null);
+        }}
         className="relative rounded-md focus-visible:outline-2 focus-visible:outline-blue-500"
       >
         <svg
@@ -259,7 +264,7 @@ export function TemperatureChart({ answer }: TemperatureChartProps) {
               }
               className="fill-gray-650 text-xs"
             >
-              {tickLabel(point, monthly)}
+              {TICK_LABEL[mode](point)}
             </text>
           ))}
           <g>
@@ -341,8 +346,8 @@ export function TemperatureChart({ answer }: TemperatureChartProps) {
         )}
       </div>
       <div role="status" className="sr-only">
-        {activePoint
-          ? `${formatTime(activePoint.time)}: ${formatTemperature(activePoint.temperature)} °C`
+        {announced !== null && points[announced]
+          ? `${formatTime(points[announced].time)}: ${formatTemperature(points[announced].temperature)} °C`
           : ""}
       </div>
       {note && (

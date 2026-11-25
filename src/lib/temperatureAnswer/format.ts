@@ -34,18 +34,33 @@ function formatDay(date: Date): string {
   return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
-/** "1 Jul 2020", "Jul 2020" or "1 Jul 2020, 11:00" (UTC or wall-clock). */
+/** "1 Jul 2020", "Jul 2020", "1 Jul 2020, 11:00" (UTC), or a zone-less timestamp as returned. */
 export function formatTime(time: TimeValue): string {
   const date = new Date(time.epochMs);
   if (time.kind === "month") {
     return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
   }
   if (time.kind === "date") return formatDay(date);
+  // Without a zone the time is not converted or reformatted at all.
+  if (!time.hasZone) return time.raw;
   const seconds = date.getUTCSeconds();
   const clock = `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}${
     seconds ? `:${pad(seconds)}` : ""
   }`;
   return `${formatDay(date)}, ${clock}`;
+}
+
+/** Month ticks on a long daily axis: "Jul", and "Jan 2020" when a year starts. */
+export function formatAxisMonth(time: TimeValue): string {
+  const date = new Date(time.epochMs);
+  const month = MONTHS[date.getUTCMonth()];
+  return date.getUTCMonth() === 0 ? `${month} ${date.getUTCFullYear()}` : month;
+}
+
+/** Clock ticks for a series within one day: "14:00". */
+export function formatAxisClock(time: TimeValue): string {
+  const date = new Date(time.epochMs);
+  return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 }
 
 /** Short axis label: "1 Jul", or "Jul 2020" for months. */
@@ -65,10 +80,11 @@ function formatRangeEnd(time: TimeValue): string {
 
 export function formatDateRange(
   range: NonNullable<TemperatureAnswer["dateRange"]>,
+  separator = " – ",
 ): string {
   const first = formatRangeEnd(range.first);
   const last = formatRangeEnd(range.last);
-  return first === last ? first : `${first} – ${last}`;
+  return first === last ? first : `${first}${separator}${last}`;
 }
 
 const rows = (n: number) => `${n} ${n === 1 ? "row" : "rows"}`;

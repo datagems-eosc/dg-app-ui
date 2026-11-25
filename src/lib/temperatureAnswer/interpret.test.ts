@@ -39,8 +39,18 @@ describe("interpretTemperatureAnswer — recognition", () => {
       timeHasZone: false,
     });
     expect(answer?.dateRange).toEqual({
-      first: { kind: "date", epochMs: Date.UTC(2020, 6, 1), hasZone: false },
-      last: { kind: "date", epochMs: Date.UTC(2020, 6, 31), hasZone: false },
+      first: {
+        kind: "date",
+        epochMs: Date.UTC(2020, 6, 1),
+        hasZone: false,
+        raw: "2020-07-01",
+      },
+      last: {
+        kind: "date",
+        epochMs: Date.UTC(2020, 6, 31),
+        hasZone: false,
+        raw: "2020-07-31",
+      },
     });
   });
 
@@ -227,6 +237,62 @@ describe("interpretTemperatureAnswer — rows and observations", () => {
     const answer = interpretTemperatureAnswer(leapYearTable);
     expect(answer?.observations).toHaveLength(366);
     expect(answer?.dateRange?.last.epochMs).toBe(Date.UTC(2020, 11, 31));
+  });
+
+  it("keeps column names that clash with object prototype members", () => {
+    const answer = interpretTemperatureAnswer(
+      table(
+        ["day", "avg_tmean_celsius", "__proto__", "constructor"],
+        [
+          ["2020-07-01", 29.9, "a", MISSING],
+          ["2020-07-02", 29.1, "b", MISSING],
+        ],
+      ),
+    );
+    expect(answer?.rows[0].cells.__proto__).toBe("a");
+    expect(answer?.rows[0].cells.constructor).toBeUndefined();
+  });
+
+  it("marks UTC display even when every zoned row is a duplicate", () => {
+    const answer = interpretTemperatureAnswer(
+      table(
+        ["time", "avg_tmean_celsius"],
+        [
+          ["2020-07-01T11:00:00+02:00", 29.9],
+          ["2020-07-01T11:00:00+02:00", 29.1],
+        ],
+      ),
+    );
+    expect(answer?.timeHasZone).toBe(true);
+  });
+
+  it.each([
+    [
+      "a column without a text name",
+      {
+        columns: [{ columnNumber: 0, name: 7 }],
+        rows: [{ rowNumber: 0, cells: [] }],
+      },
+    ],
+    [
+      "a null row",
+      {
+        columns: [
+          { columnNumber: 0, name: "day" },
+          { columnNumber: 1, name: "avg_tmean_celsius" },
+        ],
+        rows: [null, { rowNumber: 1, cells: [] }],
+      },
+    ],
+    ["a null column", { columns: [null], rows: [{ rowNumber: 0, cells: [] }] }],
+  ])("falls back without crashing on %s", (_label, malformed) => {
+    expect(
+      interpretTemperatureAnswer(
+        malformed as unknown as Parameters<
+          typeof interpretTemperatureAnswer
+        >[0],
+      ),
+    ).toBeNull();
   });
 
   it("treats a missing time cell as unreadable", () => {

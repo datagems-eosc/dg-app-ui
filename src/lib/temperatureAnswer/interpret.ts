@@ -54,7 +54,8 @@ const MIN_CHART_POINTS = 2;
 export function cellsByColumn(
   row: TableData["rows"][number],
 ): Record<string, unknown> {
-  const cells: Record<string, unknown> = {};
+  // No prototype: a column named "__proto__" or "constructor" stays a cell.
+  const cells: Record<string, unknown> = Object.create(null);
   for (const cell of Array.isArray(row?.cells) ? row.cells : []) {
     if (cell && typeof cell.column === "string") {
       cells[cell.column] = cell.value;
@@ -72,6 +73,16 @@ export function interpretTemperatureAnswer(
 ): TemperatureAnswer | null {
   if (!tableData || !Array.isArray(tableData.columns)) return null;
   if (!Array.isArray(tableData.rows) || tableData.rows.length === 0) {
+    return null;
+  }
+  // Every answer with a table passes through here, so anything malformed
+  // falls back to the plain table instead of breaking the message.
+  if (
+    !tableData.columns.every(
+      (column) => column !== null && typeof column?.name === "string",
+    ) ||
+    !tableData.rows.every((row) => row !== null && typeof row === "object")
+  ) {
     return null;
   }
 
@@ -107,7 +118,7 @@ export function interpretTemperatureAnswer(
       continue;
     }
     if (row.temperature === null) notPlotted.noValue += 1;
-    if (row.time?.value) {
+    if (row.time) {
       observations.push({
         rowNumber: row.rowNumber,
         time: row.time.value,
@@ -130,7 +141,8 @@ export function interpretTemperatureAnswer(
     columns,
     timeColumn,
     temperatureColumn,
-    timeHasZone: observations.some((o) => o.time.hasZone),
+    // From every readable time, duplicates included: they are shown in UTC too.
+    timeHasZone: rows.some((row) => row.time?.value?.hasZone === true),
     rows,
     observations,
     canChart: kind === "series" && plotted >= MIN_CHART_POINTS,

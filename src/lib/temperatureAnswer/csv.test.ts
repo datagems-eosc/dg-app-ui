@@ -83,6 +83,22 @@ describe("tableToCsv", () => {
     ]);
   });
 
+  it("neutralises formulas after a semicolon for semicolon-locale Excel", () => {
+    const out = lines(
+      tableToCsv(
+        table(
+          ["note", "n"],
+          [
+            ["x;=1+1", 1],
+            ["x; =HYPERLINK(1)", 2],
+            ["a;b", 3],
+          ],
+        ),
+      ),
+    );
+    expect(out.slice(1)).toEqual(["x;'=1+1,1", "x; '=HYPERLINK(1),2", "a;b,3"]);
+  });
+
   it("neutralises a formula-like column name", () => {
     expect(lines(tableToCsv(table(["=x"], [[1]])))[0]).toBe("'=x");
   });

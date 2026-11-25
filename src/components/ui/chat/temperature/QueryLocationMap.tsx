@@ -30,11 +30,21 @@ export function QueryLocationMap({ location }: QueryLocationMapProps) {
   const [failed, setFailed] = useState(false);
   const [pin, setPin] = useState<{ x: number; y: number } | null>(null);
   const [basemap, setBasemap] = useState<Basemap>("map");
+  // A choice made before MapLibre has loaded must still apply when it starts.
+  const basemapRef = useRef<Basemap>("map");
   const coordinates = `${coordinate(latitude)}, ${coordinate(longitude)}`;
 
   useEffect(() => {
     let cancelled = false;
     let map: MapLibreMap | null = null;
+    setFailed(false);
+    // Stop a map whose basemap could not load; the text fallback replaces it.
+    const fail = () => {
+      map?.remove();
+      map = null;
+      mapRef.current = null;
+      setFailed(true);
+    };
 
     import("maplibre-gl")
       .then(({ default: maplibregl }) => {
@@ -44,12 +54,12 @@ export function QueryLocationMap({ location }: QueryLocationMapProps) {
             container: containerRef.current,
             center: [longitude, latitude],
             zoom: 10,
-            style: streetStyle,
+            style: basemapRef.current === "map" ? streetStyle : satelliteStyle,
             attributionControl: false,
             cooperativeGestures: true,
           });
         } catch {
-          setFailed(true);
+          fail();
           return;
         }
         const instance = map;
@@ -65,14 +75,14 @@ export function QueryLocationMap({ location }: QueryLocationMapProps) {
         // A later failing tile leaves the map usable; failing before any
         // tile means the basemap is unavailable.
         instance.on("error", () => {
-          if (!tileLoaded) setFailed(true);
+          if (!tileLoaded) fail();
         });
         instance.on("load", placePin);
         instance.on("move", placePin);
         instance.on("resize", placePin);
       })
       .catch(() => {
-        if (!cancelled) setFailed(true);
+        if (!cancelled) fail();
       });
 
     return () => {
@@ -84,6 +94,7 @@ export function QueryLocationMap({ location }: QueryLocationMapProps) {
 
   const chooseBasemap = (next: Basemap) => {
     setBasemap(next);
+    basemapRef.current = next;
     mapRef.current?.setStyle(next === "map" ? streetStyle : satelliteStyle);
   };
 
@@ -133,6 +144,7 @@ export function QueryLocationMap({ location }: QueryLocationMapProps) {
           <Button
             variant={basemap === "map" ? "primary" : "outline"}
             size="sm"
+            aria-pressed={basemap === "map"}
             onClick={() => chooseBasemap("map")}
           >
             Map
@@ -140,6 +152,7 @@ export function QueryLocationMap({ location }: QueryLocationMapProps) {
           <Button
             variant={basemap === "satellite" ? "primary" : "outline"}
             size="sm"
+            aria-pressed={basemap === "satellite"}
             onClick={() => chooseBasemap("satellite")}
           >
             Satellite

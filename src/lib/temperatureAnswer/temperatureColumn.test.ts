@@ -51,12 +51,15 @@ describe("supportedTemperatureColumn", () => {
     "mean_temperature_celsius",
     "average_temp_celsius",
     "avg_temperature_degc",
+    "avg_tmean_degC",
   ])("supports %s", (name) => {
     expect(supportedTemperatureColumn([name])).toBe(name);
   });
 
   it.each([
     ["Kelvin", "avg_tmean_kelvin"],
+    ["Celsius and Kelvin", "avg_tmean_celsius_from_kelvin"],
+    ["Celsius and Fahrenheit", "avg_temp_degc_degf"],
     ["Fahrenheit", "avg_temp_fahrenheit"],
     ["no unit", "avg_tmean"],
     ["a bare _c suffix", "avg_temp_c"],
@@ -71,6 +74,12 @@ describe("supportedTemperatureColumn", () => {
     expect(
       supportedTemperatureColumn(["day", "avg_tmean_celsius", "grid_cells"]),
     ).toBe("avg_tmean_celsius");
+  });
+
+  it("counts an upper-case T2M column as temperature", () => {
+    expect(
+      supportedTemperatureColumn(["day", "avg_tmean_celsius", "T2M"]),
+    ).toBeNull();
   });
 
   it("refuses two temperature columns even if only one is supported", () => {
@@ -88,6 +97,7 @@ describe("columnLabel", () => {
   it("shows the unit for a Celsius column", () => {
     expect(columnLabel("avg_tmean_celsius")).toBe("Avg tmean (°C)");
     expect(columnLabel("avg_temperature_degc")).toBe("Avg temperature (°C)");
+    expect(columnLabel("avg_tmean_degC")).toBe("Avg tmean (°C)");
   });
 
   it("turns other names into words", () => {

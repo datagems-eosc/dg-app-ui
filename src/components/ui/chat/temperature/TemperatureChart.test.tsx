@@ -5,6 +5,7 @@ import { athensDayTable } from "@/lib/temperatureAnswer/fixtures/observed";
 import {
   leapYearTable,
   missingValuesTable,
+  table,
 } from "@/lib/temperatureAnswer/fixtures/synthetic";
 import {
   interpretTemperatureAnswer,
@@ -75,6 +76,17 @@ describe("TemperatureChart", () => {
     expect(screen.getByRole("status")).toHaveTextContent("1 Jul 2020: 29.9 °C");
   });
 
+  it("does not announce values while the pointer moves", () => {
+    const { container } = render(
+      <TemperatureChart answer={answerOf(athensDayTable)} />,
+    );
+    fireEvent.mouseMove(container.querySelector("svg") as SVGSVGElement, {
+      clientX: 10_000,
+      clientY: 10,
+    });
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
+
   it("shows the value under the pointer", () => {
     const { container } = render(
       <TemperatureChart answer={answerOf(athensDayTable)} />,
@@ -86,6 +98,43 @@ describe("TemperatureChart", () => {
     );
     fireEvent.mouseLeave(svg);
     expect(screen.queryByTestId("chart-tooltip")).not.toBeInTheDocument();
+  });
+
+  it("labels an hourly series with times", () => {
+    const hourly = interpretTemperatureAnswer(
+      table(
+        ["time", "avg_tmean_celsius"],
+        Array.from({ length: 24 }, (_, h) => [
+          `2020-07-01T${String(h).padStart(2, "0")}:00:00Z`,
+          25 + h / 10,
+        ]),
+      ),
+    ) as TemperatureAnswer;
+    const { container } = render(<TemperatureChart answer={hourly} />);
+    const labels = [...container.querySelectorAll("text")].map(
+      (t) => t.textContent,
+    );
+    expect(labels).toContain("00:00");
+    expect(labels).toContain("23:00");
+  });
+
+  it("names the year on January ticks of a multi-year series", () => {
+    const twoYears = interpretTemperatureAnswer(
+      table(
+        ["day", "avg_tmean_celsius"],
+        Array.from({ length: 731 }, (_, i) => [
+          new Date(Date.UTC(2019, 0, 1 + i)).toISOString().slice(0, 10),
+          10,
+        ]),
+      ),
+    ) as TemperatureAnswer;
+    const { container } = render(<TemperatureChart answer={twoYears} />);
+    const labels = [...container.querySelectorAll("text")].map(
+      (t) => t.textContent,
+    );
+    expect(labels).toContain("Jan 2019");
+    expect(labels).toContain("Jan 2020");
+    expect(labels).toContain("Jul");
   });
 
   it("drops point markers for long series", () => {

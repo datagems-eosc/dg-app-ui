@@ -12,8 +12,13 @@ const BOM = String.fromCharCode(0xfeff);
 const FORMULA_START = /^[=+\-@\t\r]/;
 const NEEDS_QUOTES = /[",\r\n]/;
 
+// Excel in semicolon-separator locales (Greek, most of the EU) splits a
+// double-clicked CSV at every ";", so a formula after one would start a cell.
+const FORMULA_AFTER_SEMICOLON = /;(\s*)(?=[=+\-@\t\r])/g;
+
 function textField(text: string): string {
-  const safe = FORMULA_START.test(text) ? `'${text}` : text;
+  const guarded = text.replace(FORMULA_AFTER_SEMICOLON, ";$1'");
+  const safe = FORMULA_START.test(guarded) ? `'${guarded}` : guarded;
   return NEEDS_QUOTES.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
