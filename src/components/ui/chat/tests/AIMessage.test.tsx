@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  athensDaySql,
+  athensDayTable,
+} from "@/lib/temperatureAnswer/fixtures/observed";
+import { kelvinTable } from "@/lib/temperatureAnswer/fixtures/synthetic";
 import type { Message } from "@/types/chat";
 import { AIMessage } from "../AIMessage";
 
@@ -31,13 +36,28 @@ vi.mock("@ui/chat/AIMessageContent", () => ({
   AIMessageContent: ({
     content,
     tableData,
+    sqlQuery,
   }: {
     content: string;
     tableData?: unknown;
+    sqlQuery?: string;
   }) => (
     <div data-testid="ai-message-content">
       {content}
       {tableData ? <span data-testid="has-table-data">Has table</span> : null}
+      {sqlQuery ? <span data-testid="has-sql">Has SQL</span> : null}
+    </div>
+  ),
+}));
+
+vi.mock("@ui/chat/temperature/TemperatureAnswer", () => ({
+  TemperatureAnswer: ({
+    answer,
+  }: {
+    answer: { kind: string; rows: unknown[] };
+  }) => (
+    <div data-testid="temperature-answer">
+      {answer.kind} {answer.rows.length}
     </div>
   ),
 }));
@@ -170,5 +190,72 @@ describe("AIMessage", () => {
     render(<AIMessage message={defaultMessage} />);
 
     expect(screen.getByTestId("temperature-map")).toBeInTheDocument();
+  });
+  describe("temperature answers", () => {
+    const temperatureMessage: Message = {
+      ...defaultMessage,
+      content: "Table Results:\n",
+      tableData: athensDayTable,
+      sqlQuery: athensDaySql,
+    };
+
+    it("shows a recognised answer instead of the plain table and heat map", () => {
+      render(<AIMessage message={temperatureMessage} />);
+
+      expect(screen.getByTestId("temperature-answer")).toHaveTextContent(
+        "series 31",
+      );
+      expect(screen.queryByTestId("temperature-map")).toBeNull();
+      expect(screen.queryByTestId("has-table-data")).toBeNull();
+      expect(screen.queryByText(/Table Results/)).toBeNull();
+    });
+
+    it("keeps the SQL for expert mode", () => {
+      render(<AIMessage message={temperatureMessage} />);
+
+      expect(screen.getByTestId("has-sql")).toBeInTheDocument();
+    });
+
+    it("keeps today's presentation for an unrecognised table", () => {
+      render(
+        <AIMessage
+          message={{ ...temperatureMessage, tableData: kelvinTable }}
+        />,
+      );
+
+      expect(screen.queryByTestId("temperature-answer")).toBeNull();
+      expect(screen.getByTestId("temperature-map")).toBeInTheDocument();
+      expect(screen.getByTestId("has-table-data")).toBeInTheDocument();
+      expect(screen.getByText(/Table Results/)).toBeInTheDocument();
+    });
+
+    it("keeps the rephrase message for a failed answer", () => {
+      render(
+        <AIMessage
+          message={{
+            ...defaultMessage,
+            content: "This question can't be answered.",
+          }}
+        />,
+      );
+
+      expect(screen.queryByTestId("temperature-answer")).toBeNull();
+      expect(screen.getByTestId("ai-message-content")).toHaveTextContent(
+        "This question can't be answered.",
+      );
+    });
+
+    it("does not replace a dataset proposal", () => {
+      render(
+        <AIMessage
+          message={{
+            ...temperatureMessage,
+            datasetProposal: [{ id: "d1", title: "Weather" }],
+          }}
+        />,
+      );
+
+      expect(screen.queryByTestId("temperature-answer")).toBeNull();
+    });
   });
 });

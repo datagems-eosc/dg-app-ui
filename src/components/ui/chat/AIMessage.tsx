@@ -6,7 +6,10 @@ import { AIMessageHeader } from "@ui/chat/AIMessageHeader";
 import { ChatRecommendations } from "@ui/chat/ChatRecommendations";
 import DatasetProposalBlock from "@ui/chat/DatasetProposalBlock";
 import { TemperatureMap } from "@ui/chat/TemperatureMap";
+import { TemperatureAnswer } from "@ui/chat/temperature/TemperatureAnswer";
+import { useMemo } from "react";
 import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
+import { interpretTemperatureAnswer } from "@/lib/temperatureAnswer/interpret";
 import type { Message } from "@/types/chat";
 
 interface AIMessageProps {
@@ -33,6 +36,12 @@ export function AIMessage({
     isLastAIMessage &&
     (message.recommendationsLoading ||
       (message.recommendations && message.recommendations.length > 0));
+  // Recognised temperature answers get their own presentation; every other
+  // answer keeps the plain table and map below.
+  const temperatureAnswer = useMemo(
+    () => interpretTemperatureAnswer(message.tableData),
+    [message.tableData],
+  );
 
   return (
     <div className="w-full max-w-full space-y-4 shadow-s1 border border-slate-350 rounded-2xl p-4 sm:px-6 sm:py-5">
@@ -49,20 +58,29 @@ export function AIMessage({
         />
       ) : (
         <>
-          <TemperatureMap
-            content={message.content}
-            latitude={message.latitude}
-            longitude={message.longitude}
-            tableData={message.tableData}
-            baseRadius={90}
-            heatOpacity={0.55}
-            requireTableData={false}
-          />
-          <AIMessageContent
-            content={message.content}
-            tableData={message.tableData}
-            sqlQuery={message.sqlQuery}
-          />
+          {temperatureAnswer ? (
+            <>
+              <TemperatureAnswer answer={temperatureAnswer} message={message} />
+              <AIMessageContent content="" sqlQuery={message.sqlQuery} />
+            </>
+          ) : (
+            <>
+              <TemperatureMap
+                content={message.content}
+                latitude={message.latitude}
+                longitude={message.longitude}
+                tableData={message.tableData}
+                baseRadius={90}
+                heatOpacity={0.55}
+                requireTableData={false}
+              />
+              <AIMessageContent
+                content={message.content}
+                tableData={message.tableData}
+                sqlQuery={message.sqlQuery}
+              />
+            </>
+          )}
           <AIMessageActions
             sources={message.sources}
             onSourcesClick={onSourcesClick}
