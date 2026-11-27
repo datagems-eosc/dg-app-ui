@@ -255,57 +255,36 @@ describe("useApi request logs", () => {
   const TYPED = "qwzx vbnm plok";
   type Api = ReturnType<typeof useApi>;
 
-  it.each<[string, string, (api: Api) => Promise<unknown>]>([
-    [
-      "Language question",
-      "/pilot/language/linguistic-features",
-      (api) => api.getLinguisticFeatures({ DatasetIds: ["d-1"], Query: TYPED }),
-    ],
-    [
-      "next-query suggestions",
-      "/search/recommend",
-      (api) => api.getRecommendNextQueries(TYPED),
-    ],
-    [
-      "new collection name",
-      "/collection/persist",
-      (api) => api.createUserCollection(TYPED),
-    ],
-    [
-      "dataset search text",
-      "/dataset/query",
-      (api) => api.queryDatasets({ like: TYPED, project: { fields: ["id"] } }),
-    ],
-  ])(
-    "logs the %s request without the typed text",
-    async (_, endpoint, call) => {
-      stubFetch(async () => new Response("{}", { status: 200 }));
-      const info = vi.spyOn(apiLogger, "info");
-      const { result } = renderHook(() => useApi());
-
-      await call(result.current).catch(() => undefined);
-
-      const requestLogs = info.mock.calls.filter(
-        ([fields]) => (fields as { type?: string }).type === "request",
-      );
-      expect(requestLogs).toContainEqual([
-        expect.objectContaining({ endpoint }),
-        expect.any(String),
-      ]);
-      expect(JSON.stringify(info.mock.calls)).not.toContain("qwzx");
-    },
-  );
-
+  // Each row: the fields its request log must keep (endpoint, ids, counts).
+  // Every row's call carries typed text, which must never be logged.
   it.each<[string, Record<string, unknown>, (api: Api) => Promise<unknown>]>([
     [
       "Language question",
-      { datasetIds: ["d-1", "d-2"] },
+      {
+        endpoint: "/pilot/language/linguistic-features",
+        datasetIds: ["d-1", "d-2"],
+      },
       (api) =>
         api.getLinguisticFeatures({ DatasetIds: ["d-1", "d-2"], Query: TYPED }),
     ],
     [
+      "next-query suggestions",
+      { endpoint: "/search/recommend" },
+      (api) => api.getRecommendNextQueries(TYPED),
+    ],
+    [
+      "new collection name",
+      { endpoint: "/collection/persist" },
+      (api) => api.createUserCollection(TYPED),
+    ],
+    [
+      "dataset search text",
+      { endpoint: "/dataset/query" },
+      (api) => api.queryDatasets({ like: TYPED, project: { fields: ["id"] } }),
+    ],
+    [
       "dataset onboarding",
-      { locationCount: 2 },
+      { endpoint: "/dataset/onboard", locationCount: 2 },
       (api) =>
         api.onboardDataset({
           code: TYPED,
@@ -326,7 +305,7 @@ describe("useApi request logs", () => {
     ],
     [
       "user lookup",
-      { idCount: 2 },
+      { endpoint: "/user/query", idCount: 2 },
       (api) => api.queryUsers({ ids: ["u-1", "u-2"], like: TYPED }),
     ],
     [
@@ -335,7 +314,7 @@ describe("useApi request logs", () => {
       (api) => api.queryUserGroups({ ids: ["g-1"], like: TYPED }),
     ],
   ])(
-    "logs the %s request with its ids or counts and without the typed text",
+    "logs the %s request with its endpoint, ids and counts, without typed text",
     async (_, expected, call) => {
       stubFetch(async () => new Response("{}", { status: 200 }));
       const info = vi.spyOn(apiLogger, "info");
@@ -350,8 +329,10 @@ describe("useApi request logs", () => {
         expect.objectContaining(expected),
         expect.any(String),
       ]);
-      expect(JSON.stringify(info.mock.calls)).not.toContain("qwzx");
-      expect(JSON.stringify(info.mock.calls)).not.toContain("u-1");
+      const logged = JSON.stringify(info.mock.calls);
+      expect(logged).not.toContain("qwzx");
+      // User ids identify people: lookups log a count, never the ids.
+      expect(logged).not.toContain("u-1");
     },
   );
 
