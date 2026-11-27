@@ -2,7 +2,7 @@
 
 import { Button } from "@ui/Button";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import DatasetDetailsPageContent from "@/components/DatasetDetailsPage/DatasetDetailsPageContent";
 import { APP_ROUTES } from "@/config/appUrls";
@@ -51,7 +51,22 @@ export default function DatasetDetailsPage() {
   const searchParams = useSearchParams();
   const api = useApi();
   const principalId = api.datasetPermissions.scope?.principalId ?? null;
-  const { readGlobalPermissions } = api.datasetPermissions.gateway;
+  // useApi rebuilds both calls from every new access token. Reading them
+  // through refs keeps a token refresh for the same user from reloading the
+  // page and throwing away the file selection, tab and scroll (UI 395). The
+  // read below reruns only for a new dataset, a new user or Try again.
+  const getDatasetByIdRef = useRef(api.getDatasetById);
+  const readGlobalPermissionsRef = useRef(
+    api.datasetPermissions.gateway.readGlobalPermissions,
+  );
+  useEffect(() => {
+    getDatasetByIdRef.current = api.getDatasetById;
+    readGlobalPermissionsRef.current =
+      api.datasetPermissions.gateway.readGlobalPermissions;
+  }, [
+    api.getDatasetById,
+    api.datasetPermissions.gateway.readGlobalPermissions,
+  ]);
   const [read, setRead] = useState<DatasetReadState>({
     owner: null,
     status: "loading",
@@ -104,7 +119,7 @@ export default function DatasetDetailsPage() {
 
       try {
         const [apiDataset, global] = await Promise.all([
-          api.getDatasetById(datasetId, [
+          getDatasetByIdRef.current(datasetId, [
             "id",
             "code",
             "name",
@@ -131,7 +146,7 @@ export default function DatasetDetailsPage() {
             "citeAs",
             "profileRaw",
           ]),
-          readGlobalPermissions(controller.signal).catch(() => ({
+          readGlobalPermissionsRef.current(controller.signal).catch(() => ({
             evidence: PERMISSIONS_FAILED,
           })),
         ]);
@@ -189,15 +204,7 @@ export default function DatasetDetailsPage() {
       isCancelled = true;
       controller.abort();
     };
-  }, [
-    attempt,
-    datasetId,
-    principalId,
-    owner,
-    api.hasToken,
-    api.getDatasetById,
-    readGlobalPermissions,
-  ]);
+  }, [attempt, datasetId, principalId, owner, api.hasToken]);
 
   const errorKind: DatasetErrorKind | null = !datasetId
     ? "missing-id"

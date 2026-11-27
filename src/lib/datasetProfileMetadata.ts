@@ -6,6 +6,8 @@ const MIME_LABELS: Record<string, string> = {
   "text/csv": "CSV",
   "application/vnd.ms-excel": "Excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel",
+  // How the profile spells a database table.
+  "text/sql": "SQL database",
 };
 
 function formatLabel(
@@ -108,7 +110,22 @@ export function deriveProfileMetadata(raw: unknown) {
     const fields = profilingFields(node);
     return fields.summary || fields.keywords.length ? [{ id, ...fields }] : [];
   });
-  return { formats: [...new Set(formats)], size, profiling };
+  // A workbook's sheets and a database's tables are FileObjects too; only the
+  // rest are files someone uploaded.
+  const tableCount = files.filter((node) =>
+    node.labels?.includes("Table"),
+  ).length;
+  const fileCount = files.filter(
+    (node) =>
+      !node.labels?.includes("Table") && !node.labels?.includes("Sheet"),
+  ).length;
+  return {
+    formats: [...new Set(formats)],
+    size,
+    profiling,
+    fileCount,
+    tableCount,
+  };
 }
 
 export type DatasetProfileMetadata = ReturnType<typeof deriveProfileMetadata>;

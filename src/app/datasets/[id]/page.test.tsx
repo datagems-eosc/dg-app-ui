@@ -59,10 +59,29 @@ const deferred = <T,>() => {
 let mockPrincipalId: string | null = "account-a";
 let mockDatasetId = "ds-1";
 let mockHasToken = true;
+// useApi builds its calls from the access token, so a new token for the same
+// user hands the page new function identities. Tests swap these to model that.
+let mockTokenCalls: {
+  getDatasetById: (...args: unknown[]) => unknown;
+  readGlobalPermissions: (...args: unknown[]) => unknown;
+} = {
+  getDatasetById: mockGetDatasetById,
+  readGlobalPermissions: mockReadGlobalPermissions,
+};
+const refreshToken = () => {
+  mockTokenCalls = {
+    getDatasetById: (...args) => mockGetDatasetById(...args),
+    readGlobalPermissions: (...args) => mockReadGlobalPermissions(...args),
+  };
+};
 beforeEach(() => {
   mockPrincipalId = "account-a";
   mockDatasetId = "ds-1";
   mockHasToken = true;
+  mockTokenCalls = {
+    getDatasetById: mockGetDatasetById,
+    readGlobalPermissions: mockReadGlobalPermissions,
+  };
   mockGetDatasetById.mockReset();
   mockGetFieldsOfScience.mockReset().mockResolvedValue(FIELDS_OF_SCIENCE);
   mockReadGlobalPermissions.mockReset().mockResolvedValue({
@@ -82,7 +101,7 @@ vi.mock("@/hooks/useApi", () => ({
     hasToken: mockHasToken,
     sessionPrincipalId: mockHasToken ? mockPrincipalId : null,
     datasetPermissions: {
-      gateway: { readGlobalPermissions: mockReadGlobalPermissions },
+      gateway: { readGlobalPermissions: mockTokenCalls.readGlobalPermissions },
       scope: mockPrincipalId
         ? {
             principalId: mockPrincipalId,
@@ -90,7 +109,7 @@ vi.mock("@/hooks/useApi", () => ({
           }
         : null,
     },
-    getDatasetById: mockGetDatasetById,
+    getDatasetById: mockTokenCalls.getDatasetById,
     getFieldsOfScience: mockGetFieldsOfScience,
     getCurrentUserContextGrants: mockGetCurrentUserContextGrants,
     downloadDatasetFile: vi.fn(),
@@ -231,7 +250,7 @@ describe("dataset details page headline", () => {
       expect(
         screen.getByText("Short ocean measurements summary"),
       ).toBeInTheDocument();
-      expect(screen.getAllByText("No description available.")).toHaveLength(1);
+      expect(screen.getAllByText("No description")).toHaveLength(1);
     },
   );
 });
@@ -243,11 +262,11 @@ describe("dataset details page fields of science", () => {
     mockGetCurrentUserContextGrants.mockResolvedValue([]);
   });
 
-  /** The Fields of Science section: its heading and chips. */
+  /** The Fields of science value: its chips or their placeholder. */
   const fields = () =>
     within(
-      screen.getByRole("heading", { level: 3, name: "Fields of Science" })
-        .parentElement as HTMLElement,
+      screen.getByText("Fields of science", { selector: "dt" })
+        .nextElementSibling as HTMLElement,
     );
 
   it("shows stored codes and names by readable name, once each", async () => {
@@ -272,7 +291,7 @@ describe("dataset details page fields of science", () => {
   });
 
   const loadingFields = () =>
-    screen.queryByRole("status", { name: "Loading Fields of Science" });
+    screen.queryByRole("status", { name: "Loading fields of science" });
 
   it("shows the dataset with a placeholder for fields of science until the names arrive", async () => {
     const vocabulary = deferred<typeof FIELDS_OF_SCIENCE>();
@@ -309,7 +328,7 @@ describe("dataset details page fields of science", () => {
 
     expect(loadingFields()).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { level: 3, name: "Fields of Science" }),
+      screen.queryByText("Fields of science", { selector: "dt" }),
     ).not.toBeInTheDocument();
   });
 
@@ -502,7 +521,7 @@ describe("dataset details page citation", () => {
     expect(mockGetDatasetById.mock.calls[0][1]).not.toContain("citation");
     expect(screen.getByRole("heading", { name: "Citation" })).toBeVisible();
     expect(screen.getByText(citeAs)).toBeVisible();
-    await user.click(screen.getByRole("button", { name: /^Copy$/ }));
+    await user.click(screen.getByRole("button", { name: "Copy citation" }));
     expect(writeText).toHaveBeenCalledWith(citeAs);
   });
 
@@ -521,7 +540,7 @@ describe("dataset details page citation", () => {
       screen.queryByRole("heading", { name: "Citation" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /^Copy$/ }),
+      screen.queryByRole("button", { name: "Copy citation" }),
     ).not.toBeInTheDocument();
   });
 
@@ -814,4 +833,151 @@ it("ignores a late global manager response after the account changes", async () 
   expect(
     screen.queryByRole("button", { name: /^manage$/i }),
   ).not.toBeInTheDocument();
+});
+
+/** Records whether the loading state is ever shown, between any two renders. */
+const watchForLoadingState = () => {
+  let seen = false;
+  const check = () => {
+    if (document.body.textContent?.includes("Loading dataset...")) seen = true;
+  };
+  const observer = new MutationObserver(check);
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+  return () => {
+    check();
+    observer.takeRecords();
+    observer.disconnect();
+    return seen;
+  };
+};
+
+describe("token refresh (DE01)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCurrentUserContextGrants.mockResolvedValue([]);
+  });
+
+  it("keeps the loaded page without asking for the dataset again", async () => {
+    mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+    const { rerender } = render(<DatasetDetailsPage />);
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: "Sea surface temperature",
+    });
+    const stopWatching = watchForLoadingState();
+
+    refreshToken();
+    rerender(<DatasetDetailsPage />);
+    await act(async () => {});
+
+    expect(stopWatching()).toBe(false);
+    // The same element proves the content was not remounted, so the file
+    // selection, tab and scroll held in it survive.
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Sea surface temperature",
+      }),
+    ).toBe(heading);
+    expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
+    expect(mockReadGlobalPermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["user", "dataset"])(
+    "reloads with the newest token's call when the %s changes",
+    async (change) => {
+      mockGetDatasetById.mockResolvedValue(datasetPayload(["browsedataset"]));
+      const { rerender } = render(<DatasetDetailsPage />);
+      await screen.findByRole("heading", { name: "Sea surface temperature" });
+      refreshToken();
+      rerender(<DatasetDetailsPage />);
+      const newestGetDatasetById = vi.fn().mockResolvedValue({
+        ...datasetPayload(["browsedataset"]),
+        name: "Reloaded dataset",
+      });
+      const newestReadGlobal = vi.fn().mockResolvedValue({
+        evidence: { kind: "read", names: [], coverage: { kind: "exhaustive" } },
+      });
+      mockTokenCalls = {
+        getDatasetById: newestGetDatasetById,
+        readGlobalPermissions: newestReadGlobal,
+      };
+      if (change === "user") mockPrincipalId = "account-b";
+      else mockDatasetId = "ds-2";
+      rerender(<DatasetDetailsPage />);
+
+      await screen.findByRole("heading", { name: "Reloaded dataset" });
+      expect(newestGetDatasetById).toHaveBeenCalledTimes(1);
+      expect(newestGetDatasetById.mock.calls[0][0]).toBe(
+        change === "dataset" ? "ds-2" : "ds-1",
+      );
+      expect(newestReadGlobal).toHaveBeenCalledTimes(1);
+      expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("reloads with the newest token's call on Try again", async () => {
+    mockGetDatasetById.mockRejectedValueOnce(
+      Object.assign(new Error("offline"), { status: 500 }),
+    );
+    const { rerender } = render(<DatasetDetailsPage />);
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    const newestGetDatasetById = vi
+      .fn()
+      .mockResolvedValue(datasetPayload(["browsedataset"]));
+    mockTokenCalls = {
+      ...mockTokenCalls,
+      getDatasetById: newestGetDatasetById,
+    };
+    rerender(<DatasetDetailsPage />);
+    // A new token alone does not retry a failed read.
+    expect(newestGetDatasetById).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Try again" })).toBe(retry);
+
+    await userEvent.click(retry);
+
+    await screen.findByRole("heading", { name: "Sea surface temperature" });
+    expect(newestGetDatasetById).toHaveBeenCalledTimes(1);
+    expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
+  });
+
+  it("finishes a pending read when the token changes during it", async () => {
+    const pending = deferred<unknown>();
+    mockGetDatasetById.mockReturnValueOnce(pending.promise);
+    const { rerender } = render(<DatasetDetailsPage />);
+    await waitFor(() => expect(mockGetDatasetById).toHaveBeenCalledTimes(1));
+    const signal = mockReadGlobalPermissions.mock.calls[0][0] as AbortSignal;
+
+    refreshToken();
+    rerender(<DatasetDetailsPage />);
+    await act(async () => pending.resolve(datasetPayload(["browsedataset"])));
+
+    expect(
+      screen.getByRole("heading", { name: "Sea surface temperature" }),
+    ).toBeInTheDocument();
+    expect(signal.aborted).toBe(false);
+    expect(mockGetDatasetById).toHaveBeenCalledTimes(1);
+    expect(mockReadGlobalPermissions).toHaveBeenCalledTimes(1);
+  });
+
+  it("abandons a pending read when the page unmounts", async () => {
+    const pending = deferred<unknown>();
+    mockGetDatasetById.mockReturnValueOnce(pending.promise);
+    const consoleError = vi.spyOn(console, "error");
+    const { unmount } = render(<DatasetDetailsPage />);
+    await waitFor(() => expect(mockGetDatasetById).toHaveBeenCalledTimes(1));
+    const signal = mockReadGlobalPermissions.mock.calls[0][0] as AbortSignal;
+
+    unmount();
+    await act(async () => pending.resolve(datasetPayload(["browsedataset"])));
+
+    expect(signal.aborted).toBe(true);
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(mockLogError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
 });

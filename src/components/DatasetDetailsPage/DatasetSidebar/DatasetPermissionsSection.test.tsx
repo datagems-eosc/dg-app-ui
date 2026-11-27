@@ -259,6 +259,13 @@ describe("DatasetPermissionsSection — dataset group access entry", () => {
     },
   );
 
+  it("labels the entry Manage, as in the column's design, and names it Manage access", () => {
+    render(<DatasetPermissionsSection {...defaultProps} hasManagePermission />);
+    expect(
+      screen.getByRole("button", { name: "Manage access" }),
+    ).toHaveTextContent(/^Manage$/);
+  });
+
   it("closes the shared destination again", () => {
     render(<DatasetPermissionsSection {...defaultProps} hasManagePermission />);
     fireEvent.click(screen.getByRole("button", { name: /manage access/i }));
@@ -276,5 +283,57 @@ describe("DatasetPermissionsSection — dataset group access entry", () => {
     expect(
       screen.getByRole("button", { name: /manage access/i }),
     ).toBeDisabled();
+  });
+});
+
+describe("DatasetPermissionsSection in the Overview", () => {
+  beforeEach(() => mockUseFeatureFlag.mockReturnValue(false));
+
+  it("titles the section without an icon and lists the capabilities in order", () => {
+    render(
+      <DatasetPermissionsSection
+        {...defaultProps}
+        permissions={["Manage", "Search", "Browse"]}
+      />,
+    );
+    expect(
+      screen
+        .getByRole("heading", { name: "Your permissions" })
+        .querySelector("svg"),
+    ).toBeNull();
+    expect(
+      within(screen.getByRole("list", { name: "Your permissions" }))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Browse", "Manage", "Search"]);
+  });
+
+  it("folds many capabilities to two lines with +N more", async () => {
+    const { stubLayout } = await import("@/components/ui/__testing__/layout");
+    stubLayout({ width: 200 });
+    const many = [
+      "Browse",
+      "Edit",
+      "Download",
+      "Manage",
+      "Search",
+      "Share",
+      "Delete",
+      "Publish",
+      "Archive",
+      "Audit",
+      "Export",
+      "Import",
+    ];
+    render(<DatasetPermissionsSection {...defaultProps} permissions={many} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /^\+\d+ more permissions$/ }),
+    );
+    expect(
+      within(screen.getByRole("list", { name: "Your permissions" })).getByText(
+        "Import",
+      ),
+    ).toBeInTheDocument();
+    vi.restoreAllMocks();
   });
 });

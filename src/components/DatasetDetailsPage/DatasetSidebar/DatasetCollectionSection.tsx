@@ -1,9 +1,11 @@
 "use client";
 
 import { Button } from "@ui/Button";
-import { Chip } from "@ui/Chip";
-import { Box, Plus } from "lucide-react";
-import styles from "./DatasetSidebarSection.module.scss";
+import { FoldedChipList } from "@ui/FoldedChipList";
+import { Plus } from "lucide-react";
+import DatasetSidebarSection, {
+  sidebarNoteClass,
+} from "./DatasetSidebarSection";
 
 interface DatasetCollectionSectionProps {
   collectionLabels: string[];
@@ -15,32 +17,26 @@ export default function DatasetCollectionSection({
   onAddClick,
 }: DatasetCollectionSectionProps) {
   return (
-    <div className={styles.datasetSidebarSection}>
-      <div className={styles.datasetSidebarSection__header}>
-        <div className={styles.datasetSidebarSection__headerLeft}>
-          <Box className={styles.datasetSidebarSection__icon} />
-          <h3 className={styles.datasetSidebarSection__title}>Collection</h3>
-        </div>
+    <DatasetSidebarSection
+      title="Collections"
+      action={
         <Button
           variant="outline"
           size="sm"
+          aria-label="Add to collection"
           onClick={onAddClick}
-          className={styles.datasetSidebarSection__button}
+          className="shrink-0 gap-1.5 max-lg:h-11"
         >
-          <Plus className={styles.datasetSidebarSection__buttonIcon} />
+          <Plus aria-hidden="true" className="size-4" />
           Add
         </Button>
-      </div>
-      {collectionLabels.map((label, index) => (
-        <Chip
-          key={`${label}-${index}`}
-          color="grey"
-          variant="regular"
-          size="sm"
-        >
-          {label}
-        </Chip>
-      ))}
-    </div>
+      }
+    >
+      {collectionLabels.some((label) => label.trim()) ? (
+        <FoldedChipList items={collectionLabels} label="Collections" />
+      ) : (
+        <p className={sidebarNoteClass}>Not in a collection</p>
+      )}
+    </DatasetSidebarSection>
   );
 }
