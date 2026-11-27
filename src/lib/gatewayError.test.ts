@@ -4,6 +4,7 @@ import {
   GatewayErrorKind,
   gatewayErrorFromNetworkFailure,
   gatewayErrorFromResponse,
+  gatewayMessage,
 } from "./gatewayError";
 import {
   CORRELATION_ID,
@@ -155,5 +156,23 @@ describe("gatewayErrorFromNetworkFailure", () => {
     expect(error.message).toBe(
       "The service is temporarily unavailable. Please try again.",
     );
+  });
+});
+
+describe("gatewayMessage", () => {
+  it("returns the classified copy and reference of a Gateway failure", () => {
+    expect(
+      gatewayMessage(
+        gatewayErrorFromResponse(424, upstreamFailure(503, "DataManagement")),
+      ),
+    ).toBe(
+      "The service is temporarily unavailable. Please try again. Reference: 50c7a41b",
+    );
+  });
+
+  it("returns nothing for any other error, so its own text is never shown", () => {
+    expect(gatewayMessage(new Error("S3 bucket dg-staging"))).toBeUndefined();
+    expect(gatewayMessage("boom")).toBeUndefined();
+    expect(gatewayMessage(undefined)).toBeUndefined();
   });
 });

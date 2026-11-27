@@ -136,6 +136,13 @@ export const withReference = (
 ): string =>
   correlationId ? `${text} Reference: ${correlationId.slice(0, 8)}` : text;
 
+/**
+ * The text a classified Gateway failure may show the user (its copy and
+ * reference); `undefined` for any other error, whose own text is never shown.
+ */
+export const gatewayMessage = (err: unknown): string | undefined =>
+  err instanceof GatewayError ? err.message : undefined;
+
 export function gatewayErrorFromResponse(
   status: number,
   body: unknown,

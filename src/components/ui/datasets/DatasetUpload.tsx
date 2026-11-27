@@ -4,7 +4,7 @@ import { Link as LinkIcon, Upload } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import { GatewayError } from "@/lib/gatewayError";
+import { gatewayMessage } from "@/lib/gatewayError";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { FileUploadCard } from "./FileUploadCard";
@@ -119,7 +119,6 @@ export function DatasetUpload({
             status: path ? "success" : "error",
             stagedPath: path || undefined,
             error: path ? undefined : "No path returned",
-            failureMessage: undefined,
           });
         });
         onFilesChange(allFiles.map((f) => updates.get(f.id) ?? f));
@@ -135,8 +134,7 @@ export function DatasetUpload({
             progress: 0,
             status: "error",
             error: message,
-            failureMessage:
-              err instanceof GatewayError ? err.message : undefined,
+            failureMessage: gatewayMessage(err),
           });
         });
         onFilesChange(allFiles.map((f) => errorUpdates.get(f.id) ?? f));

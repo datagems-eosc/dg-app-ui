@@ -296,6 +296,65 @@ describe("useApi request logs", () => {
     },
   );
 
+  it.each<[string, Record<string, unknown>, (api: Api) => Promise<unknown>]>([
+    [
+      "Language question",
+      { datasetIds: ["d-1", "d-2"] },
+      (api) =>
+        api.getLinguisticFeatures({ DatasetIds: ["d-1", "d-2"], Query: TYPED }),
+    ],
+    [
+      "dataset onboarding",
+      { locationCount: 2 },
+      (api) =>
+        api.onboardDataset({
+          code: TYPED,
+          name: TYPED,
+          description: TYPED,
+          license: "CC-BY-4.0",
+          mimeType: "text/csv",
+          size: 1,
+          headline: TYPED,
+          keywords: [TYPED],
+          fieldOfScience: [],
+          datePublished: "2026-11-27",
+          dataLocations: [
+            { kind: 0, location: "staging/a.csv" },
+            { kind: 0, location: "staging/b.csv" },
+          ],
+        }),
+    ],
+    [
+      "user lookup",
+      { idCount: 2 },
+      (api) => api.queryUsers({ ids: ["u-1", "u-2"], like: TYPED }),
+    ],
+    [
+      "user group lookup",
+      { idCount: 1 },
+      (api) => api.queryUserGroups({ ids: ["g-1"], like: TYPED }),
+    ],
+  ])(
+    "logs the %s request with its ids or counts and without the typed text",
+    async (_, expected, call) => {
+      stubFetch(async () => new Response("{}", { status: 200 }));
+      const info = vi.spyOn(apiLogger, "info");
+      const { result } = renderHook(() => useApi());
+
+      await call(result.current).catch(() => undefined);
+
+      const requestLogs = info.mock.calls.filter(
+        ([fields]) => (fields as { type?: string }).type === "request",
+      );
+      expect(requestLogs).toContainEqual([
+        expect.objectContaining(expected),
+        expect.any(String),
+      ]);
+      expect(JSON.stringify(info.mock.calls)).not.toContain("qwzx");
+      expect(JSON.stringify(info.mock.calls)).not.toContain("u-1");
+    },
+  );
+
   it("logs the Language answer without text that repeats the question", async () => {
     stubFetch(
       async () =>

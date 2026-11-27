@@ -1062,8 +1062,10 @@ export function useApi() {
 
   const queryUsers = useCallback(
     async (payload: UserLookup): Promise<UserQueryResult> => {
+      // A count, not the ids: user ids identify people.
       logApiRequest("queryUsers", {
         endpoint: "/user/query",
+        idCount: payload.ids?.length ?? 0,
       });
 
       const response = await makeRequest("/user/query", {
@@ -1083,7 +1085,10 @@ export function useApi() {
   const queryUserGroups = useCallback(
     async (payload: UserGroupLookup): Promise<UserGroupQueryResult> => {
       const endpoint = publicEnv("USER_GROUPS_ENDPOINT", "/user/group/query");
-      logApiRequest("queryUserGroups", { endpoint });
+      logApiRequest("queryUserGroups", {
+        endpoint,
+        idCount: payload.ids?.length ?? 0,
+      });
 
       const response = await makeRequest(endpoint, {
         method: "POST",
@@ -1724,6 +1729,7 @@ export function useApi() {
 
       logApiRequest("onboardDataset", {
         endpoint: "/dataset/onboard",
+        locationCount: dataLocationsMapped.length,
       });
 
       const response = await makeRequest("/dataset/onboard", {
@@ -1797,6 +1803,7 @@ export function useApi() {
     async (payload: { DatasetIds: string[]; Query: string }): Promise<any> => {
       logApiRequest("getLinguisticFeatures", {
         endpoint: "/pilot/language/linguistic-features",
+        datasetIds: payload.DatasetIds,
       });
       const response = await makeRequest(
         "/pilot/language/linguistic-features",
