@@ -119,6 +119,7 @@ export function DatasetUpload({
             status: path ? "success" : "error",
             stagedPath: path || undefined,
             error: path ? undefined : "No path returned",
+            failureMessage: undefined,
           });
         });
         onFilesChange(allFiles.map((f) => updates.get(f.id) ?? f));
@@ -190,6 +191,7 @@ export function DatasetUpload({
         status: "uploading",
         progress: 0,
         error: undefined,
+        failureMessage: undefined,
       };
       const allFiles = files.map((f) => (f.id === file.id ? retryFile : f));
       onFilesChange(allFiles);

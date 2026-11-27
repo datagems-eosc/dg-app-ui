@@ -246,4 +246,57 @@ describe("DatasetUpload Gateway failure message", () => {
     expect(container.textContent).not.toMatch(/temporarily unavailable/);
     expect(container.textContent).not.toMatch(/Upload cancelled/);
   });
+
+  it("drops the Gateway message when a retry returns no stored path", async () => {
+    const user = userEvent.setup();
+    const onUpload = vi
+      .fn<Upload>()
+      .mockRejectedValueOnce(
+        gatewayErrorFromResponse(
+          424,
+          upstreamFailureBody(503, "DataManagement"),
+        ),
+      )
+      .mockResolvedValueOnce([""]);
+    const { container } = render(<Harness onUpload={onUpload} />);
+
+    await selectFile(container, csv());
+    await screen.findByText(/Reference: 50c7a41b/);
+
+    await user.click(screen.getByRole("button", { name: "Retry upload" }));
+
+    expect(
+      await screen.findByText(
+        "Retry the upload, or remove this file if you don't need it.",
+      ),
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/temporarily unavailable/);
+    expect(container.textContent).not.toMatch(/Reference:/);
+  });
+
+  it("clears the Gateway message as soon as a retry starts", async () => {
+    const user = userEvent.setup();
+    const onUpload = vi
+      .fn<Upload>()
+      .mockRejectedValueOnce(
+        gatewayErrorFromResponse(
+          424,
+          upstreamFailureBody(503, "DataManagement"),
+        ),
+      )
+      .mockReturnValueOnce(new Promise<string[]>(() => {}));
+    const changes: UploadedFile[][] = [];
+    const { container } = render(
+      <Harness onUpload={onUpload} onChange={(next) => changes.push(next)} />,
+    );
+
+    await selectFile(container, csv());
+    await screen.findByText(/Reference: 50c7a41b/);
+
+    await user.click(screen.getByRole("button", { name: "Retry upload" }));
+
+    const retrying = changes.at(-1)?.[0];
+    expect(retrying?.status).toBe("uploading");
+    expect(retrying?.failureMessage).toBeUndefined();
+  });
 });
