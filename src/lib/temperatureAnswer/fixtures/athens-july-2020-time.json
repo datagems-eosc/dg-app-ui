@@ -1,0 +1,441 @@
+{
+  "result": {
+    "question": "What was the average temperature in Athens in 2020 in July, each day.",
+    "data": {
+      "InputParams": null
+    },
+    "status": 0,
+    "entries": [
+      {
+        "process": {
+          "kind": 1,
+          "sql": {
+            "reasoning": "dail;validator",
+            "query": "SELECT tm.time AS time, AVG(tm.tmean) - 273.15 AS avg_tmean_celsius FROM meteo_tmean AS tm WHERE EXTRACT(YEAR FROM tm.time) = 2020 AND EXTRACT(MONTH FROM tm.time) = 7 AND (ROUND(CAST(tm.latitude AS DECIMAL), 1), ROUND(CAST(tm.longitude AS DECIMAL), 1)) IN ((38.0, 23.7)) GROUP BY tm.time"
+          }
+        },
+        "result": {
+          "kind": 1,
+          "table": {
+            "columns": [
+              {
+                "columnNumber": 0,
+                "name": "time"
+              },
+              {
+                "columnNumber": 1,
+                "name": "avg_tmean_celsius"
+              }
+            ],
+            "rows": [
+              {
+                "rowNumber": 0,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-01T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 29.940360150795584
+                  }
+                ]
+              },
+              {
+                "rowNumber": 1,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-02T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 29.142222088249525
+                  }
+                ]
+              },
+              {
+                "rowNumber": 2,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-03T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 28.955830564660914
+                  }
+                ]
+              },
+              {
+                "rowNumber": 3,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-04T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 29.137442818413888
+                  }
+                ]
+              },
+              {
+                "rowNumber": 4,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-05T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 28.412188620860775
+                  }
+                ]
+              },
+              {
+                "rowNumber": 5,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-06T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 26.2483742027905
+                  }
+                ]
+              },
+              {
+                "rowNumber": 6,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-07T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 26.1611525282907
+                  }
+                ]
+              },
+              {
+                "rowNumber": 7,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-08T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 26.198191869516677
+                  }
+                ]
+              },
+              {
+                "rowNumber": 8,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-09T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 25.12405097396436
+                  }
+                ]
+              },
+              {
+                "rowNumber": 9,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-10T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 24.882697847266343
+                  }
+                ]
+              },
+              {
+                "rowNumber": 10,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-11T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 25.274597973785944
+                  }
+                ]
+              },
+              {
+                "rowNumber": 11,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-12T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 27.130149487459676
+                  }
+                ]
+              },
+              {
+                "rowNumber": 12,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-13T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 26.489727329488574
+                  }
+                ]
+              },
+              {
+                "rowNumber": 13,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-14T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 24.66046179991065
+                  }
+                ]
+              },
+              {
+                "rowNumber": 14,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-15T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 25.0404137518413
+                  }
+                ]
+              },
+              {
+                "rowNumber": 15,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-16T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 25.956838742818604
+                  }
+                ]
+              },
+              {
+                "rowNumber": 16,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-17T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 26.740638995857864
+                  }
+                ]
+              },
+              {
+                "rowNumber": 17,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-18T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 27.030979638370866
+                  }
+                ]
+              },
+              {
+                "rowNumber": 18,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-19T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 26.971238765425824
+                  }
+                ]
+              },
+              {
+                "rowNumber": 19,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-20T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 27.609271288479135
+                  }
+                ]
+              },
+              {
+                "rowNumber": 20,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-21T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 27.432438304561742
+                  }
+                ]
+              },
+              {
+                "rowNumber": 21,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-22T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 27.384645606205652
+                  }
+                ]
+              },
+              {
+                "rowNumber": 22,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-23T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 27.403762685548088
+                  }
+                ]
+              },
+              {
+                "rowNumber": 23,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-24T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 27.81119543903344
+                  }
+                ]
+              },
+              {
+                "rowNumber": 24,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-25T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 28.387097454223863
+                  }
+                ]
+              },
+              {
+                "rowNumber": 25,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-26T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 28.0274573990946
+                  }
+                ]
+              },
+              {
+                "rowNumber": 26,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-27T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 28.56273562068236
+                  }
+                ]
+              },
+              {
+                "rowNumber": 27,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-28T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 28.65951583485338
+                  }
+                ]
+              },
+              {
+                "rowNumber": 28,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-29T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 29.456459079940544
+                  }
+                ]
+              },
+              {
+                "rowNumber": 29,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-30T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 29.910489714323035
+                  }
+                ]
+              },
+              {
+                "rowNumber": 30,
+                "cells": [
+                  {
+                    "column": "time",
+                    "value": "2020-07-31T11:00:00Z"
+                  },
+                  {
+                    "column": "avg_tmean_celsius",
+                    "value": 30.908162292505665
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "status": 0
+      }
+    ]
+  }
+}

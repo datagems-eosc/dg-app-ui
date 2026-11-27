@@ -10,6 +10,8 @@ interface TooltipProps {
   position?: "top" | "bottom" | "left" | "right";
   delay?: number;
   className?: string;
+  /** Also show while the wrapped control has keyboard focus. */
+  showOnFocus?: boolean;
 }
 
 export function Tooltip({
@@ -18,6 +20,7 @@ export function Tooltip({
   position = "top",
   delay = 500,
   className = "",
+  showOnFocus = false,
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [tooltipStyle, setTooltipStyle] = useState({});
@@ -145,6 +148,15 @@ export function Tooltip({
       ref={containerRef}
       onMouseEnter={showTooltip}
       onMouseLeave={hideTooltip}
+      onFocus={showOnFocus ? showTooltip : undefined}
+      onBlur={showOnFocus ? hideTooltip : undefined}
+      onKeyDown={
+        showOnFocus
+          ? (event) => {
+              if (event.key === "Escape") hideTooltip();
+            }
+          : undefined
+      }
     >
       {children}
       {mounted && tooltipContent && createPortal(tooltipContent, document.body)}
