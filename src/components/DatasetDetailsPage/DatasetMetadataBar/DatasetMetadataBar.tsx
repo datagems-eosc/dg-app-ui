@@ -1,77 +1,114 @@
 "use client";
 
-import { CalendarPlus, FileCheck, HardDrive } from "lucide-react";
-import React from "react";
+import {
+  CalendarPlus,
+  FileCheck,
+  Files,
+  HardDrive,
+  type LucideIcon,
+  Table2,
+} from "lucide-react";
 import type { DatasetPlus } from "@/data/dataset";
 import {
   type DatasetProfileMetadata,
   deriveProfileMetadata,
 } from "@/lib/datasetProfileMetadata";
 import { formatDate, formatFileSize } from "@/lib/utils";
-import styles from "./DatasetMetadataBar.module.scss";
+import { DATASET_CONTENTS_ID } from "../datasetContentsAnchor";
 
 interface DatasetMetadataBarProps {
   dataset: DatasetPlus;
   metadata?: DatasetProfileMetadata;
 }
 
-interface MetadataItem {
-  icon: React.ReactNode;
+interface Fact {
+  icon: LucideIcon;
   label: string;
-  value: string | undefined;
+  value?: string;
+  /** A count that leads to the dataset contents. */
+  count?: { value: number; one: string; many: string };
 }
 
+function goToContents() {
+  const node = document.getElementById(DATASET_CONTENTS_ID);
+  node?.scrollIntoView({ block: "start", behavior: "smooth" });
+  node?.focus({ preventScroll: true });
+}
+
+function countFact(
+  icon: LucideIcon,
+  value: number,
+  one: string,
+  many: string,
+): Fact[] {
+  if (value <= 0) return [];
+  const label = value === 1 ? one : many;
+  return [
+    {
+      icon,
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+      count: { value, one, many },
+    },
+  ];
+}
+
+/** Added, Size, Format and the number of files or tables; absent facts are left out. */
 export default function DatasetMetadataBar({
   dataset,
   metadata = deriveProfileMetadata(dataset.profileRaw),
 }: DatasetMetadataBarProps) {
-  const suppliedDate = (value?: string) => {
-    const formatted = formatDate(value);
-    return formatted === "-" ? undefined : formatted;
-  };
-  const items: MetadataItem[] = [
+  const added = formatDate(dataset.datePublished);
+  const facts: Fact[] = [
     {
-      icon: <CalendarPlus className={styles.datasetMetadataBar__icon} />,
+      icon: CalendarPlus,
       label: "Added",
-      value: suppliedDate(dataset.datePublished),
+      value: added === "-" ? undefined : added,
     },
     {
-      icon: <HardDrive className={styles.datasetMetadataBar__icon} />,
-      label: "File size",
+      icon: HardDrive,
+      label: "Size",
       value:
         metadata.size.kind === "unavailable"
           ? undefined
           : formatFileSize(metadata.size.bytes),
     },
     {
-      icon: <FileCheck className={styles.datasetMetadataBar__icon} />,
-      label: "File Type",
-      value: metadata.formats.length ? metadata.formats.join(", ") : undefined,
+      icon: FileCheck,
+      label: metadata.formats.length > 1 ? "Formats" : "Format",
+      value: metadata.formats.join(", ") || undefined,
     },
-  ].filter((item) => item.value !== undefined);
+  ].filter((fact) => fact.value !== undefined);
+  facts.push(
+    ...countFact(Files, metadata.fileCount, "file", "files"),
+    ...countFact(Table2, metadata.tableCount, "table", "tables"),
+  );
 
-  if (!items.length) return null;
+  if (!facts.length) return null;
 
   return (
-    <div className={styles.datasetMetadataBar}>
-      {items.map((item, index) => (
-        <React.Fragment key={index}>
-          {index > 0 && (
-            <div className={styles.datasetMetadataBar__separator} />
-          )}
-          <div className={styles.datasetMetadataBar__item}>
-            {item.icon}
-            <div className={styles.datasetMetadataBar__content}>
-              <span className={styles.datasetMetadataBar__label}>
-                {item.label}
-              </span>
-              <span className={styles.datasetMetadataBar__value}>
-                {item.value}
-              </span>
-            </div>
-          </div>
-        </React.Fragment>
+    <dl className="flex w-full flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-5">
+      {facts.map(({ icon: Icon, label, value, count }) => (
+        <div key={label} className="flex min-w-0 items-center gap-2">
+          <Icon aria-hidden="true" className="size-4 shrink-0 text-icon" />
+          <dt className="text-gray-650">{label}</dt>
+          <dd className="min-w-0 font-medium text-gray-750 [overflow-wrap:anywhere]">
+            {count ? (
+              <button
+                type="button"
+                aria-label={`${count.value.toLocaleString("en-US")} ${
+                  count.value === 1 ? count.one : count.many
+                }, go to Inside this dataset`}
+                onClick={goToContents}
+                className="relative cursor-pointer rounded-sm underline underline-offset-4 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-850 max-lg:after:absolute max-lg:after:-inset-3"
+              >
+                {count.value.toLocaleString("en-US")}
+              </button>
+            ) : (
+              value
+            )}
+          </dd>
+        </div>
       ))}
-    </div>
+    </dl>
   );
 }

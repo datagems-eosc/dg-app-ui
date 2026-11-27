@@ -4,14 +4,8 @@ import { useState } from "react";
 import CreateCollectionModal from "@/components/CreateCollectionModal";
 import type { Dataset, DatasetPlus } from "@/data/dataset";
 import type { DatasetSharingState } from "@/lib/datasetPermissions/types";
-import DatasetCitationSection from "./DatasetCitationSection";
 import DatasetCollectionSection from "./DatasetCollectionSection";
-import DatasetCountrySection from "./DatasetCountrySection";
-import DatasetLanguageSection from "./DatasetLanguageSection";
-import DatasetLicenseSection from "./DatasetLicenseSection";
 import DatasetPermissionsSection from "./DatasetPermissionsSection";
-import styles from "./DatasetSidebar.module.scss";
-import DatasetSourceUrlSection from "./DatasetSourceUrlSection";
 
 interface DatasetSidebarProps {
   dataset: DatasetPlus;
@@ -36,14 +30,10 @@ export default function DatasetSidebar({
     useState(false);
 
   return (
-    <div className={styles.datasetSidebar}>
-      <DatasetCollectionSection
-        collectionLabels={(dataset.collections ?? []).map(
-          (collection) => collection.name,
-        )}
-        onAddClick={() => setShowCreateCollectionModal(true)}
-      />
-
+    <aside
+      aria-label="Permissions and collections"
+      className="grid min-w-0 grid-cols-1 @xl/overview:grid-cols-2 @4xl/overview:grid-cols-1 @4xl/overview:grid-rows-[auto_1fr] [&>*+*]:border-t [&>*+*]:border-slate-200 @xl/overview:[&>*+*]:border-t-0 @xl/overview:[&>*+*]:border-l @4xl/overview:[&>*+*]:border-t @4xl/overview:[&>*+*]:border-l-0"
+    >
       <DatasetPermissionsSection
         datasetId={dataset.id ?? ""}
         datasetName={dataset.title ?? "Dataset permissions"}
@@ -54,17 +44,12 @@ export default function DatasetSidebar({
         permissions={permissions}
       />
 
-      <DatasetLicenseSection license={dataset.license} />
-
-      <DatasetSourceUrlSection url={dataset.url} />
-
-      <DatasetLanguageSection language={dataset.language} />
-
-      {dataset.country && <DatasetCountrySection country={dataset.country} />}
-
-      {dataset.citation && (
-        <DatasetCitationSection citation={dataset.citation} />
-      )}
+      <DatasetCollectionSection
+        collectionLabels={(dataset.collections ?? []).map(
+          (collection) => collection.name,
+        )}
+        onAddClick={() => setShowCreateCollectionModal(true)}
+      />
 
       <CreateCollectionModal
         isVisible={showCreateCollectionModal}
@@ -72,6 +57,6 @@ export default function DatasetSidebar({
         selectedDatasets={dataset.id ? [dataset.id] : []}
         datasets={[dataset as Dataset]}
       />
-    </div>
+    </aside>
   );
 }

@@ -1,15 +1,17 @@
 "use client";
 
 import { Button } from "@ui/Button";
-import { Chip } from "@ui/Chip";
+import { FoldedChipList } from "@ui/FoldedChipList";
 import { DatasetPermissionsModal } from "@ui/user/DatasetPermissionsModal";
-import { Lock, Settings2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { APP_ROUTES } from "@/config/appUrls";
 import { useFeatureFlag } from "@/contexts/FeatureFlagsContext";
 import { getNavigationUrl } from "@/lib/utils";
-import styles from "./DatasetSidebarSection.module.scss";
+import DatasetSidebarSection, {
+  sidebarNoteClass,
+} from "./DatasetSidebarSection";
 
 const PERMISSION_LABELS: Record<string, string> = {
   Browse: "Browse",
@@ -34,10 +36,6 @@ interface DatasetPermissionsSectionProps {
    */
   permissions: string[] | undefined;
 }
-
-/** Neutral copy, reusing the application's existing empty-state type role. */
-const EMPTY_TEXT_CLASS =
-  "text-descriptions-12-regular tracking-1p text-gray-650";
 
 export default function DatasetPermissionsSection({
   datasetId,
@@ -70,66 +68,56 @@ export default function DatasetPermissionsSection({
 
   const permissionsContent =
     permissions === undefined ? (
-      <span className={EMPTY_TEXT_CLASS}>Permissions unavailable</span>
+      <p className={sidebarNoteClass}>Permissions unavailable</p>
     ) : displayPermissions.length === 0 ? (
-      <span className={EMPTY_TEXT_CLASS}>No permissions shown</span>
+      <p className={sidebarNoteClass}>No permissions shown</p>
     ) : (
-      displayPermissions.map((key) => (
-        <Chip key={key} color="grey" variant="regular" size="sm">
-          {PERMISSION_LABELS[key] ?? key}
-        </Chip>
-      ))
+      <FoldedChipList
+        items={displayPermissions.map((key) => PERMISSION_LABELS[key] ?? key)}
+        label="Your permissions"
+        about="permissions"
+      />
     );
 
-  return (
-    <div className={styles.datasetSidebarSection}>
-      <div className={styles.datasetSidebarSection__header}>
-        <div className={styles.datasetSidebarSection__headerLeft}>
-          <Lock className={styles.datasetSidebarSection__icon} />
-          <h3 className={styles.datasetSidebarSection__title}>
-            Your permissions
-          </h3>
-        </div>
-        {groupAccessEnabled
-          ? hasManagePermission && (
-              <Button
-                variant="outline"
-                size="sm"
-                className={styles.datasetSidebarSection__button}
-                disabled={!datasetId}
-                onClick={() => setIsAccessOpen(true)}
-              >
-                <Settings2
-                  className={styles.datasetSidebarSection__buttonIcon}
-                />
-                Manage access
-              </Button>
+  const buttonClass = "shrink-0 gap-1.5 max-lg:h-11";
+  const action = groupAccessEnabled
+    ? hasManagePermission && (
+        <Button
+          variant="outline"
+          size="sm"
+          className={buttonClass}
+          // "Manage" keeps the button beside the title in the narrow column.
+          aria-label="Manage access"
+          disabled={!datasetId}
+          onClick={() => setIsAccessOpen(true)}
+        >
+          <Settings2 aria-hidden="true" className="size-4" />
+          Manage
+        </Button>
+      )
+    : hasManagePermission && (
+        <Button
+          variant="outline"
+          size="sm"
+          className={buttonClass}
+          onClick={() =>
+            router.push(
+              getNavigationUrl(
+                datasetId
+                  ? APP_ROUTES.SETTINGS_ROLES_DATASET(datasetId)
+                  : APP_ROUTES.SETTINGS_ROLES,
+              ),
             )
-          : hasManagePermission && (
-              <Button
-                variant="outline"
-                size="sm"
-                className={styles.datasetSidebarSection__button}
-                onClick={() =>
-                  router.push(
-                    getNavigationUrl(
-                      datasetId
-                        ? APP_ROUTES.SETTINGS_ROLES_DATASET(datasetId)
-                        : APP_ROUTES.SETTINGS_ROLES,
-                    ),
-                  )
-                }
-              >
-                <Settings2
-                  className={styles.datasetSidebarSection__buttonIcon}
-                />
-                Manage
-              </Button>
-            )}
-      </div>
-      <div className={styles.datasetSidebarSection__chips}>
-        {permissionsContent}
-      </div>
+          }
+        >
+          <Settings2 aria-hidden="true" className="size-4" />
+          Manage
+        </Button>
+      );
+
+  return (
+    <DatasetSidebarSection title="Your permissions" action={action}>
+      {permissionsContent}
 
       {/*
         The same destination the settings roles table opens, so there is one
@@ -144,6 +132,6 @@ export default function DatasetPermissionsSection({
           onClose={() => setIsAccessOpen(false)}
         />
       )}
-    </div>
+    </DatasetSidebarSection>
   );
 }

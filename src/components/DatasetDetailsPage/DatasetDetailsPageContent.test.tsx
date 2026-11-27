@@ -351,3 +351,16 @@ it("disables Download and announces its pending state", async () => {
   ).toBeDisabled();
   expect(screen.getByText("Downloading...")).toBeInTheDocument();
 });
+
+it("shows the Overview card with the permissions column, and a target for the file count", () => {
+  render(<DatasetDetailsPageContent dataset={mockDataset} />);
+  const overview = screen.getByRole("region", { name: "Overview" });
+  expect(overview).toHaveTextContent("Test");
+  expect(sidebarProps).toHaveBeenCalled();
+  expect(
+    screen.queryByRole("heading", { name: "Dataset Details" }),
+  ).not.toBeInTheDocument();
+  const contents = document.getElementById("dataset-contents");
+  expect(contents).not.toBeNull();
+  expect(contents).toHaveAttribute("tabindex", "-1");
+});

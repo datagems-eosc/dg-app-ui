@@ -18,16 +18,16 @@ import {
 } from "@/lib/datasetProfile";
 import { deriveProfileMetadata } from "@/lib/datasetProfileMetadata";
 import { getNavigationUrl } from "@/lib/utils";
-import DatasetDescriptionSection from "./DatasetDescriptionSection/DatasetDescriptionSection";
 import styles from "./DatasetDetailsPageContent.module.scss";
 import DatasetFilesTree from "./DatasetFilesTree/DatasetFilesTree";
 import { type FileNode, findFileTreeNode } from "./DatasetFilesTree/fileTree";
 import DatasetHeader from "./DatasetHeader/DatasetHeader";
 import DatasetMetadataBar from "./DatasetMetadataBar/DatasetMetadataBar";
+import DatasetOverview from "./DatasetOverview/DatasetOverview";
 import DatasetProfilingSections from "./DatasetProfilingSections/DatasetProfilingSections";
 import DatasetRecommendationsSection from "./DatasetRecommendationsSection/DatasetRecommendationsSection";
 import DatasetSidebar from "./DatasetSidebar/DatasetSidebar";
-import DatasetTagsSection from "./DatasetTagsSection/DatasetTagsSection";
+import { DATASET_CONTENTS_ID } from "./datasetContentsAnchor";
 import FilePreview from "./FilePreview/FilePreview";
 
 function extensionFromMime(mime?: string): string | undefined {
@@ -166,35 +166,10 @@ export default function DatasetDetailsPageContent({
 
           <DatasetMetadataBar dataset={dataset} metadata={metadata} />
 
-          {/* Row 1: Dataset Details (Description sections) + Metadata Sidebar */}
-          <div className={styles.datasetDetailsPageContent__row}>
-            <div className={styles.datasetDetailsPageContent__rowLeft}>
-              <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
-                Dataset Details
-              </h2>
-              <div className={styles.datasetDetailsPageContent__sections}>
-                <DatasetDescriptionSection
-                  description={dataset.description || ""}
-                />
-                {dataset.fieldOfScience &&
-                  dataset.fieldOfScience.length > 0 && (
-                    <DatasetTagsSection
-                      title="Fields of Science"
-                      items={dataset.fieldOfScience}
-                      isLoading={fieldsOfSciencePending}
-                    />
-                  )}
-                {dataset.keywords && dataset.keywords.length > 0 && (
-                  <DatasetTagsSection
-                    title="Keywords"
-                    items={dataset.keywords}
-                  />
-                )}
-                <DatasetProfilingSections entries={metadata.profiling} />
-              </div>
-            </div>
-
-            <div className={styles.datasetDetailsPageContent__rowRight}>
+          <DatasetOverview
+            dataset={dataset}
+            fieldsOfSciencePending={fieldsOfSciencePending}
+            aside={
               <DatasetSidebar
                 dataset={dataset}
                 sharing={sharing}
@@ -204,11 +179,23 @@ export default function DatasetDetailsPageContent({
                 hasDownloadPermission={hasDownloadPermission}
                 hasManagePermission={hasManagePermission}
               />
+            }
+          />
+
+          {/* Profiler summaries move into the file card with task 10.4. */}
+          {metadata.profiling.length > 0 && (
+            <div className={styles.datasetDetailsPageContent__sections}>
+              <DatasetProfilingSections entries={metadata.profiling} />
             </div>
-          </div>
+          )}
 
           {/* Row 2: File Preview + Dataset Files Tree */}
-          <div className={styles.datasetDetailsPageContent__row}>
+          <section
+            id={DATASET_CONTENTS_ID}
+            tabIndex={-1}
+            aria-label="Inside this dataset"
+            className={`${styles.datasetDetailsPageContent__row} scroll-mt-20 outline-none`}
+          >
             <div className={styles.datasetDetailsPageContent__rowLeft}>
               <div className="flex items-start gap-4">
                 <h2 className={styles.datasetDetailsPageContent__sectionTitle}>
@@ -300,7 +287,7 @@ export default function DatasetDetailsPageContent({
                 />
               )}
             </div>
-          </div>
+          </section>
 
           <DatasetRecommendationsSection datasetId={dataset.id} />
         </div>
