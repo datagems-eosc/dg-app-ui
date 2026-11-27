@@ -24,12 +24,15 @@ interface FileUploadCardProps {
   };
   onRemove: () => void;
   onRetry?: () => void;
+  /** Retry waits while another transfer is running. */
+  retryDisabled?: boolean;
 }
 
 export function FileUploadCard({
   file,
   onRemove,
   onRetry,
+  retryDisabled = false,
 }: FileUploadCardProps) {
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
@@ -146,7 +149,8 @@ export function FileUploadCard({
             <button
               type="button"
               onClick={onRetry}
-              className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors"
+              disabled={retryDisabled}
+              className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
               aria-label="Retry upload"
             >
               <RefreshCw className="w-5 h-5 text-icon" />

@@ -295,4 +295,36 @@ describe("useApi request logs", () => {
       expect(JSON.stringify(info.mock.calls)).not.toContain("qwzx");
     },
   );
+
+  it("logs the Language answer without text that repeats the question", async () => {
+    stubFetch(
+      async () =>
+        new Response(
+          JSON.stringify({
+            result: {
+              rag_output: { results: [{ text: `About ${TYPED}` }] },
+              features: { term_frequency: [{ term: TYPED, count: 1 }] },
+            },
+            conversationId: "c-1",
+          }),
+          { status: 200 },
+        ),
+    );
+    const info = vi.spyOn(apiLogger, "info");
+    const { result } = renderHook(() => useApi());
+
+    await result.current.getLinguisticFeatures({
+      DatasetIds: ["d-1"],
+      Query: TYPED,
+    });
+
+    expect(info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "getLinguisticFeatures",
+        type: "response",
+      }),
+      expect.any(String),
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain("qwzx");
+  });
 });

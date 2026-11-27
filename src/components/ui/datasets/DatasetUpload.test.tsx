@@ -299,4 +299,30 @@ describe("DatasetUpload Gateway failure message", () => {
     expect(retrying?.status).toBe("uploading");
     expect(retrying?.failureMessage).toBeUndefined();
   });
+
+  it("does not retry a failed file while another file is uploading", async () => {
+    const user = userEvent.setup();
+    const onUpload = vi
+      .fn<Upload>()
+      .mockRejectedValueOnce(
+        gatewayErrorFromResponse(
+          424,
+          upstreamFailureBody(503, "DataManagement"),
+        ),
+      )
+      .mockReturnValueOnce(new Promise<string[]>(() => {}));
+    const { container } = render(<Harness onUpload={onUpload} />);
+
+    await selectFile(container, csv());
+    await screen.findByText(/Reference: 50c7a41b/);
+    await selectFile(
+      container,
+      new File(["x"], "notes.txt", { type: "text/plain" }),
+    );
+
+    const retry = screen.getByRole("button", { name: "Retry upload" });
+    expect(retry).toBeDisabled();
+    await user.click(retry);
+    expect(onUpload).toHaveBeenCalledTimes(2);
+  });
 });

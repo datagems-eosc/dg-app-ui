@@ -1809,7 +1809,11 @@ export function useApi() {
         throw await failedRequest("getLinguisticFeatures", response);
       }
       const result = await response.json();
-      logApiResponse("getLinguisticFeatures", result);
+      // The answer and its terms can repeat the typed question.
+      logApiResponse("getLinguisticFeatures", {
+        conversationId: result?.conversationId,
+        hasResult: Boolean(result?.result),
+      });
       return result;
     },
     [makeRequest],

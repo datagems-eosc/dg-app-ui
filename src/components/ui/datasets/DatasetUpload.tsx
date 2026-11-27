@@ -185,7 +185,8 @@ export function DatasetUpload({
 
   const handleRetryFile = useCallback(
     (file: UploadedFile) => {
-      if (!file.file) return;
+      // One transfer at a time: each writes from its own snapshot of `files`.
+      if (isUploading || !file.file) return;
       const retryFile: UploadedFile = {
         ...file,
         status: "uploading",
@@ -197,7 +198,7 @@ export function DatasetUpload({
       onFilesChange(allFiles);
       performUpload([retryFile], allFiles);
     },
-    [files, onFilesChange, performUpload],
+    [files, isUploading, onFilesChange, performUpload],
   );
 
   const handleBrowseFiles = useCallback(() => {
@@ -382,6 +383,7 @@ export function DatasetUpload({
                   ? () => handleRetryFile(file)
                   : undefined
               }
+              retryDisabled={isUploading}
             />
           ))}
         </div>
