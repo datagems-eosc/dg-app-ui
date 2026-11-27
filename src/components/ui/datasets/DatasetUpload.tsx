@@ -4,6 +4,7 @@ import { Link as LinkIcon, Upload } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
+import { gatewayMessage } from "@/lib/gatewayError";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { FileUploadCard } from "./FileUploadCard";
@@ -16,6 +17,8 @@ export interface UploadedFile {
   status: "uploading" | "success" | "error";
   progress: number;
   error?: string;
+  /** Shown on the card: set only from a classified Gateway failure. */
+  failureMessage?: string;
   file?: File;
   stagedPath?: string;
 }
@@ -131,6 +134,7 @@ export function DatasetUpload({
             progress: 0,
             status: "error",
             error: message,
+            failureMessage: gatewayMessage(err),
           });
         });
         onFilesChange(allFiles.map((f) => errorUpdates.get(f.id) ?? f));
@@ -179,18 +183,20 @@ export function DatasetUpload({
 
   const handleRetryFile = useCallback(
     (file: UploadedFile) => {
-      if (!file.file) return;
+      // One transfer at a time: each writes from its own snapshot of `files`.
+      if (isUploading || !file.file) return;
       const retryFile: UploadedFile = {
         ...file,
         status: "uploading",
         progress: 0,
         error: undefined,
+        failureMessage: undefined,
       };
       const allFiles = files.map((f) => (f.id === file.id ? retryFile : f));
       onFilesChange(allFiles);
       performUpload([retryFile], allFiles);
     },
-    [files, onFilesChange, performUpload],
+    [files, isUploading, onFilesChange, performUpload],
   );
 
   const handleBrowseFiles = useCallback(() => {
@@ -375,6 +381,7 @@ export function DatasetUpload({
                   ? () => handleRetryFile(file)
                   : undefined
               }
+              retryDisabled={isUploading}
             />
           ))}
         </div>

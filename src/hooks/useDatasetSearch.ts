@@ -19,7 +19,11 @@ import {
 } from "@/lib/datasetMapping";
 import { sortDatasetsWithSecondaryRules } from "@/lib/datasetSorting";
 import { fieldOfScienceFilterValues } from "@/lib/fieldsOfScience";
-import { GatewayError, withReference } from "@/lib/gatewayError";
+import {
+  GatewayError,
+  gatewayMessage,
+  withReference,
+} from "@/lib/gatewayError";
 import { logError } from "@/lib/logger";
 import { loadFieldsOfScience } from "@/lib/vocabularyService";
 
@@ -180,7 +184,7 @@ class ListFailure extends Error {
  * a raw error text never reaches the page.
  */
 const shownFor = (err: unknown, fallback: ApiErrorMessage): string =>
-  err instanceof GatewayError ? err.message : fallback;
+  gatewayMessage(err) ?? fallback;
 
 /**
  * Smart search keeps its own message, which tells the user to turn it off and

@@ -17,7 +17,7 @@ import {
   CORRELATION_ID,
   upstreamFailureBody,
 } from "@/lib/gatewayError.fixtures";
-import { logApiError } from "@/lib/logger";
+import { apiLogger, logApiError } from "@/lib/logger";
 import { useApi } from "./useApi";
 
 // Bodies as recorded from the Gateway (HTTP 424, code 104).
@@ -248,5 +248,123 @@ describe("useApi Gateway error messages", () => {
       v instanceof Error ? v.message : v,
     );
     expect(logged).not.toContain("qwzx");
+  });
+});
+
+describe("useApi request logs", () => {
+  const TYPED = "qwzx vbnm plok";
+  type Api = ReturnType<typeof useApi>;
+
+  // Each row: the fields its request log must keep (endpoint, ids, counts).
+  // Every row's call carries typed text, which must never be logged.
+  it.each<[string, Record<string, unknown>, (api: Api) => Promise<unknown>]>([
+    [
+      "Language question",
+      {
+        endpoint: "/pilot/language/linguistic-features",
+        datasetIds: ["d-1", "d-2"],
+      },
+      (api) =>
+        api.getLinguisticFeatures({ DatasetIds: ["d-1", "d-2"], Query: TYPED }),
+    ],
+    [
+      "next-query suggestions",
+      { endpoint: "/search/recommend" },
+      (api) => api.getRecommendNextQueries(TYPED),
+    ],
+    [
+      "new collection name",
+      { endpoint: "/collection/persist" },
+      (api) => api.createUserCollection(TYPED),
+    ],
+    [
+      "dataset search text",
+      { endpoint: "/dataset/query" },
+      (api) => api.queryDatasets({ like: TYPED, project: { fields: ["id"] } }),
+    ],
+    [
+      "dataset onboarding",
+      { endpoint: "/dataset/onboard", locationCount: 2 },
+      (api) =>
+        api.onboardDataset({
+          code: TYPED,
+          name: TYPED,
+          description: TYPED,
+          license: "CC-BY-4.0",
+          mimeType: "text/csv",
+          size: 1,
+          headline: TYPED,
+          keywords: [TYPED],
+          fieldOfScience: [],
+          datePublished: "2026-11-27",
+          dataLocations: [
+            { kind: 0, location: "staging/a.csv" },
+            { kind: 0, location: "staging/b.csv" },
+          ],
+        }),
+    ],
+    [
+      "user lookup",
+      { endpoint: "/user/query", idCount: 2 },
+      (api) => api.queryUsers({ ids: ["u-1", "u-2"], like: TYPED }),
+    ],
+    [
+      "user group lookup",
+      { idCount: 1 },
+      (api) => api.queryUserGroups({ ids: ["g-1"], like: TYPED }),
+    ],
+  ])(
+    "logs the %s request with its endpoint, ids and counts, without typed text",
+    async (_, expected, call) => {
+      stubFetch(async () => new Response("{}", { status: 200 }));
+      const info = vi.spyOn(apiLogger, "info");
+      const { result } = renderHook(() => useApi());
+
+      await call(result.current).catch(() => undefined);
+
+      const requestLogs = info.mock.calls.filter(
+        ([fields]) => (fields as { type?: string }).type === "request",
+      );
+      expect(requestLogs).toContainEqual([
+        expect.objectContaining(expected),
+        expect.any(String),
+      ]);
+      const logged = JSON.stringify(info.mock.calls);
+      expect(logged).not.toContain("qwzx");
+      // User ids identify people: lookups log a count, never the ids.
+      expect(logged).not.toContain("u-1");
+    },
+  );
+
+  it("logs the Language answer without text that repeats the question", async () => {
+    stubFetch(
+      async () =>
+        new Response(
+          JSON.stringify({
+            result: {
+              rag_output: { results: [{ text: `About ${TYPED}` }] },
+              features: { term_frequency: [{ term: TYPED, count: 1 }] },
+            },
+            conversationId: "c-1",
+          }),
+          { status: 200 },
+        ),
+    );
+    const info = vi.spyOn(apiLogger, "info");
+    const { result } = renderHook(() => useApi());
+
+    await result.current.getLinguisticFeatures({
+      DatasetIds: ["d-1"],
+      Query: TYPED,
+    });
+
+    expect(info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "getLinguisticFeatures",
+        type: "response",
+      }),
+      expect.any(String),
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain("qwzx");
   });
 });

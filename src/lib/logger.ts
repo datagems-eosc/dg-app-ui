@@ -15,6 +15,10 @@ const logger = pino({
 
 export const apiLogger = logger.child({ module: "API" });
 
+/**
+ * Logs which request was sent: operation, endpoint, ids and counts. Never pass
+ * the request body or anything the user typed (questions, search text, names).
+ */
 export const logApiRequest = (
   operation: string,
   details: Record<string, any>,

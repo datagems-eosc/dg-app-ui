@@ -16,15 +16,23 @@ interface FileUploadCardProps {
      * actionable guidance instead.
      */
     error?: string;
+    /**
+     * User copy for the failure, from a classified Gateway error (its message
+     * and reference). Shown in place of the generic guidance when present.
+     */
+    failureMessage?: string;
   };
   onRemove: () => void;
   onRetry?: () => void;
+  /** Retry waits while another transfer is running. */
+  retryDisabled?: boolean;
 }
 
 export function FileUploadCard({
   file,
   onRemove,
   onRetry,
+  retryDisabled = false,
 }: FileUploadCardProps) {
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 Bytes";
@@ -71,9 +79,10 @@ export function FileUploadCard({
   const failureGuidance =
     file.status !== "error"
       ? null
-      : onRetry
-        ? "Retry the upload, or remove this file if you don't need it."
-        : "Remove this file, then add it again.";
+      : (file.failureMessage ??
+        (onRetry
+          ? "Retry the upload, or remove this file if you don't need it."
+          : "Remove this file, then add it again."));
 
   // Joined rather than merged through `cn`: tailwind-merge drops this
   // project's custom typography classes when a text colour is merged in the
@@ -140,7 +149,8 @@ export function FileUploadCard({
             <button
               type="button"
               onClick={onRetry}
-              className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors"
+              disabled={retryDisabled}
+              className="self-center p-1.5 bg-white cursor-pointer hover:bg-slate-100 rounded-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
               aria-label="Retry upload"
             >
               <RefreshCw className="w-5 h-5 text-icon" />

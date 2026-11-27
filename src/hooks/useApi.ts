@@ -352,7 +352,6 @@ export function useApi() {
     async (payload: any): Promise<any> => {
       logApiRequest("queryDatasets", {
         endpoint: "/dataset/query",
-        payload,
       });
 
       const response = await makeRequest("/dataset/query", {
@@ -381,7 +380,6 @@ export function useApi() {
     async (payload: any): Promise<any> => {
       logApiRequest("queryCollections", {
         endpoint: "/collection/query",
-        payload,
       });
 
       const response = await makeRequest("/collection/query", {
@@ -410,7 +408,6 @@ export function useApi() {
     async (payload: any): Promise<any> => {
       logApiRequest("queryUserCollections", {
         endpoint: "/collection/query",
-        payload,
       });
 
       const response = await makeRequest("/collection/query", {
@@ -444,8 +441,6 @@ export function useApi() {
 
       logApiRequest("createUserCollection", {
         endpoint: "/collection/persist",
-        name,
-        code,
       });
 
       const response = await makeRequest(
@@ -1067,9 +1062,10 @@ export function useApi() {
 
   const queryUsers = useCallback(
     async (payload: UserLookup): Promise<UserQueryResult> => {
+      // A count, not the ids: user ids identify people.
       logApiRequest("queryUsers", {
         endpoint: "/user/query",
-        payload,
+        idCount: payload.ids?.length ?? 0,
       });
 
       const response = await makeRequest("/user/query", {
@@ -1091,7 +1087,7 @@ export function useApi() {
       const endpoint = publicEnv("USER_GROUPS_ENDPOINT", "/user/group/query");
       logApiRequest("queryUserGroups", {
         endpoint,
-        payload,
+        idCount: payload.ids?.length ?? 0,
       });
 
       const response = await makeRequest(endpoint, {
@@ -1515,7 +1511,6 @@ export function useApi() {
 
       logApiRequest("getRecommendNextQueries", {
         endpoint: "/search/recommend",
-        query,
       });
 
       const requestPayload: {
@@ -1734,7 +1729,7 @@ export function useApi() {
 
       logApiRequest("onboardDataset", {
         endpoint: "/dataset/onboard",
-        DataLocations: dataLocationsMapped,
+        locationCount: dataLocationsMapped.length,
       });
 
       const response = await makeRequest("/dataset/onboard", {
@@ -1808,7 +1803,7 @@ export function useApi() {
     async (payload: { DatasetIds: string[]; Query: string }): Promise<any> => {
       logApiRequest("getLinguisticFeatures", {
         endpoint: "/pilot/language/linguistic-features",
-        payload,
+        datasetIds: payload.DatasetIds,
       });
       const response = await makeRequest(
         "/pilot/language/linguistic-features",
@@ -1821,7 +1816,11 @@ export function useApi() {
         throw await failedRequest("getLinguisticFeatures", response);
       }
       const result = await response.json();
-      logApiResponse("getLinguisticFeatures", result);
+      // The answer and its terms can repeat the typed question.
+      logApiResponse("getLinguisticFeatures", {
+        conversationId: result?.conversationId,
+        hasResult: Boolean(result?.result),
+      });
       return result;
     },
     [makeRequest],
